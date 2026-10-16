@@ -14,7 +14,7 @@ Core workflow: Customer → Measurements → Order → Production → Payment �
 ## Hard rules
 
 - **BusinessId** on every tenant-owned entity and every sync operation. Never query without business scope.
-- **ULID string IDs** (`Ulid.NewUlid().ToString()`).
+- **ULID string IDs** (`IdGenerator.NewId()` / `Ulid.NewUlid().ToString()` via NUlid).
 - Domain/Application own the model — Api/Mobile/Web must not invent parallel entity classes.
 - Status/role values live in constants or enums in Domain/Application — do not scatter magic strings.
 - Financial records (Payment) require explicit conflict resolution — never silent overwrite on sync.

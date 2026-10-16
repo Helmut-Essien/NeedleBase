@@ -28,7 +28,7 @@ Learned from OrderFlow (`/home/helmut/Documents/My Projects/OrderFlow/.cursor/sk
 
 | Slice | Focus | Journey gate | Status |
 |-------|-------|--------------|--------|
-| 0 | Scaffold: sln, Clean Architecture projects, README, health | — | Planned |
+| 0 | Scaffold: sln, Clean Architecture projects, README, health | — | Done |
 | 1 | Auth + Business tenancy: JWT/refresh, register business, roles claims | J1 start | Planned |
 | 2 | Customers + measurements (local + API) | J1 | Planned |
 | 3 | Orders + lines + production status (mobile primary) | J1 | Planned |

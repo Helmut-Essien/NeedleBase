@@ -4,7 +4,7 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 
 | Slice | Focus | Status |
 |-------|-------|--------|
-| 0 | Scaffold: sln, Clean Architecture, health, README | Planned |
+| 0 | Scaffold: sln, Clean Architecture, health, README | Done |
 | 1 | Auth + Business tenancy (JWT, refresh, register business) | Planned |
 | 2 | Customers + measurements | Planned |
 | 3 | Orders + production status (mobile primary) | Planned |
@@ -31,7 +31,7 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 - All tenant queries prepared to filter `BusinessId` (global filter or explicit — document which)
 - Mobile: secure token store; splash/session path; **no** `ClearTokens()` on transient offline/refresh failure
 - Web: AuthApi + NeedleBaseApi HttpClients; cookie/session; fail if `Api:BaseUrl` missing
-- ULID string IDs from the start
+- ULID string IDs (NUlid) from the start
 - Tests: auth happy path + unauthorized; BusinessId required on protected endpoints
 
 ## Slice 2 acceptance — Customers + measurements

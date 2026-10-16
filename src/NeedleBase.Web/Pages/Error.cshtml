@@ -1,0 +1,26 @@
+﻿@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+<h1 class="text-danger">Something went wrong</h1>
+<p class="lead">We couldn’t process that request. Try again in a moment.</p>
+
+@if (Model.ShowRequestId)
+{
+    <p class="nb-meta">
+        <strong>Reference:</strong> <code>@Model.RequestId</code>
+    </p>
+}
+
+@if (Model.ShowDevelopmentHints)
+{
+    <div class="mt-4 p-3 border rounded" style="background: var(--nb-bg-surface); border-color: var(--nb-border) !important;">
+        <h2 class="h5">Development tips</h2>
+        <p class="mb-0">
+            Set <code>ASPNETCORE_ENVIRONMENT=Development</code> locally to see detailed exception pages.
+            Never enable Development on deployed hosts.
+        </p>
+    </div>
+}

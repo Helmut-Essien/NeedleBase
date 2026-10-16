@@ -1,0 +1,14 @@
+@NeedleBase.Api_HostAddress = https://localhost:7079
+
+GET {{NeedleBase.Api_HostAddress}}/health/live
+Accept: application/json
+
+###
+
+GET {{NeedleBase.Api_HostAddress}}/health/ready
+Accept: application/json
+
+###
+
+GET {{NeedleBase.Api_HostAddress}}/api/test/ping
+Accept: application/json

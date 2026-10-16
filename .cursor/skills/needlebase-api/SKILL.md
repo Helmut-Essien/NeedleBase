@@ -12,11 +12,11 @@ description: >-
 
 Composition: **Api** host + **Infrastructure** implementations of **Application** interfaces. Domain stays persistence-ignorant.
 
-Learned from AssetTag API: JWT + security stamp, `X-Auth-Token` mapping, DeletedItem on save, sync lock, health/ping, ULID, en-GH money defaults — plus **BusinessId** tenancy NeedleBase requires.
+Learned from AssetTag API: JWT + security stamp, `X-Auth-Token` mapping, DeletedItem on save, sync lock, health/ping, ULID (NUlid), en-GH money defaults — plus **BusinessId** tenancy NeedleBase requires.
 
 ## Hard rules
 
-1. **ULID string IDs** — never int/Guid PKs for domain entities.  
+1. **ULID string IDs** (NUlid) — never int/Guid PKs for domain entities.  
 2. **BusinessId filter** — every tenant query/command; enforce from claims.  
 3. **DeletedItem** — `SaveChanges` tracks deletes for mobile pull; include BusinessId. Do not bypass without sync awareness.  
 4. **Sync push** — authorize user; scope to business; optional distributed lock per user/business (409 if busy). Idempotent on client entity ULIDs.  

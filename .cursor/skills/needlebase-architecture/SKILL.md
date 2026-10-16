@@ -13,7 +13,7 @@ description: >-
 
 Offline-first tailoring SaaS (HelmutCode). Stack target: **.NET 9**, ASP.NET Core API, responsive web, **.NET MAUI** mobile.
 
-**Learned from AssetTag** (`/home/helmut/Documents/My Projects/AssetTag/`): Shared contracts, Portal-over-HTTP, MAUI MVVM + SQLite offline queue, JWT refresh honesty, ULID IDs, sync push/pull + DeletedItem.
+**Learned from AssetTag** (`/home/helmut/Documents/My Projects/AssetTag/`): Shared contracts, Portal-over-HTTP, MAUI MVVM + SQLite offline queue, JWT refresh honesty, ULID string IDs (NUlid), sync push/pull + DeletedItem.
 
 **Elevated for NeedleBase:** Full **Clean Architecture** layers + **Business (workspace) multi-tenancy**. Mobile presentation is **MVVM** (CommunityToolkit.Mvvm).
 
@@ -67,7 +67,7 @@ Details: [clean-architecture.md](clean-architecture.md), [solution-layout.md](so
 
 | Pattern | AssetTag source | NeedleBase adaptation |
 |---------|-----------------|------------------------|
-| Shared DTOs / ULID string IDs | `Shared/` | Put contracts in **Application** (and/or thin `Contracts` folder); IDs = ULID strings |
+| Shared DTOs / ULID string IDs | `Shared/` | Put contracts in **Application** (and/or thin `Contracts` folder); IDs = ULID strings via NUlid |
 | Portal never touches DB | `Portal/` | **Web** calls Api over HTTP only |
 | MAUI MVVM + BaseViewModel | `MobileApp/ViewModels` | Same Toolkit patterns; Clean Architecture use-cases behind services |
 | SQLite + sync queue on SaveChanges | `MobileData/LocalDbContext` | Same; add `BusinessId` on all tenant data |
@@ -88,7 +88,7 @@ Details: [clean-architecture.md](clean-architecture.md), [solution-layout.md](so
 ## Cross-cutting hard rules
 
 1. **Business isolation** — Every tenant entity carries `BusinessId`. Queries, sync, and auth claims must filter by it. Never mix workspaces.
-2. **ULID string IDs** — `Ulid.NewUlid().ToString()`, never `int`/`Guid` PKs for domain entities.
+2. **ULID string IDs** — `IdGenerator.NewId()` / `Ulid.NewUlid().ToString()` (NUlid) for all domain entity PKs and FKs (including `BusinessId`). Never `int`/`Guid` PKs.
 3. **Offline honesty** — Local save ≠ cloud sync. Payments pending sync must not look provider-confirmed. See [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md) and UI offline-sync.
 4. **Web has no SQL** — Web → Api HTTP only (AssetTag Portal pattern).
 5. **Mobile has no Api project reference** — talk via HTTP + local DB.
