@@ -1,14 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace NeedleBase.Api.Tests;
 
-public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public class HealthEndpointTests : IClassFixture<NeedleBaseApiFactory>
 {
     private readonly HttpClient _client;
 
-    public HealthEndpointTests(WebApplicationFactory<Program> factory)
+    public HealthEndpointTests(NeedleBaseApiFactory factory)
     {
         _client = factory.CreateClient();
     }
@@ -25,7 +24,7 @@ public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
     }
 
     [Fact]
-    public async Task HealthReady_ReturnsHealthyStub()
+    public async Task HealthReady_ReturnsHealthyWhenDatabaseReachable()
     {
         var response = await _client.GetAsync("/health/ready");
 

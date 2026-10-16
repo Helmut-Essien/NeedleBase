@@ -19,8 +19,12 @@
                TextColor="{StaticResource Gray600}"
                FontSize="16"
                HorizontalTextAlignment="Center"
-               HorizontalOptions="Center"
-               SemanticProperties.Description="{Binding Tagline}" />
+               HorizontalOptions="Center" />
+        <Button Text="Sign out"
+                BackgroundColor="{StaticResource PrimaryLight}"
+                TextColor="{StaticResource Charcoal}"
+                Clicked="OnSignOutClicked"
+                Margin="0,24,0,0" />
     </VerticalStackLayout>
 
 </ContentPage>

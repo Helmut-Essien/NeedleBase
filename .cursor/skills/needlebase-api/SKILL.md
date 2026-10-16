@@ -2,7 +2,7 @@
 name: needlebase-api
 description: >-
   Implements NeedleBase ASP.NET Core API and Infrastructure using Clean
-  Architecture: JWT auth, Business tenancy, EF SQL Server, sync push/pull,
+  Architecture: JWT auth, Business tenancy, EF PostgreSQL, sync push/pull,
   DeletedItem tracking, health endpoints, and high-performance query patterns.
   Use when working on Api, Infrastructure, controllers, migrations, identity,
   or server-side sync.
@@ -70,7 +70,7 @@ Default `en-GH` / GH₵ formatting for MVP; keep consistent with Web/Mobile. Des
 dotnet run --project src/NeedleBase.Api --launch-profile https
 ```
 
-SQL Server connection via user secrets / `appsettings.Development.json` — never commit secrets.
+PostgreSQL connection via user secrets / `appsettings.Development.json` — never commit secrets.
 
 ## Related
 

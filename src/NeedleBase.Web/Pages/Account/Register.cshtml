@@ -1,0 +1,66 @@
+@page
+@model NeedleBase.Web.Pages.Account.RegisterModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Register business";
+}
+
+<h1 class="h4 fw-bold nb-auth-title">Register your business</h1>
+<p class="nb-auth-subtitle">Create an owner account for NeedleBase</p>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert" aria-live="assertive">@Model.ErrorMessage</div>
+}
+
+<form method="post" novalidate>
+    <div class="row">
+        <div class="col-md-6 mb-3 text-start">
+            <label asp-for="Input.FirstName" class="form-label"></label>
+            <input asp-for="Input.FirstName" class="form-control" />
+            <span asp-validation-for="Input.FirstName" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6 mb-3 text-start">
+            <label asp-for="Input.Surname" class="form-label"></label>
+            <input asp-for="Input.Surname" class="form-control" />
+            <span asp-validation-for="Input.Surname" class="text-danger small"></span>
+        </div>
+    </div>
+    <div class="mb-3 text-start">
+        <label asp-for="Input.BusinessName" class="form-label"></label>
+        <input asp-for="Input.BusinessName" class="form-control" />
+        <span asp-validation-for="Input.BusinessName" class="text-danger small"></span>
+    </div>
+    <div class="mb-3 text-start">
+        <label asp-for="Input.BusinessPhone" class="form-label"></label>
+        <input asp-for="Input.BusinessPhone" class="form-control" />
+        <span asp-validation-for="Input.BusinessPhone" class="text-danger small"></span>
+    </div>
+    <div class="mb-3 text-start">
+        <label asp-for="Input.Email" class="form-label"></label>
+        <input asp-for="Input.Email" class="form-control" autocomplete="username" />
+        <span asp-validation-for="Input.Email" class="text-danger small"></span>
+    </div>
+    <div class="mb-3 text-start">
+        <label asp-for="Input.Password" class="form-label"></label>
+        <input asp-for="Input.Password" class="form-control" autocomplete="new-password" />
+        <span asp-validation-for="Input.Password" class="text-danger small"></span>
+    </div>
+    <div class="mb-4 text-start">
+        <label asp-for="Input.ConfirmPassword" class="form-label"></label>
+        <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" />
+        <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+    </div>
+    <div class="d-grid">
+        <button type="submit" class="btn btn-lg nb-btn-primary">Create account</button>
+    </div>
+</form>
+
+<p class="mt-4 mb-0 nb-auth-footer">
+    Already have an account?
+    <a asp-page="/Account/Login">Sign in</a>
+</p>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

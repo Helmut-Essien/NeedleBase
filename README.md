@@ -36,7 +36,7 @@ A solo tailor can run the whole shop as Owner with **zero** staff setup.
 |----------|---------------------------|
 | **Mobile (MAUI)** | Bottom nav: Home · Customers · Orders · Payments · More (+ FAB **New Order**). Primary daily tool; full offline MVP. |
 | **Web** | Left sidebar oversight: Dashboard, Customers, Measurements, Orders, Production, Payments, Staff, Settings. Online only via API. |
-| **Api + SQL Server** | Auth, tenancy, sync endpoints, CRUD; JWT + refresh; claims `sub`, `business_id`, `role`. |
+| **Api + PostgreSQL** | Auth, tenancy, sync endpoints, CRUD; JWT + refresh; claims `sub`, `business_id`, `role`. |
 
 ### Priority journeys (acceptance targets)
 
@@ -123,7 +123,7 @@ Deliver **one slice at a time**; confirm before starting the next. Detail and ac
 | Slice | Status | What gets implemented |
 |-------|--------|------------------------|
 | **0** Scaffold | **Done** | Solution, Clean Architecture projects, health endpoints, README, package baselines, Web/Mobile shells |
-| **1** Auth + Business | Planned | Register business + owner; login; JWT + refresh; `business_id` / `role` claims; mobile secure token store + session; Web cookie/session + HttpClients; BusinessId-ready queries |
+| **1** Auth + Business | **Done** | Register business + owner; login; JWT + refresh; `business_id` / `role` claims; mobile secure token store + session; Web cookie/session + HttpClients; BusinessId global query filters |
 | **2** Customers + measurements | Planned | Domain + Api CRUD (paginated, Business-scoped); mobile Customers tab + measurement capture; local SQLite save |
 | **3** Orders + production | Planned | Orders/lines; status pipeline; mobile New Order wizard + Orders tab; Api list/detail |
 | **4** Offline sync | Planned | Sync queue, push/pull, `DeletedItem`, SyncChip / Sync details, idempotent ULIDs, token honesty under offline |
@@ -141,7 +141,7 @@ NeedleBase.sln
 ├── src/
 │   ├── NeedleBase.Domain/           # Entities, enums — no infra deps
 │   ├── NeedleBase.Application/      # Use cases, contracts/DTOs, NUlid IDs
-│   ├── NeedleBase.Infrastructure/   # EF SQL Server, Identity (from Slice 1)
+│   ├── NeedleBase.Infrastructure/   # EF PostgreSQL, Identity (from Slice 1)
 │   ├── NeedleBase.Api/              # ASP.NET Core host
 │   ├── NeedleBase.Web/              # Razor Pages — HTTP to Api only (no SQL)
 │   ├── NeedleBase.Mobile/           # .NET MAUI (MVVM)
@@ -160,7 +160,7 @@ NeedleBase.sln
 | Area | Package | Version target |
 |------|---------|----------------|
 | IDs | NUlid (`Ulid.NewUlid().ToString()`) | 1.7.3 |
-| API EF | Microsoft.EntityFrameworkCore.SqlServer | 9.0.9 |
+| API EF | Npgsql.EntityFrameworkCore.PostgreSQL | 9.0.4 |
 | Mobile EF | Microsoft.EntityFrameworkCore.Sqlite | 9.0.9 |
 | MVVM | CommunityToolkit.Mvvm / CommunityToolkit.Maui | 8.4.0 / 11.2.0 |
 
@@ -170,7 +170,7 @@ Do **not** add Mediator, Redis, or other infra “for later” without a measure
 
 - .NET 9 SDK
 - For mobile: `maui-android` workload (`dotnet workload install maui-android`)
-- SQL Server (or LocalDB / Docker) — required from Slice 1 onward
+- PostgreSQL (local or Docker) — required from Slice 1 onward
 
 ## Restore / build / test
 
@@ -189,7 +189,7 @@ dotnet run --project src/NeedleBase.Web --launch-profile https
 
 | App | HTTPS (dev) | Health |
 |-----|-------------|--------|
-| Api | https://localhost:7079 | `/health/live`, `/health/ready` (ready stub until SQL in Slice 1) |
+| Api | https://localhost:7079 | `/health/live`, `/health/ready` (DB) |
 | Web | https://localhost:7049 | Home page probes Api `/health/live` |
 
 Mobile ping: `GET /api/test/ping`
@@ -198,14 +198,30 @@ Mobile ping: `GET /api/test/ping`
 
 | Setting | Where | Notes |
 |---------|--------|--------|
-| `ConnectionStrings:DefaultConnection` | Api user secrets / env | Empty in committed appsettings; set locally for Slice 1+ |
+| `ConnectionStrings:DefaultConnection` | Api user secrets / env | Empty in committed appsettings; never commit passwords |
+| `JwtSettings:SecurityKey` | Api user secrets / env | Min 32 characters; required at startup; never commit |
 | `Api:BaseUrl` | Web `appsettings.Development.json` or user secrets | Web **fails startup** if missing |
 | `FrontendBaseUrl` | Api config | Used for email links later — no hardcoded hosts |
-| JWT keys | Api user secrets (Slice 1) | — |
 
 ```bash
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=...;Database=NeedleBase;..." --project src/NeedleBase.Api
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=NeedleBase;Username=postgres;Password=..." --project src/NeedleBase.Api
+dotnet user-secrets set "JwtSettings:SecurityKey" "your-long-dev-security-key-here!!!!" --project src/NeedleBase.Api
 dotnet user-secrets set "Api:BaseUrl" "https://localhost:7079" --project src/NeedleBase.Web
 ```
 
-Environment variables also work (`ConnectionStrings__DefaultConnection`, `Api__BaseUrl`).
+Environment variables also work (`ConnectionStrings__DefaultConnection`, `JwtSettings__SecurityKey`, `Api__BaseUrl`).
+
+### Auth endpoints (Slice 1)
+
+| Method | Path | Notes |
+|--------|------|--------|
+| POST | `/api/auth/register-business` | Creates Business + Owner; returns tokens + user |
+| POST | `/api/auth/login` | Returns tokens + user (`business_id`, `role`) |
+| POST | `/api/auth/refresh-token` | Rotates refresh token |
+| GET | `/api/me` | Requires JWT + `business_id` + staff role |
+
+Mobile may send `X-Auth-Token: Bearer …` instead of `Authorization` (mapped on the Api).
+
+**BusinessId tenancy:** `ApplicationDbContext` uses **global query filters** on `IBusinessScoped` entities when `CurrentBusinessId` is set from JWT by `BusinessTenancyMiddleware`. Auth/bootstrap paths clear the filter by leaving it null.
+
+**Migrations:** Development auto-applies `dotnet ef` migrations on Api startup. Prefer explicit `dotnet ef database update` in CI/Production.

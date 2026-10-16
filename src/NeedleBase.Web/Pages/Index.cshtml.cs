@@ -17,6 +17,8 @@ public class IndexModel : PageModel
     public string ApiBaseUrl { get; private set; } = string.Empty;
     public bool ApiReachable { get; private set; }
     public string? ApiHealthStatus { get; private set; }
+    public MeProfile? Profile { get; private set; }
+    public bool MeLoaded { get; private set; }
 
     public async Task OnGetAsync(CancellationToken cancellationToken)
     {
@@ -43,14 +45,41 @@ public class IndexModel : PageModel
         }
         catch (TaskCanceledException)
         {
-            // Transient timeout / non-request cancellation from HttpClient.
             ApiReachable = false;
         }
         catch (JsonException)
         {
             ApiReachable = false;
         }
+
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            try
+            {
+                var api = _httpClientFactory.CreateClient("NeedleBaseApi");
+                Profile = await api.GetFromJsonAsync<MeProfile>("api/me", cancellationToken);
+                MeLoaded = Profile is not null;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (HttpRequestException)
+            {
+                MeLoaded = false;
+            }
+            catch (JsonException)
+            {
+                MeLoaded = false;
+            }
+        }
     }
+
+    public sealed record MeProfile(
+        string UserId,
+        string BusinessId,
+        string Role,
+        string BusinessName);
 
     private sealed record HealthPayload(string Status);
 }

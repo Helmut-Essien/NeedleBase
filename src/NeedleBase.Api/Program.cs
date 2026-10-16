@@ -1,11 +1,16 @@
 using System.Globalization;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using NeedleBase.Api.Middleware;
 using NeedleBase.Infrastructure;
+using NeedleBase.Infrastructure.Health;
+using NeedleBase.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Default culture: Ghana Cedis (GHS) for MVP formatting.
 var ghanaianCulture = new CultureInfo("en-GH");
 ghanaianCulture.NumberFormat.CurrencySymbol = "₵";
 ghanaianCulture.NumberFormat.CurrencyDecimalDigits = 2;
@@ -14,18 +19,36 @@ CultureInfo.DefaultThreadCurrentUICulture = ghanaianCulture;
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
-builder.Services.AddInfrastructure();
+builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
 
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
-    // SQL readiness lands with ApplicationDbContext in Slice 1; stub is healthy for scaffold.
-    .AddCheck("ready-stub", () => HealthCheckResult.Healthy("SQL Server not wired yet (Slice 1)."), tags: ["ready"]);
+    .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+
+    // Explicit migrate in Development for local DX; Production should use CI/dotnet ef.
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await db.Database.MigrateAsync();
 }
 else
 {
@@ -45,6 +68,22 @@ else
 }
 
 app.UseHttpsRedirection();
+app.UseRateLimiter();
+
+// Map mobile X-Auth-Token → Authorization (must run before authentication).
+app.Use(async (context, next) =>
+{
+    if (context.Request.Headers.TryGetValue("X-Auth-Token", out var customToken) &&
+        !context.Request.Headers.ContainsKey("Authorization"))
+    {
+        context.Request.Headers.Authorization = customToken.ToString();
+    }
+
+    await next();
+});
+
+app.UseAuthentication();
+app.UseMiddleware<BusinessTenancyMiddleware>();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
@@ -72,5 +111,4 @@ static Task WriteMinimalHealthResponse(HttpContext context, HealthReport report)
     });
 }
 
-// Expose for WebApplicationFactory integration tests.
 public partial class Program;

@@ -26,7 +26,7 @@ NeedleBase.sln
 ├── src/
 │   ├── NeedleBase.Domain/              # Entities, enums, domain rules — no infra deps
 │   ├── NeedleBase.Application/         # Use cases, interfaces, DTOs/contracts
-│   ├── NeedleBase.Infrastructure/      # EF SQL Server, Identity, email, file, sync server
+│   ├── NeedleBase.Infrastructure/      # EF PostgreSQL, Identity, email, file, sync server
 │   ├── NeedleBase.Api/                 # ASP.NET Core host + controllers/endpoints
 │   ├── NeedleBase.Web/                 # Responsive web UI (no direct SQL)
 │   ├── NeedleBase.Mobile/              # MAUI Views + ViewModels (MVVM)
@@ -117,7 +117,7 @@ Details: [clean-architecture.md](clean-architecture.md), [solution-layout.md](so
 |------|----------|
 | MVVM | CommunityToolkit.Mvvm, CommunityToolkit.Maui |
 | Mobile data | EF Core + SQLite |
-| API data | EF Core + SQL Server, ASP.NET Identity |
+| API data | EF Core + PostgreSQL, ASP.NET Identity |
 | IDs | NUlid |
 | Auth | JWT Bearer + refresh tokens |
 | Tests | xUnit + NSubstitute (or equivalent) |

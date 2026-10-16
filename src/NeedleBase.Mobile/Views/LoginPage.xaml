@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             x:Class="NeedleBase.Mobile.Views.LoginPage"
+             x:DataType="vm:LoginViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="24" Spacing="12" VerticalOptions="Center">
+            <Label Text="NeedleBase"
+                   TextColor="{StaticResource Charcoal}"
+                   FontSize="28"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Sign in to your business"
+                   TextColor="{StaticResource Gray600}"
+                   HorizontalOptions="Center" />
+
+            <Label Text="Email"
+                   TextColor="{StaticResource Charcoal}"
+                   FontAttributes="Bold" />
+            <Entry Placeholder="you@business.com"
+                   Keyboard="Email"
+                   Text="{Binding Email}"
+                   IsEnabled="{Binding CanSubmit}"
+                   SemanticProperties.Description="Email address"
+                   AutomationId="LoginEmail" />
+
+            <Label Text="Password"
+                   TextColor="{StaticResource Charcoal}"
+                   FontAttributes="Bold" />
+            <Entry Placeholder="Password"
+                   IsPassword="True"
+                   Text="{Binding Password}"
+                   IsEnabled="{Binding CanSubmit}"
+                   SemanticProperties.Description="Password"
+                   AutomationId="LoginPassword" />
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasError}"
+                   SemanticProperties.Description="Sign-in error" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="{StaticResource Primary}" />
+
+            <Button Text="Sign in"
+                    Command="{Binding LoginCommand}"
+                    IsEnabled="{Binding CanSubmit}"
+                    SemanticProperties.Description="Sign in"
+                    AutomationId="LoginSubmit" />
+
+            <Button Text="Register a business"
+                    BackgroundColor="{StaticResource PrimaryLight}"
+                    TextColor="{StaticResource Charcoal}"
+                    IsEnabled="{Binding CanSubmit}"
+                    Clicked="OnRegisterClicked"
+                    SemanticProperties.Description="Register a new business" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

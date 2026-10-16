@@ -5,7 +5,7 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 | Slice | Focus | Status |
 |-------|-------|--------|
 | 0 | Scaffold: sln, Clean Architecture, health, README | Done |
-| 1 | Auth + Business tenancy (JWT, refresh, register business) | Planned |
+| 1 | Auth + Business tenancy (JWT, refresh, register business) | Done |
 | 2 | Customers + measurements | Planned |
 | 3 | Orders + production status (mobile primary) | Planned |
 | 4 | Offline sync push/pull + DeletedItem + SyncChip | Planned |

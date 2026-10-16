@@ -19,7 +19,7 @@
 
 ### Infrastructure (`NeedleBase.Infrastructure`)
 
-- `ApplicationDbContext` (SQL Server), Identity, migrations
+- `ApplicationDbContext` (PostgreSQL), Identity, migrations
 - Token service, email, file/blob for style images if needed
 - Sync push/pull application on server (`DeletedItem`, distributed lock per user/business)
 - Implements Application interfaces
@@ -54,7 +54,7 @@ ViewModel → `IOrderLocalService.CreateAsync` → SQLite save → SyncQueue CRE
 
 - Domain project referencing EF Core or MAUI
 - Web PageModel with `DbContext`
-- Mobile ViewModel calling SQL Server directly
+- Mobile ViewModel calling PostgreSQL directly
 - Duplicating DTOs in Api and Mobile
 - Business logic only in controllers or only in ViewModels
 - Skipping `BusinessId` filters “for convenience”

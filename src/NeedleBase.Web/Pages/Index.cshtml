@@ -7,7 +7,21 @@
 <div class="nb-hero text-center">
     <h1 class="display-5">NeedleBase</h1>
     <p class="lead">Tailoring business management — web oversight.</p>
-    <p class="nb-meta mb-2">API base: <code>@Model.ApiBaseUrl</code></p>
+
+    @if (Model.Profile is not null)
+    {
+        <div class="nb-profile-card mx-auto text-start">
+            <p class="mb-1"><strong>@Model.Profile.BusinessName</strong></p>
+            <p class="nb-meta mb-1">Signed in as @User.Identity?.Name · @Model.Profile.Role</p>
+            <p class="nb-meta mb-0">User ID: <code>@Model.Profile.UserId</code></p>
+        </div>
+    }
+    else if (User.Identity?.IsAuthenticated == true && !Model.MeLoaded)
+    {
+        <p class="nb-status nb-status--warn" role="status">Could not load profile from API.</p>
+    }
+
+    <p class="nb-meta mb-2 mt-4">API base: <code>@Model.ApiBaseUrl</code></p>
     <p class="mb-0" role="status" aria-live="polite">
         <span class="visually-hidden">API health: </span>
         @if (Model.ApiReachable)
