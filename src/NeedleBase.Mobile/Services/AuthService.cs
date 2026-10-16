@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Options;
 using NeedleBase.Application.Contracts.Auth;
 using NeedleBase.Mobile.Configuration;
+using NeedleBase.Mobile.Data.Services;
 
 namespace NeedleBase.Mobile.Services;
 
@@ -11,6 +12,13 @@ public sealed class AuthService : IAuthService
 {
     public const string AccessTokenKey = "access_token";
     public const string RefreshTokenKey = "refresh_token";
+    public const string BusinessIdKey = "business_id";
+    public const string BusinessNameKey = "business_name";
+    public const string UserIdKey = "user_id";
+    public const string EmailKey = "email";
+    public const string FirstNameKey = "first_name";
+    public const string SurnameKey = "surname";
+    public const string RoleKey = "role";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -22,15 +30,18 @@ public sealed class AuthService : IAuthService
 
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ISecureStorageService _secureStorage;
+    private readonly ILocalDatabaseService _localDatabase;
     private readonly ApiSettings _apiSettings;
 
     public AuthService(
         IHttpClientFactory httpClientFactory,
         ISecureStorageService secureStorage,
+        ILocalDatabaseService localDatabase,
         IOptions<ApiSettings> apiSettings)
     {
         _httpClientFactory = httpClientFactory;
         _secureStorage = secureStorage;
+        _localDatabase = localDatabase;
         _apiSettings = apiSettings.Value;
     }
 
@@ -57,6 +68,7 @@ public sealed class AuthService : IAuthService
         }
 
         await StoreTokensAsync(new TokenResponse(payload.AccessToken, payload.RefreshToken));
+        await StoreSessionAsync(payload.User);
         return payload.User;
     }
 
@@ -76,6 +88,7 @@ public sealed class AuthService : IAuthService
         }
 
         await StoreTokensAsync(new TokenResponse(payload.AccessToken, payload.RefreshToken));
+        await StoreSessionAsync(payload.User);
         return payload.User;
     }
 
@@ -118,6 +131,11 @@ public sealed class AuthService : IAuthService
 
             var tokens = new TokenResponse(payload.AccessToken, payload.RefreshToken);
             await StoreTokensAsync(tokens);
+            if (payload.User is not null)
+            {
+                await StoreSessionAsync(payload.User);
+            }
+
             return TokenRefreshResult.Ok(tokens);
         }
         catch (HttpRequestException ex)
@@ -145,11 +163,25 @@ public sealed class AuthService : IAuthService
     {
         _secureStorage.Remove(AccessTokenKey);
         _secureStorage.Remove(RefreshTokenKey);
+        _secureStorage.Remove(BusinessIdKey);
+        _secureStorage.Remove(BusinessNameKey);
+        _secureStorage.Remove(UserIdKey);
+        _secureStorage.Remove(EmailKey);
+        _secureStorage.Remove(FirstNameKey);
+        _secureStorage.Remove(SurnameKey);
+        _secureStorage.Remove(RoleKey);
         return Task.CompletedTask;
     }
 
-    public async Task LogoutAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> LogoutAsync(CancellationToken cancellationToken = default)
     {
+        // Wipe local SQLite before clearing tokens — abort logout if wipe fails
+        // so the next user cannot read prior tenant PII (mobile hard rule).
+        if (!await _localDatabase.WipeAsync(cancellationToken))
+        {
+            return false;
+        }
+
         var refreshToken = await _secureStorage.GetAsync(RefreshTokenKey);
         try
         {
@@ -166,15 +198,14 @@ public sealed class AuthService : IAuthService
         }
         catch (HttpRequestException)
         {
-            // Still clear local tokens; server revoke is best-effort when offline.
+            // Server revoke is best-effort when offline; local wipe already succeeded.
         }
         catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
         }
-        finally
-        {
-            await ClearTokensAsync();
-        }
+
+        await ClearTokensAsync();
+        return true;
     }
 
     public Task<string?> GetAccessTokenAsync() =>
@@ -184,6 +215,39 @@ public sealed class AuthService : IAuthService
     {
         await _secureStorage.SetAsync(AccessTokenKey, tokens.AccessToken);
         await _secureStorage.SetAsync(RefreshTokenKey, tokens.RefreshToken);
+    }
+
+    public async Task StoreSessionAsync(AuthUserDto user)
+    {
+        await _secureStorage.SetAsync(BusinessIdKey, user.BusinessId);
+        await _secureStorage.SetAsync(BusinessNameKey, user.BusinessName);
+        await _secureStorage.SetAsync(UserIdKey, user.UserId);
+        await _secureStorage.SetAsync(EmailKey, user.Email);
+        await _secureStorage.SetAsync(FirstNameKey, user.FirstName);
+        await _secureStorage.SetAsync(SurnameKey, user.Surname);
+        await _secureStorage.SetAsync(RoleKey, user.Role);
+    }
+
+    public Task<string?> GetBusinessIdAsync() =>
+        _secureStorage.GetAsync(BusinessIdKey);
+
+    public async Task<AuthUserDto?> GetCachedUserAsync()
+    {
+        var userId = await _secureStorage.GetAsync(UserIdKey);
+        var businessId = await _secureStorage.GetAsync(BusinessIdKey);
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(businessId))
+        {
+            return null;
+        }
+
+        return new AuthUserDto(
+            userId,
+            await _secureStorage.GetAsync(EmailKey) ?? string.Empty,
+            await _secureStorage.GetAsync(FirstNameKey) ?? string.Empty,
+            await _secureStorage.GetAsync(SurnameKey) ?? string.Empty,
+            businessId,
+            await _secureStorage.GetAsync(BusinessNameKey) ?? string.Empty,
+            await _secureStorage.GetAsync(RoleKey) ?? string.Empty);
     }
 
     private HttpClient CreateAuthClient()
@@ -204,3 +268,4 @@ public sealed class AuthService : IAuthService
         string? RefreshToken,
         AuthUserDto? User);
 }
+

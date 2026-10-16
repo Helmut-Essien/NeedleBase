@@ -33,6 +33,23 @@ builder.Services.AddTransient<RecordPaymentViewModel>();
 ## Shell navigation
 
 - Tabs in `AppShell.xaml` matching IA: Home, Customers, Orders, Payments, More  
+- **Tab icons via MauiIcons.Material** (not PNG): `xmlns:mi` + `xmlns:mci` + `mci:MauiIcon.Value="{mi:Material Icon=…, TargetName='.'}"` on each `<Tab>` — see [tab-icons.md](tab-icons.md). Never reuse `dotnet_bot.png` for all tabs.  
+- Prefer:
+
+```xml
+<TabBar Route="main">
+    <Tab Title="Home" Route="HomePage"
+         mci:MauiIcon.Value="{mi:Material Icon=Home, TargetName='.'}">
+        <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+    </Tab>
+    <Tab Title="Customers" Route="CustomersPage"
+         mci:MauiIcon.Value="{mi:Material Icon=People, TargetName='.'}">
+        <ShellContent ContentTemplate="{DataTemplate views:CustomersPage}" />
+    </Tab>
+    <!-- Orders=ReceiptLong, Payments=Payments, More=Menu — same pattern -->
+</TabBar>
+```
+
 - Register routes for non-tab pages: CreateOrder, CustomerDetail, OrderDetail, SyncDetails, Settings, MeasurementEntry  
 - FAB → `GoToAsync` CreateOrder route  
 

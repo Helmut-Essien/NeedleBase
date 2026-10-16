@@ -9,6 +9,7 @@ using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Common;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Infrastructure.Auth;
+using NeedleBase.Infrastructure.Customers;
 using NeedleBase.Infrastructure.Health;
 using NeedleBase.Infrastructure.Identity;
 using NeedleBase.Infrastructure.Persistence;
@@ -25,6 +26,8 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ICustomerService, CustomerService>();
+        services.AddScoped<IMeasurementService, MeasurementService>();
         services.AddSingleton<DatabaseHealthCheck>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");

@@ -9,7 +9,11 @@ public interface IAuthService
     Task<TokenRefreshResult> RefreshAsync(CancellationToken cancellationToken = default);
     Task<bool> HasStoredTokensAsync();
     Task ClearTokensAsync();
-    Task LogoutAsync(CancellationToken cancellationToken = default);
+    /// <summary>Returns false if local data wipe failed (session kept).</summary>
+    Task<bool> LogoutAsync(CancellationToken cancellationToken = default);
     Task<string?> GetAccessTokenAsync();
     Task StoreTokensAsync(TokenResponse tokens);
+    Task StoreSessionAsync(AuthUserDto user);
+    Task<string?> GetBusinessIdAsync();
+    Task<AuthUserDto?> GetCachedUserAsync();
 }

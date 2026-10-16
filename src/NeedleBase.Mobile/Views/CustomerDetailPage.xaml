@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             xmlns:measurements="clr-namespace:NeedleBase.Application.Contracts.Measurements;assembly=NeedleBase.Application"
+             x:Class="NeedleBase.Mobile.Views.CustomerDetailPage"
+             x:DataType="vm:CustomerDetailViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <Grid RowDefinitions="Auto,*" Padding="16">
+        <VerticalStackLayout Grid.Row="0" Spacing="8" Margin="0,0,0,16">
+            <Label Text="{Binding Name}"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource Charcoal}"
+                   SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="{Binding Phone}"
+                   FontSize="16"
+                   TextColor="{StaticResource Gray600}"
+                   SemanticProperties.Description="Customer phone" />
+            <Label Text="{Binding Notes}"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}"
+                   LineBreakMode="WordWrap"
+                   IsVisible="{Binding HasNotes}" />
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasError}"
+                   SemanticProperties.Description="Customer detail error" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="{StaticResource Primary}" />
+            <HorizontalStackLayout Spacing="8" Margin="0,8,0,0">
+                <Button Text="Edit"
+                        Command="{Binding EditCommand}"
+                        BackgroundColor="{StaticResource PrimaryLight}"
+                        TextColor="{StaticResource Charcoal}"
+                        IsEnabled="{Binding CanSubmit}"
+                        SemanticProperties.Description="Edit customer" />
+                <Button Text="Add measurements"
+                        Command="{Binding AddMeasurementCommand}"
+                        BackgroundColor="{StaticResource Primary}"
+                        TextColor="White"
+                        IsEnabled="{Binding CanSubmit}"
+                        SemanticProperties.Description="Add measurements for this customer" />
+            </HorizontalStackLayout>
+            <Label Text="Measurements"
+                   FontAttributes="Bold"
+                   FontSize="18"
+                   TextColor="{StaticResource Charcoal}"
+                   Margin="0,12,0,0"
+                   SemanticProperties.HeadingLevel="Level2" />
+        </VerticalStackLayout>
+
+        <CollectionView Grid.Row="1"
+                        ItemsSource="{Binding Measurements}"
+                        SelectionMode="Single"
+                        SelectedItem="{Binding SelectedMeasurement}">
+            <CollectionView.EmptyView>
+                <VerticalStackLayout Padding="16" Spacing="12"
+                                     IsVisible="{Binding ShowEmptyMeasurements}">
+                    <Image WidthRequest="48" HeightRequest="48" HorizontalOptions="Center"
+                           SemanticProperties.Description="No measurements">
+                        <Image.Source>
+                            <FontImageSource FontFamily="MaterialIcons-Regular"
+                                             Glyph="{mi:Material Icon=Straighten}"
+                                             Color="{StaticResource Gray500}"
+                                             Size="48" />
+                        </Image.Source>
+                    </Image>
+                    <Label Text="{Binding EmptyMeasurements}"
+                           TextColor="{StaticResource Gray600}"
+                           HorizontalTextAlignment="Center" />
+                    <Button Text="Add measurements"
+                            Command="{Binding AddMeasurementCommand}"
+                            BackgroundColor="{StaticResource Primary}"
+                            TextColor="White"
+                            HorizontalOptions="Center"
+                            SemanticProperties.Description="Add first measurement" />
+                </VerticalStackLayout>
+            </CollectionView.EmptyView>
+            <CollectionView.ItemTemplate>
+                <DataTemplate x:DataType="measurements:MeasurementListItemDto">
+                    <Grid Padding="12,14"
+                          ColumnDefinitions="*,Auto"
+                          BackgroundColor="White"
+                          Margin="0,0,0,8"
+                          MinimumHeightRequest="56">
+                        <VerticalStackLayout Grid.Column="0" Spacing="2">
+                            <Label Text="{Binding GarmentTemplateDisplay}"
+                                   FontAttributes="Bold"
+                                   FontSize="16"
+                                   TextColor="{StaticResource Charcoal}" />
+                            <Label Text="{Binding MeasuredAtUtc, StringFormat='{0:dd MMM yyyy}'}"
+                                   FontSize="13"
+                                   TextColor="{StaticResource Gray600}" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1"
+                               Text="{Binding Unit}"
+                               VerticalOptions="Center"
+                               TextColor="{StaticResource Gray500}" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+    </Grid>
+</ContentPage>

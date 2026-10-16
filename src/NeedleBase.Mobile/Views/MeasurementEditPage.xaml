@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             x:Class="NeedleBase.Mobile.Views.MeasurementEditPage"
+             x:DataType="vm:MeasurementEditViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <Grid RowDefinitions="*,Auto">
+        <ScrollView Grid.Row="0">
+            <VerticalStackLayout Padding="20" Spacing="12">
+                <Label Text="{Binding Title}"
+                       FontSize="22"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource Charcoal}"
+                       SemanticProperties.HeadingLevel="Level1" />
+
+                <Label Text="Garment template"
+                       TextColor="{StaticResource Gray600}"
+                       FontSize="13" />
+                <Picker ItemsSource="{Binding TemplateChoices}"
+                        ItemDisplayBinding="{Binding DisplayName, x:DataType=vm:TemplateChoice}"
+                        SelectedItem="{Binding SelectedTemplate}"
+                        BackgroundColor="White"
+                        IsEnabled="{Binding CanSave}"
+                        SemanticProperties.Description="Garment measurement template" />
+
+                <HorizontalStackLayout Spacing="12" VerticalOptions="Center">
+                    <Label Text="{Binding UnitLabel, StringFormat='Unit: {0}'}"
+                           VerticalOptions="Center"
+                           TextColor="{StaticResource Charcoal}"
+                           SemanticProperties.Description="Current measurement unit" />
+                    <Switch IsToggled="{Binding UseInches}"
+                            IsEnabled="{Binding CanSave}"
+                            SemanticProperties.Description="Toggle between centimetres and inches" />
+                    <Label Text="Use inches"
+                           VerticalOptions="Center"
+                           TextColor="{StaticResource Gray600}" />
+                </HorizontalStackLayout>
+
+                <Label Text="Measurements"
+                       FontAttributes="Bold"
+                       FontSize="16"
+                       TextColor="{StaticResource Charcoal}"
+                       Margin="0,8,0,0"
+                       SemanticProperties.HeadingLevel="Level2" />
+
+                <VerticalStackLayout BindableLayout.ItemsSource="{Binding Fields}" Spacing="4">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:MeasurementFieldItem">
+                            <Grid ColumnDefinitions="*,100,36"
+                                  ColumnSpacing="8"
+                                  Padding="0,6">
+                                <Label Grid.Column="0"
+                                       Text="{Binding Label}"
+                                       VerticalOptions="Center"
+                                       TextColor="{StaticResource Charcoal}" />
+                                <Entry Grid.Column="1"
+                                       Text="{Binding ValueText}"
+                                       Keyboard="Numeric"
+                                       Placeholder="0"
+                                       BackgroundColor="White"
+                                       HorizontalTextAlignment="End"
+                                       IsEnabled="{Binding IsEnabled}"
+                                       SemanticProperties.Description="{Binding Label}" />
+                                <Label Grid.Column="2"
+                                       Text="{Binding UnitSuffix}"
+                                       VerticalOptions="Center"
+                                       TextColor="{StaticResource Gray600}" />
+                            </Grid>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <Label Text="Notes (optional)"
+                       TextColor="{StaticResource Gray600}"
+                       FontSize="13"
+                       Margin="0,8,0,0" />
+                <Editor Text="{Binding Notes}"
+                        AutoSize="TextChanges"
+                        MaxLength="2000"
+                        BackgroundColor="White"
+                        HeightRequest="80"
+                        IsEnabled="{Binding CanSave}"
+                        SemanticProperties.Description="Optional measurement notes" />
+
+                <Label Text="{Binding ErrorMessage}"
+                       TextColor="{StaticResource SemanticError}"
+                       IsVisible="{Binding HasError}"
+                       SemanticProperties.Description="Measurement save error" />
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}"
+                                   IsVisible="{Binding IsBusy}"
+                                   Color="{StaticResource Primary}" />
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <Button Grid.Row="1"
+                Text="Save"
+                Command="{Binding SaveCommand}"
+                BackgroundColor="{StaticResource Primary}"
+                TextColor="White"
+                IsEnabled="{Binding CanSave}"
+                Margin="20,8,20,20"
+                SemanticProperties.Description="Save measurements on this device" />
+    </Grid>
+</ContentPage>

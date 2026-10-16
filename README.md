@@ -124,7 +124,7 @@ Deliver **one slice at a time**; confirm before starting the next. Detail and ac
 |-------|--------|------------------------|
 | **0** Scaffold | **Done** | Solution, Clean Architecture projects, health endpoints, README, package baselines, Web/Mobile shells |
 | **1** Auth + Business | **Done** | Register business + owner; login; JWT + refresh; `business_id` / `role` claims; mobile secure token store + session; Web cookie/session + HttpClients; BusinessId global query filters |
-| **2** Customers + measurements | Planned | Domain + Api CRUD (paginated, Business-scoped); mobile Customers tab + measurement capture; local SQLite save |
+| **2** Customers + measurements | **Done** | Domain + Api CRUD (paginated, Business-scoped); mobile Customers tab + measurement capture; local SQLite save. Web customers deferred to Slice 6 (oversight). |
 | **3** Orders + production | Planned | Orders/lines; status pipeline; mobile New Order wizard + Orders tab; Api list/detail |
 | **4** Offline sync | Planned | Sync queue, push/pull, `DeletedItem`, SyncChip / Sync details, idempotent ULIDs, token honesty under offline |
 | **5** Payments | Planned | Record deposits/payments, balances, receipts; conflict-safe sync + UI resolution |
@@ -145,7 +145,7 @@ NeedleBase.sln
 │   ├── NeedleBase.Api/              # ASP.NET Core host
 │   ├── NeedleBase.Web/              # Razor Pages — HTTP to Api only (no SQL)
 │   ├── NeedleBase.Mobile/           # .NET MAUI (MVVM)
-│   └── NeedleBase.Mobile.Data/      # SQLite LocalDbContext (from Slice 4)
+│   └── NeedleBase.Mobile.Data/      # SQLite LocalDbContext (customers/measurements; sync queue Slice 4)
 └── tests/
     ├── NeedleBase.Domain.Tests/
     ├── NeedleBase.Application.Tests/

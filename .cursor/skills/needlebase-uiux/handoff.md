@@ -70,10 +70,11 @@ Tokens: see [design-system.md](design-system.md).
 | NeedleBase logo | Supplied SVG/PNG; light & dark-safe if needed; do not recolour outside brand guide |
 | HelmutCode mark | Only where parent attribution required (e.g. About) |
 | App icon | Adaptive Android + iOS; green brand + needle metaphor if supplied |
-| Empty-state illustrations | Optional, monochrome/line, spare — or icon-only |
+| **Mobile UI icons** | No custom tab PNG/SVG set — use **MauiIcons.Material** enums (`Home`, `People`, `ReceiptLong`, `Payments`, `Menu`, plus in-page actions). See [tab-icons.md](../needlebase-mobile/tab-icons.md). |
+| Empty-state illustrations | Optional, monochrome/line, spare — or MauiIcon-only |
 | Favicon (web) | From logo |
 
-Export: SVG preferred for UI icons; PDF/PNG for receipt logo.
+Export: no UI icon bitmap pack required for mobile chrome; PDF/PNG OK for receipt logo / app icon / splash.
 
 ---
 

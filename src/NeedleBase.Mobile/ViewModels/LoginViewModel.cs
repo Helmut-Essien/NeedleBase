@@ -25,12 +25,9 @@ public partial class LoginViewModel : BaseViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
-    [NotifyPropertyChangedFor(nameof(CanSubmit))]
     private string? errorMessage;
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
-
-    public bool CanSubmit => !IsBusy;
 
     [RelayCommand]
     private async Task LoginAsync()
@@ -48,7 +45,6 @@ public partial class LoginViewModel : BaseViewModel
         }
 
         IsBusy = true;
-        OnPropertyChanged(nameof(CanSubmit));
         try
         {
             var user = await _authService.LoginAsync(new LoginRequest(Email.Trim(), Password));
@@ -68,7 +64,6 @@ public partial class LoginViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
-            OnPropertyChanged(nameof(CanSubmit));
         }
     }
 }

@@ -1,0 +1,26 @@
+using NeedleBase.Application.Common;
+using NeedleBase.Application.Contracts.Customers;
+
+namespace NeedleBase.Application.Abstractions;
+
+public interface ICustomerService
+{
+    Task<PaginatedResponse<CustomerListItemDto>> ListAsync(
+        int page,
+        int pageSize,
+        string? search,
+        CancellationToken cancellationToken = default);
+
+    Task<CustomerDetailDto?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
+
+    Task<(CustomerDetailDto? Customer, string? Error)> CreateAsync(
+        CreateCustomerRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<(CustomerDetailDto? Customer, string? Error)> UpdateAsync(
+        string id,
+        UpdateCustomerRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<(bool Success, string? Error)> DeleteAsync(string id, CancellationToken cancellationToken = default);
+}

@@ -1,7 +1,7 @@
 ---
-iteration: 5
-max_iterations: 20
-completion_promise: "COMPLETE"
+iteration: 8
+max_iterations: 10
+completion_promise: "REVIEWS_CLEAN"
 ---
 
-COMPLETE — all four reviews clean for Slice 1 Auth + Business + PostgreSQL.
+REVIEWS_CLEAN — Bugbot, Security, Senior, UI/UX all clean after iterations 5–8.

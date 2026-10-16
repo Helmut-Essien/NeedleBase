@@ -5,7 +5,7 @@ public partial class HomeViewModel : BaseViewModel
     public HomeViewModel()
     {
         Title = "NeedleBase";
-        Tagline = "You're signed in. Customers and orders land in the next slices.";
+        Tagline = "You're signed in. Add customers and measurements from the Customers tab.";
     }
 
     public string Tagline { get; }

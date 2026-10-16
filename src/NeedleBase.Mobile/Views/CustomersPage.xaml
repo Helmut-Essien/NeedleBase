@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             xmlns:customers="clr-namespace:NeedleBase.Application.Contracts.Customers;assembly=NeedleBase.Application"
+             x:Class="NeedleBase.Mobile.Views.CustomersPage"
+             x:DataType="vm:CustomersViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="16,12">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,12">
+            <SearchBar Grid.Column="0"
+                       Placeholder="Search name or phone"
+                       Text="{Binding SearchText}"
+                       SearchCommand="{Binding SearchCommand}"
+                       BackgroundColor="White"
+                       SemanticProperties.Description="Search customers by name or phone" />
+            <Button Grid.Column="1"
+                    Text="Add"
+                    ImageSource="{mi:Material Icon=PersonAdd, IconColor=White}"
+                    Command="{Binding AddCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    VerticalOptions="Center"
+                    HeightRequest="48"
+                    MinimumWidthRequest="72"
+                    IsEnabled="{Binding CanSubmit}"
+                    SemanticProperties.Description="Add customer" />
+        </Grid>
+
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,0,0,8">
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="{StaticResource Primary}" />
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasError}"
+                   SemanticProperties.Description="Customers error" />
+        </VerticalStackLayout>
+
+        <RefreshView Grid.Row="2"
+                     IsRefreshing="{Binding IsRefreshing}"
+                     Command="{Binding RefreshCommand}">
+            <CollectionView ItemsSource="{Binding Items}"
+                            SelectionMode="Single"
+                            SelectedItem="{Binding SelectedItem}">
+                <CollectionView.EmptyView>
+                    <VerticalStackLayout Padding="24" Spacing="12" VerticalOptions="Center">
+                        <Image WidthRequest="48" HeightRequest="48" HorizontalOptions="Center"
+                               SemanticProperties.Description="No customers">
+                            <Image.Source>
+                                <FontImageSource FontFamily="MaterialIcons-Regular"
+                                                 Glyph="{mi:Material Icon=People}"
+                                                 Color="{StaticResource Gray500}"
+                                                 Size="48" />
+                            </Image.Source>
+                        </Image>
+                        <Label Text="{Binding EmptyMessage}"
+                               TextColor="{StaticResource Gray600}"
+                               HorizontalTextAlignment="Center"
+                               SemanticProperties.HeadingLevel="Level2" />
+                        <Button Text="Add customer"
+                                Command="{Binding AddCommand}"
+                                BackgroundColor="{StaticResource Primary}"
+                                TextColor="White"
+                                HorizontalOptions="Center"
+                                IsVisible="{Binding ShowEmptyAdd}"
+                                SemanticProperties.Description="Add your first customer" />
+                    </VerticalStackLayout>
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="customers:CustomerListItemDto">
+                        <Grid Padding="12,14"
+                              ColumnDefinitions="Auto,*,Auto"
+                              ColumnSpacing="12"
+                              BackgroundColor="White"
+                              MinimumHeightRequest="56">
+                            <Border Grid.Column="0"
+                                    WidthRequest="40"
+                                    HeightRequest="40"
+                                    StrokeThickness="0"
+                                    BackgroundColor="{StaticResource PrimaryLight}"
+                                    StrokeShape="RoundRectangle 20">
+                                <Label Text="{Binding Initials}"
+                                       FontAttributes="Bold"
+                                       FontSize="14"
+                                       TextColor="{StaticResource PrimaryDark}"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+                            <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                <Label Text="{Binding Name}"
+                                       FontAttributes="Bold"
+                                       FontSize="16"
+                                       TextColor="{StaticResource Charcoal}" />
+                                <Label Text="{Binding Phone}"
+                                       FontSize="14"
+                                       TextColor="{StaticResource Gray600}" />
+                            </VerticalStackLayout>
+                            <Image Grid.Column="2"
+                                   WidthRequest="24"
+                                   HeightRequest="24"
+                                   VerticalOptions="Center"
+                                   SemanticProperties.Description="">
+                                <Image.Source>
+                                    <FontImageSource FontFamily="MaterialIcons-Regular"
+                                                     Glyph="{mi:Material Icon=ChevronRight}"
+                                                     Color="{StaticResource Gray500}"
+                                                     Size="24" />
+                                </Image.Source>
+                            </Image>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

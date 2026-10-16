@@ -6,7 +6,7 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 |-------|-------|--------|
 | 0 | Scaffold: sln, Clean Architecture, health, README | Done |
 | 1 | Auth + Business tenancy (JWT, refresh, register business) | Done |
-| 2 | Customers + measurements | Planned |
+| 2 | Customers + measurements | Done |
 | 3 | Orders + production status (mobile primary) | Planned |
 | 4 | Offline sync push/pull + DeletedItem + SyncChip | Planned |
 | 5 | Payments + balances + receipts (conflict-safe) | Planned |
@@ -40,7 +40,7 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 - Api CRUD authorized + BusinessId scoped; paginated lists; `AsNoTracking` reads
 - Mobile: Customers tab; add/edit; measurements with garment template; local SQLite save
 - Toast/copy: “Saved on this device” when offline path exists (full sync may still be Slice 4)
-- Web: Customers list/detail (HTTP only) if oversight started early — otherwise mobile-only OK if documented
+- Web: Customers list/detail deferred to Slice 6 (oversight) — mobile-only for this slice
 - Field limits consistent Domain + EF + DTOs + MAUI validation in the **same** slice
 - Journey 1 steps 3–4 pass for customers/measurements
 

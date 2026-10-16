@@ -75,6 +75,7 @@ Details: [clean-architecture.md](clean-architecture.md), [solution-layout.md](so
 | DeletedItem for pull deletes | API `ApplicationDbContext` | Same + scoped by BusinessId |
 | Named HttpClients + refresh handler | Portal / Mobile | Same |
 | Culture en-GH / money | Program.cs | Default GHS; design for multi-currency later |
+| UI icons via MauiIcons.Material | `UseMaterialMauiIcons()` + `{mi:Material Icon=…}` | Tabs and in-page chrome — **no PNG UI icons**; see [tab-icons.md](../needlebase-mobile/tab-icons.md) |
 
 ## What NOT to copy from AssetTag
 
@@ -84,6 +85,8 @@ Details: [clean-architecture.md](clean-architecture.md), [solution-layout.md](so
 - “Server wins” silent conflicts for **payments** → explicit user resolution
 - Claiming Scoped DI in docs while registering Singleton — document **actual** lifetimes (see mobile skill)
 - Product branding, ApplicationIds, hosted AssetTag URLs
+- Legacy Shell `tab_*.png` assets (AssetTag still has some) — NeedleBase uses MauiIcons for **all** UI icons including TabBar
+- UraniumUI **solely for icons** — MauiIcons.Material is enough for glyphs; add Uranium only if you need its controls
 
 ## Cross-cutting hard rules
 

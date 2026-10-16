@@ -3,6 +3,8 @@
     x:Class="NeedleBase.Mobile.AppShell"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+    xmlns:mci="clr-namespace:MauiIcons.Core;assembly=MauiIcons.Core"
     xmlns:views="clr-namespace:NeedleBase.Mobile.Views"
     Title="NeedleBase"
     FlyoutBehavior="Disabled">
@@ -11,23 +13,48 @@
         Title="Splash"
         Route="SplashPage"
         ContentTemplate="{DataTemplate views:SplashPage}"
-        FlyoutItemIsVisible="False" />
+        FlyoutItemIsVisible="False"
+        Shell.TabBarIsVisible="False" />
 
     <ShellContent
         Title="Sign in"
         Route="LoginPage"
         ContentTemplate="{DataTemplate views:LoginPage}"
-        FlyoutItemIsVisible="False" />
+        FlyoutItemIsVisible="False"
+        Shell.TabBarIsVisible="False" />
 
     <ShellContent
         Title="Register"
         Route="RegisterPage"
         ContentTemplate="{DataTemplate views:RegisterPage}"
-        FlyoutItemIsVisible="False" />
+        FlyoutItemIsVisible="False"
+        Shell.TabBarIsVisible="False" />
 
-    <ShellContent
-        Title="Home"
-        Route="HomePage"
-        ContentTemplate="{DataTemplate views:HomePage}" />
-
+    <TabBar Route="main">
+        <Tab Title="Home"
+             Route="HomePage"
+             mci:MauiIcon.Value="{mi:Material Icon=Home, TargetName='.'}">
+            <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
+        </Tab>
+        <Tab Title="Customers"
+             Route="CustomersPage"
+             mci:MauiIcon.Value="{mi:Material Icon=People, TargetName='.'}">
+            <ShellContent ContentTemplate="{DataTemplate views:CustomersPage}" />
+        </Tab>
+        <Tab Title="Orders"
+             Route="OrdersPage"
+             mci:MauiIcon.Value="{mi:Material Icon=ReceiptLong, TargetName='.'}">
+            <ShellContent ContentTemplate="{DataTemplate views:OrdersPlaceholderPage}" />
+        </Tab>
+        <Tab Title="Payments"
+             Route="PaymentsPage"
+             mci:MauiIcon.Value="{mi:Material Icon=Payments, TargetName='.'}">
+            <ShellContent ContentTemplate="{DataTemplate views:PaymentsPlaceholderPage}" />
+        </Tab>
+        <Tab Title="More"
+             Route="MorePage"
+             mci:MauiIcon.Value="{mi:Material Icon=Menu, TargetName='.'}">
+            <ShellContent ContentTemplate="{DataTemplate views:MorePlaceholderPage}" />
+        </Tab>
+    </TabBar>
 </Shell>

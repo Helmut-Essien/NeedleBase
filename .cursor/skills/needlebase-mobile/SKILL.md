@@ -2,9 +2,10 @@
 name: needlebase-mobile
 description: >-
   Implements NeedleBase .NET MAUI mobile app with Clean Architecture boundaries,
-  MVVM (CommunityToolkit.Mvvm), and UI performance practices. Use when working
-  on Views, ViewModels, AppShell, MauiProgram DI, navigation, auth session, or
-  mobile UI wiring for Home, Customers, Orders, Payments, More.
+  MVVM (CommunityToolkit.Mvvm), MauiIcons.Material UI icons (no PNG chrome), and
+  UI performance practices. Use when working on Views, ViewModels, AppShell,
+  MauiProgram DI, navigation, auth session, tab/in-page icons, or mobile UI
+  wiring for Home, Customers, Orders, Payments, More.
 ---
 
 # NeedleBase Mobile (MAUI + MVVM)
@@ -28,6 +29,7 @@ Sync details: [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md).
 10. **UI honesty:** After offline save, show “Saved on this device” — never “synced to cloud”.
 11. **Speed:** Compiled bindings (`x:DataType`); virtualize lists (`CollectionView`); keep heavy work off the UI thread; cancel stale loads; prefer in-place collection updates over full rebuilds on hot screens; short-lived DbContext scopes via services. Full rules: [code-quality-performance](../needlebase-architecture/code-quality-performance.md).
 12. **Inspect before coding:** Follow [engineering-review](../needlebase-architecture/engineering-review.md): inspect first, fix root cause (no parallel workarounds), remove obsolete code, verify with evidence.
+13. **Icons:** UI chrome (Shell tabs, toolbars, list glyphs, empty states) uses **MauiIcons.Material** only — never PNG/SVG MauiImage tab or button icons. See [tab-icons.md](tab-icons.md).
 
 ## MVVM (CommunityToolkit.Mvvm)
 
@@ -58,12 +60,21 @@ public partial class OrdersViewModel : BaseViewModel
 }
 ```
 
-Patterns: [mvvm-patterns.md](mvvm-patterns.md), [di-navigation.md](di-navigation.md).
-
 ## Shell & IA (mobile)
 
 Bottom nav: **Home | Customers | Orders | Payments | More** + FAB **New Order**.  
 Role-filter nav (hide Staff/Payments as per domain skill). Match [needlebase-uiux information-architecture](../needlebase-uiux/information-architecture.md).
+
+### Icons (required — MauiIcons.Material)
+
+Use **MauiIcons Material font icons** for TabBar and in-page chrome — same package/pattern as AssetTag in-page icons. **Do not** use PNG/SVG MauiImage files for UI icons (including tabs).
+
+- Package: `AathifMahir.Maui.MauiIcons.Material` + `UseMaterialMauiIcons()` in `MauiProgram`
+- Shell: `mci:MauiIcon.Value="{mi:Material Icon=Home, TargetName='.'}"` on each `<Tab>` (`xmlns:mci` = MauiIcons.Core)
+- In-page: `{mi:Material Icon=…}`, `FontImageSource` + `MaterialIcons-Regular`, or VM `MaterialIcons` enum bindings
+- Never leave every tab on `dotnet_bot.png`
+
+Full recipe: [tab-icons.md](tab-icons.md).
 
 ## Project folders
 
@@ -89,12 +100,14 @@ AssetTag code uses **Singleton** sync/data services that `CreateScope()` per ope
 
 ## Packages
 
-CommunityToolkit.Mvvm, CommunityToolkit.Maui, EF Core SQLite (Mobile.Data), NUlid, JWT handling. Add UI kits only if they fit NeedleBase design system (prefer simple MAUI + styles from uiux skill over copying AssetTag Uranium/Syncfusion unless needed).
+CommunityToolkit.Mvvm, CommunityToolkit.Maui, **AathifMahir.Maui.MauiIcons.Material**, EF Core SQLite (Mobile.Data), NUlid, JWT handling. Add heavier UI kits (Uranium/Syncfusion) only if they fit the design system — **icons alone need MauiIcons**, not Uranium. See [tab-icons.md](tab-icons.md).
 
 ## Important paths (once scaffolded)
 
-- `src/NeedleBase.Mobile/MauiProgram.cs`
-- `src/NeedleBase.Mobile/AppShell.xaml(.cs)`
+- `src/NeedleBase.Mobile/MauiProgram.cs` (`UseMaterialMauiIcons()`)
+- `src/NeedleBase.Mobile/AppShell.xaml(.cs)` (Tab `mci:MauiIcon.Value`)
 - `src/NeedleBase.Mobile/ViewModels/BaseViewModel.cs`
 - `src/NeedleBase.Mobile/Services/`
 - `src/NeedleBase.Mobile.Data/Data/LocalDbContext.cs`
+
+Patterns: [mvvm-patterns.md](mvvm-patterns.md), [di-navigation.md](di-navigation.md), [tab-icons.md](tab-icons.md).

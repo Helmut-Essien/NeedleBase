@@ -26,12 +26,9 @@ public partial class RegisterViewModel : BaseViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
-    [NotifyPropertyChangedFor(nameof(CanSubmit))]
     private string? errorMessage;
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
-
-    public bool CanSubmit => !IsBusy;
 
     [RelayCommand]
     private async Task RegisterAsync()
@@ -53,7 +50,6 @@ public partial class RegisterViewModel : BaseViewModel
         }
 
         IsBusy = true;
-        OnPropertyChanged(nameof(CanSubmit));
         try
         {
             var request = new RegisterBusinessRequest(
@@ -81,7 +77,6 @@ public partial class RegisterViewModel : BaseViewModel
         finally
         {
             IsBusy = false;
-            OnPropertyChanged(nameof(CanSubmit));
         }
     }
 }

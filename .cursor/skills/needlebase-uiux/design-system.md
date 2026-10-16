@@ -124,6 +124,20 @@ Avoid: neon glow, heavy multi-layer shadows, excessive gradients, decorative clu
 
 Suggested set (Lucide / Material equivalents): Home, Users, ClipboardList, Wallet, MoreHorizontal, Plus, Search, Cloud/CloudOff, RefreshCw, Check, AlertTriangle, X, Chevron, Calendar, Scissors, Shirt, UserPlus, Settings, Receipt.
 
+### Mobile icons (implementation)
+
+Learned from AssetTag in-page chrome: **MauiIcons.Material** font icons — not PNG/SVG MauiImage bitmaps for TabBar or buttons.
+
+| Rule | Detail |
+|------|--------|
+| Package | `AathifMahir.Maui.MauiIcons.Material` + `UseMaterialMauiIcons()` |
+| Shell tabs | `mci:MauiIcon.Value="{mi:Material Icon=Home, TargetName='.'}"` (People / ReceiptLong / Payments / Menu) |
+| In-page | `{mi:Material Icon=…}`, `FontImageSource` + `MaterialIcons-Regular`, or VM `MaterialIcons` bindings |
+| Colour | Design tokens via `IconColor` / Shell `TabBarForegroundColor` + `TabBarUnselectedColor` |
+| Forbidden | PNG/WebP tab assets; same `dotnet_bot.png` on every tab |
+
+Full MAUI recipe: [needlebase-mobile/tab-icons.md](../needlebase-mobile/tab-icons.md).
+
 ---
 
 ## Component library
@@ -185,7 +199,7 @@ No cards in marketing-style heroes if any; product UI cards only when they group
 
 ### Navigation
 
-- Mobile bottom nav: 5 items; active = green icon + label; inactive = tertiary text.
+- Mobile bottom nav: 5 items; active = green-tinted icon + label; inactive = tertiary text + untinted/grey icon. Each tab must have its **own** glyph (see Iconography → Mobile bottom-tab icons).
 - FAB: primary green circle, + or “Order”.
 - Web sidebar: charcoal text; active = green light bg + green accent bar or bold green label.
 

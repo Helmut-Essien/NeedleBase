@@ -35,13 +35,15 @@ Business (workspace)
 └─────────────────────────────────────┘
 ```
 
-| Tab | Purpose | Primary children |
-|-----|---------|------------------|
-| **Home** | “What do I need to do today?” | Due/overdue, ready for collection, balances, recent activity, quick actions |
-| **Customers** | Find & manage people | List → Profile (Overview, Measurements, Orders, Images/Notes) → Add/Edit |
-| **Orders** | Daily production work | List/filter → Detail → Status update; Create/Edit multi-step |
-| **Payments** | Money in | Balances, record payment, history, receipt share |
-| **More** | Secondary | Measurements hub (optional shortcut), Staff*, Settings, Sync details, Subscription, Help |
+| Tab | Purpose | Primary children | Tab icon asset |
+|-----|---------|------------------|----------------|
+| **Home** | “What do I need to do today?” | Due/overdue, ready for collection, balances, recent activity, quick actions | `tab_home` |
+| **Customers** | Find & manage people | List → Profile (Overview, Measurements, Orders, Images/Notes) → Add/Edit | `tab_customers` |
+| **Orders** | Daily production work | List/filter → Detail → Status update; Create/Edit multi-step | `tab_orders` |
+| **Payments** | Money in | Balances, record payment, history, receipt share | `tab_payments` |
+| **More** | Secondary | Measurements hub (optional shortcut), Staff*, Settings, Sync details, Subscription, Help | `tab_more` |
+
+Tab icons: MauiIcons.Material on Shell tabs — [tab-icons.md](../needlebase-mobile/tab-icons.md).
 
 \*Staff only if business has staff or Owner/Manager opted in — solo: omit or show “Invite helper” soft entry.
 

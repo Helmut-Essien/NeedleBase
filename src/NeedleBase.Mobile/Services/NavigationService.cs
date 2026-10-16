@@ -1,3 +1,5 @@
+using NeedleBase.Mobile.ViewModels;
+
 namespace NeedleBase.Mobile.Services;
 
 public interface INavigationService
@@ -8,6 +10,22 @@ public interface INavigationService
 
 public sealed class NavigationService : INavigationService
 {
+    private static readonly string[] MainTabRoutes =
+    [
+        "//main/HomePage",
+        "//main/CustomersPage",
+        "//main/OrdersPage",
+        "//main/PaymentsPage",
+        "//main/MorePage"
+    ];
+
+    private readonly CustomersViewModel _customersViewModel;
+
+    public NavigationService(CustomersViewModel customersViewModel)
+    {
+        _customersViewModel = customersViewModel;
+    }
+
     public async Task ShowLoginAsync()
     {
         if (Shell.Current is null)
@@ -15,7 +33,10 @@ public sealed class NavigationService : INavigationService
             return;
         }
 
-        // Hide app shell content and go to login (do not wipe SQLite on session expiry).
+        // Clear singleton tab VM PII on every path to login (logout + session expiry).
+        _customersViewModel.ClearSessionState();
+
+        await DismissOverlaysAndPopToRootAsync();
         await Shell.Current.GoToAsync("//LoginPage");
     }
 
@@ -26,6 +47,38 @@ public sealed class NavigationService : INavigationService
             return;
         }
 
-        await Shell.Current.GoToAsync("//HomePage");
+        await Shell.Current.GoToAsync("//main/HomePage");
+    }
+
+    private static async Task DismissOverlaysAndPopToRootAsync()
+    {
+        var shell = Shell.Current;
+        if (shell is null)
+        {
+            return;
+        }
+
+        try
+        {
+            while (shell.Navigation.ModalStack.Count > 0)
+            {
+                await shell.Navigation.PopModalAsync(animated: false);
+            }
+
+            foreach (var route in MainTabRoutes)
+            {
+                await shell.GoToAsync(route, animate: false);
+                while (shell.Navigation.NavigationStack.Count > 1)
+                {
+                    await shell.Navigation.PopAsync(animated: false);
+                }
+            }
+
+            await shell.GoToAsync("//main/HomePage", animate: false);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"ShowLoginAsync stack clear failed: {ex.Message}");
+        }
     }
 }

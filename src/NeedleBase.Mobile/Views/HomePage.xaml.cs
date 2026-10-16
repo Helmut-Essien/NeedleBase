@@ -1,5 +1,5 @@
 using NeedleBase.Mobile.Services;
-using NeedleBase.Mobile.ViewModels;
+using NeedleBase.Mobile.ViewModels; // HomeViewModel
 
 namespace NeedleBase.Mobile.Views;
 
@@ -15,7 +15,17 @@ public partial class HomePage : ContentPage
     {
         var auth = ServiceHelper.GetRequiredService<IAuthService>();
         var navigation = ServiceHelper.GetRequiredService<INavigationService>();
-        await auth.LogoutAsync();
+        var wiped = await auth.LogoutAsync();
+        if (!wiped)
+        {
+            await DisplayAlert(
+                "Couldn't sign out",
+                "Local data couldn't be cleared. Stay signed in and try again.",
+                "OK");
+            return;
+        }
+
+        // ShowLoginAsync clears singleton tab VM state (and pops stacks).
         await navigation.ShowLoginAsync();
     }
 }

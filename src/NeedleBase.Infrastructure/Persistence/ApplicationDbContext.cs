@@ -26,6 +26,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<StaffMembership> StaffMemberships => Set<StaffMembership>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Customer> Customers => Set<Customer>();
+    public DbSet<MeasurementProfile> MeasurementProfiles => Set<MeasurementProfile>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -56,6 +58,50 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             e.HasOne<Business>()
                 .WithMany()
                 .HasForeignKey(x => x.BusinessId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId == null || x.BusinessId == CurrentBusinessId);
+        });
+
+        builder.Entity<Customer>(e =>
+        {
+            e.ToTable("Customers");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(Domain.Common.FieldLimits.CustomerName).IsRequired();
+            e.Property(x => x.Phone).HasMaxLength(Domain.Common.FieldLimits.Phone).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(Domain.Common.FieldLimits.Notes);
+            e.Property(x => x.PhotoRef).HasMaxLength(Domain.Common.FieldLimits.PhotoRef);
+            e.HasIndex(x => x.BusinessId);
+            e.HasIndex(x => new { x.BusinessId, x.Name });
+            e.HasIndex(x => new { x.BusinessId, x.Phone });
+            e.HasOne<Business>()
+                .WithMany()
+                .HasForeignKey(x => x.BusinessId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId == null || x.BusinessId == CurrentBusinessId);
+        });
+
+        builder.Entity<MeasurementProfile>(e =>
+        {
+            e.ToTable("MeasurementProfiles");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.CustomerId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.GarmentTemplate).HasMaxLength(Domain.Common.FieldLimits.GarmentTemplate).IsRequired();
+            e.Property(x => x.Unit).HasMaxLength(Domain.Common.FieldLimits.MeasurementUnit).IsRequired();
+            e.Property(x => x.FieldsJson).HasMaxLength(Domain.Common.FieldLimits.FieldsJson).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(Domain.Common.FieldLimits.Notes);
+            e.HasIndex(x => x.BusinessId);
+            e.HasIndex(x => new { x.BusinessId, x.CustomerId, x.MeasuredAtUtc });
+            e.HasOne<Business>()
+                .WithMany()
+                .HasForeignKey(x => x.BusinessId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Customer>()
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasQueryFilter(x => CurrentBusinessId == null || x.BusinessId == CurrentBusinessId);
         });

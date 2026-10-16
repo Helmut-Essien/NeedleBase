@@ -102,6 +102,7 @@ When designing or implementing UI:
 | Web screen specs | [web-screens.md](web-screens.md) |
 | Five priority journeys | [journeys.md](journeys.md) |
 | Breakpoints, assets, handoff | [handoff.md](handoff.md) |
+| Mobile icons (MauiIcons.Material — tabs + in-page) | [../needlebase-mobile/tab-icons.md](../needlebase-mobile/tab-icons.md) |
 
 ## Implementation skills (code)
 

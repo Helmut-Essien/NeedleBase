@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             x:Class="NeedleBase.Mobile.Views.CustomerEditPage"
+             x:DataType="vm:CustomerEditViewModel"
+             Title="{Binding Title}"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="14">
+            <Label Text="{Binding Title}"
+                   FontSize="22"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource Charcoal}"
+                   SemanticProperties.HeadingLevel="Level1" />
+
+            <Label Text="Name"
+                   TextColor="{StaticResource Gray600}"
+                   FontSize="13" />
+            <Entry Text="{Binding Name}"
+                   Placeholder="Efua Mensah"
+                   MaxLength="200"
+                   BackgroundColor="White"
+                   IsEnabled="{Binding CanSubmit}"
+                   SemanticProperties.Description="Customer name" />
+
+            <Label Text="Phone"
+                   TextColor="{StaticResource Gray600}"
+                   FontSize="13" />
+            <Entry Text="{Binding Phone}"
+                   Placeholder="+233 24 555 0123"
+                   Keyboard="Telephone"
+                   MaxLength="40"
+                   BackgroundColor="White"
+                   IsEnabled="{Binding CanSubmit}"
+                   SemanticProperties.Description="Customer phone number" />
+
+            <Label Text="Notes (optional)"
+                   TextColor="{StaticResource Gray600}"
+                   FontSize="13" />
+            <Editor Text="{Binding Notes}"
+                    Placeholder="Preferences, reminders…"
+                    AutoSize="TextChanges"
+                    MaxLength="2000"
+                    BackgroundColor="White"
+                    HeightRequest="100"
+                    IsEnabled="{Binding CanSubmit}"
+                    SemanticProperties.Description="Optional customer notes" />
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasError}"
+                   SemanticProperties.Description="Save error" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="{StaticResource Primary}" />
+
+            <Button Text="Save"
+                    Command="{Binding SaveCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="White"
+                    IsEnabled="{Binding CanSubmit}"
+                    Margin="0,12,0,0"
+                    SemanticProperties.Description="Save customer on this device" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
