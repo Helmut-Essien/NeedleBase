@@ -5,36 +5,36 @@
     ViewData["Title"] = "Sign in";
 }
 
-<h1 class="h4 fw-bold nb-auth-title">Sign in</h1>
+<h1 class="nb-auth-title">Sign in</h1>
 <p class="nb-auth-subtitle">Continue to NeedleBase web oversight</p>
 
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
 {
-    <div class="alert alert-danger" role="alert" aria-live="assertive">@Model.ErrorMessage</div>
+    <div class="alert alert-danger nb-auth-alert" role="alert" aria-live="assertive">@Model.ErrorMessage</div>
 }
 
-<form method="post" novalidate>
+<form method="post" novalidate class="nb-auth-form">
     <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-    <div class="mb-3 text-start">
+    <div class="nb-auth-field text-start">
         <label asp-for="Input.Email" class="form-label">Email</label>
-        <input asp-for="Input.Email" class="form-control form-control-lg" autocomplete="username" />
-        <span asp-validation-for="Input.Email" class="text-danger small"></span>
+        <input asp-for="Input.Email" class="form-control nb-auth-input" autocomplete="username" placeholder="you@business.com" />
+        <span asp-validation-for="Input.Email" class="text-danger small nb-auth-error"></span>
     </div>
-    <div class="mb-3 text-start">
+    <div class="nb-auth-field text-start">
         <label asp-for="Input.Password" class="form-label">Password</label>
-        <input asp-for="Input.Password" class="form-control form-control-lg" autocomplete="current-password" />
-        <span asp-validation-for="Input.Password" class="text-danger small"></span>
+        <input asp-for="Input.Password" class="form-control nb-auth-input" autocomplete="current-password" placeholder="Enter your password" />
+        <span asp-validation-for="Input.Password" class="text-danger small nb-auth-error"></span>
     </div>
-    <div class="form-check mb-4 text-start">
+    <div class="form-check nb-auth-remember text-start">
         <input asp-for="Input.RememberMe" class="form-check-input" />
         <label asp-for="Input.RememberMe" class="form-check-label">Remember me</label>
     </div>
     <div class="d-grid">
-        <button type="submit" class="btn btn-lg nb-btn-primary">Sign in</button>
+        <button type="submit" class="btn nb-btn-primary nb-auth-submit">Sign in</button>
     </div>
 </form>
 
-<p class="mt-4 mb-0 nb-auth-footer">
+<p class="nb-auth-footer">
     New business?
     <a asp-page="/Account/Register">Register your business</a>
 </p>

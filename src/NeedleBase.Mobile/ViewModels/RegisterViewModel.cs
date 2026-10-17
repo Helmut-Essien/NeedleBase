@@ -19,6 +19,7 @@ public partial class RegisterViewModel : BaseViewModel
 
     [ObservableProperty] private string email = string.Empty;
     [ObservableProperty] private string password = string.Empty;
+    [ObservableProperty] private string confirmPassword = string.Empty;
     [ObservableProperty] private string firstName = string.Empty;
     [ObservableProperty] private string surname = string.Empty;
     [ObservableProperty] private string businessName = string.Empty;
@@ -28,7 +29,28 @@ public partial class RegisterViewModel : BaseViewModel
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string? errorMessage;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPasswordError))]
+    private string? passwordError;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasConfirmPasswordError))]
+    private string? confirmPasswordError;
+
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+    public bool HasPasswordError => !string.IsNullOrWhiteSpace(PasswordError);
+    public bool HasConfirmPasswordError => !string.IsNullOrWhiteSpace(ConfirmPasswordError);
+
+    partial void OnPasswordChanged(string value)
+    {
+        PasswordError = null;
+        ConfirmPasswordError = null;
+    }
+
+    partial void OnConfirmPasswordChanged(string value)
+    {
+        ConfirmPasswordError = null;
+    }
 
     [RelayCommand]
     private async Task RegisterAsync()
@@ -39,13 +61,28 @@ public partial class RegisterViewModel : BaseViewModel
         }
 
         ErrorMessage = null;
+        PasswordError = null;
+        ConfirmPasswordError = null;
         if (string.IsNullOrWhiteSpace(Email) ||
             string.IsNullOrWhiteSpace(Password) ||
+            string.IsNullOrWhiteSpace(ConfirmPassword) ||
             string.IsNullOrWhiteSpace(FirstName) ||
             string.IsNullOrWhiteSpace(Surname) ||
             string.IsNullOrWhiteSpace(BusinessName))
         {
             ErrorMessage = "Fill in all required fields.";
+            return;
+        }
+
+        if (Password.Length < 6 || !Password.Any(char.IsDigit))
+        {
+            PasswordError = "At least 6 characters, including a number";
+            return;
+        }
+
+        if (!string.Equals(Password, ConfirmPassword, StringComparison.Ordinal))
+        {
+            ConfirmPasswordError = "Passwords do not match";
             return;
         }
 

@@ -5,78 +5,203 @@
              x:Class="NeedleBase.Mobile.Views.RegisterPage"
              x:DataType="vm:RegisterViewModel"
              Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
              BackgroundColor="{StaticResource AppBackground}">
 
     <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="12">
+        <VerticalStackLayout Padding="16,28" Spacing="0">
+            <Image Source="needlebase_logo.png"
+                   Aspect="AspectFit"
+                   HeightRequest="100"
+                   WidthRequest="240"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,16"
+                   SemanticProperties.Description="NeedleBase logo" />
+
             <Label Text="Register your business"
                    TextColor="{StaticResource Charcoal}"
                    FontSize="24"
                    FontAttributes="Bold"
+                   HorizontalOptions="Center"
                    SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="Create an owner account for NeedleBase"
+                   TextColor="{StaticResource Gray600}"
+                   FontSize="15"
+                   HorizontalOptions="Center"
+                   Margin="0,6,0,24" />
 
-            <Label Text="Business name" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
-            <Entry Placeholder="e.g. Ama Stitches"
-                   Text="{Binding BusinessName}"
-                   IsEnabled="{Binding CanSubmit}"
-                   SemanticProperties.Description="Business name"
-                   AutomationId="RegisterBusinessName" />
+            <Label Text="First name" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
+                    Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
+                <Entry Placeholder="First name"
+                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource Charcoal}"
+                       Text="{Binding FirstName}"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="First name" />
+            </Border>
 
-            <Label Text="Business phone (optional)" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
-            <Entry Placeholder="+233…"
-                   Text="{Binding BusinessPhone}"
-                   Keyboard="Telephone"
-                   IsEnabled="{Binding CanSubmit}"
-                   SemanticProperties.Description="Business phone optional" />
+            <Label Text="Surname" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
+                    Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
+                <Entry Placeholder="Surname"
+                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource Charcoal}"
+                       Text="{Binding Surname}"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="Surname" />
+            </Border>
 
-            <Label Text="First name" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
-            <Entry Placeholder="First name"
-                   Text="{Binding FirstName}"
-                   IsEnabled="{Binding CanSubmit}"
-                   SemanticProperties.Description="First name" />
+            <Label Text="Business name" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
+                    Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
+                <Entry Placeholder="e.g. Ama Stitches"
+                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource Charcoal}"
+                       Text="{Binding BusinessName}"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="Business name"
+                       AutomationId="RegisterBusinessName" />
+            </Border>
 
-            <Label Text="Surname" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
-            <Entry Placeholder="Surname"
-                   Text="{Binding Surname}"
-                   IsEnabled="{Binding CanSubmit}"
-                   SemanticProperties.Description="Surname" />
+            <Label Text="Business phone (optional)" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
+                    Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
+                <Entry Placeholder="+233..."
+                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource Charcoal}"
+                       Text="{Binding BusinessPhone}"
+                       Keyboard="Telephone"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="Business phone optional" />
+            </Border>
 
-            <Label Text="Email" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
-            <Entry Placeholder="you@business.com"
-                   Text="{Binding Email}"
-                   Keyboard="Email"
-                   IsEnabled="{Binding CanSubmit}"
-                   SemanticProperties.Description="Email address"
-                   AutomationId="RegisterEmail" />
+            <Label Text="Email" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
+                    Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
+                <Entry Placeholder="you@business.com"
+                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource Charcoal}"
+                       Text="{Binding Email}"
+                       Keyboard="Email"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="Email address"
+                       AutomationId="RegisterEmail" />
+            </Border>
 
-            <Label Text="Password" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
-            <Entry Placeholder="At least 6 characters"
-                   Text="{Binding Password}"
-                   IsPassword="True"
-                   IsEnabled="{Binding CanSubmit}"
-                   SemanticProperties.Description="Password minimum six characters"
-                   AutomationId="RegisterPassword" />
+            <Label Text="Password" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
+            <Border Stroke="{StaticResource Gray300}"
+                    StrokeThickness="1"
+                    BackgroundColor="{StaticResource White}"
+                    Padding="14,2"
+                    MinimumHeightRequest="48"
+                    StrokeShape="RoundRectangle 8">
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding HasPasswordError}" Value="True">
+                        <Setter Property="Stroke" Value="{StaticResource SemanticError}" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Entry Placeholder="Create a password"
+                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource Charcoal}"
+                       Text="{Binding Password}"
+                       IsPassword="True"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="Password minimum six characters including a number"
+                       AutomationId="RegisterPassword" />
+            </Border>
+            <Label Text="{Binding PasswordError}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasPasswordError}"
+                   FontSize="13"
+                   Margin="0,6,0,0"
+                   SemanticProperties.Description="Password error" />
+            <Label Text="At least 6 characters, including a number"
+                   TextColor="{StaticResource Gray600}"
+                   FontSize="13"
+                   Margin="0,6,0,14">
+                <Label.Triggers>
+                    <DataTrigger TargetType="Label" Binding="{Binding HasPasswordError}" Value="True">
+                        <Setter Property="IsVisible" Value="False" />
+                    </DataTrigger>
+                </Label.Triggers>
+            </Label>
+
+            <Label Text="Confirm password" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
+            <Border x:Name="ConfirmPasswordBorder"
+                    Stroke="{StaticResource Gray300}"
+                    StrokeThickness="1"
+                    BackgroundColor="{StaticResource White}"
+                    Padding="14,2"
+                    MinimumHeightRequest="48"
+                    StrokeShape="RoundRectangle 8"
+                    Margin="0,0,0,6">
+                <Border.Triggers>
+                    <DataTrigger TargetType="Border" Binding="{Binding HasConfirmPasswordError}" Value="True">
+                        <Setter Property="Stroke" Value="{StaticResource SemanticError}" />
+                    </DataTrigger>
+                </Border.Triggers>
+                <Entry Placeholder="Confirm your password"
+                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource Charcoal}"
+                       Text="{Binding ConfirmPassword}"
+                       IsPassword="True"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="Confirm password" />
+            </Border>
+            <Label Text="{Binding ConfirmPasswordError}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasConfirmPasswordError}"
+                   FontSize="13"
+                   Margin="0,0,0,8"
+                   SemanticProperties.Description="Confirm password error" />
 
             <Label Text="{Binding ErrorMessage}"
                    TextColor="{StaticResource SemanticError}"
                    IsVisible="{Binding HasError}"
+                   FontSize="13"
+                   Margin="0,0,0,8"
                    SemanticProperties.Description="Registration error" />
 
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                IsVisible="{Binding IsBusy}"
-                               Color="{StaticResource Primary}" />
+                               Color="{StaticResource Primary}"
+                               Margin="0,0,0,8" />
 
             <Button Text="Create business"
                     Command="{Binding RegisterCommand}"
                     IsEnabled="{Binding CanSubmit}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="{StaticResource White}"
+                    CornerRadius="10"
+                    HeightRequest="48"
+                    FontAttributes="Bold"
+                    FontSize="16"
+                    Margin="0,8,0,12"
                     SemanticProperties.Description="Create business account"
                     AutomationId="RegisterSubmit" />
-            <Button Text="Back to sign in"
-                    BackgroundColor="{StaticResource PrimaryLight}"
-                    TextColor="{StaticResource Charcoal}"
-                    IsEnabled="{Binding CanSubmit}"
-                    Clicked="OnLoginClicked"
-                    SemanticProperties.Description="Back to sign in" />
+
+            <HorizontalStackLayout Spacing="0" HorizontalOptions="Center" Margin="0,4,0,24">
+                <Label Text="Already have an account?"
+                       TextColor="{StaticResource Gray600}"
+                       FontSize="14"
+                       VerticalOptions="Center" />
+                <Button Text="Sign in"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource Primary}"
+                        FontAttributes="Bold"
+                        FontSize="14"
+                        HeightRequest="48"
+                        MinimumHeightRequest="48"
+                        MinimumWidthRequest="72"
+                        Padding="8,0"
+                        Margin="0"
+                        IsEnabled="{Binding CanSubmit}"
+                        Clicked="OnLoginClicked"
+                        SemanticProperties.Description="Back to sign in"
+                        AutomationId="RegisterGoToLogin" />
+            </HorizontalStackLayout>
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

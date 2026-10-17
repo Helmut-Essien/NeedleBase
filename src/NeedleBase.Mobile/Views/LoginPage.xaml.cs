@@ -13,6 +13,11 @@ public partial class LoginPage : ContentPage
 
     private async void OnRegisterClicked(object? sender, EventArgs e)
     {
+        if (BindingContext is LoginViewModel vm && !vm.CanSubmit)
+        {
+            return;
+        }
+
         await Shell.Current.GoToAsync("//RegisterPage");
     }
 }

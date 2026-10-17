@@ -4,6 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - NeedleBase</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
@@ -11,7 +14,14 @@
     <a class="visually-hidden-focusable skip-link" href="#auth-main">Skip to content</a>
     <main id="auth-main" class="nb-auth-shell">
         <div class="nb-auth-card">
-            <div class="nb-auth-brand" role="banner">NeedleBase</div>
+            <div class="nb-auth-brand">
+                <img src="~/images/needlebase-logo.png"
+                     asp-append-version="true"
+                     alt="NeedleBase"
+                     class="nb-auth-logo"
+                     width="280"
+                     height="155" />
+            </div>
             @RenderBody()
         </div>
     </main>

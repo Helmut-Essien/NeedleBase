@@ -32,20 +32,24 @@ public class RegisterModel : PageModel
         [Required]
         [MinLength(6)]
         [MaxLength(100)]
+        [RegularExpression(@"^(?=.*\d).+$", ErrorMessage = "At least 6 characters, including a number")]
         [DataType(DataType.Password)]
         public string Password { get; set; } = string.Empty;
 
         [Required]
         [Compare(nameof(Password), ErrorMessage = "Passwords do not match")]
         [DataType(DataType.Password)]
+        [Display(Name = "Confirm password")]
         public string ConfirmPassword { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(100)]
+        [Display(Name = "First name")]
         public string FirstName { get; set; } = string.Empty;
 
         [Required]
         [MaxLength(100)]
+        [Display(Name = "Surname")]
         public string Surname { get; set; } = string.Empty;
 
         [Required]
@@ -54,7 +58,7 @@ public class RegisterModel : PageModel
         public string BusinessName { get; set; } = string.Empty;
 
         [MaxLength(40)]
-        [Display(Name = "Business phone")]
+        [Display(Name = "Business phone (optional)")]
         public string? BusinessPhone { get; set; }
     }
 

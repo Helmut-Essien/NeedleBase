@@ -53,6 +53,23 @@ builder.Services.AddTransient<RecordPaymentViewModel>();
 - Register routes for non-tab pages: CreateOrder, CustomerDetail, OrderDetail, SyncDetails, Settings, MeasurementEntry  
 - FAB → `GoToAsync` CreateOrder route  
 
+### Auth / pre-shell pages (nav chrome)
+
+Login, Register, and other pre-shell routes must not show Shell’s top title bar (duplicate “Sign in” / “Register” strip).
+
+```xml
+<!-- On the ContentPage -->
+Shell.NavBarIsVisible="False"
+NavigationPage.HasNavigationBar="False"
+
+<!-- On AppShell ShellContent for that route -->
+Shell.TabBarIsVisible="False"
+Shell.NavBarIsVisible="False"
+FlyoutItemIsVisible="False"
+```
+
+Verify on device: auth screens = status bar + designed content only (logo, in-page title, form). No grey/dark Shell title bar.
+
 ### Session expiry
 
 `ShowLoginAsync()` must:
@@ -60,6 +77,7 @@ builder.Services.AddTransient<RecordPaymentViewModel>();
 1. Dismiss modals  
 2. Pop **each tab** navigation stack to root  
 3. Hide tab bar / show login host  
+4. Land on Login with nav bar still hidden (auth `ShellContent` / page flags above)  
 
 ### Query properties
 

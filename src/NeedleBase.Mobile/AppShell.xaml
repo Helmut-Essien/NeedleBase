@@ -14,14 +14,16 @@
         Route="LoginPage"
         ContentTemplate="{DataTemplate views:LoginPage}"
         FlyoutItemIsVisible="False"
-        Shell.TabBarIsVisible="False" />
+        Shell.TabBarIsVisible="False"
+        Shell.NavBarIsVisible="False" />
 
     <ShellContent
         Title="Register"
         Route="RegisterPage"
         ContentTemplate="{DataTemplate views:RegisterPage}"
         FlyoutItemIsVisible="False"
-        Shell.TabBarIsVisible="False" />
+        Shell.TabBarIsVisible="False"
+        Shell.NavBarIsVisible="False" />
 
     <TabBar Route="main">
         <Tab Title="Home"

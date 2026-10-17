@@ -5,58 +5,108 @@
              x:Class="NeedleBase.Mobile.Views.LoginPage"
              x:DataType="vm:LoginViewModel"
              Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
              BackgroundColor="{StaticResource AppBackground}">
 
     <ScrollView>
-        <VerticalStackLayout Padding="24" Spacing="12" VerticalOptions="Center">
-            <Label Text="NeedleBase"
+        <VerticalStackLayout Padding="16,32" Spacing="0" VerticalOptions="Center">
+            <Image Source="needlebase_logo.png"
+                   Aspect="AspectFit"
+                   HeightRequest="110"
+                   WidthRequest="260"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,20"
+                   SemanticProperties.Description="NeedleBase logo" />
+
+            <Label Text="Sign in"
                    TextColor="{StaticResource Charcoal}"
-                   FontSize="28"
+                   FontSize="24"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
                    SemanticProperties.HeadingLevel="Level1" />
             <Label Text="Sign in to your business"
                    TextColor="{StaticResource Gray600}"
-                   HorizontalOptions="Center" />
+                   FontSize="15"
+                   HorizontalOptions="Center"
+                   Margin="0,6,0,28" />
 
             <Label Text="Email"
                    TextColor="{StaticResource Charcoal}"
-                   FontAttributes="Bold" />
-            <Entry Placeholder="you@business.com"
-                   Keyboard="Email"
-                   Text="{Binding Email}"
-                   IsEnabled="{Binding CanSubmit}"
-                   SemanticProperties.Description="Email address"
-                   AutomationId="LoginEmail" />
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,6" />
+            <Border Stroke="{StaticResource Gray300}"
+                    StrokeThickness="1"
+                    BackgroundColor="{StaticResource White}"
+                    Padding="14,2"
+                    MinimumHeightRequest="48"
+                    StrokeShape="RoundRectangle 8"
+                    Margin="0,0,0,16">
+                <Entry Placeholder="you@business.com"
+                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource Charcoal}"
+                       Keyboard="Email"
+                       Text="{Binding Email}"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="Email address"
+                       AutomationId="LoginEmail" />
+            </Border>
 
             <Label Text="Password"
                    TextColor="{StaticResource Charcoal}"
-                   FontAttributes="Bold" />
-            <Entry Placeholder="Password"
-                   IsPassword="True"
-                   Text="{Binding Password}"
-                   IsEnabled="{Binding CanSubmit}"
-                   SemanticProperties.Description="Password"
-                   AutomationId="LoginPassword" />
+                   FontAttributes="Bold"
+                   FontSize="14"
+                   Margin="0,0,0,6" />
+            <Border Stroke="{StaticResource Gray300}"
+                    StrokeThickness="1"
+                    BackgroundColor="{StaticResource White}"
+                    Padding="14,2"
+                    MinimumHeightRequest="48"
+                    StrokeShape="RoundRectangle 8"
+                    Margin="0,0,0,8">
+                <Entry Placeholder="Enter your password"
+                       PlaceholderColor="{StaticResource Gray500}"
+                       TextColor="{StaticResource Charcoal}"
+                       IsPassword="True"
+                       Text="{Binding Password}"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="Password"
+                       AutomationId="LoginPassword" />
+            </Border>
 
             <Label Text="{Binding ErrorMessage}"
                    TextColor="{StaticResource SemanticError}"
                    IsVisible="{Binding HasError}"
+                   FontSize="13"
+                   Margin="0,0,0,8"
                    SemanticProperties.Description="Sign-in error" />
 
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                IsVisible="{Binding IsBusy}"
-                               Color="{StaticResource Primary}" />
+                               Color="{StaticResource Primary}"
+                               Margin="0,0,0,8" />
 
             <Button Text="Sign in"
                     Command="{Binding LoginCommand}"
                     IsEnabled="{Binding CanSubmit}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="{StaticResource White}"
+                    CornerRadius="10"
+                    HeightRequest="48"
+                    FontAttributes="Bold"
+                    FontSize="16"
+                    Margin="0,12,0,12"
                     SemanticProperties.Description="Sign in"
                     AutomationId="LoginSubmit" />
 
             <Button Text="Register a business"
                     BackgroundColor="{StaticResource PrimaryLight}"
-                    TextColor="{StaticResource Charcoal}"
+                    TextColor="{StaticResource Primary}"
+                    CornerRadius="10"
+                    HeightRequest="48"
+                    FontAttributes="Bold"
+                    FontSize="16"
                     IsEnabled="{Binding CanSubmit}"
                     Clicked="OnRegisterClicked"
                     SemanticProperties.Description="Register a new business" />

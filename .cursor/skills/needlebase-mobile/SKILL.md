@@ -30,6 +30,11 @@ Sync details: [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md).
 11. **Speed:** Compiled bindings (`x:DataType`); virtualize lists (`CollectionView`); keep heavy work off the UI thread; cancel stale loads; prefer in-place collection updates over full rebuilds on hot screens; short-lived DbContext scopes via services. Full rules: [code-quality-performance](../needlebase-architecture/code-quality-performance.md).
 12. **Inspect before coding:** Follow [engineering-review](../needlebase-architecture/engineering-review.md): inspect first, fix root cause (no parallel workarounds), remove obsolete code, verify with evidence.
 13. **Icons:** UI chrome (Shell tabs, toolbars, list glyphs, empty states) uses **MauiIcons.Material** only — never PNG/SVG MauiImage tab or button icons. See [tab-icons.md](tab-icons.md).
+14. **Pre-shell chrome (auth / onboarding):** Login, Register, Welcome, Forgot password, Invite accept, Offline explainer, and any other **pre-tab** screens must **hide the Shell navigation bar**. In-page headings already carry the title — a Shell title bar causes a duplicate grey “Sign in” / “Register” strip. Required on each such page **and** its `ShellContent` in `AppShell.xaml`:
+    - `Shell.NavBarIsVisible="False"`
+    - `NavigationPage.HasNavigationBar="False"` (defense in depth)
+    - Prefer `Shell.TabBarIsVisible="False"` on those `ShellContent` entries (already the auth pattern)
+    - Do **not** rely on `Title="{Binding Title}"` alone for chrome; Title may remain for accessibility/semantics but must not appear as a visible nav bar on pre-shell screens.
 
 ## MVVM (CommunityToolkit.Mvvm)
 
@@ -64,6 +69,16 @@ public partial class OrdersViewModel : BaseViewModel
 
 Bottom nav: **Home | Customers | Orders | Payments | More** + FAB **New Order**.  
 Role-filter nav (hide Staff/Payments as per domain skill). Match [needlebase-uiux information-architecture](../needlebase-uiux/information-architecture.md).
+
+### Pre-shell vs in-app chrome
+
+| Screen type | Shell nav bar | Tab bar | Title chrome |
+|-------------|---------------|---------|--------------|
+| Login / Register / Welcome / other auth | **Hidden** | Hidden | In-page only (logo + h1) |
+| Tab roots (Home, Customers, …) | Visible as needed | Visible | Shell/tab title OK |
+| Pushed detail / edit forms | Usually visible (back) | Often hidden | Shell title + in-page OK |
+
+**Anti-pattern (learned):** Shipping Login/Register with default Shell nav bar → dark/grey top strip repeating “Sign in” / “Register” above the designed heading. Always verify auth screens on device/emulator for a bare content surface (status bar + page content only).
 
 ### Icons (required — MauiIcons.Material)
 

@@ -60,6 +60,8 @@ Welcome
 
 Offline explainer: one screen — “Works without internet. Saves on this device. Syncs when you’re back online.”
 
+**Mobile chrome:** Pre-shell screens are outside the tab shell visually — **no Shell nav title bar, no tab bar**. Brand + in-page title only. Never leave the default Shell “Sign in” / “Register” title strip visible above the designed auth UI.
+
 ### Mobile screen inventory
 
 | Area | Screens |
