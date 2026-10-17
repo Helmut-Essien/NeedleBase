@@ -1,0 +1,5 @@
+{
+  "dotnet.defaultSolution": "NeedleBase.sln",
+  "maui.configuration.useLaunchJsonConfigurations": true,
+  "maui.configuration.disableNonStartupProjectLaunchConfigurationWarning": true
+}

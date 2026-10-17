@@ -1,0 +1,70 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Api (Development)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-api",
+      "program": "${workspaceFolder}/src/NeedleBase.Api/bin/Debug/net9.0/NeedleBase.Api.dll",
+      "cwd": "${workspaceFolder}/src/NeedleBase.Api",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "launchSettingsFilePath": "${workspaceFolder}/src/NeedleBase.Api/Properties/launchSettings.json",
+      "launchSettingsProfile": "http",
+      "postDebugTask": "api: stop",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://127.0.0.1:5036"
+      }
+    },
+    {
+      "name": "Web (Development)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build-web",
+      "program": "${workspaceFolder}/src/NeedleBase.Web/bin/Debug/net9.0/NeedleBase.Web.dll",
+      "cwd": "${workspaceFolder}/src/NeedleBase.Web",
+      "stopAtEntry": false,
+      "console": "integratedTerminal",
+      "launchSettingsFilePath": "${workspaceFolder}/src/NeedleBase.Web/Properties/launchSettings.json",
+      "launchSettingsProfile": "http",
+      "postDebugTask": "web: stop",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ASPNETCORE_URLS": "http://localhost:5272"
+      }
+    },
+    {
+      "name": "Mobile (Android)",
+      "type": "maui",
+      "request": "launch",
+      "preLaunchTask": "maui: Build",
+      "postDebugTask": "mobile: stop",
+      "project": "NeedleBase.Mobile",
+      "configuration": "Debug",
+      "targetFramework": "net9.0-android",
+      "device": "R3CX80J9TFR",
+      "connectionType": "usb"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "NeedleBase (Api + Mobile)",
+      "configurations": [
+        "Api (Development)",
+        "Mobile (Android)"
+      ],
+      "preLaunchTask": "api-mobile-preflight",
+      "stopAll": true
+    },
+    {
+      "name": "NeedleBase (Api + Web)",
+      "configurations": [
+        "Api (Development)",
+        "Web (Development)"
+      ],
+      "stopAll": true
+    }
+  ]
+}

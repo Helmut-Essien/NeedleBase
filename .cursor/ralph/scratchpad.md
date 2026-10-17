@@ -1,7 +1,7 @@
 ---
-iteration: 8
+iteration: 4
 max_iterations: 10
-completion_promise: "REVIEWS_CLEAN"
+completion_promise: "ALL_REVIEWS_CLEAN"
 ---
 
-REVIEWS_CLEAN — Bugbot, Security, Senior, UI/UX all clean after iterations 5–8.
+Splash-screen review loop complete. All four reviews clean (Bugbot, Security, Senior Developer, UI/UX). See REVIEW_LOG.md.

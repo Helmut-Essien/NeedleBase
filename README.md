@@ -169,10 +169,20 @@ Do **not** add Mediator, Redis, or other infra “for later” without a measure
 ## Prerequisites
 
 - .NET 9 SDK
+- Docker (for local Postgres via `docker compose`)
 - For mobile: `maui-android` workload (`dotnet workload install maui-android`)
-- PostgreSQL (local or Docker) — required from Slice 1 onward
 
-## Restore / build / test
+## Local development
+
+### 1. Database
+
+```bash
+docker compose up -d
+```
+
+Postgres: `localhost:5435`, database `NeedleBase`, user `needlebase`, password `needlebase_dev` (Development defaults in `appsettings.Development.json` — same pattern as ClaimBase).
+
+### 2. Restore / build / test
 
 ```bash
 dotnet restore NeedleBase.sln
@@ -180,36 +190,51 @@ dotnet build NeedleBase.sln
 dotnet test NeedleBase.sln
 ```
 
-## Run Api + Web (separate processes)
+### 3. Run from CLI
 
 ```bash
-dotnet run --project src/NeedleBase.Api --launch-profile https
-dotnet run --project src/NeedleBase.Web --launch-profile https
+dotnet run --project src/NeedleBase.Api --launch-profile http
+dotnet run --project src/NeedleBase.Web --launch-profile http
 ```
 
-| App | HTTPS (dev) | Health |
-|-----|-------------|--------|
-| Api | https://localhost:7079 | `/health/live`, `/health/ready` (DB) |
-| Web | https://localhost:7049 | Home page probes Api `/health/live` |
+| App | Development URL | Health |
+|-----|-----------------|--------|
+| Api | http://127.0.0.1:5036 | `/health/live`, `/health/ready` (DB) |
+| Web | http://localhost:5272 | Home page probes Api `/health/live` |
 
 Mobile ping: `GET /api/test/ping`
 
-### Secrets (never commit)
+### 4. Cursor / VS Code debug (ClaimBase-style)
 
-| Setting | Where | Notes |
-|---------|--------|--------|
-| `ConnectionStrings:DefaultConnection` | Api user secrets / env | Empty in committed appsettings; never commit passwords |
-| `JwtSettings:SecurityKey` | Api user secrets / env | Min 32 characters; required at startup; never commit |
-| `Api:BaseUrl` | Web `appsettings.Development.json` or user secrets | Web **fails startup** if missing |
-| `FrontendBaseUrl` | Api config | Used for email links later — no hardcoded hosts |
+| Launch config | What it starts |
+|---------------|----------------|
+| **NeedleBase (Api + Mobile)** | Compound: preflight (Postgres + `adb reverse` + free `:5036`) → debug **Api** (`coreclr`) + **Mobile** (`maui` with stock `maui: Build`, device `R3CX80J9TFR`). Stop (`stopAll`) runs `api: stop` + `mobile: stop` |
+| **NeedleBase (Api + Web)** | Api + Web compound (`stopAll`) |
+| **Api (Development)** | Api alone with breakpoints (`console` + `api: stop`) |
+| **Web (Development)** | Web alone |
+| **Mobile (Android)** | MAUI only (`preLaunchTask` must stay exactly `maui: Build`) |
 
-```bash
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=NeedleBase;Username=postgres;Password=..." --project src/NeedleBase.Api
-dotnet user-secrets set "JwtSettings:SecurityKey" "your-long-dev-security-key-here!!!!" --project src/NeedleBase.Api
-dotnet user-secrets set "Api:BaseUrl" "https://localhost:7079" --project src/NeedleBase.Web
-```
+Phone USB debug:
 
-Environment variables also work (`ConnectionStrings__DefaultConnection`, `JwtSettings__SecurityKey`, `Api__BaseUrl`).
+1. Enable Developer options + USB debugging; connect the phone (`adb devices`).
+2. Status bar → **NeedleBase.Mobile** / `net9.0-android` / your phone (launch.json also pins `R3CX80J9TFR`).
+3. Run and Debug → **NeedleBase (Api + Mobile)** → Start Debugging.
+4. Optional check: `bash .vscode/ide-f5-verify.sh` (validates launch.json contract + start/stay/stop on the phone).
+
+Mobile DEBUG uses `http://127.0.0.1:5036/` via `adb reverse`.
+
+Do **not** change Mobile’s `preLaunchTask` away from `maui: Build` — the MAUI extension will not deploy otherwise.
+
+### Configuration
+
+| Setting | Development default |
+|---------|---------------------|
+| Postgres | `localhost:5435`, db `NeedleBase`, user `needlebase` |
+| Api | `http://127.0.0.1:5036` |
+| Web → Api | `Api:BaseUrl` = `http://127.0.0.1:5036` |
+| JWT key | Development key in Api `appsettings.Development.json` only |
+
+Override with user secrets / env when needed (`ConnectionStrings__DefaultConnection`, `JwtSettings__SecurityKey`, `Api__BaseUrl`). Do not use Development keys in Production.
 
 ### Auth endpoints (Slice 1)
 
@@ -225,3 +250,12 @@ Mobile may send `X-Auth-Token: Bearer …` instead of `Authorization` (mapped on
 **BusinessId tenancy:** `ApplicationDbContext` uses **global query filters** on `IBusinessScoped` entities when `CurrentBusinessId` is set from JWT by `BusinessTenancyMiddleware`. Auth/bootstrap paths clear the filter by leaving it null.
 
 **Migrations:** Development auto-applies `dotnet ef` migrations on Api startup. Prefer explicit `dotnet ef database update` in CI/Production.
+
+**Development seed:** On Api startup in Development (when `Seed:DevelopmentData` is true), sample Ama Stitches data is inserted if missing:
+
+| Account | Email | Password | Role |
+|---------|-------|----------|------|
+| Ama Owusu | `ama@amastitches.dev` | `DevPass1!` | Owner |
+| Kofi Asante | `kofi@amastitches.dev` | `DevPass1!` | Tailor |
+
+Also seeds customers (Efua Mensah, Kwame Boateng) with sample measurements. Disable with `"Seed": { "DevelopmentData": false }`.

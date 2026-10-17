@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: needlebase
+      POSTGRES_PASSWORD: needlebase_dev
+      POSTGRES_DB: NeedleBase
+    ports:
+      - "5435:5432"
+    volumes:
+      - needlebase_pg:/var/lib/postgresql/data
+
+volumes:
+  needlebase_pg:

@@ -10,13 +10,6 @@
     FlyoutBehavior="Disabled">
 
     <ShellContent
-        Title="Splash"
-        Route="SplashPage"
-        ContentTemplate="{DataTemplate views:SplashPage}"
-        FlyoutItemIsVisible="False"
-        Shell.TabBarIsVisible="False" />
-
-    <ShellContent
         Title="Sign in"
         Route="LoginPage"
         ContentTemplate="{DataTemplate views:LoginPage}"

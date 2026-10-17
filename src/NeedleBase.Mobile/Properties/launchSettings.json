@@ -1,8 +1,12 @@
 {
+  "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "Windows Machine": {
+    "Android Device": {
       "commandName": "Project",
-      "nativeDebugging": false
+      "commandLineArgs": "",
+      "environmentVariables": {
+        "DOTNET_MODIFIABLE_ASSEMBLIES": "debug"
+      }
     }
   }
 }

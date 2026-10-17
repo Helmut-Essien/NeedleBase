@@ -28,11 +28,14 @@ public static class MauiProgram
 
         builder.Services.Configure<ApiSettings>(options =>
         {
-            // Android emulator → host machine. Override in appsettings / preferences later.
-#if ANDROID
+            // DEBUG Android: loopback + `adb reverse tcp:5036 tcp:5036` (NeedleBase Api + Mobile).
+            // Emulator without reverse: use http://10.0.2.2:5036/ instead.
+#if ANDROID && DEBUG
+            options.BaseUrl = "http://localhost:5036/";
+#elif ANDROID
             options.BaseUrl = "https://10.0.2.2:7079/";
 #else
-            options.BaseUrl = "https://localhost:7079/";
+            options.BaseUrl = "http://localhost:5036/";
 #endif
         });
 
@@ -55,8 +58,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<ILocalDatabaseService, LocalDatabaseService>();
         builder.Services.AddSingleton<ICustomerLocalService, CustomerLocalService>();
         builder.Services.AddSingleton<IMeasurementLocalService, MeasurementLocalService>();
+        builder.Services.AddSingleton<AppStartupService>();
 
-        builder.Services.AddTransient<SplashViewModel>();
         builder.Services.AddTransient<LoginViewModel>();
         builder.Services.AddTransient<RegisterViewModel>();
         builder.Services.AddSingleton<HomeViewModel>();
@@ -65,7 +68,6 @@ public static class MauiProgram
         builder.Services.AddTransient<CustomerDetailViewModel>();
         builder.Services.AddTransient<MeasurementEditViewModel>();
 
-        builder.Services.AddTransient<SplashPage>();
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<RegisterPage>();
         builder.Services.AddSingleton<HomePage>();

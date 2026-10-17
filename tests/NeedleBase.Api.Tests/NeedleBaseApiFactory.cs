@@ -17,7 +17,7 @@ public sealed class NeedleBaseApiFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable(
             "ConnectionStrings__DefaultConnection",
             Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Port=5432;Database=NeedleBase;Username=postgres;Password=postgres");
+            ?? "Host=localhost;Port=5435;Database=NeedleBase;Username=needlebase;Password=needlebase_dev");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -26,7 +26,7 @@ public sealed class NeedleBaseApiFactory : WebApplicationFactory<Program>
         builder.UseSetting(
             "ConnectionStrings:DefaultConnection",
             Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Port=5432;Database=NeedleBase;Username=postgres;Password=postgres");
+            ?? "Host=localhost;Port=5435;Database=NeedleBase;Username=needlebase;Password=needlebase_dev");
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
@@ -34,12 +34,13 @@ public sealed class NeedleBaseApiFactory : WebApplicationFactory<Program>
             {
                 ["ConnectionStrings:DefaultConnection"] =
                     Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-                    ?? "Host=localhost;Port=5432;Database=NeedleBase;Username=postgres;Password=postgres",
+                    ?? "Host=localhost;Port=5435;Database=NeedleBase;Username=needlebase;Password=needlebase_dev",
                 ["JwtSettings:SecurityKey"] = TestJwtKey,
                 ["JwtSettings:Issuer"] = "NeedleBaseApi",
                 ["JwtSettings:Audience"] = "NeedleBaseClient",
                 ["JwtSettings:AccessTokenExpirationMinutes"] = "60",
-                ["JwtSettings:RefreshTokenExpirationDays"] = "7"
+                ["JwtSettings:RefreshTokenExpirationDays"] = "7",
+                ["Seed:DevelopmentData"] = "false"
             });
         });
     }

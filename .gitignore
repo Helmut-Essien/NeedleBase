@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Local F5 Api process files
+.vscode/api-dev.log
+.vscode/api-dev.pid

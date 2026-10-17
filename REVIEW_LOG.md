@@ -1,145 +1,100 @@
-# Slice 2 review log
+# REVIEW_LOG — Splash screen slice
 
 ## Iteration 1
 
+**Reviews run:** Bugbot, Security, Senior Developer, UI/UX
+
 ### Findings fixed
-| Severity | Source | Fix |
-|----------|--------|-----|
-| High | Bugbot: splash without business_id | Splash requires `GetBusinessIdAsync()` before main |
-| High | Senior: EnsureCreated failure swallowed | DB init failure stops navigation |
-| High | Senior: idempotent create race/cross-tenant | `IgnoreQueryFilters` + 409 Conflict |
-| Medium | Security: PII after logout | `ILocalDatabaseService.WipeAsync` before logout |
-| Medium | Bugbot: stale customer detail | `OnAppearing` reloads detail |
-| Medium | Bugbot: edit resets MeasuredAtUtc | Preserve original date on edit |
-| Medium | Bugbot: sort by Id | Client-side sort by `MeasuredAtUtc` |
-| Medium | Senior: empty list vs missing customer | Measurements list → 404 |
-| Medium | Senior: cascade delete load | Rely on FK cascade |
-| Medium | Senior: no idempotent test | Added API + local tests |
-| Medium | Senior: unbounded measurement list | Cap after sort |
-| Medium | Senior: load without try/catch | Error messages on load failure |
-| High | UI/UX suite | CanSubmit, SemanticProperties, placeholders, BindableLayout, unit UX, empty CTAs, sync-later copy |
+
+| Severity | Source | Location | Fix |
+|----------|--------|----------|-----|
+| High | Bugbot | `SplashPage.xaml.cs` OnAppearing | One-shot `_startupInProgress` / `_startupCompleted` latch to block overlapping auth/nav |
+| Medium | Bugbot | `SplashPage.xaml.cs` EnsureCreated | Dedicated DB failure alert; do not route to login masking storage failures |
+| Medium | Senior Dev | `SplashViewModel.cs` | Removed dead ViewModel (unused bindings) |
+| Medium | UI/UX | Splash stuck after “Stay here” | Visible “Try again” button + semantic description update |
+| Low | Senior Dev / UI/UX | Dot animation | Catch dispose during nav; honor Android animator scale = 0 |
+| Low | UI/UX | Splash a11y | Page/logo/dots/retry AutomationId + SemanticProperties |
 
 ### Findings dismissed
-| Finding | Reason |
-|---------|--------|
-| AppShell tab icons all `dotnet_bot.png` | No distinct icon assets yet (product/design) |
-| EnsureCreated never upgrades schema | Slice 4 migrations |
-| API create-by-id ignores body vs mobile upsert | Intentional sync semantics |
-| SQLCipher at rest | MVP residual; logout wipe addresses handoff |
+
+| Source | Item | Reason |
+|--------|------|--------|
+| Security | DEBUG cleartext HTTP | Dev-only `#if DEBUG`; Release keeps HTTPS — no production exploit path |
+| Security | Optional OnAppearing guard | Addressed as Bugbot High above |
+| Senior Dev | Always RefreshAsync (no expiry check) | NeedleBase has no `IsTokenExpired`; offline-honest refresh is intentional product rule |
+| UI/UX | Parent Helmut logo vs NeedleBase product logo | Explicit product request: splash uses parent-company logo |
+
+### Remaining open
+
+None for iteration 1 — proceeded to iteration 2.
 
 ---
 
 ## Iteration 2
 
+**Reviews run:** Bugbot, Security, Senior Developer, UI/UX
+
 ### Findings fixed
-| Severity | Source | Fix |
-|----------|--------|-----|
-| Medium | Bugbot/Senior: Take before OrderBy | Order then Take(100) |
-| High | Senior: flaky idempotent test | `IdGenerator.NewId()` per run |
-| Medium | UI/UX: sticky HasError | NotifyPropertyChangedFor |
-| Medium | UI/UX: EmptyView CTA while busy | `ShowEmptyAdd` / `ShowEmptyMeasurements` |
-| Low | CanSubmit hide warning | Removed Login/Register duplicates |
+
+| Severity | Source | Location | Fix |
+|----------|--------|----------|-----|
+| Medium | Bugbot | `NavigateAwayAsync` | Set `_startupCompleted` only after successful `navigate()` so Try again works if nav throws |
+| Low | Senior Dev | Dot animation | Generation counter so retries do not stack overlapping FadeTo loops |
+| Low | UI/UX | Stuck → Retry | Reset semantic description to “NeedleBase is starting” when startup restarts |
 
 ### Findings dismissed
-| Finding | Reason |
-|---------|--------|
-| Wipe on login/register | Residual defense-in-depth; logout wipe + BusinessId filter sufficient |
-| Dedicated test DB | Unique ULIDs fix conflict on shared DB |
 
----
-
-## Iteration 3–4
-
-### Findings fixed
-| Severity | Source | Fix |
-|----------|--------|-----|
-| High | Bugbot: singleton VM PII after logout | `ClearSessionState` on logout |
-| High | Bugbot: in-flight LoadAsync after logout | `_loadGeneration` guards + businessId re-check |
-| Medium | UI/UX: garment key vs display name | `GarmentTemplateDisplay` |
-| Medium | UI/UX: fields editable during save | Snapshot then `SetFieldsEnabled(false)` |
-| Medium | Senior: stuck RefreshView spinner | Clear `IsRefreshing` when `IsBusy` |
-
-### Final suite status (iteration 4+)
-| Review | Status |
-|--------|--------|
-| Bugbot | CLEAN (no actionable High/Medium; validator discarded residual noise) |
-| Security | CLEAN (medium+) |
-| Senior Developer | CLEAN |
-| UI/UX | CLEAN |
-
-### Residual notes (human awareness)
-- Tab icons still placeholder (`dotnet_bot.png`) until assets arrive — recipe now in `.cursor/skills/needlebase-mobile/tab-icons.md` (AssetTag SVG MauiImage pattern).
-- Mobile DB still `EnsureCreated` until Slice 4 migrations.
-- Login/register without SQLite wipe: in-app reads scoped by BusinessId; explicit logout wipes. Optional later: wipe-on-tenant-change at login.
-- Prefer dedicated test DB in CI for isolation (process note).
-
----
-
-## Iteration 5 (MauiIcons + Shell Tab restructure)
-
-### Findings fixed
-| Severity | Source | Fix |
-|----------|--------|-----|
-| High | Bugbot: ShowLoginAsync leaves tab stacks | `NavigationService` dismisses modals + pops each `//main/*` tab to root before login |
-| High | Bugbot: detail page stale PII | `CustomerDetailViewModel.ClearCustomerFields` before load / on error |
-| High | Bugbot: edit init race | Init from `ApplyQueryAttributes`; OnAppearing only `InitializeIfPendingAsync` after Yield |
-| Medium | UI/UX: placeholder tabs no icons | MauiIcon on Orders/Payments/More placeholders |
-| Low | UI/UX: Add affordance / chevron a11y | PersonAdd on Add button; decorative chevron description cleared |
-
-### Findings dismissed
-| Finding | Reason |
-|---------|--------|
-| Security medium+ | Clean — MauiIcons font package only; tenancy unchanged |
-| Tab PNG placeholders | Superseded — MauiIcons.Material implemented |
+| Source | Item | Reason |
+|--------|------|--------|
+| Security | (all) | No medium+ issues; prior dismissals still hold |
+| Senior Dev | `SetDecorFitsSystemWindows(false)` | Matches AssetTag splash status-bar pattern; not a splash-slice defect |
+| UI/UX | splash.svg binary size | Required parent-company logo asset parity with AssetTag |
 
 ### Remaining open
-- Re-run Bugbot / Security / Senior / UI/UX on updated slice (iteration 6).
+
+None for iteration 2 — proceeded to iteration 3.
 
 ---
 
-## Iteration 6
+## Iteration 3
+
+**Reviews run:** Bugbot, Security, Senior Developer, UI/UX
 
 ### Findings fixed
-| Severity | Source | Fix |
-|----------|--------|-----|
-| Medium | Security: singleton PII on session-expiry login | `NavigationService.ShowLoginAsync` always calls `CustomersViewModel.ClearSessionState` |
-| High | Bugbot: save during measurement load wipes fields | Edit init sets `IsBusy` + `_readyToSave`; Save gated until load completes |
-| Medium | Senior: edit customer save during load | `CustomerEditViewModel` sets `IsBusy` while fetching |
+
+| Severity | Source | Location | Fix |
+|----------|--------|----------|-----|
+| Medium | Bugbot (validator-removed but verified) | `OnAppearing` after Stay here | `_awaitingUserRetry` blocks auto-restart; only Try again clears it |
 
 ### Findings dismissed
-| Finding | Reason |
-|---------|--------|
-| Bugbot iter 6 (main pass) | CLEAN — prior Highs resolved |
+
+| Source | Item | Reason |
+|--------|------|--------|
+| Security | (all) | Clean — no medium+ issues |
+| Bugbot validator removal | Same Stay-here finding | Validator deferred it; verified against code and fixed anyway |
 
 ### Remaining open
-- Re-run full suite (iteration 7) for clean confirmation.
+
+None for iteration 3 — proceeded to iteration 4.
 
 ---
 
-## Iteration 7–8
+## Iteration 4
+
+**Reviews run:** Bugbot, Security, Senior Developer, UI/UX
 
 ### Findings fixed
-| Severity | Source | Fix |
-|----------|--------|-----|
-| High | Bugbot: Save enabled after failed measurement load | `ReadyToSave` + `CanSave`; form stays locked; Save bound to `CanSave` |
-| Medium | Senior: IsBusy → derived CanSave/ShowEmpty* | `BaseViewModel.OnBusyChanged` virtual hook |
+
+None — all four reviews clean.
 
 ### Findings dismissed
-| Finding | Reason |
-|---------|--------|
-| CustomerDetail lacks `_loadGeneration` | Transient page; stacks popped on login; `ClearCustomerFields` + null `businessId` abort; validator discarded |
-| SQLCipher / login without wipe | Documented MVP residuals; logout wipe + BusinessId scoping |
 
-### Final suite status
-| Review | Status |
-|--------|--------|
-| Bugbot | CLEAN (incl. MeasurementEdit CanSave / NavigationService) |
-| Security | CLEAN (medium+) |
-| Senior Developer | CLEAN |
-| UI/UX | CLEAN (MauiIcons tabs + empty states; CanSave UX) |
+| Source | Item | Reason |
+|--------|------|--------|
+| Bugbot | splash.svg omitted from automated review | Binary/SVG asset copied from AssetTag parent logo by design; no logic surface |
+| Senior Dev | No automated unit tests for SplashPage | Code-behind + MAUI lifecycle; would need device/UI harness — residual note, not a defect in this slice |
+| UI/UX | Continuous dots vs skeleton | Matches AssetTag splash pattern; reduced-motion path present |
 
-### Residual notes (human awareness)
-- Mobile DB still `EnsureCreated` until Slice 4 migrations.
-- Unencrypted SQLite at rest — logout wipe mitigates shared-device handoff.
-- Login/register without SQLite wipe: reads scoped by BusinessId; `ShowLoginAsync` clears singleton VM PII.
-- Prefer dedicated test DB in CI for isolation.
+### Remaining open
+
+**None.** Loop complete: Bugbot, Security, Senior Developer, and UI/UX report zero actionable findings.

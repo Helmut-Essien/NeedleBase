@@ -44,11 +44,6 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-
-    // Explicit migrate in Development for local DX; Production should use CI/dotnet ef.
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await db.Database.MigrateAsync();
 }
 else
 {
@@ -65,9 +60,9 @@ else
         });
     });
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
 app.UseRateLimiter();
 
 // Map mobile X-Auth-Token → Authorization (must run before authentication).
@@ -100,7 +95,27 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 
 app.MapControllers();
 
-app.Run();
+// Listen first so Api + Mobile launch prep can detect readiness; then migrate/seed.
+await app.StartAsync();
+
+if (app.Environment.IsDevelopment())
+{
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await db.Database.MigrateAsync();
+        await DevelopmentDataSeeder.SeedAsync(scope.ServiceProvider);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(
+            ex,
+            "Development migrate/seed failed. Api is listening, but DB features will not work until PostgreSQL is reachable.");
+    }
+}
+
+await app.WaitForShutdownAsync();
 
 static Task WriteMinimalHealthResponse(HttpContext context, HealthReport report)
 {
