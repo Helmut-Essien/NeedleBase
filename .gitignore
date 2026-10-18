@@ -364,3 +364,6 @@ FodyWeavers.xsd
 # Local F5 Api process files
 .vscode/api-dev.log
 .vscode/api-dev.pid
+.vscode/api-mobile.log
+.vscode/.adb-device
+.vscode/needlebase.local.env

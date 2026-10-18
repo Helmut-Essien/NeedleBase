@@ -208,20 +208,21 @@ Mobile ping: `GET /api/test/ping`
 
 | Launch config | What it starts |
 |---------------|----------------|
-| **NeedleBase (Api + Mobile)** | Compound: preflight (Postgres + `adb reverse` + free `:5036`) → debug **Api** (`coreclr`) + **Mobile** (`maui` with stock `maui: Build`, device `R3CX80J9TFR`). Stop (`stopAll`) runs `api: stop` + `mobile: stop` |
+| **NeedleBase (Api + Mobile USB)** | Compound: preflight (Postgres + `adb reverse` on the single connected USB phone + free `:5036`) → debug **Api** (`coreclr`) + **Mobile (Android USB)** (`maui` with stock `maui: Build`; no serial is pinned, so it deploys to the phone selected in the status bar). Preflight fails if an emulator is also ready (prevents reverse/deploy mismatch). Stop (`stopAll`) runs `api: stop` + `mobile: stop` |
+| **NeedleBase (Api + Mobile Emulator)** | Same compound for `Pixel_7_API35` / `emulator-5554` (auto-starts AVD when the pin is absent; fails fast if any other emulator is listed while the pin is missing, or if other ready emulators exist while the pin is not `device`; longer adb wait) |
 | **NeedleBase (Api + Web)** | Api + Web compound (`stopAll`) |
 | **Api (Development)** | Api alone with breakpoints (`console` + `api: stop`) |
 | **Web (Development)** | Web alone |
-| **Mobile (Android)** | MAUI only (`preLaunchTask` must stay exactly `maui: Build`) |
+| **Mobile (Android USB)** / **Mobile (Android Emulator)** | MAUI only (`preLaunchTask` must stay exactly `maui: Build`) |
 
 Phone USB debug:
 
 1. Enable Developer options + USB debugging; connect the phone (`adb devices`).
-2. Status bar → **NeedleBase.Mobile** / `net9.0-android` / your phone (launch.json also pins `R3CX80J9TFR`).
-3. Run and Debug → **NeedleBase (Api + Mobile)** → Start Debugging.
-4. Optional check: `bash .vscode/ide-f5-verify.sh` (validates launch.json contract + start/stay/stop on the phone).
+2. Status bar → **NeedleBase.Mobile** / `net9.0-android` / your phone. The USB launch pins no serial: preflight requires **exactly one** ready USB phone and **no** ready emulator (otherwise reverse and status-bar deploy can diverge). Stop extras or use **Api + Mobile Emulator**. Optional gitignored `.vscode/needlebase.local.env` can set `NEEDLEBASE_DEVICE` / other `NEEDLEBASE_*` for scripts and `ide-f5-verify.sh` (integrated-terminal `export` does **not** reach VS Code tasks). Only the emulator launch still pins `emulator-5554`.
+3. Run and Debug → **NeedleBase (Api + Mobile USB)** → Start Debugging (or **Api + Mobile Emulator** without a phone). Prefer the compounds: they run preflight (`adb reverse`). Standalone **Mobile (Android USB/Emulator)** keeps `preLaunchTask` = `maui: Build` (MAUI requirement) and does **not** set reverse by itself.
+4. Optional check: `bash .vscode/ide-f5-verify.sh` (validates launch.json contract + runs the real `api-mobile-preflight.sh` + start/stay/stop on the phone).
 
-Mobile DEBUG uses `http://127.0.0.1:5036/` via `adb reverse`.
+Compound Mobile DEBUG uses `http://127.0.0.1:5036/` via `adb reverse` from preflight.
 
 Do **not** change Mobile’s `preLaunchTask` away from `maui: Build` — the MAUI extension will not deploy otherwise.
 

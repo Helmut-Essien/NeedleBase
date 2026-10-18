@@ -17,10 +17,13 @@
       }
     },
     {
-      "label": "adb-reverse-api",
+      "label": "adb-reverse-api-usb",
       "type": "shell",
       "command": "bash",
-      "args": [".vscode/adb-reverse-api.sh"],
+      "args": [
+        ".vscode/adb-reverse-api.sh",
+        "usb"
+      ],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -99,7 +102,10 @@
       "label": "api: stop",
       "type": "shell",
       "command": "bash",
-      "args": [".vscode/stop-listener.sh", "5036"],
+      "args": [
+        ".vscode/stop-listener.sh",
+        "5036"
+      ],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -114,7 +120,9 @@
       "label": "mobile: stop",
       "type": "shell",
       "command": "bash",
-      "args": [".vscode/mobile-stop.sh"],
+      "args": [
+        ".vscode/mobile-stop.sh"
+      ],
       "options": {
         "cwd": "${workspaceFolder}",
         "env": {
@@ -123,16 +131,19 @@
       },
       "problemMatcher": [],
       "presentation": {
-        "reveal": "silent",
+        "reveal": "always",
         "panel": "dedicated",
-        "close": true
+        "showReuseMessage": false,
+        "close": false
       }
     },
     {
       "label": "api-mobile: stop",
       "type": "shell",
       "command": "bash",
-      "args": [".vscode/api-mobile-stop.sh"],
+      "args": [
+        ".vscode/api-mobile-stop.sh"
+      ],
       "options": {
         "cwd": "${workspaceFolder}",
         "env": {
@@ -150,7 +161,10 @@
       "label": "web: stop",
       "type": "shell",
       "command": "bash",
-      "args": [".vscode/stop-listener.sh", "5272"],
+      "args": [
+        ".vscode/stop-listener.sh",
+        "5272"
+      ],
       "options": {
         "cwd": "${workspaceFolder}"
       },
@@ -164,20 +178,39 @@
     {
       "label": "api-mobile-preflight",
       "type": "shell",
-      "command": "true",
-      "dependsOrder": "sequence",
-      "dependsOn": [
-        "postgres",
-        "adb-reverse-api",
-        "api: stop"
+      "command": "bash",
+      "args": [
+        ".vscode/api-mobile-preflight.sh",
+        "usb"
       ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
       "problemMatcher": [],
       "presentation": {
-        "reveal": "silent",
+        "reveal": "always",
         "panel": "shared",
         "showReuseMessage": false,
-        "close": true,
-        "focus": false
+        "close": false
+      }
+    },
+    {
+      "label": "api-mobile-preflight-emulator",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        ".vscode/api-mobile-preflight.sh",
+        "emulator"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": false,
+        "close": false
       }
     }
   ]

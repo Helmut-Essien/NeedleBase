@@ -1,21 +1,33 @@
 #!/usr/bin/env bash
-# Verifies the IDE launch.json contract for NeedleBase (Api + Mobile):
-# - compound exists with Api + Mobile
+# Verifies the IDE launch.json contract for NeedleBase (Api + Mobile USB/Emulator):
+# - USB + Emulator compounds exist with correct preLaunchTask / stopAll
 # - Mobile preLaunchTask is exactly "maui: Build" (required by MAUI extension)
 # - then runs the same preflight / build-api / Api DLL / Mobile Run / stop tasks
-#   that those launch entries point at, against the connected phone.
+#   that the USB launch entries point at, against the connected phone.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 export PATH="${HOME}/Android/Sdk/platform-tools:${PATH}"
 
+LOCAL_ENV="$ROOT/.vscode/needlebase.local.env"
+if [ -f "$LOCAL_ENV" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "$LOCAL_ENV"
+  set +a
+fi
+
 LAUNCH="$ROOT/.vscode/launch.json"
-DEVICE="${NEEDLEBASE_DEVICE:-R3CX80J9TFR}"
+# USB launch pins no MAUI serial. After preflight, deploy uses .adb-device
+# (the reverse target). NEEDLEBASE_DEVICE / local.env only influence preflight
+# when exactly one phone is connected.
+DEVICE=""
 API_DLL="$ROOT/src/NeedleBase.Api/bin/Debug/net9.0/NeedleBase.Api.dll"
 API_CWD="$ROOT/src/NeedleBase.Api"
 PIDFILE="$ROOT/.vscode/api-dev.pid"
 LOG="$ROOT/.vscode/api-dev.log"
+DEVICE_FILE="$ROOT/.vscode/.adb-device"
 
 python3 - <<'PY'
 import json, sys
@@ -24,11 +36,17 @@ launch = json.loads(Path(".vscode/launch.json").read_text())
 configs = {c["name"]: c for c in launch["configurations"]}
 compounds = {c["name"]: c for c in launch.get("compounds", [])}
 
-compound = compounds.get("NeedleBase (Api + Mobile)")
-assert compound, "missing compound NeedleBase (Api + Mobile)"
-assert compound.get("configurations") == ["Api (Development)", "Mobile (Android)"], compound
+compound = compounds.get("NeedleBase (Api + Mobile USB)")
+assert compound, "missing compound NeedleBase (Api + Mobile USB)"
+assert compound.get("configurations") == ["Api (Development)", "Mobile (Android USB)"], compound
 assert compound.get("preLaunchTask") == "api-mobile-preflight", compound
 assert compound.get("stopAll") is True
+
+emu_compound = compounds.get("NeedleBase (Api + Mobile Emulator)")
+assert emu_compound, "missing compound NeedleBase (Api + Mobile Emulator)"
+assert emu_compound.get("configurations") == ["Api (Development)", "Mobile (Android Emulator)"], emu_compound
+assert emu_compound.get("preLaunchTask") == "api-mobile-preflight-emulator", emu_compound
+assert emu_compound.get("stopAll") is True
 
 api = configs["Api (Development)"]
 assert api["type"] == "coreclr"
@@ -37,27 +55,44 @@ assert api["postDebugTask"] == "api: stop"
 assert api["program"].endswith("NeedleBase.Api.dll")
 assert api["env"]["ASPNETCORE_URLS"] == "http://127.0.0.1:5036"
 
-mobile = configs["Mobile (Android)"]
+mobile = configs["Mobile (Android USB)"]
 assert mobile["type"] == "maui"
 assert mobile["preLaunchTask"] == "maui: Build", (
     "MAUI extension requires preLaunchTask exactly 'maui: Build'; got %r" % mobile.get("preLaunchTask")
 )
 assert mobile["postDebugTask"] == "mobile: stop"
 assert mobile.get("targetFramework") == "net9.0-android"
-assert mobile.get("device") == "R3CX80J9TFR"
+assert mobile.get("project", "").endswith("src/NeedleBase.Mobile/NeedleBase.Mobile.csproj"), mobile.get("project")
+assert "device" not in mobile, "USB launch must not pin a serial; it uses the single connected phone"
 assert mobile.get("connectionType") == "usb"
+
+emu = configs["Mobile (Android Emulator)"]
+assert emu["type"] == "maui"
+assert emu.get("device") == "emulator-5554"
+assert emu.get("targetFramework") == "net9.0-android"
+assert emu.get("project", "").endswith("src/NeedleBase.Mobile/NeedleBase.Mobile.csproj"), emu.get("project")
+assert emu["preLaunchTask"] == "maui: Build", (
+    "MAUI extension requires preLaunchTask exactly 'maui: Build'; got %r" % emu.get("preLaunchTask")
+)
+assert emu["postDebugTask"] == "mobile: stop"
+assert emu.get("connectionType") == "usb"
 print("launch.json contract OK")
 PY
 
-echo "===== device ====="
-adb start-server >/dev/null
-adb devices -l
-adb -s "$DEVICE" get-state | grep -qx device
-
 echo "===== compound preLaunch: api-mobile-preflight ====="
-docker compose up -d
-bash .vscode/adb-reverse-api.sh
-bash .vscode/stop-listener.sh 5036
+bash .vscode/api-mobile-preflight.sh usb
+
+echo "===== device (must match preflight reverse target) ====="
+adb devices -l
+if [ -f "$DEVICE_FILE" ]; then
+  DEVICE="$(tr -d '[:space:]' <"$DEVICE_FILE" || true)"
+fi
+if [ -z "$DEVICE" ]; then
+  DEVICE="$(adb devices | awk 'NR>1 && $2=="device" && $1 !~ /^emulator-/ {print $1}')"
+  [ "$(printf '%s' "$DEVICE" | grep -c .)" -eq 1 ] || { echo "Expected exactly one ready USB phone and no emulator (disconnect extras, then re-run preflight)"; exit 1; }
+fi
+echo "Using USB device: $DEVICE"
+adb -s "$DEVICE" get-state | grep -qx device
 
 echo "===== Api preLaunch: build-api ====="
 dotnet build "$ROOT/src/NeedleBase.Api/NeedleBase.Api.csproj" --configuration Debug -v q

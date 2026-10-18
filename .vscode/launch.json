@@ -33,27 +33,43 @@
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ASPNETCORE_URLS": "http://localhost:5272"
+      },
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+        "uriFormat": "%s"
       }
     },
     {
-      "name": "Mobile (Android)",
+      "name": "Mobile (Android USB)",
       "type": "maui",
       "request": "launch",
       "preLaunchTask": "maui: Build",
       "postDebugTask": "mobile: stop",
-      "project": "NeedleBase.Mobile",
+      "project": "/home/helmut/Documents/My Projects/NeedleBase/src/NeedleBase.Mobile/NeedleBase.Mobile.csproj",
       "configuration": "Debug",
       "targetFramework": "net9.0-android",
-      "device": "R3CX80J9TFR",
+      "connectionType": "usb"
+    },
+    {
+      "name": "Mobile (Android Emulator)",
+      "type": "maui",
+      "request": "launch",
+      "preLaunchTask": "maui: Build",
+      "postDebugTask": "mobile: stop",
+      "project": "/home/helmut/Documents/My Projects/NeedleBase/src/NeedleBase.Mobile/NeedleBase.Mobile.csproj",
+      "configuration": "Debug",
+      "targetFramework": "net9.0-android",
+      "device": "emulator-5554",
       "connectionType": "usb"
     }
   ],
   "compounds": [
     {
-      "name": "NeedleBase (Api + Mobile)",
+      "name": "NeedleBase (Api + Mobile USB)",
       "configurations": [
         "Api (Development)",
-        "Mobile (Android)"
+        "Mobile (Android USB)"
       ],
       "preLaunchTask": "api-mobile-preflight",
       "stopAll": true
@@ -64,6 +80,15 @@
         "Api (Development)",
         "Web (Development)"
       ],
+      "stopAll": true
+    },
+    {
+      "name": "NeedleBase (Api + Mobile Emulator)",
+      "configurations": [
+        "Api (Development)",
+        "Mobile (Android Emulator)"
+      ],
+      "preLaunchTask": "api-mobile-preflight-emulator",
       "stopAll": true
     }
   ]
