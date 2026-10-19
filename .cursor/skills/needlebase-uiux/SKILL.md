@@ -79,7 +79,7 @@ Concise, friendly, non-technical. Prefer: “Saved on this phone”, “Waiting 
 - Subscription banner dominating everyday work or blocking login
 - Staff invitations forced on solo onboarding
 - Claiming “synced to cloud” when only local save succeeded
-- **Shell/nav title bar on login/register (or other pre-shell auth)** — duplicate grey strip with “Sign in” / “Register” above the in-page heading; hide `Shell.NavBarIsVisible` (see [needlebase-mobile](../needlebase-mobile/SKILL.md))
+- **Shell/nav title bar on any mobile screen** — duplicate grey strip above in-page headings; hide `Shell.NavBarIsVisible` app-wide and use in-page Back on pushed pages (see [needlebase-mobile](../needlebase-mobile/SKILL.md))
 
 ## Output expectations
 

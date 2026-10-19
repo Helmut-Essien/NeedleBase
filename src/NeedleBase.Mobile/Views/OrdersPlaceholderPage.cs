@@ -8,6 +8,8 @@ public sealed class OrdersPlaceholderPage : ContentPage
     public OrdersPlaceholderPage()
     {
         Title = "Orders";
+        Shell.SetNavBarIsVisible(this, false);
+        NavigationPage.SetHasNavigationBar(this, false);
         BackgroundColor = ResolveColor("AppBackground", Colors.WhiteSmoke);
         Content = Build("Orders", "Order creation arrives in the next slice.", MaterialIcons.ReceiptLong);
     }
@@ -23,22 +25,25 @@ public sealed class OrdersPlaceholderPage : ContentPage
         };
         SemanticProperties.SetDescription(iconView, $"{title} placeholder");
 
+        var titleLabel = new Label
+        {
+            Text = title,
+            FontSize = 24,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = ResolveColor("Charcoal", Colors.Black),
+            HorizontalOptions = LayoutOptions.Center
+        };
+        SemanticProperties.SetHeadingLevel(titleLabel, SemanticHeadingLevel.Level1);
+
         return new VerticalStackLayout
         {
-            Padding = 24,
+            Padding = new Thickness(24, 40, 24, 24),
             Spacing = 12,
             VerticalOptions = LayoutOptions.Center,
             Children =
             {
                 iconView,
-                new Label
-                {
-                    Text = title,
-                    FontSize = 24,
-                    FontAttributes = FontAttributes.Bold,
-                    TextColor = ResolveColor("Charcoal", Colors.Black),
-                    HorizontalOptions = LayoutOptions.Center
-                },
+                titleLabel,
                 new Label
                 {
                     Text = message,
@@ -67,6 +72,8 @@ public sealed class PaymentsPlaceholderPage : ContentPage
     public PaymentsPlaceholderPage()
     {
         Title = "Payments";
+        Shell.SetNavBarIsVisible(this, false);
+        NavigationPage.SetHasNavigationBar(this, false);
         BackgroundColor = OrdersPlaceholderPage.ResolveColor("AppBackground", Colors.WhiteSmoke);
         Content = OrdersPlaceholderPage.Build(
             "Payments",
@@ -80,6 +87,8 @@ public sealed class MorePlaceholderPage : ContentPage
     public MorePlaceholderPage()
     {
         Title = "More";
+        Shell.SetNavBarIsVisible(this, false);
+        NavigationPage.SetHasNavigationBar(this, false);
         BackgroundColor = OrdersPlaceholderPage.ResolveColor("AppBackground", Colors.WhiteSmoke);
         Content = OrdersPlaceholderPage.Build(
             "More",

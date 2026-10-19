@@ -10,7 +10,7 @@
              BackgroundColor="{StaticResource AppBackground}">
 
     <ScrollView>
-        <VerticalStackLayout Padding="16,28" Spacing="0">
+        <VerticalStackLayout Padding="16,40,16,28" Spacing="0">
             <Image Source="needlebase_logo.png"
                    Aspect="AspectFit"
                    HeightRequest="100"

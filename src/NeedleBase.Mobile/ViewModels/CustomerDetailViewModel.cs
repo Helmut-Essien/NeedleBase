@@ -148,6 +148,9 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
     }
 
     [RelayCommand]
+    private async Task GoBackAsync() => await Shell.Current.GoToAsync("..");
+
+    [RelayCommand]
     private async Task EditAsync() =>
         await Shell.Current.GoToAsync($"CustomerEditPage?customerId={Uri.EscapeDataString(CustomerId)}");
 

@@ -7,10 +7,21 @@
              x:Class="NeedleBase.Mobile.Views.CustomerDetailPage"
              x:DataType="vm:CustomerDetailViewModel"
              Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
              BackgroundColor="{StaticResource AppBackground}">
 
-    <Grid RowDefinitions="Auto,*" Padding="16">
+    <Grid RowDefinitions="Auto,*" Padding="16,40,16,16">
         <VerticalStackLayout Grid.Row="0" Spacing="8" Margin="0,0,0,16">
+            <Button Text="Back"
+                    ImageSource="{mi:Material Icon=ArrowBack, IconColor={StaticResource Charcoal}}"
+                    Command="{Binding GoBackCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource Charcoal}"
+                    HorizontalOptions="Start"
+                    HeightRequest="48"
+                    Padding="0,0,12,0"
+                    SemanticProperties.Description="Go back" />
             <Label Text="{Binding Name}"
                    FontSize="24"
                    FontAttributes="Bold"

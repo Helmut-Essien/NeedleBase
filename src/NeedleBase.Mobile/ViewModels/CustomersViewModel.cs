@@ -27,7 +27,10 @@ public partial class CustomersViewModel : BaseViewModel
     private string searchText = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowBusyIndicator))]
     private bool isRefreshing;
+
+    public bool ShowBusyIndicator => IsBusy && !IsRefreshing;
 
     [ObservableProperty]
     private string emptyMessage = "Add your first customer to get started.";
@@ -48,10 +51,11 @@ public partial class CustomersViewModel : BaseViewModel
 
     public bool HasItems => Items.Count > 0;
 
-    /// <summary>Empty-state Add CTA only when idle, signed in, and not a search miss.</summary>
+    /// <summary>Notify empty CTA + center spinner when IsBusy changes (pull-to-refresh uses RefreshView only).</summary>
     protected override void OnBusyChanged()
     {
         OnPropertyChanged(nameof(ShowEmptyAdd));
+        OnPropertyChanged(nameof(ShowBusyIndicator));
     }
 
     public bool ShowEmptyAdd =>

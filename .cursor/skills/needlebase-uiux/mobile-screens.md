@@ -8,13 +8,13 @@ Sample business: **Ama Stitches**, Accra. Currency **GH₵**.
 
 ## Onboarding & authentication
 
-**Chrome rule (mobile implementation):** All pre-shell auth/onboarding screens are **full-bleed content** — no Shell navigation title bar, no tab bar. Headings live in the page (under the logo). A platform/Shell title strip that repeats “Sign in” / “Register” is a defect. See [needlebase-mobile](../needlebase-mobile/SKILL.md) hard rule 14 and [di-navigation.md](../needlebase-mobile/di-navigation.md).
+**Chrome rule (mobile implementation):** **Every** screen hides the Shell navigation title bar (`Shell.NavBarIsVisible="False"` on AppShell + each page). Auth/onboarding also hide the tab bar. Headings and Back live in-page. See [needlebase-mobile](../needlebase-mobile/SKILL.md) hard rule 14 and [di-navigation.md](../needlebase-mobile/di-navigation.md).
 
 | Screen | Content | Notes |
 |--------|---------|-------|
 | Welcome | Logo, short promise (“Manage orders & measurements — works offline”), Log in / Create account | Brand-first, no metric clutter; no Shell nav bar |
 | Sign up | Name, phone/email, password | Clear validation; no Shell nav bar |
-| Login | Phone/email + password; Forgot password | In-page “Sign in” only — hide Shell nav bar |
+| Login | Phone/email + password; Forgot password | In-page “Sign in” only |
 | Password recovery | Phone/email → instructions | No Shell nav bar |
 | Business profile | Business name, phone, location (optional), logo optional | Solo-friendly; no staff required |
 | Offline explainer | One screen: local save + sync later | Mandatory once; no Shell nav bar |

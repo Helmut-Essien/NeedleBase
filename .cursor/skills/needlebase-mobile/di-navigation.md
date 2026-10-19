@@ -53,22 +53,27 @@ builder.Services.AddTransient<RecordPaymentViewModel>();
 - Register routes for non-tab pages: CreateOrder, CustomerDetail, OrderDetail, SyncDetails, Settings, MeasurementEntry  
 - FAB → `GoToAsync` CreateOrder route  
 
-### Auth / pre-shell pages (nav chrome)
+### Shell nav chrome (all pages)
 
-Login, Register, and other pre-shell routes must not show Shell’s top title bar (duplicate “Sign in” / “Register” strip).
+Hide the Shell title bar **everywhere** (same as Login/Register / AssetTag):
 
 ```xml
-<!-- On the ContentPage -->
+<!-- AppShell root -->
+Shell.NavBarIsVisible="False"
+
+<!-- Every ContentPage -->
 Shell.NavBarIsVisible="False"
 NavigationPage.HasNavigationBar="False"
 
-<!-- On AppShell ShellContent for that route -->
+<!-- Auth ShellContent also -->
 Shell.TabBarIsVisible="False"
-Shell.NavBarIsVisible="False"
 FlyoutItemIsVisible="False"
 ```
 
-Verify on device: auth screens = status bar + designed content only (logo, in-page title, form). No grey/dark Shell title bar.
+Pushed pages: add in-page Back (`Command` → `Shell.Current.GoToAsync("..")`) with `{mi:Material Icon=ArrowBack}`.  
+Top content padding ~40 clears the status bar when the nav bar is gone (Android edge-to-edge).  
+
+Verify on device: no grey/dark Shell title strip on any screen.
 
 ### Session expiry
 

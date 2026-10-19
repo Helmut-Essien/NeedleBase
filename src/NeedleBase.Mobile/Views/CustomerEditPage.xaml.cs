@@ -18,4 +18,14 @@ public partial class CustomerEditPage : ContentPage
         // Yields first so edit query attrs can latch InitializeAsync ahead of this.
         await ((CustomerEditViewModel)BindingContext).InitializeIfPendingAsync();
     }
+
+    protected override bool OnBackButtonPressed()
+    {
+        if (BindingContext is CustomerEditViewModel vm && !vm.CanGoBack)
+        {
+            return true;
+        }
+
+        return base.OnBackButtonPressed();
+    }
 }

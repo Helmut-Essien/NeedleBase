@@ -36,7 +36,12 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string? errorMessage;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGoBack))]
+    private bool isSaving;
+
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+    public bool CanGoBack => !IsSaving;
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
@@ -134,6 +139,7 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
         }
 
         IsBusy = true;
+        IsSaving = true;
         try
         {
             var businessId = await _auth.GetBusinessIdAsync();
@@ -175,6 +181,18 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
         finally
         {
             IsBusy = false;
+            IsSaving = false;
         }
+    }
+
+    [RelayCommand]
+    private async Task GoBackAsync()
+    {
+        if (IsSaving)
+        {
+            return;
+        }
+
+        await Shell.Current.GoToAsync("..");
     }
 }

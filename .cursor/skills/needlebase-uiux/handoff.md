@@ -26,7 +26,7 @@ Mobile: design at 375 and 414; large text / accessibility fonts must not break p
 | Quick edit | Bottom sheet | Right drawer or modal |
 | Filters | Sheet | Filter bar / dropdowns |
 | Navigation | Bottom tabs | Sidebar routes |
-| Auth / pre-shell | **No Shell nav title bar** — in-page title only (`Shell.NavBarIsVisible="False"`) | Dedicated `_AuthLayout` (no app sidebar) |
+| Mobile chrome | **No Shell nav title bar on any screen** — in-page titles + Back on pushed pages | Dedicated `_AuthLayout` (no app sidebar) |
 | Destructive | Confirm dialog | Confirm modal |
 | Save offline | Toast + pending badge | Banner/badge if local draft supported |
 | Focus | System focus; 48px controls | Visible focus ring; keyboard tab order |

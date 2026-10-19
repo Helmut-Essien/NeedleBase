@@ -7,10 +7,20 @@
              x:Class="NeedleBase.Mobile.Views.CustomersPage"
              x:DataType="vm:CustomersViewModel"
              Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
              BackgroundColor="{StaticResource AppBackground}">
 
-    <Grid RowDefinitions="Auto,Auto,*" Padding="16,12">
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,12">
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Padding="16,40,16,12">
+        <Label Grid.Row="0"
+               Text="{Binding Title}"
+               FontSize="24"
+               FontAttributes="Bold"
+               TextColor="{StaticResource Charcoal}"
+               Margin="0,0,0,12"
+               SemanticProperties.HeadingLevel="Level1" />
+
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,12">
             <SearchBar Grid.Column="0"
                        Placeholder="Search name or phone"
                        Text="{Binding SearchText}"
@@ -30,9 +40,9 @@
                     SemanticProperties.Description="Add customer" />
         </Grid>
 
-        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,0,0,8">
-            <ActivityIndicator IsRunning="{Binding IsBusy}"
-                               IsVisible="{Binding IsBusy}"
+        <VerticalStackLayout Grid.Row="2" Spacing="8" Margin="0,0,0,8">
+            <ActivityIndicator IsRunning="{Binding ShowBusyIndicator}"
+                               IsVisible="{Binding ShowBusyIndicator}"
                                Color="{StaticResource Primary}" />
             <Label Text="{Binding ErrorMessage}"
                    TextColor="{StaticResource SemanticError}"
@@ -40,7 +50,7 @@
                    SemanticProperties.Description="Customers error" />
         </VerticalStackLayout>
 
-        <RefreshView Grid.Row="2"
+        <RefreshView Grid.Row="3"
                      IsRefreshing="{Binding IsRefreshing}"
                      Command="{Binding RefreshCommand}">
             <CollectionView ItemsSource="{Binding Items}"
@@ -103,7 +113,7 @@
                                    WidthRequest="24"
                                    HeightRequest="24"
                                    VerticalOptions="Center"
-                                   SemanticProperties.Description="">
+                                   AutomationProperties.IsInAccessibleTree="False">
                                 <Image.Source>
                                     <FontImageSource FontFamily="MaterialIcons-Regular"
                                                      Glyph="{mi:Material Icon=ChevronRight}"

@@ -25,7 +25,12 @@ public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributabl
     [NotifyPropertyChangedFor(nameof(CanSave))]
     private bool readyToSave;
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanGoBack))]
+    private bool isSaving;
+
     public bool CanSave => !IsBusy && ReadyToSave;
+    public bool CanGoBack => !IsSaving;
 
     protected override void OnBusyChanged() => OnPropertyChanged(nameof(CanSave));
 
@@ -228,6 +233,7 @@ public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributabl
         }
 
         IsBusy = true;
+        IsSaving = true;
         SetFieldsEnabled(false);
         try
         {
@@ -264,8 +270,20 @@ public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributabl
         finally
         {
             IsBusy = false;
+            IsSaving = false;
             SetFieldsEnabled(true);
         }
+    }
+
+    [RelayCommand]
+    private async Task GoBackAsync()
+    {
+        if (IsSaving)
+        {
+            return;
+        }
+
+        await Shell.Current.GoToAsync("..");
     }
 
     private void ConvertFieldValues(string fromUnit, string toUnit)
