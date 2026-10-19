@@ -11,6 +11,21 @@ public partial class HomePage : ContentPage
         BindingContext = ServiceHelper.GetRequiredService<HomeViewModel>();
     }
 
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        if (BindingContext is HomeViewModel vm)
+        {
+            await vm.LoadCommand.ExecuteAsync(null);
+        }
+    }
+
+    private async void OnBellClicked(object? sender, EventArgs e)
+    {
+        // No notifications system yet — say so honestly instead of faking a feed.
+        await DisplayAlert("Notifications", "No new notifications.", "OK");
+    }
+
     private async void OnSignOutClicked(object? sender, EventArgs e)
     {
         var auth = ServiceHelper.GetRequiredService<IAuthService>();

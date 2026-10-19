@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
              x:Class="NeedleBase.Mobile.Views.HomePage"
              x:DataType="vm:HomeViewModel"
@@ -9,25 +10,190 @@
              NavigationPage.HasNavigationBar="False"
              BackgroundColor="{StaticResource AppBackground}">
 
-    <VerticalStackLayout Padding="24,40,24,24" Spacing="12" VerticalOptions="Center">
-        <Label Text="{Binding Title}"
-               TextColor="{StaticResource Charcoal}"
-               FontSize="28"
-               FontAttributes="Bold"
-               HorizontalOptions="Center"
-               SemanticProperties.HeadingLevel="Level1"
-               SemanticProperties.Description="NeedleBase app home" />
-        <Label Text="{Binding Tagline}"
-               TextColor="{StaticResource Gray600}"
-               FontSize="16"
-               HorizontalTextAlignment="Center"
-               HorizontalOptions="Center" />
-        <Button Text="Sign out"
-                BackgroundColor="{StaticResource PrimaryLight}"
-                TextColor="{StaticResource Charcoal}"
-                Clicked="OnSignOutClicked"
-                Margin="0,24,0,0"
-                SemanticProperties.Description="Sign out of this business" />
-    </VerticalStackLayout>
+    <ScrollView>
+        <VerticalStackLayout Padding="16,40,16,24" Spacing="16">
 
+            <!-- 1. Header -->
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                <Border Grid.Column="0" WidthRequest="48" HeightRequest="48" StrokeThickness="0"
+                        BackgroundColor="{StaticResource Primary}" StrokeShape="RoundRectangle 24"
+                        VerticalOptions="Center">
+                    <Label Text="{Binding UserInitials}" TextColor="White" FontAttributes="Bold" FontSize="16"
+                           HorizontalOptions="Center" VerticalOptions="Center"
+                           SemanticProperties.Description="Signed-in user initials" />
+                </Border>
+                <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                    <Label Text="{Binding Greeting}" FontSize="13" TextColor="{StaticResource Gray600}" LineBreakMode="TailTruncation" />
+                    <Label Text="{Binding BusinessName}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Charcoal}"
+                           LineBreakMode="TailTruncation" SemanticProperties.HeadingLevel="Level1" />
+                </VerticalStackLayout>
+                <ImageButton Grid.Column="2" WidthRequest="48" HeightRequest="48" Padding="12"
+                             BackgroundColor="White" CornerRadius="24" VerticalOptions="Center"
+                             Clicked="OnBellClicked"
+                             SemanticProperties.Description="Notifications">
+                    <ImageButton.Source>
+                        <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=Notifications}" Color="{StaticResource Charcoal}" Size="24" />
+                    </ImageButton.Source>
+                </ImageButton>
+            </Grid>
+
+            <!-- 2. Offline-ready banner -->
+            <Border BackgroundColor="{StaticResource PrimaryLight}" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="14">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                    <Border Grid.Column="0" WidthRequest="36" HeightRequest="36" StrokeThickness="0"
+                            BackgroundColor="White" StrokeShape="RoundRectangle 18" VerticalOptions="Center">
+                        <Image WidthRequest="20" HeightRequest="20" HorizontalOptions="Center" VerticalOptions="Center"
+                               AutomationProperties.IsInAccessibleTree="False">
+                            <Image.Source>
+                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=Check}" Color="{StaticResource Primary}" Size="20" />
+                            </Image.Source>
+                        </Image>
+                    </Border>
+                    <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
+                        <Label Text="Offline-ready" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                        <Label Text="Saved on this phone · syncs when online" FontSize="13" TextColor="{StaticResource Gray600}" />
+                    </VerticalStackLayout>
+                </Grid>
+            </Border>
+
+            <!-- 3. KPI cards -->
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                <Border Grid.Column="0" BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeThickness="1"
+                        StrokeShape="RoundRectangle 12" Padding="14">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="ACTIVE ORDERS" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
+                        <Label Text="{Binding ActiveOrdersCount}" FontSize="28" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                        <Label Text="{Binding ActiveOrdersCaption}" FontSize="12" TextColor="{StaticResource Gray600}" />
+                    </VerticalStackLayout>
+                </Border>
+                <Border Grid.Column="1" BackgroundColor="{StaticResource Charcoal}" StrokeThickness="0"
+                        StrokeShape="RoundRectangle 12" Padding="14">
+                    <VerticalStackLayout Spacing="2">
+                        <Label Text="READY TO COLLECT" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Gray400}" />
+                        <Label Text="{Binding ReadyToCollectCount}" FontSize="28" FontAttributes="Bold" TextColor="White" />
+                        <Label Text="{Binding ReadyToCollectCaption}" FontSize="12" TextColor="{StaticResource Gray400}" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+
+            <!-- 4. Quick actions -->
+            <Label Text="Quick actions" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Charcoal}"
+                   SemanticProperties.HeadingLevel="Level2" Margin="0,4,0,0" />
+            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="10">
+                <Button Grid.Column="0" Text="Add customer" ContentLayout="Top,6" HeightRequest="92" CornerRadius="12"
+                        BackgroundColor="White" BorderColor="{StaticResource Gray300}" BorderWidth="1"
+                        TextColor="{StaticResource Charcoal}" FontSize="12" Padding="4,10"
+                        Command="{Binding AddCustomerCommand}"
+                        ImageSource="{mi:Material Icon=PersonAdd, IconColor=#247A2B}"
+                        SemanticProperties.Description="Add a customer" />
+                <Button Grid.Column="1" Text="New order" ContentLayout="Top,6" HeightRequest="92" CornerRadius="12"
+                        BackgroundColor="White" BorderColor="{StaticResource Gray300}" BorderWidth="1"
+                        TextColor="{StaticResource Charcoal}" FontSize="12" Padding="4,10"
+                        Command="{Binding NewOrderCommand}"
+                        ImageSource="{mi:Material Icon=ReceiptLong, IconColor=#247A2B}"
+                        SemanticProperties.Description="Start a new order in the Orders tab" />
+                <Button Grid.Column="2" Text="Payment" ContentLayout="Top,6" HeightRequest="92" CornerRadius="12"
+                        BackgroundColor="White" BorderColor="{StaticResource Gray300}" BorderWidth="1"
+                        TextColor="{StaticResource Charcoal}" FontSize="12" Padding="4,10"
+                        Command="{Binding RecordPaymentCommand}"
+                        ImageSource="{mi:Material Icon=Payments, IconColor=#247A2B}"
+                        SemanticProperties.Description="Record a payment in the Payments tab" />
+                <Button Grid.Column="3" Text="Measure" ContentLayout="Top,6" HeightRequest="92" CornerRadius="12"
+                        BackgroundColor="White" BorderColor="{StaticResource Gray300}" BorderWidth="1"
+                        TextColor="{StaticResource Charcoal}" FontSize="12" Padding="4,10"
+                        Command="{Binding MeasureCommand}"
+                        ImageSource="{mi:Material Icon=Straighten, IconColor=#247A2B}"
+                        SemanticProperties.Description="Open customers to take measurements" />
+            </Grid>
+
+            <!-- 5. Orders in progress -->
+            <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeThickness="1" StrokeShape="RoundRectangle 12" Padding="16">
+                <VerticalStackLayout Spacing="12">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <Label Grid.Column="0" Text="Orders in progress" FontSize="16" FontAttributes="Bold"
+                               TextColor="{StaticResource Charcoal}" SemanticProperties.HeadingLevel="Level2" VerticalOptions="Center" />
+                        <Button Grid.Column="1" Text="View all" BackgroundColor="Transparent" TextColor="{StaticResource PrimaryDark}"
+                                FontAttributes="Bold" FontSize="13" HeightRequest="48" MinimumHeightRequest="48" Padding="8,0"
+                                Command="{Binding ViewAllOrdersCommand}" SemanticProperties.Description="View all orders" />
+                    </Grid>
+                    <VerticalStackLayout BindableLayout.ItemsSource="{Binding Stages}" Spacing="12">
+                        <BindableLayout.ItemTemplate>
+                            <DataTemplate x:DataType="vm:HomeStageItem">
+                                <Grid ColumnDefinitions="72,*,Auto" ColumnSpacing="10">
+                                    <Label Grid.Column="0" Text="{Binding Name}" FontSize="13" FontAttributes="Bold"
+                                           TextColor="{StaticResource Charcoal}" VerticalOptions="Center" />
+                                    <ProgressBar Grid.Column="1" Progress="{Binding Fraction}" ProgressColor="{Binding ProgressColor}"
+                                                 BackgroundColor="{StaticResource Gray200}" HeightRequest="8" VerticalOptions="Center"
+                                                 AutomationProperties.IsInAccessibleTree="False" />
+                                    <Border Grid.Column="2" BackgroundColor="{StaticResource Gray100}" StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 10" Padding="8,2" VerticalOptions="Center">
+                                        <Label Text="{Binding CountText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </BindableLayout.ItemTemplate>
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- 6. Needs attention -->
+            <Label Text="Needs attention" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Charcoal}"
+                   SemanticProperties.HeadingLevel="Level2" Margin="0,4,0,0" />
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding AttentionItems}" Spacing="10"
+                                 IsVisible="{Binding HasAttentionItems}">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:HomeAttentionItem">
+                        <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeThickness="1" StrokeShape="RoundRectangle 12" Padding="12">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                                <Border Grid.Column="0" WidthRequest="42" HeightRequest="42" StrokeThickness="0"
+                                        BackgroundColor="{StaticResource PrimaryLight}" StrokeShape="RoundRectangle 21" VerticalOptions="Center">
+                                    <Label Text="{Binding Initials}" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource PrimaryDark}"
+                                           HorizontalOptions="Center" VerticalOptions="Center" />
+                                </Border>
+                                <VerticalStackLayout Grid.Column="1" Spacing="2" VerticalOptions="Center">
+                                    <Label Text="{Binding Name}" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" LineBreakMode="TailTruncation" />
+                                    <Label Text="{Binding Detail}" FontSize="13" TextColor="{StaticResource Gray600}" LineBreakMode="TailTruncation" />
+                                </VerticalStackLayout>
+                                <Border Grid.Column="2" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="8,3" VerticalOptions="Center"
+                                        BackgroundColor="{StaticResource PrimaryLight}">
+                                    <Border.Triggers>
+                                        <DataTrigger TargetType="Border" Binding="{Binding IsReady}" Value="False">
+                                            <Setter Property="BackgroundColor" Value="#FEF3C7" />
+                                        </DataTrigger>
+                                    </Border.Triggers>
+                                    <Label Text="{Binding StatusText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}">
+                                        <Label.Triggers>
+                                            <DataTrigger TargetType="Label" Binding="{Binding IsReady}" Value="False">
+                                                <Setter Property="TextColor" Value="{StaticResource SemanticWarning}" />
+                                            </DataTrigger>
+                                        </Label.Triggers>
+                                    </Label>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+            <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeThickness="1" StrokeShape="RoundRectangle 12"
+                    Padding="16" IsVisible="{Binding ShowNoAttention}">
+                <VerticalStackLayout Spacing="3">
+                    <Label Text="Nothing needs attention right now" FontSize="14" FontAttributes="Bold"
+                           TextColor="{StaticResource Charcoal}" HorizontalTextAlignment="Center" />
+                    <Label Text="{Binding CustomersSavedText}" FontSize="13" TextColor="{StaticResource Gray600}"
+                           HorizontalTextAlignment="Center" IsVisible="{Binding HasCustomersSavedText}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Sign out stays reachable at the bottom of Home -->
+            <Button Text="Sign out"
+                    BackgroundColor="{StaticResource PrimaryLight}"
+                    TextColor="{StaticResource Charcoal}"
+                    CornerRadius="10"
+                    HeightRequest="48"
+                    FontSize="15"
+                    Clicked="OnSignOutClicked"
+                    Margin="0,8,0,0"
+                    SemanticProperties.Description="Sign out of this business" />
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

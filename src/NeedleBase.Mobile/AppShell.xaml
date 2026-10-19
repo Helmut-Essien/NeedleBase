@@ -26,30 +26,34 @@
         Shell.TabBarIsVisible="False"
         Shell.NavBarIsVisible="False" />
 
-    <TabBar Route="main">
+    <TabBar Route="main"
+            Shell.TabBarBackgroundColor="White"
+            Shell.TabBarForegroundColor="{StaticResource Primary}"
+            Shell.TabBarTitleColor="{StaticResource Primary}"
+            Shell.TabBarUnselectedColor="{StaticResource Gray500}">
         <Tab Title="Home"
              Route="HomePage"
-             mci:MauiIcon.Value="{mi:Material Icon=Home, TargetName='.'}">
+             mci:MauiIcon.Value="{mi:Material Icon=Home, IconSize=22, TargetName='.'}">
             <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
         </Tab>
         <Tab Title="Customers"
              Route="CustomersPage"
-             mci:MauiIcon.Value="{mi:Material Icon=People, TargetName='.'}">
+             mci:MauiIcon.Value="{mi:Material Icon=People, IconSize=22, TargetName='.'}">
             <ShellContent ContentTemplate="{DataTemplate views:CustomersPage}" />
         </Tab>
         <Tab Title="Orders"
              Route="OrdersPage"
-             mci:MauiIcon.Value="{mi:Material Icon=ReceiptLong, TargetName='.'}">
+             mci:MauiIcon.Value="{mi:Material Icon=ReceiptLong, IconSize=22, TargetName='.'}">
             <ShellContent ContentTemplate="{DataTemplate views:OrdersPlaceholderPage}" />
         </Tab>
         <Tab Title="Payments"
              Route="PaymentsPage"
-             mci:MauiIcon.Value="{mi:Material Icon=Payments, TargetName='.'}">
+             mci:MauiIcon.Value="{mi:Material Icon=Payments, IconSize=22, TargetName='.'}">
             <ShellContent ContentTemplate="{DataTemplate views:PaymentsPlaceholderPage}" />
         </Tab>
         <Tab Title="More"
              Route="MorePage"
-             mci:MauiIcon.Value="{mi:Material Icon=Menu, TargetName='.'}">
+             mci:MauiIcon.Value="{mi:Material Icon=Menu, IconSize=22, TargetName='.'}">
             <ShellContent ContentTemplate="{DataTemplate views:MorePlaceholderPage}" />
         </Tab>
     </TabBar>
