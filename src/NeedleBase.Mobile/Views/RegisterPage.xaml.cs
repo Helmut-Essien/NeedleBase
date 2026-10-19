@@ -11,9 +11,27 @@ public partial class RegisterPage : ContentPage
         BindingContext = ServiceHelper.GetRequiredService<RegisterViewModel>();
     }
 
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        if (BindingContext is RegisterViewModel vm)
+        {
+            vm.PrepareForDisplay();
+        }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        if (BindingContext is RegisterViewModel vm)
+        {
+            vm.RemaskPasswords();
+        }
+    }
+
     private async void OnTermsClicked(object? sender, EventArgs e)
     {
-        if (BindingContext is RegisterViewModel vm && !vm.CanSubmit)
+        if (BindingContext is not RegisterViewModel vm || !vm.CanSubmit)
         {
             return;
         }
@@ -23,7 +41,7 @@ public partial class RegisterPage : ContentPage
 
     private async void OnPrivacyClicked(object? sender, EventArgs e)
     {
-        if (BindingContext is RegisterViewModel vm && !vm.CanSubmit)
+        if (BindingContext is not RegisterViewModel vm || !vm.CanSubmit)
         {
             return;
         }
@@ -33,11 +51,12 @@ public partial class RegisterPage : ContentPage
 
     private async void OnLoginClicked(object? sender, EventArgs e)
     {
-        if (BindingContext is RegisterViewModel vm && !vm.CanSubmit)
+        if (BindingContext is not RegisterViewModel vm || !vm.CanSubmit)
         {
             return;
         }
 
+        vm.ClearSensitiveFields();
         await Shell.Current.GoToAsync("//LoginPage");
     }
 }

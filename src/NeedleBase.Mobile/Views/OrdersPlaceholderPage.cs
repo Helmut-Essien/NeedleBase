@@ -20,7 +20,7 @@ public sealed class OrdersPlaceholderPage : ContentPage
         {
             Icon = icon,
             IconSize = 48,
-            IconColor = ResolveColor("Gray500", Colors.Gray),
+            IconColor = ResolveColor("Gray600", Colors.Gray),
             HorizontalOptions = LayoutOptions.Center
         };
         SemanticProperties.SetDescription(iconView, $"{title} placeholder");

@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using NeedleBase.Application.Contracts.Auth;
+using NeedleBase.Mobile.Messaging;
 using NeedleBase.Mobile.Services;
 
 namespace NeedleBase.Mobile.ViewModels;
@@ -15,6 +17,10 @@ public partial class RegisterViewModel : BaseViewModel
         _authService = authService;
         _navigation = navigation;
         Title = "Register business";
+
+        WeakReferenceMessenger.Default.Register<ClearAuthSensitiveStateMessage>(
+            this,
+            static (recipient, _) => ((RegisterViewModel)recipient).ClearSensitiveFields());
     }
 
     [ObservableProperty] private string email = string.Empty;
@@ -24,6 +30,25 @@ public partial class RegisterViewModel : BaseViewModel
     [ObservableProperty] private string surname = string.Empty;
     [ObservableProperty] private string businessName = string.Empty;
     [ObservableProperty] private string? businessPhone;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPasswordHidden))]
+    [NotifyPropertyChangedFor(nameof(PasswordToggleDescription))]
+    private bool isPasswordVisible;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsConfirmPasswordHidden))]
+    [NotifyPropertyChangedFor(nameof(ConfirmPasswordToggleDescription))]
+    private bool isConfirmPasswordVisible;
+
+    public bool IsPasswordHidden => !IsPasswordVisible;
+    public bool IsConfirmPasswordHidden => !IsConfirmPasswordVisible;
+
+    public string PasswordToggleDescription =>
+        IsPasswordVisible ? "Hide password" : "Show password";
+
+    public string ConfirmPasswordToggleDescription =>
+        IsConfirmPasswordVisible ? "Hide confirm password" : "Show confirm password";
 
     // Client-side gate only: not sent to the Api and not part of any shared DTO.
     [ObservableProperty] private bool acceptTerms;
@@ -68,6 +93,55 @@ public partial class RegisterViewModel : BaseViewModel
         ConfirmPasswordError = null;
     }
 
+    [RelayCommand(CanExecute = nameof(CanSubmit))]
+    private void TogglePasswordVisibility()
+    {
+        IsPasswordVisible = !IsPasswordVisible;
+        AnnouncePasswordToggle(PasswordToggleDescription);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanSubmit))]
+    private void ToggleConfirmPasswordVisibility()
+    {
+        IsConfirmPasswordVisible = !IsConfirmPasswordVisible;
+        AnnouncePasswordToggle(ConfirmPasswordToggleDescription);
+    }
+
+    protected override void OnBusyChanged()
+    {
+        TogglePasswordVisibilityCommand.NotifyCanExecuteChanged();
+        ToggleConfirmPasswordVisibilityCommand.NotifyCanExecuteChanged();
+    }
+
+    private static void AnnouncePasswordToggle(string message)
+    {
+        try
+        {
+            SemanticScreenReader.Default.Announce(message);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
+    }
+
+    /// <summary>Remask on appear (Terms/Privacy / resume). Secrets clear via logout message or LeaveToLogin.</summary>
+    public void PrepareForDisplay() => RemaskPasswords();
+
+    /// <summary>Hide plaintext if the page leaves the foreground (nav, app switcher).</summary>
+    public void RemaskPasswords()
+    {
+        IsPasswordVisible = false;
+        IsConfirmPasswordVisible = false;
+    }
+
+    public void ClearSensitiveFields()
+    {
+        Password = string.Empty;
+        ConfirmPassword = string.Empty;
+        RemaskPasswords();
+    }
+
     [RelayCommand]
     private async Task RegisterAsync()
     {
@@ -109,6 +183,8 @@ public partial class RegisterViewModel : BaseViewModel
             return;
         }
 
+        IsPasswordVisible = false;
+        IsConfirmPasswordVisible = false;
         IsBusy = true;
         try
         {
@@ -127,6 +203,7 @@ public partial class RegisterViewModel : BaseViewModel
                 return;
             }
 
+            ClearSensitiveFields();
             await _navigation.ShowMainAsync();
         }
         catch (Exception ex)

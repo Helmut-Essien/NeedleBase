@@ -1,4 +1,7 @@
-﻿namespace NeedleBase.Mobile;
+﻿using NeedleBase.Mobile.ViewModels;
+using NeedleBase.Mobile.Views;
+
+namespace NeedleBase.Mobile;
 
 public partial class App : Microsoft.Maui.Controls.Application
 {
@@ -9,6 +12,22 @@ public partial class App : Microsoft.Maui.Controls.Application
 
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        return new Window(new AppShell());
+        var window = new Window(new AppShell());
+        window.Stopped += OnWindowStopped;
+        return window;
+    }
+
+    private static void OnWindowStopped(object? sender, EventArgs e)
+    {
+        // Remask only — do not clear form text (user may resume mid-entry).
+        switch (Shell.Current?.CurrentPage)
+        {
+            case LoginPage { BindingContext: LoginViewModel loginVm }:
+                loginVm.RemaskPassword();
+                break;
+            case RegisterPage { BindingContext: RegisterViewModel registerVm }:
+                registerVm.RemaskPasswords();
+                break;
+        }
     }
 }

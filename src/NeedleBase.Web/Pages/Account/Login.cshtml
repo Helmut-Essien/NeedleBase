@@ -1,5 +1,6 @@
 @page
 @model NeedleBase.Web.Pages.Account.LoginModel
+@using NeedleBase.Web.Pages.Shared
 @{
     Layout = "_AuthLayout";
     ViewData["Title"] = "Sign in";
@@ -21,7 +22,14 @@
     </div>
     <div class="nb-auth-field text-start">
         <label asp-for="Input.Password" class="form-label">Password</label>
-        <input asp-for="Input.Password" class="form-control nb-auth-input" autocomplete="current-password" placeholder="Enter your password" />
+        <div class="nb-password-field">
+            <input asp-for="Input.Password"
+                   id="Input_Password"
+                   class="form-control nb-auth-input nb-password-input"
+                   autocomplete="current-password"
+                   placeholder="Enter your password" />
+            <partial name="_PasswordToggleButton" model="@(new PasswordToggleModel { InputId = "Input_Password" })" />
+        </div>
         <span asp-validation-for="Input.Password" class="text-danger small nb-auth-error"></span>
     </div>
     <div class="form-check nb-auth-remember text-start">
@@ -39,5 +47,6 @@
 </p>
 
 @section Scripts {
+    <script src="~/js/password-toggle.js" asp-append-version="true"></script>
     <partial name="_ValidationScriptsPartial" />
 }

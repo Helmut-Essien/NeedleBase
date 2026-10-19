@@ -17,7 +17,7 @@
 
     <Grid RowDefinitions="*,Auto">
         <ScrollView Grid.Row="0">
-            <VerticalStackLayout Padding="20,40,20,12" Spacing="12">
+            <VerticalStackLayout Padding="16,40,16,12" Spacing="12">
                 <Button Text="Back"
                         ImageSource="{mi:Material Icon=ArrowBack, IconColor={StaticResource Charcoal}}"
                         Command="{Binding GoBackCommand}"
@@ -35,11 +35,14 @@
                        SemanticProperties.HeadingLevel="Level1" />
 
                 <Label Text="Garment template"
-                       TextColor="{StaticResource Gray600}"
-                       FontSize="13" />
+                       TextColor="{StaticResource Charcoal}" FontAttributes="Bold"
+                       FontSize="14" />
                 <Picker ItemsSource="{Binding TemplateChoices}"
                         ItemDisplayBinding="{Binding DisplayName, x:DataType=vm:TemplateChoice}"
                         SelectedItem="{Binding SelectedTemplate}"
+                        TextColor="{StaticResource Charcoal}"
+                        TitleColor="{StaticResource Gray600}"
+                        HeightRequest="48"
                         BackgroundColor="White"
                         IsEnabled="{Binding CanSave}"
                         SemanticProperties.Description="Garment measurement template" />
@@ -68,6 +71,7 @@
                     <BindableLayout.ItemTemplate>
                         <DataTemplate x:DataType="vm:MeasurementFieldItem">
                             <Grid ColumnDefinitions="*,100,36"
+                                  RowDefinitions="Auto,Auto"
                                   ColumnSpacing="8"
                                   Padding="0,6">
                                 <Label Grid.Column="0"
@@ -78,6 +82,9 @@
                                        Text="{Binding ValueText}"
                                        Keyboard="Numeric"
                                        Placeholder="0"
+                                       PlaceholderColor="{StaticResource Gray600}"
+                                       TextColor="{StaticResource Charcoal}"
+                                       HeightRequest="48"
                                        BackgroundColor="White"
                                        HorizontalTextAlignment="End"
                                        IsEnabled="{Binding IsEnabled}"
@@ -86,6 +93,13 @@
                                        Text="{Binding UnitSuffix}"
                                        VerticalOptions="Center"
                                        TextColor="{StaticResource Gray600}" />
+                                <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+                                       Text="{Binding Error}"
+                                       TextColor="{StaticResource SemanticError}"
+                                       IsVisible="{Binding HasError}"
+                                       FontSize="13"
+                                       LineBreakMode="WordWrap"
+                                       SemanticProperties.Description="Measurement value error" />
                             </Grid>
                         </DataTemplate>
                     </BindableLayout.ItemTemplate>
@@ -96,6 +110,9 @@
                        FontSize="13"
                        Margin="0,8,0,0" />
                 <Editor Text="{Binding Notes}"
+                        Placeholder="Optional notes"
+                        PlaceholderColor="{StaticResource Gray600}"
+                        TextColor="{StaticResource Charcoal}"
                         AutoSize="TextChanges"
                         MaxLength="2000"
                         BackgroundColor="White"
@@ -106,6 +123,8 @@
                 <Label Text="{Binding ErrorMessage}"
                        TextColor="{StaticResource SemanticError}"
                        IsVisible="{Binding HasError}"
+                       FontSize="13"
+                       LineBreakMode="WordWrap"
                        SemanticProperties.Description="Measurement save error" />
 
                 <ActivityIndicator IsRunning="{Binding IsBusy}"
@@ -116,11 +135,15 @@
 
         <Button Grid.Row="1"
                 Text="Save"
+                HeightRequest="48"
+                CornerRadius="10"
+                FontSize="16"
+                FontAttributes="Bold"
                 Command="{Binding SaveCommand}"
                 BackgroundColor="{StaticResource Primary}"
                 TextColor="White"
                 IsEnabled="{Binding CanSave}"
-                Margin="20,8,20,20"
+                Margin="16,8,16,20"
                 SemanticProperties.Description="Save measurements on this device" />
     </Grid>
 </ContentPage>

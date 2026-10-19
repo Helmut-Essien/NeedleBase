@@ -33,6 +33,14 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
     private string notes = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNameError))]
+    private string? nameError;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasPhoneError))]
+    private string? phoneError;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string? errorMessage;
 
@@ -40,7 +48,13 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
     [NotifyPropertyChangedFor(nameof(CanGoBack))]
     private bool isSaving;
 
+    public bool HasNameError => !string.IsNullOrWhiteSpace(NameError);
+    public bool HasPhoneError => !string.IsNullOrWhiteSpace(PhoneError);
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    partial void OnNameChanged(string value) => NameError = null;
+
+    partial void OnPhoneChanged(string value) => PhoneError = null;
     public bool CanGoBack => !IsSaving;
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -120,15 +134,25 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
 
         ErrorMessage = null;
 
-        if (string.IsNullOrWhiteSpace(Name) || string.IsNullOrWhiteSpace(Phone))
+        NameError = string.IsNullOrWhiteSpace(Name) ? "Name is required." : null;
+        PhoneError = string.IsNullOrWhiteSpace(Phone) ? "Phone is required." : null;
+        if (HasNameError || HasPhoneError)
         {
-            ErrorMessage = "Name and phone are required.";
             return;
         }
 
-        if (Name.Trim().Length > FieldLimits.CustomerName || Phone.Trim().Length > FieldLimits.Phone)
+        if (Name.Trim().Length > FieldLimits.CustomerName)
         {
-            ErrorMessage = "Name or phone is too long.";
+            NameError = "Name is too long.";
+        }
+
+        if (Phone.Trim().Length > FieldLimits.Phone)
+        {
+            PhoneError = "Phone is too long.";
+        }
+
+        if (HasNameError || HasPhoneError)
+        {
             return;
         }
 

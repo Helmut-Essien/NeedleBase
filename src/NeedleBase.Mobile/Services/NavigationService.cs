@@ -1,3 +1,5 @@
+using CommunityToolkit.Mvvm.Messaging;
+using NeedleBase.Mobile.Messaging;
 using NeedleBase.Mobile.ViewModels;
 
 namespace NeedleBase.Mobile.Services;
@@ -35,6 +37,8 @@ public sealed class NavigationService : INavigationService
 
         // Clear singleton tab VM PII on every path to login (logout + session expiry).
         _customersViewModel.ClearSessionState();
+        // Drop cached Login/Register form secrets (Shell may reuse auth pages/VMs).
+        WeakReferenceMessenger.Default.Send(new ClearAuthSensitiveStateMessage());
 
         await DismissOverlaysAndPopToRootAsync();
         await Shell.Current.GoToAsync("//LoginPage");

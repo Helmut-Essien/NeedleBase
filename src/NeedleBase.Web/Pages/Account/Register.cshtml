@@ -1,5 +1,6 @@
 @page
 @model NeedleBase.Web.Pages.Account.RegisterModel
+@using NeedleBase.Web.Pages.Shared
 @{
     Layout = "_AuthLayout";
     ViewData["Title"] = "Register business";
@@ -43,17 +44,33 @@
     </div>
     <div class="nb-auth-field text-start">
         <label asp-for="Input.Password" class="form-label"></label>
-        <input asp-for="Input.Password"
-               class="form-control nb-auth-input"
-               autocomplete="new-password"
-               placeholder="Create a password"
-               aria-describedby="password-hint" />
+        <div class="nb-password-field">
+            <input asp-for="Input.Password"
+                   id="Input_Password"
+                   class="form-control nb-auth-input nb-password-input"
+                   autocomplete="new-password"
+                   placeholder="Create a password"
+                   aria-describedby="password-hint" />
+            <partial name="_PasswordToggleButton" model="@(new PasswordToggleModel { InputId = "Input_Password" })" />
+        </div>
         <p id="password-hint" class="nb-auth-helper mb-0">At least 6 characters, including a number</p>
         <span asp-validation-for="Input.Password" class="text-danger small nb-auth-error"></span>
     </div>
     <div class="nb-auth-field text-start">
         <label asp-for="Input.ConfirmPassword" class="form-label"></label>
-        <input asp-for="Input.ConfirmPassword" class="form-control nb-auth-input" autocomplete="new-password" placeholder="Confirm your password" />
+        <div class="nb-password-field">
+            <input asp-for="Input.ConfirmPassword"
+                   id="Input_ConfirmPassword"
+                   class="form-control nb-auth-input nb-password-input"
+                   autocomplete="new-password"
+                   placeholder="Confirm your password" />
+            <partial name="_PasswordToggleButton" model="@(new PasswordToggleModel
+                   {
+                       InputId = "Input_ConfirmPassword",
+                       ShowLabel = "Show confirm password",
+                       HideLabel = "Hide confirm password"
+                   })" />
+        </div>
         <span asp-validation-for="Input.ConfirmPassword" class="text-danger small nb-auth-error"></span>
     </div>
     <div class="form-check nb-auth-terms text-start">
@@ -74,5 +91,6 @@
 </p>
 
 @section Scripts {
+    <script src="~/js/password-toggle.js" asp-append-version="true"></script>
     <partial name="_ValidationScriptsPartial" />
 }

@@ -44,13 +44,13 @@
                                IsVisible="{Binding IsBusy}"
                                Color="{StaticResource Primary}" />
             <HorizontalStackLayout Spacing="8" Margin="0,8,0,0">
-                <Button Text="Edit"
+                <Button Text="Edit" HeightRequest="48" CornerRadius="10"
                         Command="{Binding EditCommand}"
                         BackgroundColor="{StaticResource PrimaryLight}"
                         TextColor="{StaticResource Charcoal}"
                         IsEnabled="{Binding CanSubmit}"
                         SemanticProperties.Description="Edit customer" />
-                <Button Text="Add measurements"
+                <Button Text="Add measurements" HeightRequest="48" CornerRadius="10"
                         Command="{Binding AddMeasurementCommand}"
                         BackgroundColor="{StaticResource Primary}"
                         TextColor="White"
@@ -77,14 +77,14 @@
                         <Image.Source>
                             <FontImageSource FontFamily="MaterialIcons-Regular"
                                              Glyph="{mi:Material Icon=Straighten}"
-                                             Color="{StaticResource Gray500}"
+                                             Color="{StaticResource Gray600}"
                                              Size="48" />
                         </Image.Source>
                     </Image>
                     <Label Text="{Binding EmptyMeasurements}"
                            TextColor="{StaticResource Gray600}"
                            HorizontalTextAlignment="Center" />
-                    <Button Text="Add measurements"
+                    <Button Text="Add measurements" HeightRequest="48" CornerRadius="10"
                             Command="{Binding AddMeasurementCommand}"
                             BackgroundColor="{StaticResource Primary}"
                             TextColor="White"
@@ -110,8 +110,9 @@
                         </VerticalStackLayout>
                         <Label Grid.Column="1"
                                Text="{Binding Unit}"
+                               FontSize="13"
                                VerticalOptions="Center"
-                               TextColor="{StaticResource Gray500}" />
+                               TextColor="{StaticResource Gray600}" />
                     </Grid>
                 </DataTemplate>
             </CollectionView.ItemTemplate>

@@ -225,7 +225,8 @@ public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributabl
 
             if (!decimal.TryParse(field.ValueText, out var number))
             {
-                ErrorMessage = $"{field.Label} must be a number.";
+                field.Error = $"{field.Label} must be a number.";
+                ErrorMessage = field.Error;
                 return;
             }
 
@@ -372,4 +373,12 @@ public partial class MeasurementFieldItem : ObservableObject
 
     [ObservableProperty]
     private bool isEnabled = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasError))]
+    private string? error;
+
+    public bool HasError => !string.IsNullOrWhiteSpace(Error);
+
+    partial void OnValueTextChanged(string value) => Error = null;
 }

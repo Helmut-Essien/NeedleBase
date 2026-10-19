@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
              x:Class="NeedleBase.Mobile.Views.LoginPage"
              x:DataType="vm:LoginViewModel"
@@ -41,7 +42,7 @@
                     StrokeShape="RoundRectangle 8"
                     Margin="0,0,0,16">
                 <Entry Placeholder="you@business.com"
-                       PlaceholderColor="{StaticResource Gray500}"
+                       PlaceholderColor="{StaticResource Gray600}"
                        TextColor="{StaticResource Charcoal}"
                        Keyboard="Email"
                        Text="{Binding Email}"
@@ -58,18 +59,40 @@
             <Border Stroke="{StaticResource Gray300}"
                     StrokeThickness="1"
                     BackgroundColor="{StaticResource White}"
-                    Padding="14,2"
+                    Padding="14,2,4,2"
                     MinimumHeightRequest="48"
                     StrokeShape="RoundRectangle 8"
                     Margin="0,0,0,8">
-                <Entry Placeholder="Enter your password"
-                       PlaceholderColor="{StaticResource Gray500}"
-                       TextColor="{StaticResource Charcoal}"
-                       IsPassword="True"
-                       Text="{Binding Password}"
-                       IsEnabled="{Binding CanSubmit}"
-                       SemanticProperties.Description="Password"
-                       AutomationId="LoginPassword" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <Entry Grid.Column="0"
+                           Placeholder="Enter your password"
+                           PlaceholderColor="{StaticResource Gray600}"
+                           TextColor="{StaticResource Charcoal}"
+                           IsPassword="{Binding IsPasswordHidden}"
+                           Text="{Binding Password}"
+                           IsEnabled="{Binding CanSubmit}"
+                           SemanticProperties.Description="Password"
+                           AutomationId="LoginPassword" />
+                    <Grid Grid.Column="1" WidthRequest="44" HeightRequest="44" VerticalOptions="Center">
+                        <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"
+                               IsVisible="{Binding IsPasswordHidden}" AutomationProperties.IsInAccessibleTree="False">
+                            <Image.Source>
+                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=VisibilityOff}" Color="{StaticResource Gray600}" Size="21" />
+                            </Image.Source>
+                        </Image>
+                        <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"
+                               IsVisible="{Binding IsPasswordVisible}" AutomationProperties.IsInAccessibleTree="False">
+                            <Image.Source>
+                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=Visibility}" Color="{StaticResource Gray600}" Size="21" />
+                            </Image.Source>
+                        </Image>
+                        <Button BackgroundColor="Transparent" BorderWidth="0" WidthRequest="44" HeightRequest="44"
+                                MinimumWidthRequest="44" MinimumHeightRequest="44" Padding="0" CornerRadius="22"
+                                Command="{Binding TogglePasswordVisibilityCommand}" IsEnabled="{Binding CanSubmit}"
+                                SemanticProperties.Description="{Binding PasswordToggleDescription}"
+                                AutomationId="LoginPasswordToggle" />
+                    </Grid>
+                </Grid>
             </Border>
 
             <Label Text="{Binding ErrorMessage}"
@@ -77,7 +100,7 @@
                    IsVisible="{Binding HasError}"
                    FontSize="13"
                    Margin="0,0,0,8"
-                   SemanticProperties.Description="Sign-in error" />
+                   SemanticProperties.Description="Sign-in error" LineBreakMode="WordWrap" />
 
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                IsVisible="{Binding IsBusy}"

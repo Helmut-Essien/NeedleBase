@@ -257,6 +257,100 @@ a:hover {
   box-shadow: none;
 }
 
+.nb-password-field {
+  position: relative;
+}
+
+.nb-password-input {
+  padding-right: 3.5rem;
+}
+
+/* Prefer NeedleBase toggle; hide Edge/IE built-in reveal/clear glyphs. */
+.nb-password-input::-ms-reveal,
+.nb-password-input::-ms-clear {
+  display: none;
+}
+
+.nb-password-toggle {
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+  color: var(--nb-text-secondary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .nb-password-toggle {
+    transition: background-color 0.2s, color 0.2s;
+  }
+}
+
+@media (hover: hover) {
+  .nb-password-toggle:hover {
+    background-color: rgba(36, 122, 43, 0.08);
+    color: var(--nb-brand-primary-dark);
+  }
+}
+
+.nb-password-toggle:active {
+  background-color: rgba(36, 122, 43, 0.12);
+  color: var(--nb-brand-primary-dark);
+}
+
+.nb-password-toggle:focus-visible {
+  outline: 2px solid var(--nb-focus);
+  outline-offset: 2px;
+}
+
+.nb-password-toggle__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.nb-password-toggle__icon--hide,
+.nb-password-toggle--visible .nb-password-toggle__icon--show {
+  display: none;
+}
+
+.nb-password-toggle--visible .nb-password-toggle__icon--hide {
+  display: block;
+}
+
+@media (forced-colors: active) {
+  .nb-password-toggle {
+    border: 1px solid ButtonText;
+    color: ButtonText;
+    forced-color-adjust: none;
+  }
+
+  .nb-password-toggle:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  .nb-password-toggle__icon {
+    stroke: ButtonText;
+  }
+}
+
 .nb-auth-input::placeholder {
   color: var(--nb-text-tertiary);
 }

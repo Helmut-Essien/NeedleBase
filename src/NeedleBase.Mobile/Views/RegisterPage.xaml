@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
              x:Class="NeedleBase.Mobile.Views.RegisterPage"
              x:DataType="vm:RegisterViewModel"
@@ -35,7 +36,7 @@
             <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
                     Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
                 <Entry Placeholder="First name"
-                       PlaceholderColor="{StaticResource Gray500}"
+                       PlaceholderColor="{StaticResource Gray600}"
                        TextColor="{StaticResource Charcoal}"
                        Text="{Binding FirstName}"
                        IsEnabled="{Binding CanSubmit}"
@@ -46,7 +47,7 @@
             <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
                     Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
                 <Entry Placeholder="Surname"
-                       PlaceholderColor="{StaticResource Gray500}"
+                       PlaceholderColor="{StaticResource Gray600}"
                        TextColor="{StaticResource Charcoal}"
                        Text="{Binding Surname}"
                        IsEnabled="{Binding CanSubmit}"
@@ -57,7 +58,7 @@
             <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
                     Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
                 <Entry Placeholder="e.g. Ama Stitches"
-                       PlaceholderColor="{StaticResource Gray500}"
+                       PlaceholderColor="{StaticResource Gray600}"
                        TextColor="{StaticResource Charcoal}"
                        Text="{Binding BusinessName}"
                        IsEnabled="{Binding CanSubmit}"
@@ -69,7 +70,7 @@
             <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
                     Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
                 <Entry Placeholder="+233..."
-                       PlaceholderColor="{StaticResource Gray500}"
+                       PlaceholderColor="{StaticResource Gray600}"
                        TextColor="{StaticResource Charcoal}"
                        Text="{Binding BusinessPhone}"
                        Keyboard="Telephone"
@@ -81,7 +82,7 @@
             <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
                     Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,14">
                 <Entry Placeholder="you@business.com"
-                       PlaceholderColor="{StaticResource Gray500}"
+                       PlaceholderColor="{StaticResource Gray600}"
                        TextColor="{StaticResource Charcoal}"
                        Text="{Binding Email}"
                        Keyboard="Email"
@@ -94,7 +95,7 @@
             <Border Stroke="{StaticResource Gray300}"
                     StrokeThickness="1"
                     BackgroundColor="{StaticResource White}"
-                    Padding="14,2"
+                    Padding="14,2,4,2"
                     MinimumHeightRequest="48"
                     StrokeShape="RoundRectangle 8">
                 <Border.Triggers>
@@ -102,21 +103,43 @@
                         <Setter Property="Stroke" Value="{StaticResource SemanticError}" />
                     </DataTrigger>
                 </Border.Triggers>
-                <Entry Placeholder="Create a password"
-                       PlaceholderColor="{StaticResource Gray500}"
-                       TextColor="{StaticResource Charcoal}"
-                       Text="{Binding Password}"
-                       IsPassword="True"
-                       IsEnabled="{Binding CanSubmit}"
-                       SemanticProperties.Description="Password minimum six characters including a number"
-                       AutomationId="RegisterPassword" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <Entry Grid.Column="0"
+                           Placeholder="Create a password"
+                           PlaceholderColor="{StaticResource Gray600}"
+                           TextColor="{StaticResource Charcoal}"
+                           Text="{Binding Password}"
+                           IsPassword="{Binding IsPasswordHidden}"
+                           IsEnabled="{Binding CanSubmit}"
+                           SemanticProperties.Description="Password minimum six characters including a number"
+                           AutomationId="RegisterPassword" />
+                    <Grid Grid.Column="1" WidthRequest="44" HeightRequest="44" VerticalOptions="Center">
+                        <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"
+                               IsVisible="{Binding IsPasswordHidden}" AutomationProperties.IsInAccessibleTree="False">
+                            <Image.Source>
+                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=VisibilityOff}" Color="{StaticResource Gray600}" Size="21" />
+                            </Image.Source>
+                        </Image>
+                        <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"
+                               IsVisible="{Binding IsPasswordVisible}" AutomationProperties.IsInAccessibleTree="False">
+                            <Image.Source>
+                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=Visibility}" Color="{StaticResource Gray600}" Size="21" />
+                            </Image.Source>
+                        </Image>
+                        <Button BackgroundColor="Transparent" BorderWidth="0" WidthRequest="44" HeightRequest="44"
+                                MinimumWidthRequest="44" MinimumHeightRequest="44" Padding="0" CornerRadius="22"
+                                Command="{Binding TogglePasswordVisibilityCommand}" IsEnabled="{Binding CanSubmit}"
+                                SemanticProperties.Description="{Binding PasswordToggleDescription}"
+                                AutomationId="RegisterPasswordToggle" />
+                    </Grid>
+                </Grid>
             </Border>
             <Label Text="{Binding PasswordError}"
                    TextColor="{StaticResource SemanticError}"
                    IsVisible="{Binding HasPasswordError}"
                    FontSize="13"
                    Margin="0,6,0,0"
-                   SemanticProperties.Description="Password error" />
+                   SemanticProperties.Description="Password error" LineBreakMode="WordWrap" />
             <Label Text="At least 6 characters, including a number"
                    TextColor="{StaticResource Gray600}"
                    FontSize="13"
@@ -133,7 +156,7 @@
                     Stroke="{StaticResource Gray300}"
                     StrokeThickness="1"
                     BackgroundColor="{StaticResource White}"
-                    Padding="14,2"
+                    Padding="14,2,4,2"
                     MinimumHeightRequest="48"
                     StrokeShape="RoundRectangle 8"
                     Margin="0,0,0,6">
@@ -142,77 +165,94 @@
                         <Setter Property="Stroke" Value="{StaticResource SemanticError}" />
                     </DataTrigger>
                 </Border.Triggers>
-                <Entry Placeholder="Confirm your password"
-                       PlaceholderColor="{StaticResource Gray500}"
-                       TextColor="{StaticResource Charcoal}"
-                       Text="{Binding ConfirmPassword}"
-                       IsPassword="True"
-                       IsEnabled="{Binding CanSubmit}"
-                       SemanticProperties.Description="Confirm password" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <Entry Grid.Column="0"
+                           Placeholder="Confirm your password"
+                           PlaceholderColor="{StaticResource Gray600}"
+                           TextColor="{StaticResource Charcoal}"
+                           Text="{Binding ConfirmPassword}"
+                           IsPassword="{Binding IsConfirmPasswordHidden}"
+                           IsEnabled="{Binding CanSubmit}"
+                           SemanticProperties.Description="Confirm password" />
+                    <Grid Grid.Column="1" WidthRequest="44" HeightRequest="44" VerticalOptions="Center">
+                        <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"
+                               IsVisible="{Binding IsConfirmPasswordHidden}" AutomationProperties.IsInAccessibleTree="False">
+                            <Image.Source>
+                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=VisibilityOff}" Color="{StaticResource Gray600}" Size="21" />
+                            </Image.Source>
+                        </Image>
+                        <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"
+                               IsVisible="{Binding IsConfirmPasswordVisible}" AutomationProperties.IsInAccessibleTree="False">
+                            <Image.Source>
+                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=Visibility}" Color="{StaticResource Gray600}" Size="21" />
+                            </Image.Source>
+                        </Image>
+                        <Button BackgroundColor="Transparent" BorderWidth="0" WidthRequest="44" HeightRequest="44"
+                                MinimumWidthRequest="44" MinimumHeightRequest="44" Padding="0" CornerRadius="22"
+                                Command="{Binding ToggleConfirmPasswordVisibilityCommand}" IsEnabled="{Binding CanSubmit}"
+                                SemanticProperties.Description="{Binding ConfirmPasswordToggleDescription}"
+                                AutomationId="RegisterConfirmPasswordToggle" />
+                    </Grid>
+                </Grid>
             </Border>
             <Label Text="{Binding ConfirmPasswordError}"
                    TextColor="{StaticResource SemanticError}"
                    IsVisible="{Binding HasConfirmPasswordError}"
                    FontSize="13"
                    Margin="0,0,0,8"
-                   SemanticProperties.Description="Confirm password error" />
+                   SemanticProperties.Description="Confirm password error" LineBreakMode="WordWrap" />
 
             <Label Text="{Binding ErrorMessage}"
                    TextColor="{StaticResource SemanticError}"
                    IsVisible="{Binding HasError}"
                    FontSize="13"
                    Margin="0,0,0,8"
-                   SemanticProperties.Description="Registration error" />
+                   SemanticProperties.Description="Registration error" LineBreakMode="WordWrap" />
 
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                IsVisible="{Binding IsBusy}"
                                Color="{StaticResource Primary}"
                                Margin="0,0,0,8" />
 
-            <HorizontalStackLayout Spacing="4" Margin="0,4,0,0">
-                <CheckBox IsChecked="{Binding AcceptTerms}"
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" Margin="0,4,0,8">
+                <CheckBox Grid.Row="0" Grid.Column="0"
+                          IsChecked="{Binding AcceptTerms}"
                           Color="{StaticResource Primary}"
                           VerticalOptions="Start"
                           SemanticProperties.Description="I agree to the Terms and Conditions and Privacy Policy"
                           AutomationId="RegisterAcceptTerms" />
-                <Label Text="I agree to the Terms and Conditions and Privacy Policy"
+                <Label Grid.Row="0" Grid.Column="1"
+                       FontSize="14"
                        TextColor="{StaticResource Charcoal}"
+                       LineBreakMode="WordWrap"
+                       VerticalOptions="Start"
+                       SemanticProperties.Description="I agree to the Terms and Conditions and Privacy Policy">
+                    <Label.FormattedText>
+                        <FormattedString>
+                            <Span Text="I agree to the " />
+                            <Span Text="Terms and Conditions" TextColor="{StaticResource PrimaryDark}" FontAttributes="Bold" TextDecorations="Underline">
+                                <Span.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnTermsClicked" />
+                                </Span.GestureRecognizers>
+                            </Span>
+                            <Span Text=" and " />
+                            <Span Text="Privacy Policy" TextColor="{StaticResource PrimaryDark}" FontAttributes="Bold" TextDecorations="Underline">
+                                <Span.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnPrivacyClicked" />
+                                </Span.GestureRecognizers>
+                            </Span>
+                        </FormattedString>
+                    </Label.FormattedText>
+                </Label>
+                <Label Grid.Row="1" Grid.Column="1"
+                       Text="{Binding TermsError}"
+                       TextColor="{StaticResource SemanticError}"
+                       IsVisible="{Binding HasTermsError}"
                        FontSize="13"
                        LineBreakMode="WordWrap"
-                       VerticalOptions="Center" />
-            </HorizontalStackLayout>
-            <HorizontalStackLayout Spacing="8" Margin="28,0,0,4">
-                <Button Text="Terms and Conditions"
-                        BackgroundColor="Transparent"
-                        TextColor="{StaticResource Primary}"
-                        FontAttributes="Bold"
-                        FontSize="13"
-                        HeightRequest="48"
-                        MinimumHeightRequest="48"
-                        Padding="4,0"
-                        IsEnabled="{Binding CanSubmit}"
-                        Clicked="OnTermsClicked"
-                        SemanticProperties.Description="Open Terms and Conditions"
-                        AutomationId="RegisterTermsLink" />
-                <Button Text="Privacy Policy"
-                        BackgroundColor="Transparent"
-                        TextColor="{StaticResource Primary}"
-                        FontAttributes="Bold"
-                        FontSize="13"
-                        HeightRequest="48"
-                        MinimumHeightRequest="48"
-                        Padding="4,0"
-                        IsEnabled="{Binding CanSubmit}"
-                        Clicked="OnPrivacyClicked"
-                        SemanticProperties.Description="Open Privacy Policy"
-                        AutomationId="RegisterPrivacyLink" />
-            </HorizontalStackLayout>
-            <Label Text="{Binding TermsError}"
-                   TextColor="{StaticResource SemanticError}"
-                   IsVisible="{Binding HasTermsError}"
-                   FontSize="13"
-                   Margin="28,0,0,8"
-                   SemanticProperties.Description="Terms agreement error" />
+                       Margin="0,4,0,0"
+                       SemanticProperties.Description="Terms agreement error" />
+            </Grid>
 
             <Button Text="Create business"
                     Command="{Binding RegisterCommand}"

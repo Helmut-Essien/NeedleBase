@@ -63,11 +63,11 @@
                             <Image.Source>
                                 <FontImageSource FontFamily="MaterialIcons-Regular"
                                                  Glyph="{mi:Material Icon=People}"
-                                                 Color="{StaticResource Gray500}"
+                                                 Color="{StaticResource Gray600}"
                                                  Size="48" />
                             </Image.Source>
                         </Image>
-                        <Label Text="{Binding EmptyMessage}"
+                        <Label Text="{Binding EmptyMessage}" LineBreakMode="WordWrap"
                                TextColor="{StaticResource Gray600}"
                                HorizontalTextAlignment="Center"
                                SemanticProperties.HeadingLevel="Level2" />
@@ -117,7 +117,7 @@
                                 <Image.Source>
                                     <FontImageSource FontFamily="MaterialIcons-Regular"
                                                      Glyph="{mi:Material Icon=ChevronRight}"
-                                                     Color="{StaticResource Gray500}"
+                                                     Color="{StaticResource Gray600}"
                                                      Size="24" />
                                 </Image.Source>
                             </Image>

@@ -16,7 +16,7 @@
     </Shell.BackButtonBehavior>
 
     <ScrollView>
-        <VerticalStackLayout Padding="20,40,20,20" Spacing="14">
+        <VerticalStackLayout Padding="16,40,16,20" Spacing="14">
             <Button Text="Back"
                     ImageSource="{mi:Material Icon=ArrowBack, IconColor={StaticResource Charcoal}}"
                     Command="{Binding GoBackCommand}"
@@ -34,41 +34,63 @@
                    SemanticProperties.HeadingLevel="Level1" />
 
             <Label Text="Name"
-                   TextColor="{StaticResource Gray600}"
-                   FontSize="13" />
+                   TextColor="{StaticResource Charcoal}" FontAttributes="Bold"
+                   FontSize="14" />
             <Entry Text="{Binding Name}"
                    Placeholder="Efua Mensah"
+                   PlaceholderColor="{StaticResource Gray600}"
+                   TextColor="{StaticResource Charcoal}"
                    MaxLength="200"
+                   HeightRequest="48"
                    BackgroundColor="White"
                    IsEnabled="{Binding CanSubmit}"
                    SemanticProperties.Description="Customer name" />
+            <Label Text="{Binding NameError}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasNameError}"
+                   FontSize="13"
+                   LineBreakMode="WordWrap"
+                   SemanticProperties.Description="Customer name error" />
 
             <Label Text="Phone"
-                   TextColor="{StaticResource Gray600}"
-                   FontSize="13" />
+                   TextColor="{StaticResource Charcoal}" FontAttributes="Bold"
+                   FontSize="14" />
             <Entry Text="{Binding Phone}"
                    Placeholder="+233 24 555 0123"
+                   PlaceholderColor="{StaticResource Gray600}"
+                   TextColor="{StaticResource Charcoal}"
                    Keyboard="Telephone"
                    MaxLength="40"
+                   HeightRequest="48"
                    BackgroundColor="White"
                    IsEnabled="{Binding CanSubmit}"
                    SemanticProperties.Description="Customer phone number" />
+            <Label Text="{Binding PhoneError}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasPhoneError}"
+                   FontSize="13"
+                   LineBreakMode="WordWrap"
+                   SemanticProperties.Description="Customer phone error" />
 
             <Label Text="Notes (optional)"
-                   TextColor="{StaticResource Gray600}"
-                   FontSize="13" />
+                   TextColor="{StaticResource Charcoal}" FontAttributes="Bold"
+                   FontSize="14" />
             <Editor Text="{Binding Notes}"
                     Placeholder="Preferences, reminders…"
+                    PlaceholderColor="{StaticResource Gray600}"
+                    TextColor="{StaticResource Charcoal}"
                     AutoSize="TextChanges"
                     MaxLength="2000"
                     BackgroundColor="White"
-                    HeightRequest="100"
+                    MinimumHeightRequest="80"
                     IsEnabled="{Binding CanSubmit}"
                     SemanticProperties.Description="Optional customer notes" />
 
             <Label Text="{Binding ErrorMessage}"
                    TextColor="{StaticResource SemanticError}"
                    IsVisible="{Binding HasError}"
+                   FontSize="13"
+                   LineBreakMode="WordWrap"
                    SemanticProperties.Description="Save error" />
 
             <ActivityIndicator IsRunning="{Binding IsBusy}"
@@ -76,6 +98,10 @@
                                Color="{StaticResource Primary}" />
 
             <Button Text="Save"
+                    HeightRequest="48"
+                    CornerRadius="10"
+                    FontSize="16"
+                    FontAttributes="Bold"
                     Command="{Binding SaveCommand}"
                     BackgroundColor="{StaticResource Primary}"
                     TextColor="White"

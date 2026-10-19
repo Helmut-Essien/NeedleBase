@@ -1,6 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using NeedleBase.Application.Contracts.Auth;
+using NeedleBase.Mobile.Messaging;
 using NeedleBase.Mobile.Services;
 
 namespace NeedleBase.Mobile.ViewModels;
@@ -15,6 +17,10 @@ public partial class LoginViewModel : BaseViewModel
         _authService = authService;
         _navigation = navigation;
         Title = "Sign in";
+
+        WeakReferenceMessenger.Default.Register<ClearAuthSensitiveStateMessage>(
+            this,
+            static (recipient, _) => ((LoginViewModel)recipient).ClearSensitiveFields());
     }
 
     [ObservableProperty]
@@ -24,10 +30,57 @@ public partial class LoginViewModel : BaseViewModel
     private string password = string.Empty;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPasswordHidden))]
+    [NotifyPropertyChangedFor(nameof(PasswordToggleDescription))]
+    private bool isPasswordVisible;
+
+    public bool IsPasswordHidden => !IsPasswordVisible;
+
+    public string PasswordToggleDescription =>
+        IsPasswordVisible ? "Hide password" : "Show password";
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string? errorMessage;
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    [RelayCommand(CanExecute = nameof(CanSubmit))]
+    private void TogglePasswordVisibility()
+    {
+        IsPasswordVisible = !IsPasswordVisible;
+        AnnouncePasswordToggle(PasswordToggleDescription);
+    }
+
+    protected override void OnBusyChanged()
+    {
+        TogglePasswordVisibilityCommand.NotifyCanExecuteChanged();
+    }
+
+    private static void AnnouncePasswordToggle(string message)
+    {
+        try
+        {
+            SemanticScreenReader.Default.Announce(message);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
+    }
+
+    /// <summary>Remask on appear/resume. Secrets clear via logout message.</summary>
+    public void PrepareForDisplay() => RemaskPassword();
+
+    /// <summary>Hide plaintext if the page leaves the foreground (nav, app switcher).</summary>
+    public void RemaskPassword() => IsPasswordVisible = false;
+
+    public void ClearSensitiveFields()
+    {
+        Password = string.Empty;
+        IsPasswordVisible = false;
+        ErrorMessage = null;
+    }
 
     [RelayCommand]
     private async Task LoginAsync()
@@ -44,6 +97,7 @@ public partial class LoginViewModel : BaseViewModel
             return;
         }
 
+        IsPasswordVisible = false;
         IsBusy = true;
         try
         {
@@ -54,6 +108,7 @@ public partial class LoginViewModel : BaseViewModel
                 return;
             }
 
+            ClearSensitiveFields();
             await _navigation.ShowMainAsync();
         }
         catch (Exception ex)
