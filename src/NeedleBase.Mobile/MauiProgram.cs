@@ -70,6 +70,8 @@ public static class MauiProgram
 
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<RegisterPage>();
+        builder.Services.AddTransient<TermsPage>();
+        builder.Services.AddTransient<PrivacyPage>();
         builder.Services.AddSingleton<HomePage>();
         builder.Services.AddSingleton<CustomersPage>();
         builder.Services.AddTransient<CustomerEditPage>();

@@ -60,6 +60,11 @@ public class RegisterModel : PageModel
         [MaxLength(40)]
         [Display(Name = "Business phone (optional)")]
         public string? BusinessPhone { get; set; }
+
+        // Client-side gate only: not sent to the Api and not part of any shared DTO.
+        [Display(Name = "I agree to the Terms and Conditions and Privacy Policy")]
+        [Range(typeof(bool), "true", "true", ErrorMessage = "Please agree to the Terms and Conditions before creating an account.")]
+        public bool AcceptTerms { get; set; }
     }
 
     public void OnGet()
@@ -68,6 +73,13 @@ public class RegisterModel : PageModel
 
     public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
     {
+        if (!Input.AcceptTerms)
+        {
+            ModelState.AddModelError(
+                $"{nameof(Input)}.{nameof(Input.AcceptTerms)}",
+                "Please agree to the Terms and Conditions before creating an account.");
+        }
+
         if (!ModelState.IsValid)
         {
             return Page();

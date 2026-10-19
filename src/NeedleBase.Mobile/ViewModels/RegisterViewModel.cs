@@ -25,6 +25,13 @@ public partial class RegisterViewModel : BaseViewModel
     [ObservableProperty] private string businessName = string.Empty;
     [ObservableProperty] private string? businessPhone;
 
+    // Client-side gate only: not sent to the Api and not part of any shared DTO.
+    [ObservableProperty] private bool acceptTerms;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasTermsError))]
+    private string? termsError;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string? errorMessage;
@@ -37,9 +44,18 @@ public partial class RegisterViewModel : BaseViewModel
     [NotifyPropertyChangedFor(nameof(HasConfirmPasswordError))]
     private string? confirmPasswordError;
 
+    public bool HasTermsError => !string.IsNullOrWhiteSpace(TermsError);
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasPasswordError => !string.IsNullOrWhiteSpace(PasswordError);
     public bool HasConfirmPasswordError => !string.IsNullOrWhiteSpace(ConfirmPasswordError);
+
+    partial void OnAcceptTermsChanged(bool value)
+    {
+        if (value)
+        {
+            TermsError = null;
+        }
+    }
 
     partial void OnPasswordChanged(string value)
     {
@@ -61,6 +77,7 @@ public partial class RegisterViewModel : BaseViewModel
         }
 
         ErrorMessage = null;
+        TermsError = null;
         PasswordError = null;
         ConfirmPasswordError = null;
         if (string.IsNullOrWhiteSpace(Email) ||
@@ -83,6 +100,12 @@ public partial class RegisterViewModel : BaseViewModel
         if (!string.Equals(Password, ConfirmPassword, StringComparison.Ordinal))
         {
             ConfirmPasswordError = "Passwords do not match";
+            return;
+        }
+
+        if (!AcceptTerms)
+        {
+            TermsError = "Please agree to the Terms and Conditions before creating an account.";
             return;
         }
 

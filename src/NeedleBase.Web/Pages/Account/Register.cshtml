@@ -56,6 +56,13 @@
         <input asp-for="Input.ConfirmPassword" class="form-control nb-auth-input" autocomplete="new-password" placeholder="Confirm your password" />
         <span asp-validation-for="Input.ConfirmPassword" class="text-danger small nb-auth-error"></span>
     </div>
+    <div class="form-check nb-auth-terms text-start">
+        <input asp-for="Input.AcceptTerms" class="form-check-input" />
+        <label asp-for="Input.AcceptTerms" class="form-check-label">
+            I agree to the <a asp-page="/Terms" target="_blank" rel="noopener noreferrer">Terms and Conditions</a> and <a asp-page="/Privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+        </label>
+        <span asp-validation-for="Input.AcceptTerms" class="text-danger small nb-auth-error"></span>
+    </div>
     <div class="d-grid">
         <button type="submit" class="btn nb-btn-primary nb-auth-submit">Create business</button>
     </div>

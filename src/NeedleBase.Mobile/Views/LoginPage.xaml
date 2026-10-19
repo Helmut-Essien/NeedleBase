@@ -13,23 +13,20 @@
         <VerticalStackLayout Padding="16,40,16,32" Spacing="0" VerticalOptions="Center">
             <Image Source="needlebase_logo.png"
                    Aspect="AspectFit"
-                   HeightRequest="110"
-                   WidthRequest="260"
+                   HeightRequest="176"
+                   WidthRequest="320"
                    HorizontalOptions="Center"
-                   Margin="0,0,0,20"
+                   Margin="0,0,0,12"
                    SemanticProperties.Description="NeedleBase logo" />
 
-            <Label Text="Sign in"
+            <Label Text="Sign in to your business"
                    TextColor="{StaticResource Charcoal}"
-                   FontSize="24"
+                   FontSize="20"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
+                   HorizontalTextAlignment="Center"
+                   Margin="0,0,0,24"
                    SemanticProperties.HeadingLevel="Level1" />
-            <Label Text="Sign in to your business"
-                   TextColor="{StaticResource Gray600}"
-                   FontSize="15"
-                   HorizontalOptions="Center"
-                   Margin="0,6,0,28" />
 
             <Label Text="Email"
                    TextColor="{StaticResource Charcoal}"
@@ -110,6 +107,7 @@
                     IsEnabled="{Binding CanSubmit}"
                     Clicked="OnRegisterClicked"
                     SemanticProperties.Description="Register a new business" />
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

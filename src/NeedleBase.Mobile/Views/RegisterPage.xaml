@@ -13,23 +13,23 @@
         <VerticalStackLayout Padding="16,40,16,28" Spacing="0">
             <Image Source="needlebase_logo.png"
                    Aspect="AspectFit"
-                   HeightRequest="100"
-                   WidthRequest="240"
+                   HeightRequest="176"
+                   WidthRequest="320"
                    HorizontalOptions="Center"
-                   Margin="0,0,0,16"
+                   Margin="0,0,0,12"
                    SemanticProperties.Description="NeedleBase logo" />
 
             <Label Text="Register your business"
                    TextColor="{StaticResource Charcoal}"
-                   FontSize="24"
+                   FontSize="20"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
                    SemanticProperties.HeadingLevel="Level1" />
             <Label Text="Create an owner account for NeedleBase"
                    TextColor="{StaticResource Gray600}"
-                   FontSize="15"
+                   FontSize="13"
                    HorizontalOptions="Center"
-                   Margin="0,6,0,24" />
+                   Margin="0,4,0,20" />
 
             <Label Text="First name" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
             <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
@@ -169,6 +169,51 @@
                                Color="{StaticResource Primary}"
                                Margin="0,0,0,8" />
 
+            <HorizontalStackLayout Spacing="4" Margin="0,4,0,0">
+                <CheckBox IsChecked="{Binding AcceptTerms}"
+                          Color="{StaticResource Primary}"
+                          VerticalOptions="Start"
+                          SemanticProperties.Description="I agree to the Terms and Conditions and Privacy Policy"
+                          AutomationId="RegisterAcceptTerms" />
+                <Label Text="I agree to the Terms and Conditions and Privacy Policy"
+                       TextColor="{StaticResource Charcoal}"
+                       FontSize="13"
+                       LineBreakMode="WordWrap"
+                       VerticalOptions="Center" />
+            </HorizontalStackLayout>
+            <HorizontalStackLayout Spacing="8" Margin="28,0,0,4">
+                <Button Text="Terms and Conditions"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource Primary}"
+                        FontAttributes="Bold"
+                        FontSize="13"
+                        HeightRequest="48"
+                        MinimumHeightRequest="48"
+                        Padding="4,0"
+                        IsEnabled="{Binding CanSubmit}"
+                        Clicked="OnTermsClicked"
+                        SemanticProperties.Description="Open Terms and Conditions"
+                        AutomationId="RegisterTermsLink" />
+                <Button Text="Privacy Policy"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource Primary}"
+                        FontAttributes="Bold"
+                        FontSize="13"
+                        HeightRequest="48"
+                        MinimumHeightRequest="48"
+                        Padding="4,0"
+                        IsEnabled="{Binding CanSubmit}"
+                        Clicked="OnPrivacyClicked"
+                        SemanticProperties.Description="Open Privacy Policy"
+                        AutomationId="RegisterPrivacyLink" />
+            </HorizontalStackLayout>
+            <Label Text="{Binding TermsError}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasTermsError}"
+                   FontSize="13"
+                   Margin="28,0,0,8"
+                   SemanticProperties.Description="Terms agreement error" />
+
             <Button Text="Create business"
                     Command="{Binding RegisterCommand}"
                     IsEnabled="{Binding CanSubmit}"
@@ -202,6 +247,7 @@
                         SemanticProperties.Description="Back to sign in"
                         AutomationId="RegisterGoToLogin" />
             </HorizontalStackLayout>
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

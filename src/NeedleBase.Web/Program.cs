@@ -121,6 +121,8 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AuthorizeFolder("/");
     options.Conventions.AllowAnonymousToFolder("/Account");
     options.Conventions.AllowAnonymousToPage("/Error");
+    options.Conventions.AllowAnonymousToPage("/Terms");
+    options.Conventions.AllowAnonymousToPage("/Privacy");
 });
 
 var app = builder.Build();

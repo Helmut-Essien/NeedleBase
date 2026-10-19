@@ -190,11 +190,12 @@ a:hover {
   padding: 1.25rem;
 }
 
+
 .nb-auth-card {
   background: var(--nb-bg-surface);
   border: 1px solid var(--nb-border);
   border-radius: 12px;
-  padding: 2.5rem 2rem;
+  padding: 2rem 2rem 2.25rem;
   text-align: center;
   box-shadow: 0 8px 24px rgba(32, 42, 50, 0.08);
 }
@@ -202,19 +203,19 @@ a:hover {
 .nb-auth-brand {
   display: flex;
   justify-content: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .nb-auth-logo {
   display: block;
-  width: min(240px, 78%);
+  width: min(330px, 94%);
   height: auto;
   object-fit: contain;
 }
 
 .nb-auth-title {
   color: var(--nb-charcoal);
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.25;
   margin: 0 0 0.35rem;
@@ -222,8 +223,9 @@ a:hover {
 
 .nb-auth-subtitle {
   color: var(--nb-text-secondary);
-  font-size: 0.95rem;
-  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  margin: 0 0 1.25rem;
 }
 
 .nb-auth-form {
@@ -320,7 +322,7 @@ a:hover {
 
 .nb-auth-footer {
   color: var(--nb-text-secondary);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   margin: 1.5rem 0 0;
 }
 
@@ -340,3 +342,17 @@ a:hover {
   outline-offset: 2px;
   border-radius: 2px;
 }
+
+
+
+.nb-auth-terms { margin: 0.25rem 0 1rem; }
+.nb-auth-terms .form-check-label { color: var(--nb-charcoal); font-size: 0.85rem; line-height: 1.45; }
+.nb-auth-terms a { color: var(--nb-brand-primary-dark); font-weight: 600; text-decoration: none; }
+.nb-auth-terms a:hover { text-decoration: underline; }
+
+.nb-legal { max-width: 760px; margin: 0 auto; padding: 1.5rem 0 2.5rem; }
+.nb-legal h1 { font-size: 1.65rem; font-weight: 700; color: var(--nb-charcoal); margin: 0 0 0.35rem; }
+.nb-legal h2 { font-size: 1.05rem; font-weight: 700; color: var(--nb-charcoal); margin: 1.5rem 0 0.4rem; }
+.nb-legal p, .nb-legal li { color: var(--nb-text-secondary); font-size: 0.95rem; line-height: 1.65; }
+.nb-legal-meta { color: var(--nb-text-tertiary); font-size: 0.85rem; margin-bottom: 1rem; }
+@media (max-width: 400px) { .nb-auth-card { padding: 1.5rem 1.25rem 1.75rem; } }

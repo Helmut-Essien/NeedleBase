@@ -11,6 +11,8 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(CustomerEditPage), typeof(CustomerEditPage));
         Routing.RegisterRoute(nameof(CustomerDetailPage), typeof(CustomerDetailPage));
         Routing.RegisterRoute(nameof(MeasurementEditPage), typeof(MeasurementEditPage));
+        Routing.RegisterRoute(nameof(TermsPage), typeof(TermsPage));
+        Routing.RegisterRoute(nameof(PrivacyPage), typeof(PrivacyPage));
 
         // Native MauiSplashScreen is the only splash; run auth gate once Shell is ready.
         Loaded += OnShellLoaded;
