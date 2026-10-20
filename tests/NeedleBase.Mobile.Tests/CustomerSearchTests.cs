@@ -172,4 +172,36 @@ public class CustomerSearchTests
         await LocalSchemaMigrator.MigrateAsync(scope.ServiceProvider.GetRequiredService<LocalDbContext>());
         return provider;
     }
+
+    [Theory]
+    [InlineData("ama")]           // accent folding
+    [InlineData("oko")]           // Ɔ / ɔ fold to o
+    [InlineData("ansah")]         // hyphenated surname
+    [InlineData("guess")]         // after an apostrophe
+    public async Task Search_FoldsAccents_AndSplitsHyphensAndApostrophes(string term)
+    {
+        await using var provider = await BuildAsync();
+        var customers = provider.GetRequiredService<ICustomerLocalService>();
+        var id = await AddAsync(customers, "Ámá Ɔkɔ Owusu-Ansah N'Guessan", "0245550123");
+        await AddAsync(customers, "Kwame Boateng", "0201112222");
+
+        var results = await customers.SearchAsync(Biz, term);
+
+        Assert.Equal(id, Assert.Single(results).Id);
+    }
+
+    [Theory]
+    [InlineData("7911", true)]     // middle of a non-Ghana number
+    [InlineData("123456", true)]
+    [InlineData("911", false)]     // under 4 digits: prefix rules only
+    public async Task Search_ForeignNumber_MatchesDigitsAnywhere(string term, bool found)
+    {
+        await using var provider = await BuildAsync();
+        var customers = provider.GetRequiredService<ICustomerLocalService>();
+        var id = await AddAsync(customers, "London Client", "+44 7911 123456");
+
+        var results = await customers.SearchAsync(Biz, term);
+
+        Assert.Equal(found, results.Any(r => r.Id == id));
+    }
 }

@@ -23,6 +23,7 @@ public sealed class NeedleBaseApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseSetting("JwtSettings:SecurityKey", TestJwtKey);
+        builder.UseSetting("RateLimits:AuthPermitPerMinute", "100000");
         builder.UseSetting(
             "ConnectionStrings:DefaultConnection",
             Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
@@ -40,7 +41,8 @@ public sealed class NeedleBaseApiFactory : WebApplicationFactory<Program>
                 ["JwtSettings:Audience"] = "NeedleBaseClient",
                 ["JwtSettings:AccessTokenExpirationMinutes"] = "60",
                 ["JwtSettings:RefreshTokenExpirationDays"] = "7",
-                ["Seed:DevelopmentData"] = "false"
+                ["Seed:DevelopmentData"] = "false",
+                ["RateLimits:AuthPermitPerMinute"] = "100000"
             });
         });
     }

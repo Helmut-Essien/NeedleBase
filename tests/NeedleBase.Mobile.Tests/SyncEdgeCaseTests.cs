@@ -19,7 +19,7 @@ using NeedleBase.Mobile.Services;
 namespace NeedleBase.Mobile.Tests;
 
 /// <summary>Regression tests for the Slice 4 edge-case audit (one per finding) + order/measurement round trips.</summary>
-public class SyncEdgeCaseTests
+public partial class SyncEdgeCaseTests
 {
     private const string Biz = "biz-edge";
 
@@ -576,6 +576,10 @@ public class SyncEdgeCaseTests
         public bool FailPushes { get; set; }
         public bool FailPushesOnly { get; set; }
         public bool CursorInvalidOnce { get; set; }
+        public bool ResetOnce { get; set; }
+        public int RateLimitPulls { get; set; }
+        public TimeSpan RetryAfter { get; set; }
+        public int Pulls { get; private set; }
 
         private DateTimeOffset Now() => _start.AddMilliseconds(++_tick);
 
@@ -694,6 +698,19 @@ public class SyncEdgeCaseTests
         public Task<SyncPullResponse> PullAsync(SyncPullRequest request, CancellationToken cancellationToken)
         {
             if (FailPushes) throw new SyncTransientException("offline");
+            Pulls++;
+            if (RateLimitPulls > 0)
+            {
+                RateLimitPulls--;
+                throw new SyncTransientException("slow down", retryAfter: RetryAfter, rateLimited: true);
+            }
+
+            if (ResetOnce && request.Cursor is not null)
+            {
+                ResetOnce = false;
+                throw new SyncCursorInvalidException(serverReset: true);
+            }
+
             if (CursorInvalidOnce && request.Cursor is not null)
             {
                 CursorInvalidOnce = false;

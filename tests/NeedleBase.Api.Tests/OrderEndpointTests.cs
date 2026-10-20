@@ -10,7 +10,7 @@ using NeedleBase.Domain.Enums;
 
 namespace NeedleBase.Api.Tests;
 
-public class OrderEndpointTests : IClassFixture<NeedleBaseApiFactory>
+public partial class OrderEndpointTests : IClassFixture<NeedleBaseApiFactory>
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
