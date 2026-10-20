@@ -33,18 +33,38 @@ public class LocalSchemaMigratorTests
     public async Task LegacyEnsureCreatedDatabase_IsBaselined_WithoutDataLoss()
     {
         var path = TempDb();
-        await using (var db = Create(path))
+        // Pre-G2 install: the frozen v1 tables EnsureCreated used to produce (user_version 0).
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
         {
-            await db.Database.EnsureCreatedAsync(); // pre-G2 install
-            db.Customers.Add(Customer.Create("01LEGACY0000000000000000001", "biz", "Efua Mensah", "+233245550123", null, null, DateTimeOffset.UtcNow));
-            await db.SaveChangesAsync();
+            connection.Open();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = """
+                CREATE TABLE "Customers" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_Customers" PRIMARY KEY,
+                    "BusinessId" TEXT NOT NULL, "Name" TEXT NOT NULL, "Phone" TEXT NOT NULL,
+                    "Notes" TEXT NULL, "PhotoRef" TEXT NULL,
+                    "CreatedAtUtc" TEXT NOT NULL, "DateModifiedUtc" TEXT NOT NULL);
+                CREATE TABLE "MeasurementProfiles" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_MeasurementProfiles" PRIMARY KEY,
+                    "BusinessId" TEXT NOT NULL, "CustomerId" TEXT NOT NULL, "GarmentTemplate" TEXT NOT NULL,
+                    "Unit" TEXT NOT NULL, "FieldsJson" TEXT NOT NULL, "Notes" TEXT NULL,
+                    "MeasuredAtUtc" TEXT NOT NULL, "DateModifiedUtc" TEXT NOT NULL);
+                INSERT INTO "Customers" VALUES ('01LEGACY0000000000000000001', 'biz', 'Efua Mensah', '+233 24 555 0123', NULL, NULL, '2026-01-01 00:00:00+00:00', '2026-01-01 00:00:00+00:00');
+                """;
+            cmd.ExecuteNonQuery();
         }
 
         await using (var db = Create(path))
         {
             var version = await LocalSchemaMigrator.MigrateAsync(db);
             Assert.Equal(LocalSchemaMigrator.LatestVersion, version);
-            Assert.Equal("Efua Mensah", (await db.Customers.SingleAsync()).Name);
+            var customer = await db.Customers.SingleAsync();
+            Assert.Equal("Efua Mensah", customer.Name);
+
+            // v3 backfill: search keys computed in C# for rows written before v3.
+            var entry = db.Entry(customer);
+            Assert.Equal(" efua mensah", entry.Property<string>(LocalDbContext.SearchNameColumn).CurrentValue);
+            Assert.Equal("245550123", entry.Property<string>(LocalDbContext.PhoneDigitsColumn).CurrentValue);
         }
     }
 

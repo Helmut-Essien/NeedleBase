@@ -1,5 +1,6 @@
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using NeedleBase.Application.Common;
 
 namespace NeedleBase.Mobile.Data.Data;
 
@@ -88,11 +89,67 @@ public static class LocalSchemaMigrator
         CREATE INDEX IF NOT EXISTS "IX_OrderLines_OrderId" ON "OrderLines" ("OrderId");
         """;
 
+    /// <summary>Version 3 = customer search keys (search-as-you-type). Rows are backfilled in C#.</summary>
+    private const string V3CustomerSearch = """
+        ALTER TABLE "Customers" ADD COLUMN "PhoneDigits" TEXT NULL;
+        ALTER TABLE "Customers" ADD COLUMN "SearchName" TEXT NULL;
+        CREATE INDEX IF NOT EXISTS "IX_Customers_BusinessId_SearchName" ON "Customers" ("BusinessId", "SearchName");
+        CREATE INDEX IF NOT EXISTS "IX_Customers_BusinessId_PhoneDigits" ON "Customers" ("BusinessId", "PhoneDigits");
+        """;
+
+    /// <summary>Version 4 = offline sync bookkeeping (Slice 4): queue + per-business cursor.</summary>
+    private const string V4Sync = """
+        CREATE TABLE IF NOT EXISTS "SyncQueue" (
+            "Id" TEXT NOT NULL CONSTRAINT "PK_SyncQueue" PRIMARY KEY,
+            "BusinessId" TEXT NOT NULL,
+            "EntityType" TEXT NOT NULL,
+            "EntityId" TEXT NOT NULL,
+            "ParentId" TEXT NULL,
+            "Operation" TEXT NOT NULL,
+            "PayloadJson" TEXT NULL,
+            "BaseModifiedUtc" TEXT NULL,
+            "Label" TEXT NOT NULL,
+            "CreatedAtUtc" TEXT NOT NULL,
+            "RetryCount" INTEGER NOT NULL,
+            "State" TEXT NOT NULL,
+            "LastError" TEXT NULL,
+            "ConflictServerJson" TEXT NULL
+        );
+        CREATE TABLE IF NOT EXISTS "DeviceInfo" (
+            "BusinessId" TEXT NOT NULL CONSTRAINT "PK_DeviceInfo" PRIMARY KEY,
+            "DeviceId" TEXT NOT NULL,
+            "PullCursor" TEXT NULL,
+            "LastSyncUtc" TEXT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_SyncQueue_BusinessId_EntityType_EntityId" ON "SyncQueue" ("BusinessId", "EntityType", "EntityId");
+        CREATE INDEX IF NOT EXISTS "IX_SyncQueue_BusinessId_State" ON "SyncQueue" ("BusinessId", "State");
+        """;
+
+    /// <summary>Version 5 = sync edge cases: conflict codes, resync flag, deferred children.</summary>
+    private const string V5SyncRecovery = """
+        ALTER TABLE "SyncQueue" ADD COLUMN "ConflictCode" TEXT NULL;
+        ALTER TABLE "DeviceInfo" ADD COLUMN "ResyncPending" INTEGER NOT NULL DEFAULT 0;
+        CREATE TABLE IF NOT EXISTS "SyncDeferred" (
+            "Id" TEXT NOT NULL CONSTRAINT "PK_SyncDeferred" PRIMARY KEY,
+            "BusinessId" TEXT NOT NULL,
+            "EntityType" TEXT NOT NULL,
+            "EntityId" TEXT NOT NULL,
+            "ParentId" TEXT NOT NULL,
+            "PayloadJson" TEXT NOT NULL,
+            "CreatedAtUtc" TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_SyncDeferred_BusinessId_EntityType_EntityId" ON "SyncDeferred" ("BusinessId", "EntityType", "EntityId");
+        CREATE INDEX IF NOT EXISTS "IX_SyncDeferred_BusinessId_ParentId" ON "SyncDeferred" ("BusinessId", "ParentId");
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
         V1Initial,
         V2Orders,
+        V3CustomerSearch,
+        V4Sync,
+        V5SyncRecovery,
     ];
 
     public static int LatestVersion => Steps.Length;
@@ -132,6 +189,7 @@ public static class LocalSchemaMigrator
                 version = next;
             }
 
+            await BackfillCustomerSearchKeysAsync(connection, cancellationToken).ConfigureAwait(false);
             return version;
         }
         finally
@@ -141,6 +199,56 @@ public static class LocalSchemaMigrator
                 await connection.CloseAsync().ConfigureAwait(false);
             }
         }
+    }
+
+    /// <summary>
+    /// Fills SearchName/PhoneDigits for rows written before v3 (same C# rules as SaveChanges).
+    /// Idempotent: only touches rows where SearchName is NULL.
+    /// </summary>
+    private static async Task BackfillCustomerSearchKeysAsync(DbConnection connection, CancellationToken cancellationToken)
+    {
+        if (!await TableExistsAsync(connection, "Customers", cancellationToken).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        var rows = new List<(string Id, string Name, string Phone)>();
+        await using (var select = connection.CreateCommand())
+        {
+            select.CommandText = "SELECT \"Id\", \"Name\", \"Phone\" FROM \"Customers\" WHERE \"SearchName\" IS NULL;";
+            await using var reader = await select.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                rows.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2)));
+            }
+        }
+
+        if (rows.Count == 0)
+        {
+            return;
+        }
+
+        await using var tx = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        foreach (var (id, name, phone) in rows)
+        {
+            await using var update = connection.CreateCommand();
+            update.Transaction = tx;
+            update.CommandText = "UPDATE \"Customers\" SET \"SearchName\" = $name, \"PhoneDigits\" = $phone WHERE \"Id\" = $id;";
+            AddParameter(update, "$name", CustomerSearchKeys.NameKey(name));
+            AddParameter(update, "$phone", CustomerSearchKeys.PhoneDigits(phone));
+            AddParameter(update, "$id", id);
+            await update.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static void AddParameter(DbCommand command, string name, object value)
+    {
+        var p = command.CreateParameter();
+        p.ParameterName = name;
+        p.Value = value;
+        command.Parameters.Add(p);
     }
 
     public static async Task<int> GetVersionAsync(DbConnection connection, CancellationToken cancellationToken = default)

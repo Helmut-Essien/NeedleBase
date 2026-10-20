@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
+using NeedleBase.Application.Common;
 using NeedleBase.Domain.Common;
 using NeedleBase.Domain.Entities;
 
 namespace NeedleBase.Mobile.Data.Data;
 
 /// <summary>
-/// Offline SQLite store. Sync queue enqueue lands in Slice 4;
-/// <see cref="SuppressSyncQueue"/> is reserved for pull-apply then.
+/// Offline SQLite store. SaveChanges enqueues sync items (Slice 4) unless SuppressSyncQueue;
+/// pull-apply sets <see cref="SuppressSyncQueue"/> (reset in finally).
 /// </summary>
 public sealed class LocalDbContext : DbContext
 {
@@ -18,10 +19,57 @@ public sealed class LocalDbContext : DbContext
     /// <summary>When true, SaveChanges will not enqueue sync ops (Slice 4).</summary>
     public bool SuppressSyncQueue { get; set; }
 
+    public const string SearchNameColumn = "SearchName";
+    public const string PhoneDigitsColumn = "PhoneDigits";
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        StampCustomerSearchKeys();
+        var queued = !SuppressSyncQueue && SyncQueueWriter.EnqueueAsync(this, CancellationToken.None).GetAwaiter().GetResult();
+        var result = base.SaveChanges(acceptAllChangesOnSuccess);
+        if (queued)
+        {
+            Sync.LocalSyncSignals.RaiseQueueChanged();
+        }
+
+        return result;
+    }
+
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        StampCustomerSearchKeys();
+        var queued = !SuppressSyncQueue && await SyncQueueWriter.EnqueueAsync(this, cancellationToken).ConfigureAwait(false);
+        var result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+        if (queued)
+        {
+            Sync.LocalSyncSignals.RaiseQueueChanged();
+        }
+
+        return result;
+    }
+
+    /// <summary>Every writer (forms now, sync pull in Slice 4) gets the same search keys.</summary>
+    private void StampCustomerSearchKeys()
+    {
+        foreach (var entry in ChangeTracker.Entries<Customer>())
+        {
+            if (entry.State is not (EntityState.Added or EntityState.Modified))
+            {
+                continue;
+            }
+
+            entry.Property(SearchNameColumn).CurrentValue = CustomerSearchKeys.NameKey(entry.Entity.Name);
+            entry.Property(PhoneDigitsColumn).CurrentValue = CustomerSearchKeys.PhoneDigits(entry.Entity.Phone);
+        }
+    }
+
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<MeasurementProfile> MeasurementProfiles => Set<MeasurementProfile>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+    public DbSet<SyncQueueItem> SyncQueue => Set<SyncQueueItem>();
+    public DbSet<DeviceInfo> DeviceInfo => Set<DeviceInfo>();
+    public DbSet<SyncDeferredItem> SyncDeferred => Set<SyncDeferredItem>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -37,6 +85,12 @@ public sealed class LocalDbContext : DbContext
             e.Property(x => x.PhotoRef).HasMaxLength(FieldLimits.PhotoRef);
             e.HasIndex(x => x.BusinessId);
             e.HasIndex(x => new { x.BusinessId, x.Name });
+
+            // Local-only search keys (schema v3), kept in sync by SaveChanges. See CustomerSearchKeys.
+            e.Property<string>(SearchNameColumn).HasMaxLength(FieldLimits.CustomerName + 1);
+            e.Property<string>(PhoneDigitsColumn).HasMaxLength(FieldLimits.Phone);
+            e.HasIndex(nameof(Customer.BusinessId), SearchNameColumn);
+            e.HasIndex(nameof(Customer.BusinessId), PhoneDigitsColumn);
         });
 
         builder.Entity<MeasurementProfile>(e =>
@@ -101,6 +155,45 @@ public sealed class LocalDbContext : DbContext
             e.Property(x => x.Notes).HasMaxLength(FieldLimits.Notes);
             e.HasIndex(x => x.BusinessId);
             e.HasIndex(x => new { x.BusinessId, x.OrderId });
+        });
+
+        builder.Entity<SyncQueueItem>(e =>
+        {
+            e.ToTable("SyncQueue");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.EntityType).HasMaxLength(FieldLimits.SyncEntityType).IsRequired();
+            e.Property(x => x.EntityId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.ParentId).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.Operation).HasMaxLength(FieldLimits.SyncOperation).IsRequired();
+            e.Property(x => x.Label).HasMaxLength(FieldLimits.CustomerName + 20).IsRequired();
+            e.Property(x => x.State).HasMaxLength(FieldLimits.SyncOperation).IsRequired();
+            e.HasIndex(x => new { x.BusinessId, x.EntityType, x.EntityId }).IsUnique();
+            e.HasIndex(x => new { x.BusinessId, x.State });
+        });
+
+        builder.Entity<SyncDeferredItem>(e =>
+        {
+            e.ToTable("SyncDeferred");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.EntityType).HasMaxLength(FieldLimits.SyncEntityType).IsRequired();
+            e.Property(x => x.EntityId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.ParentId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.PayloadJson).IsRequired();
+            e.HasIndex(x => new { x.BusinessId, x.EntityType, x.EntityId }).IsUnique();
+            e.HasIndex(x => new { x.BusinessId, x.ParentId });
+        });
+
+        builder.Entity<DeviceInfo>(e =>
+        {
+            e.ToTable("DeviceInfo");
+            e.HasKey(x => x.BusinessId);
+            e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.DeviceId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.PullCursor).HasMaxLength(2000);
         });
     }
 }

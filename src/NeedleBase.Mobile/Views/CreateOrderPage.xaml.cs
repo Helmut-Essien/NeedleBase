@@ -18,6 +18,13 @@ public partial class CreateOrderPage : ContentPage
         if (BindingContext is CreateOrderViewModel vm)
         {
             await vm.InitializeIfPendingAsync();
+
+            // Autofocus the customer search when nothing is pre-selected.
+            if (vm.ShowCustomerPicker && vm.IsStepCustomer)
+            {
+                await Task.Delay(150);
+                CustomerSearchEntry.Focus();
+            }
         }
     }
 }

@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NeedleBase.Application.Contracts.Customers;
 using NeedleBase.Mobile.Data.Services;
+using NeedleBase.Mobile.Helpers;
 using NeedleBase.Mobile.Services;
 
 namespace NeedleBase.Mobile.ViewModels;
@@ -12,6 +13,7 @@ public partial class CustomersViewModel : BaseViewModel
     private readonly ICustomerLocalService _customers;
     private readonly IAuthService _auth;
     private int _loadGeneration;
+    private readonly SearchDebouncer _searchDebounce = new();
 
     public CustomersViewModel(ICustomerLocalService customers, IAuthService auth)
     {
@@ -81,6 +83,7 @@ public partial class CustomersViewModel : BaseViewModel
         Interlocked.Increment(ref _loadGeneration);
         Items.Clear();
         SearchText = string.Empty;
+        _searchDebounce.Cancel();
         SelectedItem = null;
         ErrorMessage = null;
         HasSession = false;
@@ -91,8 +94,27 @@ public partial class CustomersViewModel : BaseViewModel
         OnPropertyChanged(nameof(ShowEmptyAdd));
     }
 
+    /// <summary>Search-as-you-type: debounced, stale queries cancelled (see SearchDebouncer).</summary>
+    partial void OnSearchTextChanged(string value)
+    {
+        if (!HasSession)
+        {
+            return;
+        }
+
+        _ = _searchDebounce.Run(async cancellationToken =>
+        {
+            // Supersede any in-flight load so its older results can't overwrite these.
+            Interlocked.Increment(ref _loadGeneration);
+            IsBusy = false;
+            await LoadCoreAsync(cancellationToken);
+        });
+    }
+
     [RelayCommand]
-    private async Task LoadAsync()
+    private Task LoadAsync() => LoadCoreAsync(CancellationToken.None);
+
+    private async Task LoadCoreAsync(CancellationToken cancellationToken)
     {
         if (IsBusy)
         {
@@ -121,7 +143,7 @@ public partial class CustomersViewModel : BaseViewModel
             }
 
             var search = SearchText;
-            var list = await _customers.SearchAsync(businessId!, search);
+            var list = await _customers.SearchAsync(businessId!, search, cancellationToken: cancellationToken);
             if (generation != _loadGeneration)
             {
                 return;
@@ -143,8 +165,12 @@ public partial class CustomersViewModel : BaseViewModel
 
             EmptyMessage = string.IsNullOrWhiteSpace(search)
                 ? "Add your first customer to get started."
-                : "No customers match that search.";
+                : $"No customers match \"{search.Trim()}\".";
             OnPropertyChanged(nameof(HasItems));
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A newer search replaced this one.
         }
         catch (Exception)
         {

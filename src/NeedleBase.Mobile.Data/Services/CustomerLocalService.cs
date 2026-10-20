@@ -29,20 +29,67 @@ public sealed class CustomerLocalService : ICustomerLocalService
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
 
-        var query = db.Customers.AsNoTracking().Where(c => c.BusinessId == businessId);
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var term = SearchText.Lower(search);
-            query = query.Where(c => c.Name.ToLower().Contains(term) || c.Phone.Contains(term));
-        }
+        var parsed = CustomerSearchKeys.Parse(search);
+        var query = CustomerSearchFilter.Apply(
+            db.Customers.AsNoTracking().Where(c => c.BusinessId == businessId),
+            parsed);
 
-        return await query
-            .OrderBy(c => c.Name)
-            .ThenBy(c => c.Id)
+        // SQLite's ADO provider is synchronous under async; keep the query off the UI thread.
+        return await Task.Run(
+            () => CustomerSearchFilter.Rank(query, parsed)
             .Take(take)
             .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
-            .ToListAsync(cancellationToken)
+            .ToListAsync(cancellationToken),
+            cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    public async Task<IReadOnlyList<CustomerListItemDto>> RecentAsync(
+        string businessId,
+        int take = 8,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(businessId);
+        take = Math.Clamp(take, 1, 30);
+
+        return await Task.Run(async () =>
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+
+            // Customers with the newest orders first (order Ids are time-sortable ULIDs)...
+            var recentIds = await db.Orders.AsNoTracking()
+                .Where(o => o.BusinessId == businessId)
+                .GroupBy(o => o.CustomerId)
+                .Select(g => new { CustomerId = g.Key, Last = g.Max(o => o.Id) })
+                .OrderByDescending(x => x.Last)
+                .Take(take)
+                .Select(x => x.CustomerId)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var byOrder = await db.Customers.AsNoTracking()
+                .Where(c => c.BusinessId == businessId && recentIds.Contains(c.Id))
+                .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+            var result = byOrder.OrderBy(c => recentIds.IndexOf(c.Id)).ToList();
+
+            // ...then the newest customers to fill the list.
+            if (result.Count < take)
+            {
+                var fill = await db.Customers.AsNoTracking()
+                    .Where(c => c.BusinessId == businessId && !recentIds.Contains(c.Id))
+                    .OrderByDescending(c => c.Id) // ULID = newest added (SQLite can't ORDER BY DateTimeOffset)
+                    .Take(take - result.Count)
+                    .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
+                    .ToListAsync(cancellationToken)
+                    .ConfigureAwait(false);
+                result.AddRange(fill);
+            }
+
+            return (IReadOnlyList<CustomerListItemDto>)result;
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<CustomerDetailDto?> GetByIdAsync(

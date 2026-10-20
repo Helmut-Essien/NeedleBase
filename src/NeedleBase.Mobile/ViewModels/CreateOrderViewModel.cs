@@ -11,6 +11,7 @@ using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Domain.Common;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Mobile.Data.Services;
+using NeedleBase.Mobile.Helpers;
 using NeedleBase.Mobile.Services;
 
 namespace NeedleBase.Mobile.ViewModels;
@@ -60,7 +61,126 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
 
     // TemplateChoice lives in MeasurementEditViewModel.cs (shared picker model).
 
-    public ObservableCollection<CustomerListItemDto> Customers { get; } = new();
+    /// <summary>Picker rows: recent customers when the query is empty, else matches (max <see cref="PickerLimit"/>).</summary>
+    public ObservableCollection<CustomerPickRow> CustomerResults { get; } = new();
+
+    private const int PickerLimit = 30;
+    private readonly SearchDebouncer _customerSearch = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCustomerQuery))]
+    private string customerQuery = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowNoMatches))]
+    [NotifyPropertyChangedFor(nameof(ShowResults))]
+    private bool hasCustomerResults;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowNoMatches))]
+    private bool isSearchingCustomers;
+
+    [ObservableProperty]
+    private string customerResultsHeader = "Recent customers";
+
+    [ObservableProperty]
+    private CustomerPickRow? selectedPickRow;
+
+    public bool HasCustomerQuery => !string.IsNullOrWhiteSpace(CustomerQuery);
+    public bool ShowCustomerPicker => SelectedCustomer is null;
+    public bool ShowResults => HasCustomerResults;
+    public bool ShowNoMatches => HasCustomerQuery && !HasCustomerResults && !IsSearchingCustomers;
+    public string NoMatchesText => $"No customers match \"{CustomerQuery.Trim()}\"";
+    public string SelectedCustomerName => SelectedCustomer?.Name ?? string.Empty;
+    public string SelectedCustomerInitials => SelectedCustomer?.Initials ?? string.Empty;
+
+    partial void OnCustomerQueryChanged(string value)
+    {
+        OnPropertyChanged(nameof(NoMatchesText));
+        OnPropertyChanged(nameof(ShowNoMatches));
+        _ = _customerSearch.Run(SearchCustomersAsync);
+    }
+
+    partial void OnSelectedPickRowChanged(CustomerPickRow? value)
+    {
+        if (value is null)
+        {
+            return;
+        }
+
+        SelectedCustomer = value.Customer;
+        SelectedPickRow = null;
+    }
+
+    [RelayCommand]
+    private void ClearCustomerQuery() => CustomerQuery = string.Empty;
+
+    [RelayCommand]
+    private void ChangeCustomer()
+    {
+        SelectedCustomer = null;
+        CustomerQuery = string.Empty;
+        _ = _customerSearch.Run(SearchCustomersAsync);
+    }
+
+    /// <summary>Empty state action: create the customer, then come back with them selected.</summary>
+    [RelayCommand]
+    private async Task AddNewCustomerAsync()
+    {
+        var query = CustomerQuery.Trim();
+        var key = query.Any(char.IsLetter) ? "name" : "phone";
+        await Shell.Current.GoToAsync(
+            "CustomerEditPage",
+            new Dictionary<string, object> { [key] = query, ["returnSelects"] = "true" });
+    }
+
+    private async Task SearchCustomersAsync(CancellationToken cancellationToken)
+    {
+        var businessId = await _auth.GetBusinessIdAsync();
+        if (string.IsNullOrWhiteSpace(businessId) || cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        var text = CustomerQuery;
+        var query = CustomerSearchKeys.Parse(text);
+        IsSearchingCustomers = true;
+        try
+        {
+            var list = query.IsEmpty
+                ? await _customers.RecentAsync(businessId, 8, cancellationToken)
+                : await _customers.SearchAsync(businessId, text, PickerLimit, cancellationToken);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            CustomerResults.Clear();
+            foreach (var customer in list)
+            {
+                CustomerResults.Add(new CustomerPickRow(customer, query));
+            }
+
+            CustomerResultsHeader = query.IsEmpty ? "Recent customers" : "Matching customers";
+            HasCustomerResults = CustomerResults.Count > 0;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Superseded by a newer keystroke.
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Customer search failed: {ex}");
+            ErrorMessage = "Couldn't search customers. Try again.";
+        }
+        finally
+        {
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                IsSearchingCustomers = false;
+            }
+        }
+    }
     public ObservableCollection<MeasurementListItemDto> Measurements { get; } = new();
     public ObservableCollection<CreateOrderLineDraft> Lines { get; } = new();
     public ObservableCollection<TemplateChoice> TemplateChoices { get; } = new();
@@ -77,6 +197,9 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedCustomer))]
     [NotifyPropertyChangedFor(nameof(SelectedCustomerPhone))]
+    [NotifyPropertyChangedFor(nameof(SelectedCustomerName))]
+    [NotifyPropertyChangedFor(nameof(SelectedCustomerInitials))]
+    [NotifyPropertyChangedFor(nameof(ShowCustomerPicker))]
     private CustomerListItemDto? selectedCustomer;
 
     [ObservableProperty]
@@ -114,7 +237,7 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasLines => Lines.Count > 0;
     public bool HasSelectedCustomer => SelectedCustomer is not null;
-    public string SelectedCustomerPhone => SelectedCustomer?.Phone ?? string.Empty;
+    public string SelectedCustomerPhone => CustomerSearchKeys.FormatPhone(SelectedCustomer?.Phone);
     public bool IsStepCustomer => Step == 0;
     public bool IsStepGarment => Step == 1;
     public bool IsStepDetails => Step == 2;
@@ -129,6 +252,15 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
+        // Returning from "Add new customer": select the customer just created.
+        if (query.TryGetValue("createdCustomerId", out var created) && created is not null)
+        {
+            var createdId = created.ToString() ?? string.Empty;
+            query.Clear();
+            MainThread.BeginInvokeOnMainThread(async () => await SelectCustomerByIdAsync(createdId));
+            return;
+        }
+
         if (query.TryGetValue("customerId", out var value) && value is not null)
         {
             PrefillCustomerId = Uri.UnescapeDataString(value.ToString() ?? string.Empty);
@@ -209,31 +341,13 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
                 return;
             }
 
-            Customers.Clear();
-            if (!string.IsNullOrWhiteSpace(PrefillCustomerId))
+            if (!string.IsNullOrWhiteSpace(PrefillCustomerId) &&
+                await SelectCustomerByIdAsync(PrefillCustomerId))
             {
-                var prefill = await _customers.GetByIdAsync(businessId, PrefillCustomerId);
-                if (prefill is not null)
-                {
-                    Customers.Add(new CustomerListItemDto(
-                        prefill.Id,
-                        prefill.Name,
-                        prefill.Phone,
-                        prefill.DateModifiedUtc));
-                    SelectedCustomer = Customers[0];
-                }
+                return;
             }
 
-            var list = await _customers.SearchAsync(businessId, null);
-            foreach (var c in list)
-            {
-                if (Customers.Any(existing => existing.Id == c.Id))
-                {
-                    continue;
-                }
-
-                Customers.Add(c);
-            }
+            await SearchCustomersAsync(CancellationToken.None);
         }
         catch (Exception)
         {
@@ -243,6 +357,24 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
         {
             IsBusy = false;
         }
+    }
+
+    private async Task<bool> SelectCustomerByIdAsync(string customerId)
+    {
+        var businessId = await _auth.GetBusinessIdAsync();
+        if (string.IsNullOrWhiteSpace(businessId) || string.IsNullOrWhiteSpace(customerId))
+        {
+            return false;
+        }
+
+        var detail = await _customers.GetByIdAsync(businessId, customerId);
+        if (detail is null)
+        {
+            return false;
+        }
+
+        SelectedCustomer = new CustomerListItemDto(detail.Id, detail.Name, detail.Phone, detail.DateModifiedUtc);
+        return true;
     }
 
     private async Task LoadMeasurementsAsync()

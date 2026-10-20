@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Mobile.Data.Services;
+using NeedleBase.Mobile.Helpers;
 using NeedleBase.Mobile.Services;
 
 namespace NeedleBase.Mobile.ViewModels;
@@ -24,6 +25,7 @@ public partial class OrdersViewModel : BaseViewModel
     private readonly IOrderLocalService _orders;
     private readonly IAuthService _auth;
     private int _loadGeneration;
+    private readonly SearchDebouncer _searchDebounce = new();
     private bool _suppressFilterReload = true;
 
     public OrdersViewModel(IOrderLocalService orders, IAuthService auth)
@@ -113,6 +115,7 @@ public partial class OrdersViewModel : BaseViewModel
         Interlocked.Increment(ref _loadGeneration);
         Items.Clear();
         SearchText = string.Empty;
+        _searchDebounce.Cancel();
         SelectedItem = null;
         ErrorMessage = null;
         HasSession = false;
@@ -125,8 +128,27 @@ public partial class OrdersViewModel : BaseViewModel
         OnPropertyChanged(nameof(ShowEmptyAdd));
     }
 
+    /// <summary>Search-as-you-type: debounced, stale queries cancelled (see SearchDebouncer).</summary>
+    partial void OnSearchTextChanged(string value)
+    {
+        if (!HasSession)
+        {
+            return;
+        }
+
+        _ = _searchDebounce.Run(async cancellationToken =>
+        {
+            // Supersede any in-flight load so its older results can't overwrite these.
+            Interlocked.Increment(ref _loadGeneration);
+            IsBusy = false;
+            await LoadCoreAsync(cancellationToken);
+        });
+    }
+
     [RelayCommand]
-    private async Task LoadAsync()
+    private Task LoadAsync() => LoadCoreAsync(CancellationToken.None);
+
+    private async Task LoadCoreAsync(CancellationToken cancellationToken)
     {
         if (IsBusy)
         {
@@ -156,7 +178,9 @@ public partial class OrdersViewModel : BaseViewModel
 
             var search = SearchText;
             var status = SelectedStatusFilter?.Status;
-            var list = await _orders.SearchAsync(businessId!, search, status);
+            var list = await Task.Run(
+                () => _orders.SearchAsync(businessId!, search, status, cancellationToken: cancellationToken),
+                cancellationToken);
             if (generation != _loadGeneration)
             {
                 return;
@@ -178,6 +202,10 @@ public partial class OrdersViewModel : BaseViewModel
             EmptyMessage = string.IsNullOrWhiteSpace(search) && status is null
                 ? "Create your first order to track sewing work."
                 : "No orders match that filter.";
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A newer search replaced this one.
         }
         catch (Exception)
         {

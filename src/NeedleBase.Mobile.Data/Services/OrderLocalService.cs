@@ -43,13 +43,12 @@ public sealed class OrderLocalService : IOrderLocalService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = SearchText.Lower(search);
+            // Customer part uses the same rule as the Customers tab and New order picker.
             var refTerm = SearchText.Ref(search);
-            orders =
-                from o in orders
-                join c in db.Customers.AsNoTracking() on o.CustomerId equals c.Id
-                where o.DisplayRef.Contains(refTerm) || c.Name.ToLower().Contains(term) || c.Phone.Contains(term)
-                select o;
+            var customerIds = CustomerSearchFilter
+                .Apply(db.Customers.AsNoTracking().Where(c => c.BusinessId == businessId), CustomerSearchKeys.Parse(search))
+                .Select(c => c.Id);
+            orders = orders.Where(o => o.DisplayRef.Contains(refTerm) || customerIds.Contains(o.CustomerId));
         }
 
         var rows = await (

@@ -4,7 +4,6 @@
              xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
              xmlns:meas="clr-namespace:NeedleBase.Application.Contracts.Measurements;assembly=NeedleBase.Application"
-             xmlns:cust="clr-namespace:NeedleBase.Application.Contracts.Customers;assembly=NeedleBase.Application"
              x:Class="NeedleBase.Mobile.Views.CreateOrderPage"
              x:DataType="vm:CreateOrderViewModel"
              Title="{Binding Title}"
@@ -48,18 +47,148 @@
                        FontAttributes="Bold"
                        FontSize="16"
                        TextColor="{StaticResource Charcoal}" />
-                <Picker Title="Select customer"
-                        ItemsSource="{Binding Customers}"
-                        ItemDisplayBinding="{Binding Name, x:DataType=cust:CustomerListItemDto}"
-                        SelectedItem="{Binding SelectedCustomer}"
-                        TextColor="{StaticResource Charcoal}"
+                <!-- Selected customer card (also the pre-filled state from Customer detail) -->
+                <Border IsVisible="{Binding HasSelectedCustomer}"
                         BackgroundColor="White"
-                        HeightRequest="48"
-                        SemanticProperties.Description="Select customer" />
-                <Label Text="{Binding SelectedCustomerPhone}"
-                       TextColor="{StaticResource Gray600}"
-                       IsVisible="{Binding HasSelectedCustomer}"
-                       FontSize="14" />
+                        Stroke="{StaticResource Gray300}"
+                        StrokeThickness="1"
+                        StrokeShape="RoundRectangle 12"
+                        Padding="12">
+                    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                        <Border Grid.Column="0"
+                                WidthRequest="40" HeightRequest="40"
+                                StrokeThickness="0"
+                                StrokeShape="RoundRectangle 20"
+                                BackgroundColor="{StaticResource PrimaryLight}"
+                                VerticalOptions="Center">
+                            <Label Text="{Binding SelectedCustomerInitials}"
+                                   FontAttributes="Bold"
+                                   TextColor="{StaticResource PrimaryDark}"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                            <Label Text="{Binding SelectedCustomerName}"
+                                   FontAttributes="Bold"
+                                   FontSize="16"
+                                   TextColor="{StaticResource Charcoal}"
+                                   LineBreakMode="TailTruncation" />
+                            <Label Text="{Binding SelectedCustomerPhone}"
+                                   FontSize="14"
+                                   TextColor="{StaticResource Gray600}" />
+                        </VerticalStackLayout>
+                        <Button Grid.Column="2"
+                                Text="Change"
+                                Style="{StaticResource SecondaryButton}"
+                                Command="{Binding ChangeCustomerCommand}"
+                                VerticalOptions="Center"
+                                Padding="16,0"
+                                AutomationId="ChangeCustomerButton"
+                                SemanticProperties.Description="Change customer" />
+                    </Grid>
+                </Border>
+
+                <!-- Search-as-you-type picker -->
+                <VerticalStackLayout Spacing="8" IsVisible="{Binding ShowCustomerPicker}">
+                    <Border BackgroundColor="White"
+                            Stroke="{StaticResource Gray300}"
+                            StrokeThickness="1.5"
+                            StrokeShape="RoundRectangle 10"
+                            HeightRequest="48"
+                            Padding="12,0,4,0">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+                            <Image Grid.Column="0"
+                                   Source="{mi:Material Icon=Search, IconColor={StaticResource Gray600}}"
+                                   WidthRequest="20" HeightRequest="20"
+                                   VerticalOptions="Center" />
+                            <Entry x:Name="CustomerSearchEntry"
+                                   Grid.Column="1"
+                                   Text="{Binding CustomerQuery}"
+                                   Placeholder="Search name or phone"
+                                   TextColor="{StaticResource Charcoal}"
+                                   PlaceholderColor="{StaticResource Gray600}"
+                                   BackgroundColor="Transparent"
+                                   ClearButtonVisibility="Never"
+                                   ReturnType="Search"
+                                   IsSpellCheckEnabled="False"
+                                   IsTextPredictionEnabled="False"
+                                   VerticalOptions="Center"
+                                   AutomationId="CustomerSearchEntry"
+                                   SemanticProperties.Description="Search customers by name or phone" />
+                            <ImageButton Grid.Column="2"
+                                         Source="{mi:Material Icon=Close, IconColor={StaticResource Gray600}}"
+                                         Command="{Binding ClearCustomerQueryCommand}"
+                                         IsVisible="{Binding HasCustomerQuery}"
+                                         BackgroundColor="Transparent"
+                                         WidthRequest="44" HeightRequest="44"
+                                         Padding="12"
+                                         VerticalOptions="Center"
+                                         AutomationId="ClearCustomerSearchButton"
+                                         SemanticProperties.Description="Clear search" />
+                        </Grid>
+                    </Border>
+
+                    <Label Text="{Binding CustomerResultsHeader}"
+                           IsVisible="{Binding ShowResults}"
+                           FontSize="12"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource Gray600}"
+                           Margin="4,4,0,0" />
+
+                    <!-- Results are capped (30) in SQL; the list virtualises inside its own viewport. -->
+                    <CollectionView ItemsSource="{Binding CustomerResults}"
+                                    IsVisible="{Binding ShowResults}"
+                                    SelectionMode="Single"
+                                    SelectedItem="{Binding SelectedPickRow}"
+                                    HeightRequest="360"
+                                    ItemSizingStrategy="MeasureFirstItem"
+                                    AutomationId="CustomerResultsList">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:CustomerPickRow">
+                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12"
+                                      Padding="8,8" MinimumHeightRequest="56"
+                                      BackgroundColor="White"
+                                      SemanticProperties.Description="{Binding Name}">
+                                    <Border Grid.Column="0"
+                                            WidthRequest="40" HeightRequest="40"
+                                            StrokeThickness="0"
+                                            StrokeShape="RoundRectangle 20"
+                                            BackgroundColor="{StaticResource Gray200}"
+                                            VerticalOptions="Center">
+                                        <Label Text="{Binding Initials}"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource Charcoal}"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                    </Border>
+                                    <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" Spacing="2">
+                                        <Label FormattedText="{Binding NameFormatted}"
+                                               FontSize="16"
+                                               TextColor="{StaticResource Charcoal}"
+                                               LineBreakMode="TailTruncation" />
+                                        <Label Text="{Binding PhoneDisplay}"
+                                               FontSize="14"
+                                               TextColor="{StaticResource Gray600}" />
+                                    </VerticalStackLayout>
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <!-- No matches: offer to create the customer from what was typed -->
+                    <VerticalStackLayout IsVisible="{Binding ShowNoMatches}" Spacing="8" Padding="4,8">
+                        <Label Text="{Binding NoMatchesText}"
+                               FontSize="14"
+                               TextColor="{StaticResource Gray600}" />
+                        <Button Text="Add new customer"
+                                ImageSource="{mi:Material Icon=PersonAdd, IconColor=White}"
+                                Command="{Binding AddNewCustomerCommand}"
+                                TextColor="White"
+                                HeightRequest="48"
+                                AutomationId="AddNewCustomerButton"
+                                SemanticProperties.Description="Add new customer" />
+                    </VerticalStackLayout>
+                </VerticalStackLayout>
             </VerticalStackLayout>
 
             <!-- Step 2: Garments -->
