@@ -34,8 +34,13 @@
     <Color x:Key="Gray950">#202A32</Color>
 
     <Color x:Key="SemanticWarning">#D97706</Color>
+    <Color x:Key="SemanticWarningLight">#FEF3C7</Color>
     <Color x:Key="SemanticError">#DC2626</Color>
+    <!-- Overdue badge: dark red text (5.9:1 on SemanticErrorLight), distinct from Fitting (SemanticWarning). -->
+    <Color x:Key="SemanticErrorLight">#FEE2E2</Color>
+    <Color x:Key="SemanticOverdue">#B91C1C</Color>
     <Color x:Key="SemanticInfo">#2563EB</Color>
+    <Color x:Key="SemanticInfoLight">#DBEAFE</Color>
 
     <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource Primary}"/>
     <SolidColorBrush x:Key="SecondaryBrush" Color="{StaticResource Secondary}"/>

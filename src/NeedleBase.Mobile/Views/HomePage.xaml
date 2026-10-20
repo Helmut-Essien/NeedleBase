@@ -51,7 +51,11 @@
             <!-- 3. KPI cards -->
             <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                 <Border Grid.Column="0" BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeThickness="1"
-                        StrokeShape="RoundRectangle 12" Padding="14">
+                        StrokeShape="RoundRectangle 12" Padding="14"
+                        SemanticProperties.Description="Active orders, open Orders tab">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ViewAllOrdersCommand}" />
+                    </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="2">
                         <Label Text="ACTIVE ORDERS" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
                         <Label Text="{Binding ActiveOrdersCount}" FontSize="28" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
@@ -59,7 +63,11 @@
                     </VerticalStackLayout>
                 </Border>
                 <Border Grid.Column="1" BackgroundColor="{StaticResource Charcoal}" StrokeThickness="0"
-                        StrokeShape="RoundRectangle 12" Padding="14">
+                        StrokeShape="RoundRectangle 12" Padding="14"
+                        SemanticProperties.Description="Ready to collect, open Orders tab">
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Command="{Binding ViewAllOrdersCommand}" />
+                    </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="2">
                         <Label Text="READY TO COLLECT" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Gray400}" />
                         <Label Text="{Binding ReadyToCollectCount}" FontSize="28" FontAttributes="Bold" TextColor="White" />
@@ -135,7 +143,11 @@
                                  IsVisible="{Binding HasAttentionItems}">
                 <BindableLayout.ItemTemplate>
                     <DataTemplate x:DataType="vm:HomeAttentionItem">
-                        <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeThickness="1" StrokeShape="RoundRectangle 12" Padding="12">
+                        <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeThickness="1" StrokeShape="RoundRectangle 12" Padding="12"
+                                SemanticProperties.Description="Open order that needs attention">
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Command="{Binding OpenCommand}" />
+                            </Border.GestureRecognizers>
                             <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
                                 <Border Grid.Column="0" WidthRequest="42" HeightRequest="42" StrokeThickness="0"
                                         BackgroundColor="{StaticResource PrimaryLight}" StrokeShape="RoundRectangle 21" VerticalOptions="Center">
@@ -147,19 +159,13 @@
                                     <Label Text="{Binding Detail}" FontSize="13" TextColor="{StaticResource Gray600}" LineBreakMode="TailTruncation" />
                                 </VerticalStackLayout>
                                 <Border Grid.Column="2" StrokeThickness="0" StrokeShape="RoundRectangle 10" Padding="8,3" VerticalOptions="Center"
-                                        BackgroundColor="{StaticResource PrimaryLight}">
-                                    <Border.Triggers>
-                                        <DataTrigger TargetType="Border" Binding="{Binding IsReady}" Value="False">
-                                            <Setter Property="BackgroundColor" Value="#FEF3C7" />
-                                        </DataTrigger>
-                                    </Border.Triggers>
-                                    <Label Text="{Binding StatusText}" FontSize="12" FontAttributes="Bold" TextColor="{StaticResource PrimaryDark}">
-                                        <Label.Triggers>
-                                            <DataTrigger TargetType="Label" Binding="{Binding IsReady}" Value="False">
-                                                <Setter Property="TextColor" Value="{StaticResource SemanticWarning}" />
-                                            </DataTrigger>
-                                        </Label.Triggers>
-                                    </Label>
+                                        BackgroundColor="{Binding StatusBackground}">
+                                    <HorizontalStackLayout Spacing="4">
+                                        <Image Source="{Binding StatusIconImage}" WidthRequest="14" HeightRequest="14"
+                                               VerticalOptions="Center" AutomationProperties.IsInAccessibleTree="False" />
+                                        <Label Text="{Binding StatusText}" FontSize="12" FontAttributes="Bold"
+                                               TextColor="{Binding StatusForeground}" VerticalOptions="Center" />
+                                    </HorizontalStackLayout>
                                 </Border>
                             </Grid>
                         </Border>
@@ -177,9 +183,8 @@
             </Border>
 
             <!-- Sign out stays reachable at the bottom of Home -->
-            <Button Text="Sign out"
-                    BackgroundColor="{StaticResource PrimaryLight}"
-                    TextColor="{StaticResource Charcoal}"
+            <Button Style="{StaticResource SecondaryButton}"
+                        Text="Sign out"
                     CornerRadius="10"
                     HeightRequest="48"
                     FontSize="15"

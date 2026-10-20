@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Customers;
 using NeedleBase.Domain.Entities;
@@ -31,8 +32,8 @@ public sealed class CustomerLocalService : ICustomerLocalService
         var query = db.Customers.AsNoTracking().Where(c => c.BusinessId == businessId);
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = search.Trim();
-            query = query.Where(c => c.Name.Contains(term) || c.Phone.Contains(term));
+            var term = SearchText.Lower(search);
+            query = query.Where(c => c.Name.ToLower().Contains(term) || c.Phone.Contains(term));
         }
 
         return await query
@@ -160,4 +161,33 @@ public sealed class CustomerLocalService : ICustomerLocalService
             c.CreatedAtUtc,
             c.DateModifiedUtc,
             measurementCount);
+
+    public async Task<CustomerDeleteResult> DeleteAsync(
+        string businessId,
+        string id,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(businessId);
+
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+
+        var entity = await db.Customers
+            .FirstOrDefaultAsync(c => c.BusinessId == businessId && c.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+        if (entity is null)
+        {
+            return CustomerDeleteResult.NotFound;
+        }
+
+        if (await db.Orders.AnyAsync(o => o.BusinessId == businessId && o.CustomerId == id, cancellationToken)
+                .ConfigureAwait(false))
+        {
+            return CustomerDeleteResult.HasOrders;
+        }
+
+        db.Customers.Remove(entity);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return CustomerDeleteResult.Deleted;
+    }
 }

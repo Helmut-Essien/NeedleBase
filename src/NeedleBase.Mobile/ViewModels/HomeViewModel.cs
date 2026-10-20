@@ -2,7 +2,9 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NeedleBase.Mobile.Data.Services;
+using NeedleBase.Mobile.Helpers;
 using NeedleBase.Mobile.Services;
+using MauiIcons.Material;
 
 namespace NeedleBase.Mobile.ViewModels;
 
@@ -24,29 +26,36 @@ public sealed class HomeStageItem
 
 public sealed class HomeAttentionItem
 {
+    public required string OrderId { get; init; }
     public required string Initials { get; init; }
     public required string Name { get; init; }
     public required string Detail { get; init; }
     public required string StatusText { get; init; }
     public bool IsReady { get; init; }
+    public bool IsOverdue { get; init; }
+    public ImageSource? StatusIconImage { get; init; }
+    public Color StatusBackground { get; init; } = Colors.LightGray;
+    public Color StatusForeground { get; init; } = Colors.Gray;
+    public IRelayCommand? OpenCommand { get; set; }
 }
 
 public partial class HomeViewModel : BaseViewModel
 {
     private readonly IAuthService _auth;
     private readonly ICustomerLocalService _customers;
+    private readonly IOrderLocalService _orders;
 
-    public HomeViewModel(IAuthService auth, ICustomerLocalService customers)
+    public HomeViewModel(IAuthService auth, ICustomerLocalService customers, IOrderLocalService orders)
     {
         _auth = auth;
         _customers = customers;
+        _orders = orders;
         Title = "Home";
 
-        Stages.Add(new HomeStageItem("New", Color.FromArgb("#2E9E36")));
-        Stages.Add(new HomeStageItem("Cutting", Color.FromArgb("#2563EB")));
-        Stages.Add(new HomeStageItem("Sewing", Color.FromArgb("#D97706")));
-        Stages.Add(new HomeStageItem("Fitting", Color.FromArgb("#7C3AED")));
-        Stages.Add(new HomeStageItem("Ready", Color.FromArgb("#2E9E36")));
+        foreach (var status in HomeStageStatuses)
+        {
+            Stages.Add(new HomeStageItem(StageLabel(status), OrderStatusPresentation.Accent(status)));
+        }
     }
 
     // Kept for compatibility with the previous Home screen.
@@ -59,8 +68,6 @@ public partial class HomeViewModel : BaseViewModel
     [NotifyPropertyChangedFor(nameof(HasCustomersSavedText))]
     private string customersSavedText = string.Empty;
 
-    // Orders/Payments are placeholder slices today: these stay at zero / empty
-    // until a real order service exists. Do not seed them with sample data.
     [ObservableProperty] private int activeOrdersCount;
     [ObservableProperty] private int readyToCollectCount;
 
@@ -100,12 +107,77 @@ public partial class HomeViewModel : BaseViewModel
                     >= 50 => "50+ customers saved on this device",
                     var n => $"{n} customers saved on this device"
                 };
+
+                var counts = await _orders.GetCountsAsync(businessId);
+                ActiveOrdersCount = counts.ActiveCount;
+                ReadyToCollectCount = counts.ReadyToCollectCount;
+                var active = Math.Max(counts.ActiveCount, 1);
+                Stages.Clear();
+                foreach (var status in HomeStageStatuses)
+                {
+                    Stages.Add(BuildStage(status, counts, active));
+                }
+
+                AttentionItems.Clear();
+                var attention = await _orders.ListAttentionAsync(businessId, take: 5);
+                foreach (var order in attention)
+                {
+                    var fg = order.IsOverdue
+                        ? OrderStatusPresentation.OverdueForeground
+                        : OrderStatusPresentation.Foreground(order.Status);
+                    var bg = order.IsOverdue
+                        ? OrderStatusPresentation.OverdueBackground
+                        : OrderStatusPresentation.Background(order.Status);
+                    var item = new HomeAttentionItem
+                    {
+                        OrderId = order.Id,
+                        Initials = BuildInitials(order.CustomerName, null, null),
+                        Name = order.CustomerName,
+                        Detail = $"#{order.DisplayRef} · {order.DueDateDisplay}",
+                        StatusText = order.IsOverdue ? "Overdue" : order.StatusDisplay,
+                        IsReady = order.Status == Domain.Enums.OrderStatus.Ready && !order.IsOverdue,
+                        IsOverdue = order.IsOverdue,
+                        StatusIconImage = order.IsOverdue
+                            ? OrderStatusPresentation.OverdueIconImage(14)
+                            : OrderStatusPresentation.IconImage(order.Status, 14),
+                        StatusBackground = bg,
+                        StatusForeground = fg
+                    };
+                    item.OpenCommand = new RelayCommand(() => _ = OpenAttentionAsync(item));
+                    AttentionItems.Add(item);
+                }
+
+                OnPropertyChanged(nameof(HasAttentionItems));
+                OnPropertyChanged(nameof(ShowNoAttention));
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Home load failed: {ex.Message}");
         }
+    }
+
+    /// <summary>Active production stages shown on Home (colours from OrderStatusPresentation).</summary>
+    private static readonly string[] HomeStageStatuses =
+    [
+        Domain.Enums.OrderStatus.New,
+        Domain.Enums.OrderStatus.Cutting,
+        Domain.Enums.OrderStatus.Sewing,
+        Domain.Enums.OrderStatus.Fitting,
+        Domain.Enums.OrderStatus.Ready
+    ];
+
+    // Short label fits the stage row; chips elsewhere use "Ready to collect".
+    private static string StageLabel(string status) => status;
+
+    private static HomeStageItem BuildStage(string status, OrderCountsDto counts, int active)
+    {
+        counts.ByStatus.TryGetValue(status, out var count);
+        return new HomeStageItem(StageLabel(status), OrderStatusPresentation.Accent(status))
+        {
+            Count = count,
+            Fraction = (double)count / active
+        };
     }
 
     private static string BuildInitials(string? first, string? surname, string? business)
@@ -127,7 +199,7 @@ public partial class HomeViewModel : BaseViewModel
     private async Task AddCustomerAsync() => await Shell.Current.GoToAsync("CustomerEditPage");
 
     [RelayCommand]
-    private async Task NewOrderAsync() => await Shell.Current.GoToAsync("//main/OrdersPage");
+    private async Task NewOrderAsync() => await Shell.Current.GoToAsync(nameof(Views.CreateOrderPage));
 
     [RelayCommand]
     private async Task RecordPaymentAsync() => await Shell.Current.GoToAsync("//main/PaymentsPage");
@@ -137,6 +209,18 @@ public partial class HomeViewModel : BaseViewModel
 
     [RelayCommand]
     private async Task ViewAllOrdersAsync() => await Shell.Current.GoToAsync("//main/OrdersPage");
+
+    // Bound per row via HomeAttentionItem.OpenCommand (no separate page-level command).
+    private static async Task OpenAttentionAsync(HomeAttentionItem? item)
+    {
+        if (item is null || string.IsNullOrWhiteSpace(item.OrderId))
+        {
+            return;
+        }
+
+        await Shell.Current.GoToAsync(
+            $"{nameof(Views.OrderDetailPage)}?orderId={Uri.EscapeDataString(item.OrderId)}");
+    }
 
     [RelayCommand]
     private async Task GoCustomersAsync() => await Shell.Current.GoToAsync("//main/CustomersPage");

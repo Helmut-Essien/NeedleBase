@@ -1,5 +1,7 @@
 using NeedleBase.Application.Contracts.Auth;
 using NeedleBase.Application.Contracts.Customers;
+using NeedleBase.Application.Contracts.Orders;
+using NeedleBase.Domain.Enums;
 using NeedleBase.Mobile.Data.Services;
 using NeedleBase.Mobile.Services;
 using NeedleBase.Mobile.ViewModels;
@@ -11,7 +13,10 @@ public class HomeViewModelTests
     [Fact]
     public void HomeViewModel_HasScaffoldTitle()
     {
-        var vm = new HomeViewModel(new StubAuthService(), new StubCustomerLocalService());
+        var vm = new HomeViewModel(
+            new StubAuthService(),
+            new StubCustomerLocalService(),
+            new StubOrderLocalService());
         Assert.Equal("Home", vm.Title);
         Assert.False(string.IsNullOrWhiteSpace(vm.Tagline));
     }
@@ -69,6 +74,53 @@ public class HomeViewModelTests
             string businessId,
             string id,
             UpdateCustomerRequest request,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<NeedleBase.Application.Abstractions.CustomerDeleteResult> DeleteAsync(
+            string businessId,
+            string id,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class StubOrderLocalService : IOrderLocalService
+    {
+        public Task<IReadOnlyList<OrderListItemDto>> SearchAsync(
+            string businessId,
+            string? search,
+            string? status,
+            int take = 50,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrderListItemDto>>(Array.Empty<OrderListItemDto>());
+
+        public Task<OrderDetailDto?> GetByIdAsync(
+            string businessId,
+            string id,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<OrderDetailDto?>(null);
+
+        public Task<OrderCountsDto> GetCountsAsync(
+            string businessId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new OrderCountsDto(0, 0, OrderStatus.All.ToDictionary(s => s, _ => 0)));
+
+        public Task<IReadOnlyList<OrderListItemDto>> ListAttentionAsync(
+            string businessId,
+            int take = 5,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<OrderListItemDto>>(Array.Empty<OrderListItemDto>());
+
+        public Task<(OrderDetailDto? Order, string? Error)> SaveAsync(
+            string businessId,
+            CreateOrderRequest request,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<(OrderDetailDto? Order, string? Error)> UpdateStatusAsync(
+            string businessId,
+            string id,
+            string status,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }

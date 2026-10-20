@@ -1,3 +1,4 @@
+using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Contracts.Customers;
 
 namespace NeedleBase.Mobile.Data.Services;
@@ -24,5 +25,14 @@ public interface ICustomerLocalService
         string businessId,
         string id,
         UpdateCustomerRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes a local customer (and its measurements). Refuses with <see cref="CustomerDeleteResult.HasOrders"/>
+    /// when orders reference the customer (same rule as the API's 409 CUSTOMER_HAS_ORDERS).
+    /// </summary>
+    Task<CustomerDeleteResult> DeleteAsync(
+        string businessId,
+        string id,
         CancellationToken cancellationToken = default);
 }

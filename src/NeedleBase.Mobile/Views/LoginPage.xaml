@@ -119,9 +119,8 @@
                     SemanticProperties.Description="Sign in"
                     AutomationId="LoginSubmit" />
 
-            <Button Text="Register a business"
-                    BackgroundColor="{StaticResource PrimaryLight}"
-                    TextColor="{StaticResource Primary}"
+            <Button Style="{StaticResource SecondaryButton}"
+                        Text="Register a business"
                     CornerRadius="10"
                     HeightRequest="48"
                     FontAttributes="Bold"
