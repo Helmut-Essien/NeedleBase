@@ -7,8 +7,8 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 | 0 | Scaffold: sln, Clean Architecture, health, README | Done |
 | 1 | Auth + Business tenancy (JWT, refresh, register business) | Done |
 | 2 | Customers + measurements | Done (its code gaps G1, G4, G5 closed 20 Oct 2026: [code-gaps.md](code-gaps.md)) |
-| 3 | Orders + production status (mobile primary) | Done (local-only on mobile until Slice 4 sync) |
-| 4 | Offline sync push/pull + DeletedItem + SyncChip | Planned |
+| 3 | Orders + production status (mobile primary) | Done (mobile data syncs via Slice 4) |
+| 4 | Offline sync push/pull + DeletedItem + SyncChip | In progress: code + automated tests done 20 Oct 2026; Journey 2 not yet verified on devices (two-device sync, airplane mode) |
 | 5 | Payments + balances + receipts (conflict-safe) | Planned |
 | 6 | Web dashboard + production board | Planned |
 | 7 | Staff invites + role-limited UI | Planned |
@@ -62,6 +62,13 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 - SyncChip + Sync details: Offline / Waiting to sync / Syncing / Synced / Failed
 - Token honesty: transient refresh failure does not wipe queue or force login
 - Journey 2 fully passes
+
+**Slice 4 status (20 Oct 2026):** all items above built [code] except the device run of Journey 2.
+Server: `Api/Controllers/SyncController.cs`, `Application/Sync/*`, `Domain/Entities/DeletedItem.cs`, migration `20261020131925_Sync`.
+Mobile: `Mobile.Data/Data/SyncQueueItem.cs`, `SyncQueueWriter.cs`, `Mobile.Data/Sync/SyncEngine.cs`, migrator v4, `Mobile/Services/SyncService.cs`, `TokenRefreshHandler.cs`, `HttpSyncApi.cs`, Home SyncChip + `SyncDetailsPage`.
+Tests: `Api.Tests/SyncEndpointTests`, `Mobile.Tests/SyncEngineTests`, `LocalSchemaMigratorTests`.
+Edge-case audit fixes (20 Oct 2026): commit-ordered pull (txid + snapshot cap), tombstone retention/resurrection, parent-deleted/delete-refused conflicts, deferred children, Discard, re-sign-in without wipe, non-retryable 400/403, Retry-After; migration `20261020135519_SyncTxOrder`, migrator v5; tests `Api.Tests/SyncEdgeCaseApiTests`, `Mobile.Tests/SyncEdgeCaseTests`.
+Deviations (conservative): pull is by opaque cursor (not a raw `LastSync` time); no per-business distributed lock (the skill marks it optional; push is idempotent instead). Mark Done after Journey 2 passes on two devices.
 
 ## Slice 5 acceptance — Payments (Journey 1 deposit + Journey 4)
 

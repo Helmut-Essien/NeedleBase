@@ -67,7 +67,7 @@ Client rules:
 
 ## 6. Status names & colours (single source)
 
-From domain: `New → Cutting → Sewing → Fitting → Ready → Collected`, plus `Cancelled`. **Overdue** is derived, a badge next to the status. [code: `Mobile/Helpers/OrderStatusPresentation.cs`, Home stages use `Accent(status)`]. Orders saved offline say **"Saved on this device"** (Slice 3 is local-only on mobile until Slice 4 sync). UI label "Ready" is shown as **Ready to collect** (matches Home "READY TO COLLECT" [code]).
+From domain: `New → Cutting → Sewing → Fitting → Ready → Collected`, plus `Cancelled`. **Overdue** is derived, a badge next to the status. [code: `Mobile/Helpers/OrderStatusPresentation.cs`, Home stages use `Accent(status)`]. Orders saved offline say **"Saved on this device"** (Slice 3 is local-only on mobile until Slice 4 sync). Unknown statuses from a newer server show **Other status** (`OrderStatusPresentation.UnknownStatusLabel`). UI label "Ready" is shown as **Ready to collect** (matches Home "READY TO COLLECT" [code]).
 
 | Status | Colour token | Icon (Material) [rec] |
 |--------|--------------|------------------------|
@@ -107,7 +107,9 @@ Chip = icon + text always. Check icon names exist in `MauiIcons.Material.Materia
 
 ## 9. Search, filter, lists
 
-- Search sits at the top and matches name **and** phone (users search by number). Debounce about 300 ms; search local data on mobile.
+- Search sits at the top and matches name **and** phone (users search by number). Search local data on mobile.
+- **Search-as-you-type (one rule everywhere)** [code: `Application/Common/CustomerSearchKeys`, `Mobile.Data/Services/CustomerSearchFilter`, `Mobile/Helpers/SearchDebouncer`]: debounce **250 ms**, a newer keystroke cancels the stale query; results capped in SQL (picker 30). Name = case-insensitive **any word prefix** ("men" → Efua Mensah, "fua" does not). Phone = national-digit prefix, so `024`, `24 123`, `0244` and `+23324` all match `+233 24 …`; a single digit is ignored. LIKE wildcards in input are dropped. Customers tab, Orders list (customer part) and the New order picker share it.
+- **Customer picker** (New order step 1) [code]: search field (Search icon, 48 high, white, `Gray300` border, clear `Close` button when non-empty, autofocus); empty query shows **Recent customers** (newest orders, then newest added); rows = initials avatar + name with the matched word prefix **bold `PrimaryDark`** (`FormattedString`) + phone formatted `+233 24 555 0123`; empty state `No customers match "x"` + **Add new customer** (opens Add customer prefilled with what was typed, returns with them selected); selected customer = card with **Change**. Pre-filled when started from Customer detail.
 - Filters are chips (mobile) or a filter bar (web): status, due (Today / This week / Late), assignee.
 - Use `CollectionView` (virtualised). Page Api lists server-side (web skill rule 8).
 - Rows show the primary line (name/ref), a secondary line (phone/garment), and a trailing status/amount. Example: `ORD-1042 · Efua Mensah · 2× dress · Sewing · Due Fri · GH₵200 of 800 paid`.

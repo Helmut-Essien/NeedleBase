@@ -20,6 +20,8 @@ Run on every UI PR before asking for review. Evidence = a build with 0 errors/0 
 - [ ] [validation.md](validation.md) pattern; Terms/consent gates inline
 - [ ] Password fields use the toggle pattern ([maui-patterns.md](maui-patterns.md#password-visibility-toggle))
 - [ ] Long labels wrap (Grid `*` column, no HorizontalStackLayout)
+- [ ] Inputs readable on a dark-mode phone (no `AppThemeBinding Dark=White` text on light surfaces; see [maui-patterns.md](maui-patterns.md#inputs-are-light-only-dark-mode-phones))
+- [ ] Search-as-you-type uses `SearchDebouncer` + the shared customer rule (name word prefix, phone digits), capped results, empty state with a next action
 
 ## Navigation
 - [ ] No Shell nav bar; pushed pages have in-page Back

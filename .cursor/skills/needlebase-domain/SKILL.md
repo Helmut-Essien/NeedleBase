@@ -32,7 +32,7 @@ Core workflow: Customer → Measurements → Order → Production → Payment �
 | `MeasurementProfile` | Measurements | CustomerId, `GarmentTemplate`, `Unit`, `FieldsJson`, `Notes`, `MeasuredAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
 | `Order` / `OrderLine` | Sewing job / garment lines | ref, status, due/fitting dates, assignee, totals; line template, qty, measurement snapshot | **Built** (S3) |
 | `Payment` | Money in | OrderId, amount, method, note, recordedAt, sync metadata | Planned S5 |
-| `DeletedItem` | Sync tombstone | EntityType, EntityId, BusinessId, DeletedAt | Planned S4 |
+| `DeletedItem` | Sync tombstone | EntityType, EntityId, BusinessId, DeletedAt | Built S4 (`Domain/Entities/DeletedItem.cs`; server-only, written in `ApplicationDbContext.SaveChanges`) |
 | `Invitation` | Staff invite | Email/phone, role, business, expiry | Planned S7 |
 | Mobile-only `SyncQueueItem`, `DeviceInfo` | Offline queue | Mobile.Data only | Planned S4 |
 

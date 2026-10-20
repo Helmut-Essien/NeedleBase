@@ -38,9 +38,11 @@ Tests take `IClassFixture<NeedleBaseApiFactory>`, register a fresh business with
 | Offline local save | save → reload → present | ✓ `CustomerLocalServiceTests` |
 | Orders (slice 3) | typed codes `ORDER_LOCKED`/`ORDER_STATUS_INVALID`/`ASSIGNEE_INVALID`/`ORDER_TOTAL_MISMATCH`; server line ids; 8-char ref; case-insensitive search; `CUSTOMER_HAS_ORDERS` | ✓ `OrderEndpointTests`, `Domain.Tests/OrderTests` |
 | Mobile orders | friendly errors (no `ex.Message`), local delete guard, totals, search | ✓ `OrderLocalServiceTests` |
+| Customer search | name word prefix/case, phone variants (`024`, `+23324`, spaces), limit + ranking, recent, keys refresh on edit, debouncer cancels stale; v3 backfill | ✓ `Mobile.Tests/CustomerSearchTests`, `Application.Tests/CustomerSearchKeysTests`, `LocalSchemaMigratorTests` |
 | Order helpers | error copy, domain-code mapping, Accra "today", ref normalising | ✓ `Application.Tests/OrderSupportTests` |
 | Every new entity (slice 3+) | tenancy isolation + idempotent create + ProblemDetails 404/409 | required |
-| Sync (slice 4) | offline create → reopen → sync once, no duplicate | planned |
+| Sync (slice 4) | idempotent push, conflicts, tenancy, tombstones, cursor paging (`Api.Tests/SyncEndpointTests`); queue/coalesce, push ack, fresh-device pull without duplicates, transient keeps queue, tombstone, conflict resolve, HTTP failure mapping (`Mobile.Tests/SyncEngineTests`); migrator v4 | built; two-device + airplane-mode run is manual |
+| Sync edge cases | tombstone resurrection, first pull without tombstones, open-transaction row not skipped, order create+status atomic, foreign ids, delete-refused / parent-deleted conflicts, expired/v1 cursor, tombstone purge (`Api.Tests/SyncEdgeCaseApiTests`); order/measurement round trip, stale tombstone, deferred children, Discard, resync prune, parents-first, page+cursor atomicity, 400/403/Retry-After, chip states, re-sign-in wipe rules, single refresh (`Mobile.Tests/SyncEdgeCaseTests`) | built |
 | Payments (slice 5) | conflicting edits → conflict payload, never silent overwrite | planned |
 
 Code gaps: [code-gaps.md](../needlebase-phases/code-gaps.md).

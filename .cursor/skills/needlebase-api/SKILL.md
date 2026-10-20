@@ -4,7 +4,7 @@ description: >-
   NeedleBase ASP.NET Core Api + Infrastructure: controllers, JWT/refresh auth
   and policies, fail-closed Business tenancy filters, EF Core PostgreSQL and
   migrations, ProblemDetails errors with stable codes, health/ping, and
-  (planned) sync push/pull with DeletedItem. Use when editing Api controllers,
+  sync push/pull with DeletedItem. Use when editing Api controllers,
   middleware, Program.cs, Infrastructure persistence/identity, EF migrations,
   or API error handling.
 ---
@@ -13,7 +13,7 @@ description: >-
 
 Composition: **Api** host + **Infrastructure** implementations of **Application** interfaces. Domain stays persistence-ignorant.
 
-**Built:** auth (register-business, login, refresh, logout), `/api/me`, Customers + Measurements CRUD, Orders CRUD + status patch, health, ping, ProblemDetails. **Planned:** sync push/pull + `DeletedItem` (S4), Payments (S5), Staff/Invitations (S7), Subscription (S8).
+**Built:** auth (register-business, login, refresh, logout), `/api/me`, Customers + Measurements CRUD, Orders CRUD + status patch, health, ping, ProblemDetails. sync push/pull + `DeletedItem` (S4). **Planned:** Payments (S5), Staff/Invitations (S7), Subscription (S8).
 
 ## Hard rules
 
@@ -21,7 +21,7 @@ Composition: **Api** host + **Infrastructure** implementations of **Application*
 2. **BusinessId filter, fail closed** — every tenant entity gets a global filter `x.BusinessId == CurrentBusinessId` set by `BusinessTenancyMiddleware` from the `business_id` claim. **Null business id → no rows.** Login/refresh/membership checks use `.IgnoreQueryFilters()` with explicit `UserId`/`BusinessId` predicates. Every tenant endpoint has a cross-tenant isolation test.  
    [code] Filters are `CurrentBusinessId != null && x.BusinessId == CurrentBusinessId`; `Identity/AuthService.cs` login/refresh membership lookups use `.IgnoreQueryFilters()` scoped by user id. Tests: `TenancyIsolationTests`.  
 3. **DeletedItem (planned S4)** — `SaveChanges` will track deletes for mobile pull, with BusinessId. Not in code yet; don't reference it until S4.  
-4. **Sync push (planned S4)** — authorize user; scope to business; optional distributed lock per user/business (409 if busy). Idempotent on client entity ULIDs.  
+4. **Sync push (S4, built)** — `RequireStaff`; scoped to the token's business by the fail-closed filters; idempotent on client ULIDs (identical replay = applied no-op). No distributed lock (optional; not built).  
 5. **Payment conflicts** — do not silently overwrite; return conflict payload for mobile UI.  
 6. **Auth** — JWT Bearer + refresh tokens; map `X-Auth-Token` → `Authorization` for mobile. Do not log tokens in Production.  
 7. **Health** — `/health/live`, `/health/ready` (DB), mobile ping `GET /api/test/ping` (`DiagnosticsController`) — all anonymous.  
@@ -42,7 +42,13 @@ Real folders and target: [solution-layout.md](../needlebase-architecture/solutio
 - Policies (in `Infrastructure/DependencyInjection.cs`): `RequireStaff`, `RequireOwner`, `RequireManagerOrOwner`. JWT validation re-checks active membership (`IgnoreQueryFilters` + explicit predicate)  
 - Tailor: limit to assigned orders where applicable  
 
-## Sync API (planned S4, contract alignment)
+## Sync API (S4, built)
+
+Code: `Api/Controllers/SyncController.cs` → `Application/Sync/SyncService.cs` (reuses Customer/Measurement/Order services, so validation = REST). DTOs: `Application/Contracts/Sync/SyncDtos.cs`.
+- Push op: `opId`, `entityType` (customer|measurement|order), `entityId`, `operation` (upsert|delete), `baseModifiedUtc` (null = create). Max 200 ops. Each op runs in its own transaction (`IApplicationDbContext.InTransactionAsync`, inside the Npgsql execution strategy) and commits only when applied, so an order create + status change is atomic. Result per op: `applied` (with server copy) | `conflict` (server copy returned, nothing overwritten): `SYNC_CONFLICT` stale base, `SYNC_DELETED_ELSEWHERE`, `SYNC_PARENT_DELETED` (measurement/order whose customer is gone), `SYNC_DELETE_REFUSED` (customer delete refused because it has orders) | `failed`: rule code, `SYNC_PAYLOAD_INVALID`, or `SYNC_REJECTED` (id taken/unsavable; never reveals another business's ids; foreign update/delete look exactly like a missing id).
+- Pull: opaque cursor v2, keyset on `(SyncTxId, Id)`. `SyncTxId` is a shadow bigint set by the Postgres trigger `nb_sync_stamp_tx()` (`pg_current_xact_id()`) on Customers, MeasurementProfiles, Orders and DeletedItems (migration `20261020135519_SyncTxOrder`). Each sync run caps reads at `pg_snapshot_xmin(pg_current_snapshot())`, taken at the start, so a row can never commit behind the cursor (a long-open transaction only delays rows; keep transactions short). Phases customers → measurements → orders(+lines) → deletes. The first pull (no cursor) skips tombstones. Limit default 200, max 500. Bad, old-format, or older-than-retention cursor → 400 `SYNC_CURSOR_INVALID` (the device does a full resync).
+- `DeletedItem` tombstones written in `ApplicationDbContext.SaveChanges` for customers, measurements, orders, order lines (including cascades). Re-creating an id removes its tombstone in the same SaveChanges. Tombstones are kept 90 days (`SyncTime.TombstoneRetention`) and purged daily by `Infrastructure/Sync/TombstoneCleanupService`.
+
 
 - `POST api/sync/push` — body of queued operations; returns success/fail/conflict per op id  
 - Pull — changes since `LastSync` + DeletedItems for business  

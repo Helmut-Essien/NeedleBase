@@ -71,6 +71,22 @@ Source: `AppShell.xaml.cs` `OnBackButtonPressed`. Order: pop modal → pop navig
 - Buttons 48 high, `CornerRadius="10"`; cards radius 12. Fill comes from the global Button style (`PrimaryDark`, Pressed → `PrimaryPressed`). Don't set `BackgroundColor="{StaticResource Primary}"` on buttons; override only for secondary/ghost buttons (White/Transparent).
 - Text that may be long: `LineBreakMode="WordWrap"` inside a `*` column/`VerticalStackLayout`, never in a horizontal stack.
 
+## Inputs are light-only (dark-mode phones)
+
+The app is light-only: `App` sets `UserAppTheme = AppTheme.Light`, and the Entry/Editor/SearchBar/Picker/DatePicker/TimePicker styles use fixed `Charcoal` text and `Gray600` placeholders (SearchBar: white background, `CancelButtonColor` `Gray600`, 48 min height). Root cause of the "invisible search text" bug: the template styles used `AppThemeBinding Dark=White` while pages paint white/`AppBackground`, so on a dark-mode phone typed text was white on white. Don't reintroduce `AppThemeBinding` for text on light surfaces.
+
+## Debounced search-as-you-type
+
+```csharp
+private readonly SearchDebouncer _searchDebounce = new(); // 250 ms
+partial void OnSearchTextChanged(string value) =>
+    _ = _searchDebounce.Run(async ct => await LoadCoreAsync(ct)); // newer keystroke cancels ct
+```
+- Pass the token down to the local service; catch `OperationCanceledException when (ct.IsCancellationRequested)` silently.
+- Bump the load generation before a debounced load so an older in-flight load can't overwrite newer results; call `_searchDebounce.Cancel()` in `ClearSessionState`.
+- Local SQLite queries run via `Task.Run` (the SQLite provider is synchronous under async).
+- Match on the precomputed, indexed keys (`SearchName`, `PhoneDigits`; local schema v3, stamped in `LocalDbContext.SaveChanges`); never load a full list and filter in memory.
+
 ## Gotchas (compile/runtime-verified)
 
 | Don't | Do |

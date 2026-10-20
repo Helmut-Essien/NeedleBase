@@ -2,7 +2,7 @@
 
 Highest priority: reliable offline operation with honest messaging.
 
-**Status:** sync push/pull and the SyncChip are **[planned Slice 4]**. Today mobile Home shows a static "Offline-ready · Saved on this device · syncs when online" card [code], and data is local SQLite. Don't show a chip state the app can't truthfully compute. Canonical local-save wording: **"Saved on this device"** (needlebase-mobile-sync rule 9).
+**Status:** built in Slice 4 [code]. Home shows the SyncChip (`Mobile/Views/HomePage.xaml`, `ViewModels/SyncStatusViewModel.cs`): Synced · "N to sync"/Waiting to sync · Syncing… · Offline · Couldn't sync · "N need review" · Sign in to sync. Tap opens `SyncDetailsPage` (connection, last sync, Sync now, waiting items, failure reasons, conflicts with **Keep mine / Keep theirs**; "Delete mine" when the server copy was deleted). Sign out warns when changes are unsynced. Also: **No access** (403, "This account can't sync this business · saved on this device"), **Sync stopped** (server rejected the request, "Update the app, then tap Sync now"), **Sign in** button on Sync details (re-sign-in keeps local data for the same account). Row actions: Restore / Delete here, Restore customer / Discard (customer deleted elsewhere), Restore customer (delete refused: "Customer has orders on another device, so it wasn't deleted."), **Discard** on failed items. Unsynced new orders note: "Its order number is confirmed when it syncs." (the pre-sync #ref is provisional). Don't show a chip state the app can't truthfully compute. Canonical local-save wording: **"Saved on this device"** (needlebase-mobile-sync rule 9).
 
 ## Sync states (required)
 
