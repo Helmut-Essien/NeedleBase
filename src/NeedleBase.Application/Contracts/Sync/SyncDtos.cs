@@ -137,6 +137,12 @@ public sealed record SyncPullResponse(
 public static class SyncErrorCodes
 {
     public const string CursorInvalid = "SYNC_CURSOR_INVALID";
+
+    /// <summary>
+    /// The server's data was restored or moved (new sync epoch). Like <see cref="CursorInvalid"/> the device
+    /// starts over, but it also re-uploads records the server no longer has instead of deleting them.
+    /// </summary>
+    public const string EpochChanged = "SYNC_EPOCH_CHANGED";
     public const string PayloadInvalid = "SYNC_PAYLOAD_INVALID";
     public const string StaleBase = "SYNC_CONFLICT";
     public const string Deleted = "SYNC_DELETED_ELSEWHERE";

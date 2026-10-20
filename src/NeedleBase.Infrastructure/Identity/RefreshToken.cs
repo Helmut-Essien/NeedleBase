@@ -11,6 +11,9 @@ public class RefreshToken
     public string? RevokedByIp { get; set; }
     public string? ReplacedByToken { get; set; }
 
+    /// <summary>Set when this (already rotated) token was accepted once inside the reuse grace window.</summary>
+    public DateTime? GraceUsedUtc { get; set; }
+
     public string ApplicationUserId { get; set; } = string.Empty;
     public ApplicationUser? ApplicationUser { get; set; }
 

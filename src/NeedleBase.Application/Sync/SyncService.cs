@@ -468,7 +468,7 @@ public sealed class SyncService : ISyncService
 
     // ---------------------------------------------------------------- pull
 
-    public async Task<SyncPullResponse?> PullAsync(SyncPullRequest request, CancellationToken cancellationToken = default)
+    public async Task<(SyncPullResponse? Page, string? ErrorCode)> PullAsync(SyncPullRequest request, CancellationToken cancellationToken = default)
     {
         EnsureBusiness();
         var now = SyncTime.Normalize(_clock.UtcNow);
@@ -476,14 +476,34 @@ public sealed class SyncService : ISyncService
             (!cursor.IsFresh && now.UtcTicks - cursor.IssuedTicks > SyncTime.TombstoneRetention.Ticks))
         {
             // Unreadable, old-format, or older than tombstone retention (deletes may be gone): resync from scratch.
-            return null;
+            return (null, SyncErrorCodes.CursorInvalid);
         }
 
         var fresh = cursor.IsFresh;
+        long epoch;
         if (cursor.NeedsWatermark)
         {
-            cursor.Cap = await _db.GetSyncWatermarkAsync(cancellationToken).ConfigureAwait(false);
+            // A same-epoch cursor that has read past today's cap proves the ids went backwards (restore that kept
+            // SyncState). Old-epoch cursors are just rejected below; they must not bump again (no bump storm).
+            var minimumCap = !fresh && cursor.Epoch == await _db.GetSyncEpochAsync(cancellationToken).ConfigureAwait(false)
+                ? cursor.HighestPosition
+                : 0;
+            var watermark = await _db.GetSyncWatermarkAsync(minimumCap, cancellationToken).ConfigureAwait(false);
+            cursor.Cap = watermark.Cap;
+            epoch = watermark.Epoch;
         }
+        else
+        {
+            epoch = await _db.GetSyncEpochAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!fresh && cursor.Epoch != epoch)
+        {
+            // Positions from another cluster's transaction ids mean nothing here.
+            return (null, SyncErrorCodes.EpochChanged);
+        }
+
+        cursor.Epoch = epoch;
 
         if (fresh)
         {
@@ -596,7 +616,8 @@ public sealed class SyncService : ISyncService
                 Customers = cursor.Customers,
                 Measurements = cursor.Measurements,
                 Orders = cursor.Orders,
-                Deletes = cursor.Deletes
+                Deletes = cursor.Deletes,
+                Epoch = cursor.Epoch
             };
         next.IssuedTicks = now.UtcTicks;
         if (!hasMore)
@@ -604,7 +625,7 @@ public sealed class SyncService : ISyncService
             next.Cap = 0; // next sync takes a new watermark
         }
 
-        return new SyncPullResponse(customers, measurements, orders, deleted, next.Encode(), hasMore, now);
+        return (new SyncPullResponse(customers, measurements, orders, deleted, next.Encode(), hasMore, now), null);
     }
 
     /// <summary>Rows after <paramref name="position"/> and strictly below the watermark, in (tx, id) order.</summary>

@@ -36,6 +36,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
     public DbSet<DeletedItem> DeletedItems => Set<DeletedItem>();
+    public DbSet<SyncState> SyncStates => Set<SyncState>();
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -49,9 +50,74 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task<long> GetSyncWatermarkAsync(CancellationToken cancellationToken = default) =>
-        await Database.SqlQueryRaw<long>("SELECT pg_snapshot_xmin(pg_current_snapshot())::text::bigint AS \"Value\"")
-            .SingleAsync(cancellationToken).ConfigureAwait(false);
+    private const string CapSql = "SELECT pg_snapshot_xmin(pg_current_snapshot())::text::bigint AS \"Value\"";
+
+    public async Task<SyncWatermark> GetSyncWatermarkAsync(long minimumCap = 0, CancellationToken cancellationToken = default)
+    {
+        var cap = await Database.SqlQueryRaw<long>(CapSql).SingleAsync(cancellationToken).ConfigureAwait(false);
+        var state = await SyncStates.AsNoTracking().SingleOrDefaultAsync(s => s.Id == 1, cancellationToken).ConfigureAwait(false);
+        if (state is null)
+        {
+            return new SyncWatermark(cap, 0);
+        }
+
+        if (cap < Math.Max(state.HighWaterTx, minimumCap))
+        {
+            // Transaction ids went backwards: this is a different cluster (restore/move). Start a new epoch.
+            await BumpSyncEpochAsync(minimumCap, cancellationToken).ConfigureAwait(false);
+            cap = await Database.SqlQueryRaw<long>(CapSql).SingleAsync(cancellationToken).ConfigureAwait(false);
+            state = await SyncStates.AsNoTracking().SingleAsync(s => s.Id == 1, cancellationToken).ConfigureAwait(false);
+        }
+        else if (cap >= state.HighWaterTx + HighWaterStep)
+        {
+            // Throttled: the UPDATE itself takes a transaction id, so updating on every pull would mean a write
+            // per pull forever. A mark that lags by less than a step still detects a restore to a new cluster;
+            // a restore that keeps the counter is caught by minimumCap (client cursors ahead of the cap).
+            await Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE \"SyncState\" SET \"HighWaterTx\" = {cap} WHERE \"Id\" = 1 AND \"HighWaterTx\" < {cap}",
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        return new SyncWatermark(cap, state.Epoch);
+    }
+
+    public async Task<long> GetSyncEpochAsync(CancellationToken cancellationToken = default) =>
+        await SyncStates.AsNoTracking().Where(s => s.Id == 1).Select(s => (long?)s.Epoch)
+            .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false) ?? 0;
+
+    /// <summary>
+    /// Under a row lock (so concurrent pulls bump once): re-stamp every synced row and tombstone with this
+    /// transaction's id, so they sort after any new-epoch cursor's start, and record the new epoch. The new
+    /// high-water mark is this transaction's snapshot xmin, which no later watermark can be below (no loop).
+    /// </summary>
+    /// <summary>How far the cap must move past the stored high-water mark before it is updated.</summary>
+    public const long HighWaterStep = 1000;
+
+    private Task BumpSyncEpochAsync(long minimumCap, CancellationToken cancellationToken)
+    {
+        var strategy = Database.CreateExecutionStrategy();
+        return strategy.ExecuteAsync(async ct =>
+        {
+            await using var tx = await Database.BeginTransactionAsync(ct).ConfigureAwait(false);
+            var high = await Database.SqlQueryRaw<long>(
+                    "SELECT \"HighWaterTx\" AS \"Value\" FROM \"SyncState\" WHERE \"Id\" = 1 FOR UPDATE")
+                .SingleAsync(ct).ConfigureAwait(false);
+            var cap = await Database.SqlQueryRaw<long>(CapSql).SingleAsync(ct).ConfigureAwait(false);
+            if (cap < Math.Max(high, minimumCap))
+            {
+                const string stamp = "pg_current_xact_id()::text::bigint";
+                await Database.ExecuteSqlRawAsync($"UPDATE \"Customers\" SET \"SyncTxId\" = {stamp}", ct).ConfigureAwait(false);
+                await Database.ExecuteSqlRawAsync($"UPDATE \"MeasurementProfiles\" SET \"SyncTxId\" = {stamp}", ct).ConfigureAwait(false);
+                await Database.ExecuteSqlRawAsync($"UPDATE \"Orders\" SET \"SyncTxId\" = {stamp}", ct).ConfigureAwait(false);
+                await Database.ExecuteSqlRawAsync($"UPDATE \"DeletedItems\" SET \"SyncTxId\" = {stamp}", ct).ConfigureAwait(false);
+                await Database.ExecuteSqlRawAsync(
+                    "UPDATE \"SyncState\" SET \"Epoch\" = \"Epoch\" + 1, \"HighWaterTx\" = pg_snapshot_xmin(pg_current_snapshot())::text::bigint WHERE \"Id\" = 1",
+                    ct).ConfigureAwait(false);
+            }
+
+            await tx.CommitAsync(ct).ConfigureAwait(false);
+        }, cancellationToken);
+    }
 
     public Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<(T Result, bool Commit)>> work, CancellationToken cancellationToken = default)
     {
@@ -323,6 +389,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
                 .HasForeignKey(x => x.BusinessId)
                 .OnDelete(DeleteBehavior.Cascade);
             e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
+
+        builder.Entity<SyncState>(e =>
+        {
+            e.ToTable("SyncState");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).ValueGeneratedNever();
+            e.HasData(new SyncState { Id = 1, Epoch = 0, HighWaterTx = 0 });
         });
 
         builder.Entity<RefreshToken>(e =>

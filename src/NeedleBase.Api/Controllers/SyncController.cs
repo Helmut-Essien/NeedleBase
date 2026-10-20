@@ -13,6 +13,7 @@ namespace NeedleBase.Api.Controllers;
 [ApiController]
 [Authorize(Policy = "RequireStaff")]
 [Route("api/sync")]
+[Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(SyncRateLimit.PolicyName)]
 public sealed class SyncController : ControllerBase
 {
     private readonly ISyncService _sync;
@@ -33,7 +34,7 @@ public sealed class SyncController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<SyncPullResponse>> Pull(SyncPullRequest request, CancellationToken cancellationToken)
     {
-        var result = await _sync.PullAsync(request, cancellationToken);
-        return result is null ? ApiProblems.SyncCursorInvalid(HttpContext) : Ok(result);
+        var (page, error) = await _sync.PullAsync(request, cancellationToken);
+        return page is null ? ApiProblems.SyncCursorInvalid(HttpContext, error) : Ok(page);
     }
 }

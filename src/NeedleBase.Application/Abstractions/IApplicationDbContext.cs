@@ -31,8 +31,17 @@ public interface IApplicationDbContext
     /// <summary>
     /// Sync pull upper bound: the oldest transaction still running (PostgreSQL snapshot xmin). Every row
     /// whose <c>SyncTxId</c> is below it is committed (or never will be).
+    /// Also returns the sync epoch; if the database moved to a new cluster (watermark went backwards) the epoch
+    /// is bumped first and every synced row is re-stamped.
     /// </summary>
-    Task<long> GetSyncWatermarkAsync(CancellationToken cancellationToken = default);
+    /// <param name="minimumCap">
+    /// Highest transaction position a client cursor already holds. A cap below it means transaction ids went
+    /// backwards (restore), even if the stored high-water mark was restored too, so the epoch is bumped.
+    /// </param>
+    Task<SyncWatermark> GetSyncWatermarkAsync(long minimumCap = 0, CancellationToken cancellationToken = default);
+
+    /// <summary>Current sync epoch (see <see cref="GetSyncWatermarkAsync"/>).</summary>
+    Task<long> GetSyncEpochAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Runs <paramref name="work"/> in one database transaction (inside the retrying execution strategy);
@@ -40,3 +49,6 @@ public interface IApplicationDbContext
     /// </summary>
     Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<(T Result, bool Commit)>> work, CancellationToken cancellationToken = default);
 }
+
+/// <summary>Pull upper bound (snapshot xmin) and the sync epoch it belongs to.</summary>
+public sealed record SyncWatermark(long Cap, long Epoch);

@@ -50,6 +50,10 @@ builder.Services.AddProblemDetails(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Auth attempts per IP per minute. Configurable (RateLimits:AuthPermitPerMinute) so integration tests, which
+// register many accounts from one address, are not throttled; production keeps the default.
+var authPermitPerMinute = builder.Configuration.GetValue("RateLimits:AuthPermitPerMinute", 30);
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -58,10 +62,32 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 30,
+                PermitLimit = authPermitPerMinute,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
+
+    // Sync: per signed-in user (not per IP: a whole shop can share one IP). A token bucket lets a fresh device
+    // pull a big book in a burst, then sustains SyncRateLimit.TokensPerSecond; the app waits Retry-After and continues.
+    options.AddPolicy(SyncRateLimit.PolicyName, httpContext =>
+        RateLimitPartition.GetTokenBucketLimiter(
+            partitionKey: SyncRateLimit.PartitionKey(httpContext),
+            factory: _ => new TokenBucketRateLimiterOptions
+            {
+                TokenLimit = SyncRateLimit.Burst,
+                TokensPerPeriod = SyncRateLimit.TokensPerSecond,
+                ReplenishmentPeriod = TimeSpan.FromSeconds(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+    options.OnRejected = (context, _) =>
+    {
+        context.HttpContext.Response.Headers.RetryAfter =
+            context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+                ? ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture)
+                : "1";
+        return ValueTask.CompletedTask;
+    };
 });
 
 builder.Services.AddHealthChecks()
@@ -82,8 +108,6 @@ else
 }
 
 app.UseStatusCodePages();
-app.UseRateLimiter();
-
 // Map mobile X-Auth-Token → Authorization (must run before authentication).
 app.Use(async (context, next) =>
 {
@@ -99,6 +123,9 @@ app.Use(async (context, next) =>
 app.UseAuthentication();
 app.UseMiddleware<BusinessTenancyMiddleware>();
 app.UseAuthorization();
+
+// After authentication so sync limits can be per user.
+app.UseRateLimiter();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
@@ -146,3 +173,16 @@ static Task WriteMinimalHealthResponse(HttpContext context, HealthReport report)
 }
 
 public partial class Program;
+
+/// <summary>Sync endpoint rate limit (per user). Generous: 200-row pages, so a 60,000-row first pull fits the burst.</summary>
+internal static class SyncRateLimit
+{
+    public const string PolicyName = "sync";
+    public const int Burst = 300;
+    public const int TokensPerSecond = 10;
+
+    public static string PartitionKey(HttpContext context) =>
+        context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+        ?? context.User.FindFirst("sub")?.Value
+        ?? "ip:" + (context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+}

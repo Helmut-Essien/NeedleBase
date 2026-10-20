@@ -84,9 +84,21 @@ public static class ApiProblems
         Create(ctx, StatusCodes.Status400BadRequest, code, $"Couldn't save {what}",
             $"We couldn't save the {what}. Check the details and try again.");
 
-    public static ObjectResult SyncCursorInvalid(HttpContext ctx) =>
-        Create(ctx, StatusCodes.Status400BadRequest, NeedleBase.Application.Contracts.Sync.SyncErrorCodes.CursorInvalid,
+    /// <summary>
+    /// 400 with <c>SYNC_CURSOR_INVALID</c> or <c>SYNC_EPOCH_CHANGED</c>. Both carry <c>reset: SYNC_CURSOR_INVALID</c>
+    /// so app builds that only know the older code still start over.
+    /// </summary>
+    public static ObjectResult SyncCursorInvalid(HttpContext ctx, string? code = null)
+    {
+        var result = Create(ctx, StatusCodes.Status400BadRequest, code ?? NeedleBase.Application.Contracts.Sync.SyncErrorCodes.CursorInvalid,
             "Sync needs to start again", "Your device will download your data again. Please try syncing once more.");
+        if (result.Value is ProblemDetails problem)
+        {
+            problem.Extensions["reset"] = NeedleBase.Application.Contracts.Sync.SyncErrorCodes.CursorInvalid;
+        }
+
+        return result;
+    }
 
     public static ObjectResult SessionInvalid(HttpContext ctx) =>
         Create(ctx, StatusCodes.Status401Unauthorized, "SESSION_INVALID", "Please sign in again",

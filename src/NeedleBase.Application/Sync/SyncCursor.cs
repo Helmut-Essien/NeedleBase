@@ -23,10 +23,18 @@ public sealed class SyncCursor
     [JsonPropertyName("p")] public int Phase { get; set; }
     [JsonPropertyName("x")] public long Cap { get; set; }
     [JsonPropertyName("t")] public long IssuedTicks { get; set; }
+
+    /// <summary>Server sync epoch the positions belong to (0 before any cluster change; absent in older cursors = 0).</summary>
+    [JsonPropertyName("e")] public long Epoch { get; set; }
     [JsonPropertyName("c")] public SyncPosition? Customers { get; set; }
     [JsonPropertyName("m")] public SyncPosition? Measurements { get; set; }
     [JsonPropertyName("o")] public SyncPosition? Orders { get; set; }
     [JsonPropertyName("d")] public SyncPosition? Deletes { get; set; }
+
+    /// <summary>Highest transaction position this cursor has read up to (0 if none).</summary>
+    [JsonIgnore]
+    public long HighestPosition =>
+        new[] { Customers?.Tx ?? 0, Measurements?.Tx ?? 0, Orders?.Tx ?? 0, Deletes?.Tx ?? 0 }.Max();
 
     /// <summary>Never synced (no cursor given): a first pull.</summary>
     public bool IsFresh => Cap == 0 && IssuedTicks == 0;

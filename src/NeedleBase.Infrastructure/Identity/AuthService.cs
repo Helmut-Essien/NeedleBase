@@ -187,12 +187,21 @@ public sealed class AuthService : IAuthService
                     return AuthResult.Fail("Invalid or expired refresh token.", "REFRESH_INVALID");
                 }
 
-                // Reuse of an already-rotated token → revoke the whole family.
                 if (existing.RevokedUtc is not null)
                 {
-                    await RevokeAllRefreshTokensForUserAsync(existing.ApplicationUserId, ipAddress, cancellationToken);
-                    await tx.CommitAsync(cancellationToken);
-                    return AuthResult.Fail("Invalid or expired refresh token.", "REFRESH_REUSE");
+                    // A phone that lost the response to its last refresh retries with the old token. Inside a short
+                    // window, and only once, and only while the successor is still unused, rotate the successor
+                    // instead of treating it as theft. Anything else is reuse → revoke the whole family.
+                    var successor = await GraceSuccessorAsync(existing, cancellationToken);
+                    if (successor is null)
+                    {
+                        await RevokeAllRefreshTokensForUserAsync(existing.ApplicationUserId, ipAddress, cancellationToken);
+                        await tx.CommitAsync(cancellationToken);
+                        return AuthResult.Fail("Invalid or expired refresh token.", "REFRESH_REUSE");
+                    }
+
+                    existing.GraceUsedUtc = DateTime.UtcNow;
+                    existing = successor;
                 }
 
                 if (existing.IsExpired || existing.ApplicationUser is null)
@@ -302,6 +311,29 @@ public sealed class AuthService : IAuthService
         {
             await RevokeAllRefreshTokensForUserAsync(userId, ipAddress, cancellationToken);
         }
+    }
+
+    /// <summary>How long after a rotation the previous refresh token may be presented once more (lost response).</summary>
+    public static readonly TimeSpan RefreshReuseGrace = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// The successor to rotate when a rotated token comes back inside <see cref="RefreshReuseGrace"/>: only for a
+    /// token replaced by rotation (logout leaves no successor), never used for grace before, and whose successor
+    /// was never used (so a thief replaying it after the device has moved on gets nothing). Plain-text tokens are
+    /// not stored, so the device receives a fresh successor rather than the same one; the unused one is revoked.
+    /// </summary>
+    private async Task<RefreshToken?> GraceSuccessorAsync(RefreshToken rotated, CancellationToken cancellationToken)
+    {
+        if (rotated.ReplacedByToken is null || rotated.GraceUsedUtc is not null || rotated.RevokedUtc is not { } revokedAt ||
+            DateTime.UtcNow - revokedAt > RefreshReuseGrace)
+        {
+            return null;
+        }
+
+        var successor = await _db.RefreshTokens
+            .Include(t => t.ApplicationUser)
+            .FirstOrDefaultAsync(t => t.Token == rotated.ReplacedByToken, cancellationToken);
+        return successor is { IsActive: true } && successor.ApplicationUserId == rotated.ApplicationUserId ? successor : null;
     }
 
     private async Task RevokeAllRefreshTokensForUserAsync(

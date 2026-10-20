@@ -635,6 +635,9 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("ExpiresUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("GraceUsedUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("ReplacedByToken")
                         .HasColumnType("text");
 
@@ -657,6 +660,30 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("RefreshTokens", (string)null);
+                });
+
+            modelBuilder.Entity("NeedleBase.Infrastructure.Persistence.SyncState", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("Epoch")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("HighWaterTx")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SyncState", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Epoch = 0L,
+                            HighWaterTx = 0L
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
