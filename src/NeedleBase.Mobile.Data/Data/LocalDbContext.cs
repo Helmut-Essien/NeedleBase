@@ -20,6 +20,8 @@ public sealed class LocalDbContext : DbContext
 
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<MeasurementProfile> MeasurementProfiles => Set<MeasurementProfile>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderLine> OrderLines => Set<OrderLine>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -54,6 +56,51 @@ public sealed class LocalDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.CustomerId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<Order>(e =>
+        {
+            e.ToTable("Orders");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.CustomerId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.DisplayRef).HasMaxLength(FieldLimits.OrderDisplayRef).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(FieldLimits.OrderStatus).IsRequired();
+            e.Property(x => x.AssignedToUserId).HasMaxLength(FieldLimits.AssignedToUserId);
+            e.Property(x => x.TotalAmount).HasPrecision(18, 2);
+            e.Property(x => x.Notes).HasMaxLength(FieldLimits.Notes);
+            e.HasIndex(x => x.BusinessId);
+            e.HasIndex(x => new { x.BusinessId, x.Status });
+            e.HasIndex(x => new { x.BusinessId, x.DueDate });
+            e.HasIndex(x => new { x.BusinessId, x.DisplayRef }).IsUnique();
+            e.HasIndex(x => new { x.BusinessId, x.CustomerId });
+            e.HasIndex(x => new { x.BusinessId, x.CreatedAtUtc });
+            e.HasOne<Customer>()
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Lines)
+                .WithOne()
+                .HasForeignKey(x => x.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<OrderLine>(e =>
+        {
+            e.ToTable("OrderLines");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.OrderId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.GarmentTemplate).HasMaxLength(FieldLimits.GarmentTemplate).IsRequired();
+            e.Property(x => x.UnitPrice).HasPrecision(18, 2);
+            e.Property(x => x.MeasurementProfileId).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.Unit).HasMaxLength(FieldLimits.MeasurementUnit).IsRequired();
+            e.Property(x => x.MeasurementFieldsJson).HasMaxLength(FieldLimits.FieldsJson).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(FieldLimits.Notes);
+            e.HasIndex(x => x.BusinessId);
+            e.HasIndex(x => new { x.BusinessId, x.OrderId });
         });
     }
 }

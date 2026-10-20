@@ -44,7 +44,7 @@
         <Tab Title="Orders"
              Route="OrdersPage"
              mci:MauiIcon.Value="{mi:Material Icon=ReceiptLong, IconSize=22, TargetName='.'}">
-            <ShellContent ContentTemplate="{DataTemplate views:OrdersPlaceholderPage}" />
+            <ShellContent ContentTemplate="{DataTemplate views:OrdersPage}" />
         </Tab>
         <Tab Title="Payments"
              Route="PaymentsPage"

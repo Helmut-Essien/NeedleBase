@@ -44,12 +44,16 @@
                                IsVisible="{Binding IsBusy}"
                                Color="{StaticResource Primary}" />
             <HorizontalStackLayout Spacing="8" Margin="0,8,0,0">
-                <Button Text="Edit" HeightRequest="48" CornerRadius="10"
+                <Button Style="{StaticResource SecondaryButton}"
+                        Text="Edit" HeightRequest="48" CornerRadius="10"
                         Command="{Binding EditCommand}"
-                        BackgroundColor="{StaticResource PrimaryLight}"
-                        TextColor="{StaticResource Charcoal}"
                         IsEnabled="{Binding CanSubmit}"
                         SemanticProperties.Description="Edit customer" />
+                <Button Style="{StaticResource SecondaryButton}"
+                        Text="New order" HeightRequest="48" CornerRadius="10"
+                        Command="{Binding CreateOrderCommand}"
+                        IsEnabled="{Binding CanSubmit}"
+                        SemanticProperties.Description="Create order for this customer" />
                 <Button Text="Add measurements" HeightRequest="48" CornerRadius="10"
                         Command="{Binding AddMeasurementCommand}"
                         TextColor="White"

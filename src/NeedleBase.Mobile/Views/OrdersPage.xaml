@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             x:Class="NeedleBase.Mobile.Views.OrdersPage"
+             x:DataType="vm:OrdersViewModel"
+             Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <Grid>
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Padding="16,40,16,12">
+            <Label Grid.Row="0"
+                   Text="{Binding Title}"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource Charcoal}"
+                   Margin="0,0,0,12"
+                   SemanticProperties.HeadingLevel="Level1" />
+
+            <SearchBar Grid.Row="1"
+                       Placeholder="Search ref or customer"
+                       Text="{Binding SearchText}"
+                       SearchCommand="{Binding SearchCommand}"
+                       BackgroundColor="White"
+                       Margin="0,0,0,8"
+                       SemanticProperties.Description="Search orders by ref or customer" />
+
+            <Picker Grid.Row="2"
+                    Title="Status"
+                    ItemsSource="{Binding StatusFilters}"
+                    ItemDisplayBinding="{Binding Display, x:DataType=vm:StatusFilterOption}"
+                    SelectedItem="{Binding SelectedStatusFilter}"
+                    TextColor="{StaticResource Charcoal}"
+                    BackgroundColor="White"
+                    HeightRequest="48"
+                    Margin="0,0,0,8"
+                    SemanticProperties.Description="Filter orders by status" />
+
+            <VerticalStackLayout Grid.Row="3" Spacing="8" Margin="0,0,0,8">
+                <ActivityIndicator IsRunning="{Binding ShowBusyIndicator}"
+                                   IsVisible="{Binding ShowBusyIndicator}"
+                                   Color="{StaticResource Primary}" />
+                <Label Text="{Binding ErrorMessage}"
+                       TextColor="{StaticResource SemanticError}"
+                       IsVisible="{Binding HasError}"
+                       SemanticProperties.Description="Orders error" />
+            </VerticalStackLayout>
+
+            <RefreshView Grid.Row="4"
+                         IsRefreshing="{Binding IsRefreshing}"
+                         Command="{Binding RefreshCommand}">
+                <CollectionView ItemsSource="{Binding Items}"
+                                SelectionMode="Single"
+                                SelectedItem="{Binding SelectedItem}"
+                                Margin="0,0,0,72">
+                    <CollectionView.EmptyView>
+                        <VerticalStackLayout Padding="24" Spacing="12" VerticalOptions="Center">
+                            <Image WidthRequest="48" HeightRequest="48" HorizontalOptions="Center"
+                                   SemanticProperties.Description="No orders">
+                                <Image.Source>
+                                    <FontImageSource FontFamily="MaterialIcons-Regular"
+                                                     Glyph="{mi:Material Icon=ReceiptLong}"
+                                                     Color="{StaticResource Gray600}"
+                                                     Size="48" />
+                                </Image.Source>
+                            </Image>
+                            <Label Text="{Binding EmptyMessage}" LineBreakMode="WordWrap"
+                                   TextColor="{StaticResource Gray600}"
+                                   HorizontalTextAlignment="Center"
+                                   SemanticProperties.HeadingLevel="Level2" />
+                            <Button Text="New order"
+                                    Command="{Binding NewOrderCommand}"
+                                    TextColor="White"
+                                    HorizontalOptions="Center"
+                                    IsVisible="{Binding ShowEmptyAdd}"
+                                    SemanticProperties.Description="Create your first order" />
+                        </VerticalStackLayout>
+                    </CollectionView.EmptyView>
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:OrderListRow">
+                            <Grid Padding="12,14"
+                                  RowDefinitions="Auto,Auto,Auto"
+                                  ColumnDefinitions="*,Auto"
+                                  ColumnSpacing="12"
+                                  RowSpacing="6"
+                                  BackgroundColor="White"
+                                  MinimumHeightRequest="72">
+                                <Label Grid.Row="0" Grid.Column="0"
+                                       Text="{Binding CustomerName}"
+                                       FontAttributes="Bold"
+                                       FontSize="16"
+                                       TextColor="{StaticResource Charcoal}" />
+                                <Image Grid.Row="0" Grid.Column="1" Grid.RowSpan="3"
+                                       WidthRequest="24"
+                                       HeightRequest="24"
+                                       VerticalOptions="Center"
+                                       AutomationProperties.IsInAccessibleTree="False">
+                                    <Image.Source>
+                                        <FontImageSource FontFamily="MaterialIcons-Regular"
+                                                         Glyph="{mi:Material Icon=ChevronRight}"
+                                                         Color="{StaticResource Gray600}"
+                                                         Size="24" />
+                                    </Image.Source>
+                                </Image>
+                                <HorizontalStackLayout Grid.Row="1" Grid.Column="0" Spacing="8">
+                                    <Border StrokeThickness="0"
+                                            BackgroundColor="{Binding StatusBackground}"
+                                            StrokeShape="RoundRectangle 8"
+                                            Padding="8,4">
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Image Source="{Binding StatusIconImage}"
+                                                   WidthRequest="14"
+                                                   HeightRequest="14"
+                                                   VerticalOptions="Center"
+                                                   AutomationProperties.IsInAccessibleTree="False" />
+                                            <Label Text="{Binding StatusDisplay}"
+                                                   FontAttributes="Bold"
+                                                   FontSize="12"
+                                                   TextColor="{Binding StatusForeground}"
+                                                   VerticalOptions="Center" />
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                    <Border StrokeThickness="0"
+                                            BackgroundColor="{StaticResource SemanticErrorLight}"
+                                            StrokeShape="RoundRectangle 8"
+                                            Padding="8,4"
+                                            IsVisible="{Binding IsOverdue}">
+                                        <HorizontalStackLayout Spacing="4">
+                                            <Image Source="{Binding OverdueIconImage}"
+                                                   WidthRequest="14"
+                                                   HeightRequest="14"
+                                                   VerticalOptions="Center"
+                                                   AutomationProperties.IsInAccessibleTree="False" />
+                                            <Label Text="Overdue"
+                                                   FontAttributes="Bold"
+                                                   FontSize="12"
+                                                   TextColor="{StaticResource SemanticOverdue}"
+                                                   VerticalOptions="Center" />
+                                        </HorizontalStackLayout>
+                                    </Border>
+                                </HorizontalStackLayout>
+                                <Label Grid.Row="2" Grid.Column="0"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray600}">
+                                    <Label.Text>
+                                        <MultiBinding StringFormat="#{0} · {1}">
+                                            <Binding Path="DisplayRef" />
+                                            <Binding Path="SecondaryLine" />
+                                        </MultiBinding>
+                                    </Label.Text>
+                                </Label>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </RefreshView>
+        </Grid>
+
+        <Button Text="New order"
+                ImageSource="{mi:Material Icon=Add, IconColor=White}"
+                Command="{Binding NewOrderCommand}"
+                TextColor="White"
+                BackgroundColor="{StaticResource PrimaryDark}"
+                CornerRadius="28"
+                HeightRequest="56"
+                MinimumWidthRequest="120"
+                Padding="16,0"
+                HorizontalOptions="End"
+                VerticalOptions="End"
+                Margin="0,0,16,24"
+                SemanticProperties.Description="New order" />
+    </Grid>
+</ContentPage>

@@ -160,6 +160,11 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
             $"MeasurementEditPage?customerId={Uri.EscapeDataString(CustomerId)}&template={GarmentTemplate.Dress}");
 
     [RelayCommand]
+    private async Task CreateOrderAsync() =>
+        await Shell.Current.GoToAsync(
+            $"{nameof(Views.CreateOrderPage)}?customerId={Uri.EscapeDataString(CustomerId)}");
+
+    [RelayCommand]
     private async Task OpenMeasurementAsync(MeasurementListItemDto? item)
     {
         if (item is null)

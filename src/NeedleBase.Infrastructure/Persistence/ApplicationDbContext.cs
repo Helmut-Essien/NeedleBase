@@ -30,6 +30,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<MeasurementProfile> MeasurementProfiles => Set<MeasurementProfile>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderLine> OrderLines => Set<OrderLine>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -105,6 +107,62 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
                 .WithMany()
                 .HasForeignKey(x => x.CustomerId)
                 .OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
+
+        builder.Entity<Order>(e =>
+        {
+            e.ToTable("Orders");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.CustomerId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.DisplayRef).HasMaxLength(Domain.Common.FieldLimits.OrderDisplayRef).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(Domain.Common.FieldLimits.OrderStatus).IsRequired();
+            e.Property(x => x.AssignedToUserId).HasMaxLength(Domain.Common.FieldLimits.AssignedToUserId);
+            e.Property(x => x.TotalAmount).HasPrecision(18, 2);
+            e.Property(x => x.Notes).HasMaxLength(Domain.Common.FieldLimits.Notes);
+            e.HasIndex(x => x.BusinessId);
+            e.HasIndex(x => new { x.BusinessId, x.Status });
+            e.HasIndex(x => new { x.BusinessId, x.DueDate });
+            e.HasIndex(x => new { x.BusinessId, x.DisplayRef }).IsUnique();
+            e.HasIndex(x => new { x.BusinessId, x.CustomerId });
+            e.HasIndex(x => new { x.BusinessId, x.CreatedAtUtc });
+            e.HasOne<Business>()
+                .WithMany()
+                .HasForeignKey(x => x.BusinessId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Customer>()
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasMany(x => x.Lines)
+                .WithOne()
+                .HasForeignKey(x => x.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
+
+        builder.Entity<OrderLine>(e =>
+        {
+            e.ToTable("OrderLines");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.OrderId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.GarmentTemplate).HasMaxLength(Domain.Common.FieldLimits.GarmentTemplate).IsRequired();
+            e.Property(x => x.UnitPrice).HasPrecision(18, 2);
+            e.Property(x => x.MeasurementProfileId).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.Unit).HasMaxLength(Domain.Common.FieldLimits.MeasurementUnit).IsRequired();
+            e.Property(x => x.MeasurementFieldsJson).HasMaxLength(Domain.Common.FieldLimits.FieldsJson).IsRequired();
+            e.Property(x => x.Notes).HasMaxLength(Domain.Common.FieldLimits.Notes);
+            e.HasIndex(x => x.BusinessId);
+            e.HasIndex(x => new { x.BusinessId, x.OrderId });
+            // Restrict: Business→Order→OrderLine already cascades; avoid multiple cascade paths.
+            e.HasOne<Business>()
+                .WithMany()
+                .HasForeignKey(x => x.BusinessId)
+                .OnDelete(DeleteBehavior.Restrict);
             e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
         });
 

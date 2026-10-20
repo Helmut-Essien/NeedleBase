@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             xmlns:meas="clr-namespace:NeedleBase.Application.Contracts.Measurements;assembly=NeedleBase.Application"
+             xmlns:cust="clr-namespace:NeedleBase.Application.Contracts.Customers;assembly=NeedleBase.Application"
+             x:Class="NeedleBase.Mobile.Views.CreateOrderPage"
+             x:DataType="vm:CreateOrderViewModel"
+             Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,40,16,24" Spacing="12">
+            <Button Text="Back"
+                    ImageSource="{mi:Material Icon=ArrowBack, IconColor={StaticResource Charcoal}}"
+                    Command="{Binding GoBackCommand}"
+                    IsEnabled="{Binding CanGoBack}"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource Charcoal}"
+                    HorizontalOptions="Start"
+                    HeightRequest="48"
+                    Padding="0,0,12,0"
+                    SemanticProperties.Description="Go back" />
+
+            <Label Text="{Binding Title}"
+                   FontSize="22"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource Charcoal}"
+                   SemanticProperties.HeadingLevel="Level1" />
+            <Label Text="{Binding StepLabel}"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}" />
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasError}"
+                   LineBreakMode="WordWrap" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="{StaticResource Primary}" />
+
+            <!-- Step 1: Customer -->
+            <VerticalStackLayout Spacing="10" IsVisible="{Binding IsStepCustomer}">
+                <Label Text="Who is this order for?"
+                       FontAttributes="Bold"
+                       FontSize="16"
+                       TextColor="{StaticResource Charcoal}" />
+                <Picker Title="Select customer"
+                        ItemsSource="{Binding Customers}"
+                        ItemDisplayBinding="{Binding Name, x:DataType=cust:CustomerListItemDto}"
+                        SelectedItem="{Binding SelectedCustomer}"
+                        TextColor="{StaticResource Charcoal}"
+                        BackgroundColor="White"
+                        HeightRequest="48"
+                        SemanticProperties.Description="Select customer" />
+                <Label Text="{Binding SelectedCustomerPhone}"
+                       TextColor="{StaticResource Gray600}"
+                       IsVisible="{Binding HasSelectedCustomer}"
+                       FontSize="14" />
+            </VerticalStackLayout>
+
+            <!-- Step 2: Garments -->
+            <VerticalStackLayout Spacing="10" IsVisible="{Binding IsStepGarment}">
+                <Label Text="Add garments"
+                       FontAttributes="Bold"
+                       FontSize="16"
+                       TextColor="{StaticResource Charcoal}" />
+
+                <Label Text="Template" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
+                <Picker Title="Garment template"
+                        ItemsSource="{Binding TemplateChoices}"
+                        ItemDisplayBinding="{Binding DisplayName, x:DataType=vm:TemplateChoice}"
+                        SelectedItem="{Binding SelectedTemplate}"
+                        TextColor="{StaticResource Charcoal}"
+                        BackgroundColor="White"
+                        HeightRequest="48" />
+
+                <Label Text="Measurement snapshot (optional)"
+                       FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
+                <Picker Title="Snap from measurement"
+                        ItemsSource="{Binding Measurements}"
+                        ItemDisplayBinding="{Binding GarmentTemplateDisplay, x:DataType=meas:MeasurementListItemDto}"
+                        SelectedItem="{Binding SelectedMeasurement}"
+                        TextColor="{StaticResource Charcoal}"
+                        BackgroundColor="White"
+                        HeightRequest="48" />
+
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                    <VerticalStackLayout Grid.Column="0" Spacing="4">
+                        <Label Text="Qty" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
+                        <Entry Text="{Binding QuantityText}"
+                               Keyboard="Numeric"
+                               BackgroundColor="White"
+                               HeightRequest="48"
+                               TextColor="{StaticResource Charcoal}" />
+                    </VerticalStackLayout>
+                    <VerticalStackLayout Grid.Column="1" Spacing="4">
+                        <Label Text="Unit price (GH₵)" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
+                        <Entry Text="{Binding UnitPriceText}"
+                               Keyboard="Numeric"
+                               BackgroundColor="White"
+                               HeightRequest="48"
+                               TextColor="{StaticResource Charcoal}" />
+                    </VerticalStackLayout>
+                </Grid>
+
+                <Button Style="{StaticResource SecondaryButton}"
+                        Text="Add garment line"
+                        Command="{Binding AddLineCommand}"
+                        HeightRequest="48"
+                        IsEnabled="{Binding CanSubmit}" />
+
+                <CollectionView ItemsSource="{Binding Lines}" HeightRequest="180" IsVisible="{Binding HasLines}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="vm:CreateOrderLineDraft">
+                            <Grid Padding="0,8" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                <VerticalStackLayout Grid.Column="0" Spacing="2">
+                                    <Label Text="{Binding LineSummary}"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource Charcoal}" />
+                                    <Label Text="{Binding SnapshotLabel}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray600}" />
+                                </VerticalStackLayout>
+                                <Button Grid.Column="1"
+                                        Text="Remove"
+                                        Command="{Binding RemoveCommand}"
+                                        BackgroundColor="Transparent"
+                                        TextColor="{StaticResource SemanticError}"
+                                        HeightRequest="48"
+                                        MinimumWidthRequest="48"
+                                        SemanticProperties.Description="Remove garment line" />
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </VerticalStackLayout>
+
+            <!-- Step 3: Details -->
+            <VerticalStackLayout Spacing="10" IsVisible="{Binding IsStepDetails}">
+                <Label Text="Price &amp; due date"
+                       FontAttributes="Bold"
+                       FontSize="16"
+                       TextColor="{StaticResource Charcoal}" />
+
+                <Label Text="Total" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
+                <Label Text="{Binding TotalAmountText}"
+                       FontSize="20"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource Charcoal}"
+                       SemanticProperties.Description="Order total, sum of garment lines" />
+                <Label Text="Worked out from the garments above."
+                       FontSize="13"
+                       TextColor="{StaticResource Gray600}" />
+
+                <HorizontalStackLayout Spacing="8">
+                    <CheckBox IsChecked="{Binding HasDueDate}" Color="{StaticResource Primary}" />
+                    <Label Text="Set due date" VerticalOptions="Center" TextColor="{StaticResource Charcoal}" />
+                </HorizontalStackLayout>
+                <DatePicker Date="{Binding DueDate}"
+                            IsEnabled="{Binding HasDueDate}"
+                            TextColor="{StaticResource Charcoal}"
+                            BackgroundColor="White" />
+
+                <Label Text="Notes" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
+                <Editor Text="{Binding Notes}"
+                        Placeholder="Style notes, fabric…"
+                        AutoSize="TextChanges"
+                        MaxLength="2000"
+                        BackgroundColor="White"
+                        TextColor="{StaticResource Charcoal}"
+                        HeightRequest="80" />
+            </VerticalStackLayout>
+
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Margin="0,12,0,0">
+                <Button Grid.Column="0"
+                        Text="Previous"
+                        Command="{Binding BackStepCommand}"
+                        IsVisible="{Binding ShowBackStep}"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource Charcoal}"
+                        HeightRequest="48" />
+                <Button Grid.Column="1"
+                        Text="{Binding PrimaryButtonText}"
+                        Command="{Binding PrimaryCommand}"
+                        TextColor="White"
+                        HeightRequest="48"
+                        IsEnabled="{Binding CanSubmit}"
+                        SemanticProperties.Description="Continue or create order" />
+            </Grid>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

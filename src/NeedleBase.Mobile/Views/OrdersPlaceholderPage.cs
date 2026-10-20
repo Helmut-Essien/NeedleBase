@@ -3,17 +3,9 @@ using MauiIcons.Material;
 
 namespace NeedleBase.Mobile.Views;
 
-public sealed class OrdersPlaceholderPage : ContentPage
+/// <summary>Shared placeholder chrome for unbuilt tabs (Payments/More). Orders uses <see cref="OrdersPage"/>.</summary>
+internal static class PlaceholderChrome
 {
-    public OrdersPlaceholderPage()
-    {
-        Title = "Orders";
-        Shell.SetNavBarIsVisible(this, false);
-        NavigationPage.SetHasNavigationBar(this, false);
-        BackgroundColor = ResolveColor("AppBackground", Colors.WhiteSmoke);
-        Content = Build("Orders", "Order creation arrives in the next slice.", MaterialIcons.ReceiptLong);
-    }
-
     internal static View Build(string title, string message, MaterialIcons icon)
     {
         var iconView = new MauiIcon
@@ -74,8 +66,8 @@ public sealed class PaymentsPlaceholderPage : ContentPage
         Title = "Payments";
         Shell.SetNavBarIsVisible(this, false);
         NavigationPage.SetHasNavigationBar(this, false);
-        BackgroundColor = OrdersPlaceholderPage.ResolveColor("AppBackground", Colors.WhiteSmoke);
-        Content = OrdersPlaceholderPage.Build(
+        BackgroundColor = PlaceholderChrome.ResolveColor("AppBackground", Colors.WhiteSmoke);
+        Content = PlaceholderChrome.Build(
             "Payments",
             "Payments and balances arrive in a later slice.",
             MaterialIcons.Payments);
@@ -89,9 +81,9 @@ public sealed class MorePlaceholderPage : ContentPage
         Title = "More";
         Shell.SetNavBarIsVisible(this, false);
         NavigationPage.SetHasNavigationBar(this, false);
-        BackgroundColor = OrdersPlaceholderPage.ResolveColor("AppBackground", Colors.WhiteSmoke);
+        BackgroundColor = PlaceholderChrome.ResolveColor("AppBackground", Colors.WhiteSmoke);
 
-        var intro = OrdersPlaceholderPage.Build(
+        var intro = PlaceholderChrome.Build(
             "More",
             "Settings, sync details, and staff land in later slices.",
             MaterialIcons.Menu);
@@ -101,7 +93,7 @@ public sealed class MorePlaceholderPage : ContentPage
             Text = "About",
             FontSize = 17,
             FontAttributes = FontAttributes.Bold,
-            TextColor = OrdersPlaceholderPage.ResolveColor("Charcoal", Colors.Black)
+            TextColor = PlaceholderChrome.ResolveColor("Charcoal", Colors.Black)
         };
         SemanticProperties.SetHeadingLevel(aboutHeading, SemanticHeadingLevel.Level2);
 
@@ -109,13 +101,13 @@ public sealed class MorePlaceholderPage : ContentPage
         {
             Text = $"NeedleBase version {AppInfo.Current.VersionString}",
             FontSize = 14,
-            TextColor = OrdersPlaceholderPage.ResolveColor("Gray600", Colors.Gray)
+            TextColor = PlaceholderChrome.ResolveColor("Gray600", Colors.Gray)
         };
 
         var about = new Border
         {
             BackgroundColor = Colors.White,
-            Stroke = OrdersPlaceholderPage.ResolveColor("Gray300", Colors.LightGray),
+            Stroke = PlaceholderChrome.ResolveColor("Gray300", Colors.LightGray),
             StrokeThickness = 1,
             StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
             Padding = new Thickness(16, 8),
@@ -124,7 +116,7 @@ public sealed class MorePlaceholderPage : ContentPage
                 Children =
                 {
                     BuildLinkRow("Terms and Conditions", MaterialIcons.Description, nameof(TermsPage), "MoreTermsLink"),
-                    new BoxView { HeightRequest = 1, Color = OrdersPlaceholderPage.ResolveColor("Gray200", Colors.LightGray) },
+                    new BoxView { HeightRequest = 1, Color = PlaceholderChrome.ResolveColor("Gray200", Colors.LightGray) },
                     BuildLinkRow("Privacy Policy", MaterialIcons.PrivacyTip, nameof(PrivacyPage), "MorePrivacyLink")
                 }
             }
@@ -150,9 +142,9 @@ public sealed class MorePlaceholderPage : ContentPage
             MinimumHeightRequest = 48,
             AutomationId = automationId
         };
-        row.Add(new MauiIcon { Icon = icon, IconSize = 22, IconColor = OrdersPlaceholderPage.ResolveColor("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }, 0);
-        row.Add(new Label { Text = text, FontSize = 16, TextColor = OrdersPlaceholderPage.ResolveColor("Charcoal", Colors.Black), VerticalOptions = LayoutOptions.Center }, 1);
-        row.Add(new MauiIcon { Icon = MaterialIcons.ChevronRight, IconSize = 22, IconColor = OrdersPlaceholderPage.ResolveColor("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }, 2);
+        row.Add(new MauiIcon { Icon = icon, IconSize = 22, IconColor = PlaceholderChrome.ResolveColor("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }, 0);
+        row.Add(new Label { Text = text, FontSize = 16, TextColor = PlaceholderChrome.ResolveColor("Charcoal", Colors.Black), VerticalOptions = LayoutOptions.Center }, 1);
+        row.Add(new MauiIcon { Icon = MaterialIcons.ChevronRight, IconSize = 22, IconColor = PlaceholderChrome.ResolveColor("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }, 2);
         SemanticProperties.SetDescription(row, $"Open {text}");
 
         var tap = new TapGestureRecognizer();

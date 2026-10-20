@@ -45,10 +45,54 @@ public static class LocalSchemaMigrator
         CREATE INDEX IF NOT EXISTS "IX_MeasurementProfiles_CustomerId" ON "MeasurementProfiles" ("CustomerId");
         """;
 
+    /// <summary>Version 2 = Orders + OrderLines (Slice 3).</summary>
+    private const string V2Orders = """
+        CREATE TABLE IF NOT EXISTS "Orders" (
+            "Id" TEXT NOT NULL CONSTRAINT "PK_Orders" PRIMARY KEY,
+            "BusinessId" TEXT NOT NULL,
+            "CustomerId" TEXT NOT NULL,
+            "DisplayRef" TEXT NOT NULL,
+            "Status" TEXT NOT NULL,
+            "DueDate" TEXT NULL,
+            "FittingDate" TEXT NULL,
+            "AssignedToUserId" TEXT NULL,
+            "TotalAmount" TEXT NOT NULL,
+            "Notes" TEXT NULL,
+            "CreatedAtUtc" TEXT NOT NULL,
+            "DateModifiedUtc" TEXT NOT NULL,
+            CONSTRAINT "FK_Orders_Customers_CustomerId" FOREIGN KEY ("CustomerId") REFERENCES "Customers" ("Id") ON DELETE RESTRICT
+        );
+        CREATE TABLE IF NOT EXISTS "OrderLines" (
+            "Id" TEXT NOT NULL CONSTRAINT "PK_OrderLines" PRIMARY KEY,
+            "BusinessId" TEXT NOT NULL,
+            "OrderId" TEXT NOT NULL,
+            "GarmentTemplate" TEXT NOT NULL,
+            "Quantity" INTEGER NOT NULL,
+            "UnitPrice" TEXT NOT NULL,
+            "MeasurementProfileId" TEXT NULL,
+            "Unit" TEXT NOT NULL,
+            "MeasurementFieldsJson" TEXT NOT NULL,
+            "Notes" TEXT NULL,
+            "SortOrder" INTEGER NOT NULL,
+            CONSTRAINT "FK_OrderLines_Orders_OrderId" FOREIGN KEY ("OrderId") REFERENCES "Orders" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_Orders_BusinessId" ON "Orders" ("BusinessId");
+        CREATE INDEX IF NOT EXISTS "IX_Orders_BusinessId_Status" ON "Orders" ("BusinessId", "Status");
+        CREATE INDEX IF NOT EXISTS "IX_Orders_BusinessId_DueDate" ON "Orders" ("BusinessId", "DueDate");
+        CREATE UNIQUE INDEX IF NOT EXISTS "IX_Orders_BusinessId_DisplayRef" ON "Orders" ("BusinessId", "DisplayRef");
+        CREATE INDEX IF NOT EXISTS "IX_Orders_BusinessId_CustomerId" ON "Orders" ("BusinessId", "CustomerId");
+        CREATE INDEX IF NOT EXISTS "IX_Orders_BusinessId_CreatedAtUtc" ON "Orders" ("BusinessId", "CreatedAtUtc");
+        CREATE INDEX IF NOT EXISTS "IX_Orders_CustomerId" ON "Orders" ("CustomerId");
+        CREATE INDEX IF NOT EXISTS "IX_OrderLines_BusinessId" ON "OrderLines" ("BusinessId");
+        CREATE INDEX IF NOT EXISTS "IX_OrderLines_BusinessId_OrderId" ON "OrderLines" ("BusinessId", "OrderId");
+        CREATE INDEX IF NOT EXISTS "IX_OrderLines_OrderId" ON "OrderLines" ("OrderId");
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
         V1Initial,
+        V2Orders,
     ];
 
     public static int LatestVersion => Steps.Length;

@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             xmlns:orders="clr-namespace:NeedleBase.Application.Contracts.Orders;assembly=NeedleBase.Application"
+             x:Class="NeedleBase.Mobile.Views.OrderDetailPage"
+             x:DataType="vm:OrderDetailViewModel"
+             Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,40,16,24" Spacing="12">
+            <Button Text="Back"
+                    ImageSource="{mi:Material Icon=ArrowBack, IconColor={StaticResource Charcoal}}"
+                    Command="{Binding GoBackCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource Charcoal}"
+                    HorizontalOptions="Start"
+                    HeightRequest="48"
+                    Padding="0,0,12,0"
+                    SemanticProperties.Description="Go back" />
+
+            <Label Text="{Binding DisplayRef}"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource Charcoal}"
+                   SemanticProperties.HeadingLevel="Level1" />
+
+            <Label Text="{Binding CustomerName}"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource Charcoal}" />
+            <Label Text="{Binding CustomerPhone}"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}" />
+
+            <HorizontalStackLayout Spacing="8">
+                <Border StrokeThickness="0"
+                        BackgroundColor="{Binding StatusBackground}"
+                        StrokeShape="RoundRectangle 8"
+                        Padding="10,6">
+                    <HorizontalStackLayout Spacing="6">
+                        <Image Source="{Binding StatusIconImage}"
+                               WidthRequest="16"
+                               HeightRequest="16"
+                               VerticalOptions="Center"
+                               AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="{Binding StatusDisplay}"
+                               FontAttributes="Bold"
+                               FontSize="13"
+                               TextColor="{Binding StatusForeground}"
+                               VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
+                <Border StrokeThickness="0"
+                        BackgroundColor="{StaticResource SemanticErrorLight}"
+                        StrokeShape="RoundRectangle 8"
+                        Padding="10,6"
+                        IsVisible="{Binding IsOverdue}">
+                    <HorizontalStackLayout Spacing="4">
+                        <Image Source="{Binding OverdueIconImage}"
+                               WidthRequest="16"
+                               HeightRequest="16"
+                               VerticalOptions="Center"
+                               AutomationProperties.IsInAccessibleTree="False" />
+                        <Label Text="Overdue"
+                               FontAttributes="Bold"
+                               FontSize="13"
+                               TextColor="{StaticResource SemanticOverdue}"
+                               VerticalOptions="Center" />
+                    </HorizontalStackLayout>
+                </Border>
+            </HorizontalStackLayout>
+
+            <Label Text="{Binding DueDateText}"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}" />
+            <Label Text="{Binding TotalText}"
+                   FontSize="18"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource Charcoal}" />
+            <Label Text="{Binding Notes}"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}"
+                   LineBreakMode="WordWrap"
+                   IsVisible="{Binding HasNotes}" />
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasError}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               Color="{StaticResource Primary}" />
+
+            <Button Style="{StaticResource SecondaryButton}"
+                        Text="Update status"
+                    Command="{Binding ToggleStatusPickerCommand}"
+                    HeightRequest="48"
+                    IsVisible="{Binding CanUpdateStatus}"
+                    IsEnabled="{Binding CanSubmit}"
+                    SemanticProperties.Description="Change order status" />
+
+            <VerticalStackLayout Spacing="8" IsVisible="{Binding ShowStatusPicker}">
+                <Picker Title="Status"
+                        ItemsSource="{Binding StatusOptions}"
+                        ItemDisplayBinding="{Binding Display, x:DataType=vm:OrderStatusOption}"
+                        SelectedItem="{Binding SelectedStatusOption}"
+                        TextColor="{StaticResource Charcoal}"
+                        BackgroundColor="White"
+                        HeightRequest="48" />
+                <Button Text="Save status"
+                        Command="{Binding ApplyStatusCommand}"
+                        TextColor="White"
+                        HeightRequest="48"
+                        IsEnabled="{Binding CanSubmit}" />
+            </VerticalStackLayout>
+
+            <Label Text="Garments"
+                   FontAttributes="Bold"
+                   FontSize="18"
+                   TextColor="{StaticResource Charcoal}"
+                   Margin="0,8,0,0"
+                   SemanticProperties.HeadingLevel="Level2" />
+
+            <CollectionView ItemsSource="{Binding Lines}" HeightRequest="220">
+                <CollectionView.EmptyView>
+                    <Label Text="No garment lines"
+                           TextColor="{StaticResource Gray600}"
+                           Margin="0,8" />
+                </CollectionView.EmptyView>
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="orders:OrderLineDto">
+                        <VerticalStackLayout Padding="0,8" Spacing="2">
+                            <Label FontAttributes="Bold" TextColor="{StaticResource Charcoal}">
+                                <Label.Text>
+                                    <MultiBinding StringFormat="{}{0}× {1}">
+                                        <Binding Path="Quantity" />
+                                        <Binding Path="GarmentDisplay" />
+                                    </MultiBinding>
+                                </Label.Text>
+                            </Label>
+                            <Label FontSize="13" TextColor="{StaticResource Gray600}">
+                                <Label.Text>
+                                    <MultiBinding StringFormat="GH₵ {0:N2} · {1}">
+                                        <Binding Path="LineTotal" />
+                                        <Binding Path="SnapshotLabel" />
+                                    </MultiBinding>
+                                </Label.Text>
+                            </Label>
+                        </VerticalStackLayout>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
