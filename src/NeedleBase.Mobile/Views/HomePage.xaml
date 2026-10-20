@@ -29,22 +29,21 @@
                 </VerticalStackLayout>
             </Grid>
 
-            <!-- 2. Offline-ready banner -->
-            <Border BackgroundColor="{StaticResource PrimaryLight}" StrokeThickness="0" StrokeShape="RoundRectangle 12" Padding="14">
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                    <Border Grid.Column="0" WidthRequest="36" HeightRequest="36" StrokeThickness="0"
-                            BackgroundColor="White" StrokeShape="RoundRectangle 18" VerticalOptions="Center">
-                        <Image WidthRequest="20" HeightRequest="20" HorizontalOptions="Center" VerticalOptions="Center"
-                               AutomationProperties.IsInAccessibleTree="False">
-                            <Image.Source>
-                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=Check}" Color="{StaticResource Primary}" Size="20" />
-                            </Image.Source>
-                        </Image>
-                    </Border>
+            <!-- 2. SyncChip (Slice 4): honest sync state; tap for details -->
+            <Border x:Name="SyncChip" x:DataType="vm:SyncStatusViewModel" BackgroundColor="White" Stroke="{StaticResource Gray300}"
+                    StrokeThickness="1" StrokeShape="RoundRectangle 12" Padding="14"
+                    SemanticProperties.Description="{Binding ChipText, StringFormat='Sync status: {0}. Opens sync details'}">
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Command="{Binding OpenDetailsCommand}" />
+                </Border.GestureRecognizers>
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                    <Ellipse Grid.Column="0" WidthRequest="12" HeightRequest="12" Fill="{Binding ChipColor}" VerticalOptions="Center" />
                     <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
-                        <Label Text="Offline-ready" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
-                        <Label Text="Saved on this device · syncs when online" FontSize="13" TextColor="{StaticResource Gray600}" />
+                        <Label Text="{Binding ChipText}" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                        <Label Text="{Binding ChipDetail}" FontSize="13" TextColor="{StaticResource Gray600}" />
                     </VerticalStackLayout>
+                    <ActivityIndicator Grid.Column="2" IsRunning="{Binding IsSyncing}" IsVisible="{Binding IsSyncing}"
+                                       WidthRequest="20" HeightRequest="20" VerticalOptions="Center" />
                 </Grid>
             </Border>
 

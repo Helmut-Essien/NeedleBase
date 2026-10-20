@@ -9,6 +9,7 @@ namespace NeedleBase.Mobile.ViewModels;
 
 public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
 {
+    private bool _returnSelects;
     private const string SavedCopy = "Saved on this device. Will sync when you're online.";
     private readonly ICustomerLocalService _customers;
     private readonly IAuthService _auth;
@@ -63,6 +64,20 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
         {
             CustomerId = Uri.UnescapeDataString(value.ToString() ?? string.Empty);
         }
+
+        // Opened from the New order picker's "Add new customer": prefill what was typed.
+        if (query.TryGetValue("name", out var prefillName) && prefillName is string typedName)
+        {
+            Name = typedName;
+        }
+
+        if (query.TryGetValue("phone", out var prefillPhone) && prefillPhone is string typedPhone)
+        {
+            Phone = typedPhone;
+        }
+
+        _returnSelects = query.TryGetValue("returnSelects", out var returns) &&
+            string.Equals(returns?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
 
         // Prefer this path so edit customerId is applied before _initialized latches.
         MainThread.BeginInvokeOnMainThread(async () => await InitializeAsync());
@@ -181,6 +196,15 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
                 if (error is not null || created is null)
                 {
                     ErrorMessage = error ?? "Could not save customer.";
+                    return;
+                }
+
+                if (_returnSelects)
+                {
+                    // Back to New order with the new customer selected (no extra alert tap).
+                    await Shell.Current.GoToAsync(
+                        "..",
+                        new Dictionary<string, object> { ["createdCustomerId"] = created.Id });
                     return;
                 }
 

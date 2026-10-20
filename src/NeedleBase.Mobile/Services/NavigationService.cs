@@ -55,6 +55,8 @@ public sealed class NavigationService : INavigationService
         }
 
         await Shell.Current.GoToAsync("//main/HomePage");
+        // Slice 4: sync on app start / after login (push then pull; offline-safe).
+        ServiceHelper.GetRequiredService<SyncService>().Start();
     }
 
     private static async Task DismissOverlaysAndPopToRootAsync()

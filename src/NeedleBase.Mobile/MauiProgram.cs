@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using NeedleBase.Mobile.Configuration;
 using NeedleBase.Mobile.Data.Data;
 using NeedleBase.Mobile.Data.Services;
+using NeedleBase.Mobile.Data.Sync;
 using NeedleBase.Mobile.Services;
 using NeedleBase.Mobile.ViewModels;
 using NeedleBase.Mobile.Views;
@@ -52,6 +53,16 @@ public static class MauiProgram
         {
             client.Timeout = TimeSpan.FromSeconds(30);
         });
+
+        builder.Services.AddTransient<TokenRefreshHandler>();
+        builder.Services.AddHttpClient(HttpSyncApi.ClientName, client => client.Timeout = TimeSpan.FromSeconds(60))
+            .AddHttpMessageHandler<TokenRefreshHandler>();
+        builder.Services.AddSingleton(Connectivity.Current);
+        builder.Services.AddSingleton<ISyncApi, HttpSyncApi>();
+        builder.Services.AddSingleton<SyncEngine>();
+        builder.Services.AddSingleton<SyncService>();
+        builder.Services.AddSingleton<SyncStatusViewModel>();
+        builder.Services.AddTransient<SyncDetailsPage>();
 
         builder.Services.AddSingleton<ISecureStorageService, MauiSecureStorageService>();
         builder.Services.AddSingleton<IAuthService, AuthService>();

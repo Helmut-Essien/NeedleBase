@@ -13,6 +13,13 @@ public interface IAuthService
     Task<AuthUserDto?> RegisterBusinessAsync(RegisterBusinessRequest request, CancellationToken cancellationToken = default);
     Task<AuthUserDto?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
     Task<TokenRefreshResult> RefreshAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Refresh only if the stored access token is still <paramref name="staleAccessToken"/> (checked under the
+    /// app-wide refresh lock), so concurrent 401s cause one refresh, not several.
+    /// </summary>
+    Task<TokenRefreshResult> RefreshIfStaleAsync(string? staleAccessToken, CancellationToken cancellationToken = default) =>
+        RefreshAsync(cancellationToken);
     Task<bool> HasStoredTokensAsync();
     Task ClearTokensAsync();
     /// <summary>Returns false if local data wipe failed (session kept).</summary>

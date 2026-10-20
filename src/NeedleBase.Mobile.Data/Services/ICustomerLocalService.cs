@@ -11,6 +11,12 @@ public interface ICustomerLocalService
         int take = 50,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Customers for an empty picker: newest orders first, then newest added.</summary>
+    Task<IReadOnlyList<CustomerListItemDto>> RecentAsync(
+        string businessId,
+        int take = 8,
+        CancellationToken cancellationToken = default);
+
     Task<CustomerDetailDto?> GetByIdAsync(
         string businessId,
         string id,

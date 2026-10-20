@@ -18,7 +18,7 @@ public sealed class OrderStatusOption
     public OrderStatusOption(string status)
     {
         Status = status;
-        Display = OrderStatus.DisplayName(status);
+        Display = Helpers.OrderStatusPresentation.DisplayName(status);
     }
 
     public string Status { get; }

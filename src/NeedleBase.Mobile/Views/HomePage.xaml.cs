@@ -9,6 +9,7 @@ public partial class HomePage : ContentPage
     {
         InitializeComponent();
         BindingContext = ServiceHelper.GetRequiredService<HomeViewModel>();
+        SyncChip.BindingContext = ServiceHelper.GetRequiredService<SyncStatusViewModel>();
     }
 
     protected override async void OnAppearing()
@@ -24,6 +25,17 @@ public partial class HomePage : ContentPage
     {
         var auth = ServiceHelper.GetRequiredService<IAuthService>();
         var navigation = ServiceHelper.GetRequiredService<INavigationService>();
+        var sync = ServiceHelper.GetRequiredService<SyncService>();
+        var unsynced = await sync.PendingCountAsync();
+        if (unsynced > 0 && !await DisplayAlert(
+                "Changes not synced",
+                $"{unsynced} change(s) on this device haven't synced yet. Signing out deletes them from this device.",
+                "Sign out anyway",
+                "Stay signed in"))
+        {
+            return;
+        }
+
         var wiped = await auth.LogoutAsync();
         if (!wiped)
         {
@@ -34,6 +46,7 @@ public partial class HomePage : ContentPage
             return;
         }
 
+        sync.Stop();
         // ShowLoginAsync clears singleton tab VM state (and pops stacks).
         await navigation.ShowLoginAsync();
     }

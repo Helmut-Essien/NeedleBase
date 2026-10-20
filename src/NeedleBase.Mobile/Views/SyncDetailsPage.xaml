@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             x:Class="NeedleBase.Mobile.Views.SyncDetailsPage"
+             x:Name="Root"
+             x:DataType="vm:SyncStatusViewModel"
+             Title="Sync"
+             BackgroundColor="{StaticResource AppBackground}">
+    <ScrollView>
+        <VerticalStackLayout Padding="16" Spacing="12">
+            <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeShape="RoundRectangle 12" Padding="14">
+                <VerticalStackLayout Spacing="4">
+                    <Label Text="{Binding ChipText}" FontSize="18" FontAttributes="Bold" TextColor="{Binding ChipColor}" />
+                    <Label Text="{Binding ChipDetail}" FontSize="13" TextColor="{StaticResource Gray600}" />
+                    <Label Text="{Binding ConnectionText, StringFormat='Connection: {0}'}" FontSize="13" TextColor="{StaticResource Gray600}" />
+                    <Label Text="{Binding LastSyncText}" FontSize="13" TextColor="{StaticResource Gray600}" />
+                    <Label Text="{Binding ErrorText}" IsVisible="{Binding HasError}" FontSize="13" TextColor="{StaticResource SemanticError}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Sign in" Command="{Binding SignInCommand}" IsVisible="{Binding NeedsSignIn}"
+                    SemanticProperties.Hint="Sign in again. Changes saved on this device are kept" />
+            <Button Text="Sync now" Command="{Binding SyncNowCommand}" IsEnabled="{Binding CanSyncNow}"
+                    SemanticProperties.Hint="Sends changes saved on this device and gets changes from other devices" />
+            <ActivityIndicator IsRunning="{Binding IsSyncing}" IsVisible="{Binding IsSyncing}" />
+
+            <Label Text="Waiting on this device" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" IsVisible="{Binding HasItems}" />
+            <Label Text="Everything on this device is synced." FontSize="14" TextColor="{StaticResource Gray600}"
+                   IsVisible="{Binding IsEmpty}" />
+
+            <VerticalStackLayout BindableLayout.ItemsSource="{Binding Items}" Spacing="8">
+                <BindableLayout.ItemTemplate>
+                    <DataTemplate x:DataType="vm:SyncItemRow">
+                        <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeShape="RoundRectangle 12" Padding="12">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="{Binding Title}" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                                <Label Text="{Binding Subtitle}" FontSize="13" TextColor="{StaticResource Gray600}" />
+                                <HorizontalStackLayout Spacing="8">
+                                    <Button Text="{Binding PrimaryText}" IsVisible="{Binding HasPrimary}" MinimumHeightRequest="44"
+                                            Command="{Binding PrimaryCommand}" />
+                                    <Button Text="{Binding SecondaryText}" IsVisible="{Binding HasSecondary}" MinimumHeightRequest="44"
+                                            Style="{StaticResource SecondaryButton}" Command="{Binding SecondaryCommand}" />
+                                </HorizontalStackLayout>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </BindableLayout.ItemTemplate>
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

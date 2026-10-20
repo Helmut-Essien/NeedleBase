@@ -58,6 +58,12 @@ public class HomeViewModelTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<CustomerListItemDto>>(Array.Empty<CustomerListItemDto>());
 
+        public Task<IReadOnlyList<CustomerListItemDto>> RecentAsync(
+            string businessId,
+            int take = 8,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<CustomerListItemDto>>(Array.Empty<CustomerListItemDto>());
+
         public Task<CustomerDetailDto?> GetByIdAsync(
             string businessId,
             string id,

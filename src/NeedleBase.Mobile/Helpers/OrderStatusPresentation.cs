@@ -6,7 +6,11 @@ namespace NeedleBase.Mobile.Helpers;
 /// <summary>Status chip colours/icons — single source with content-and-states §6.</summary>
 public static class OrderStatusPresentation
 {
-    public static string DisplayName(string status) => OrderStatus.DisplayName(status);
+    /// <summary>Statuses this app version doesn't know (added later on the server) show a neutral label, not raw text.</summary>
+    public const string UnknownStatusLabel = "Other status";
+
+    public static string DisplayName(string status) =>
+        OrderStatus.IsValid(status) ? OrderStatus.DisplayName(status) : UnknownStatusLabel;
 
     public static MaterialIcons Icon(string status) => status switch
     {

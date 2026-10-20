@@ -21,6 +21,9 @@ public sealed class AuthService : IAuthService
     public const string SurnameKey = "surname";
     public const string RoleKey = "role";
 
+    /// <summary>Who the local SQLite data belongs to ("userId|businessId"). Not cleared when a session expires.</summary>
+    public const string LocalDataOwnerKey = "local_data_owner";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -99,11 +102,29 @@ public sealed class AuthService : IAuthService
         return payload.User;
     }
 
-    public async Task<TokenRefreshResult> RefreshAsync(CancellationToken cancellationToken = default)
+    public Task<TokenRefreshResult> RefreshAsync(CancellationToken cancellationToken = default) =>
+        RefreshCoreAsync(staleAccessToken: null, onlyIfStale: false, cancellationToken);
+
+    public Task<TokenRefreshResult> RefreshIfStaleAsync(string? staleAccessToken, CancellationToken cancellationToken = default) =>
+        RefreshCoreAsync(staleAccessToken, onlyIfStale: true, cancellationToken);
+
+    private async Task<TokenRefreshResult> RefreshCoreAsync(string? staleAccessToken, bool onlyIfStale, CancellationToken cancellationToken)
     {
+        // One lock for every refresh in the app (startup, API handler, sync): refresh tokens rotate.
         await RefreshLock.WaitAsync(cancellationToken);
         try
         {
+            if (onlyIfStale)
+            {
+                var current = await _secureStorage.GetAsync(AccessTokenKey);
+                if (!string.IsNullOrWhiteSpace(current) && current != staleAccessToken)
+                {
+                    return TokenRefreshResult.Ok(
+                        new TokenResponse(current, await _secureStorage.GetAsync(RefreshTokenKey) ?? string.Empty),
+                        "Already refreshed");
+                }
+            }
+
             var refreshToken = await _secureStorage.GetAsync(RefreshTokenKey);
             if (string.IsNullOrWhiteSpace(refreshToken))
             {
@@ -212,6 +233,7 @@ public sealed class AuthService : IAuthService
         }
 
         await ClearTokensAsync();
+        _secureStorage.Remove(LocalDataOwnerKey);
         return true;
     }
 
@@ -226,6 +248,17 @@ public sealed class AuthService : IAuthService
 
     public async Task StoreSessionAsync(AuthUserDto user)
     {
+        // Local data belongs to one account + business. Signing in again as the same one (e.g. after the
+        // session expired) keeps unsynced work; a different account or business starts from a wiped database.
+        var owner = user.UserId + "|" + user.BusinessId;
+        var previous = await _secureStorage.GetAsync(LocalDataOwnerKey);
+        if (!string.IsNullOrEmpty(previous) && previous != owner && !await _localDatabase.WipeAsync())
+        {
+            await ClearTokensAsync();
+            throw new InvalidOperationException("Local data from another account couldn't be cleared.");
+        }
+
+        await _secureStorage.SetAsync(LocalDataOwnerKey, owner);
         await _secureStorage.SetAsync(BusinessIdKey, user.BusinessId);
         await _secureStorage.SetAsync(BusinessNameKey, user.BusinessName);
         await _secureStorage.SetAsync(UserIdKey, user.UserId);
