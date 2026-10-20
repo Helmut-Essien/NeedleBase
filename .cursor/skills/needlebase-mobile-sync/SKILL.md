@@ -72,6 +72,17 @@ Process DeletedItems → update LastSync
 5. Payments  
 6. DeletedItems  
 
+## Adoption, epochs, rate limits (second audit, built)
+
+- **ServerKnown** shadow column (Customers/MeasurementProfiles/Orders, migrator v6): set when a row is pulled or its push is acked. `SyncEngine.AdoptAsync` runs first in every run: rows neither known nor queued are queued as creates on a device that never synced, otherwise `ResyncPending` is set and the resync prune decides (unseen + unknown = upload, unseen + known = delete). Excluded from `HasRealChange`.
+- **Run order**: Adopt, Push, then Resync (if pending) or Pull; a resync is followed by another Push.
+- **Epoch**: `SyncCursorInvalidException.ServerReset` (server code `SYNC_EPOCH_CHANGED`) = server restored. Resync in **recover** mode (`DeviceInfo.ResyncRecover`, sticky until done): every unseen unqueued row is re-uploaded, nothing is pruned. Plain `SYNC_CURSOR_INVALID` keeps normal pruning.
+- **429**: `SyncTransientException.RateLimited`; the engine waits Retry-After inline (≤ `MaxInlineRateLimitWait` 30 s, ≤ 10 tries, `Delay` replaceable in tests), longer waits end the run (service backoff).
+- **Sign-out**: `await SyncService.StopAsync()` (cancels + awaits the run outside the gate lock, blocks runs until `Start`) before the wipe; restart if the wipe fails.
+- **Discard** of a never-synced customer: `GetDiscardImpactAsync` counts children; UI confirms with "Discard all".
+- **Other account sign-in**: `AuthService` asks `OtherAccountDataPrompt(pending)` (queued + unadopted rows via `CountUnsyncedAsync`) before storing tokens; no prompt / "no" = refuse and revoke the new refresh token.
+- **SQLite**: connection via `LocalDbConnection.Build` (busy timeout 30 s); `LocalStorageErrors` maps disk-full to friendly copy.
+
 ## Conflict policy
 
 | Entity | Default |

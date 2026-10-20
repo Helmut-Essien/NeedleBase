@@ -68,6 +68,8 @@ Server: `Api/Controllers/SyncController.cs`, `Application/Sync/*`, `Domain/Entit
 Mobile: `Mobile.Data/Data/SyncQueueItem.cs`, `SyncQueueWriter.cs`, `Mobile.Data/Sync/SyncEngine.cs`, migrator v4, `Mobile/Services/SyncService.cs`, `TokenRefreshHandler.cs`, `HttpSyncApi.cs`, Home SyncChip + `SyncDetailsPage`.
 Tests: `Api.Tests/SyncEndpointTests`, `Mobile.Tests/SyncEngineTests`, `LocalSchemaMigratorTests`.
 Edge-case audit fixes (20 Oct 2026): commit-ordered pull (txid + snapshot cap), tombstone retention/resurrection, parent-deleted/delete-refused conflicts, deferred children, Discard, re-sign-in without wipe, non-retryable 400/403, Retry-After; migration `20261020135519_SyncTxOrder`, migrator v5; tests `Api.Tests/SyncEdgeCaseApiTests`, `Mobile.Tests/SyncEdgeCaseTests`.
+
+Second audit fixes (20 Oct 2026): adoption of pre-sync rows (ServerKnown, migrator v6), discard impact prompt, other-account sign-in prompt, shared decimal parser + amount rules, sync epoch (`SyncState`, recover resync), refresh grace window, per-user sync rate limit, StopAsync before wipe, accent-folded search (makes commit 97b1d85's "accent-insensitive" claim true), SQLite busy timeout + storage-full copy, order-line snapshots; migration `20261020153002_SyncEpochRefreshGrace`.
 Deviations (conservative): pull is by opaque cursor (not a raw `LastSync` time); no per-business distributed lock (the skill marks it optional; push is idempotent instead). Mark Done after Journey 2 passes on two devices.
 
 ## Slice 5 acceptance — Payments (Journey 1 deposit + Journey 4)

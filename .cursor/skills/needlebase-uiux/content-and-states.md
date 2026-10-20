@@ -97,6 +97,8 @@ Chip = icon + text always. Check icon names exist in `MauiIcons.Material.Materia
 - Use `ReturnType="Next"` to chain fields, and `Done` on the last one to submit [rec].
 - Dirty form plus Back: confirm "Discard changes?" [rec, see handoff].
 
+Second-audit copy: past due date is allowed with the inline warning "Due date is in the past." (`SemanticOverdue`); amount fields show `DecimalInput.Hint` on ambiguous input; discarding a never-synced customer with records asks "Discard customer and their records?" naming counts, accept "Discard all"; signing in as another account with unsynced changes asks first (`AuthPrompts.OtherAccountText`); storage full shows `LocalStorageErrors.StorageFullMessage`.
+
 ## 8. Measurement UX
 
 - Use a template (`GarmentTemplate`) to pick fields, in the order they are measured on the body, top to bottom [rec].

@@ -67,6 +67,13 @@ Built constants: `BusinessRole` (Owner/Manager/Tailor), `GarmentTemplate` (+ `Di
 
 Cash, MoMo, Bank, Other — plus future online provider with separate confirmation flag.
 
+## Amount rules & snapshots (second audit)
+
+- Input rules live in Application (`AmountRules`, `DecimalInput`), not the domain (pulled/old data must still load): unit price > 0, ≤ 2 decimals, ≤ GH₵ 1,000,000; ≤ 50 lines; measurements > 0 and ≤ 300 cm / 120 in.
+- `DecimalInput.TryParse`: one '.' or ','; refuses thousands-looking input ("1,000", "1.000", "12,500") except a zero integer part ("0.125").
+- Order lines **snapshot** measurement values. If the referenced profile is gone but the line carries fields, the line keeps its snapshot with `MeasurementProfileId = null`; with no fields → `MEASUREMENT_NOT_FOUND`.
+- Search keys: `CustomerSearchKeys.NameKey` folds accents (FormD, ɛ→e, ɔ→o, ŋ→n) and splits on hyphens/apostrophes; `WordPrefixMatch` returns the range in the original string. Phone terms of 4+ digits also match anywhere (non-Ghana numbers).
+
 ## Application contracts
 
 Place DTOs as **records** under `Application/Contracts/<Area>/` (today: `Auth/`, `Customers/`, `Measurements/`):

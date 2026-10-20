@@ -47,6 +47,13 @@ Tests take `IClassFixture<NeedleBaseApiFactory>`, register a fresh business with
 
 Code gaps: [code-gaps.md](../needlebase-phases/code-gaps.md).
 
+## Second-audit regression tests
+
+- `Application.Tests/AuditFixRulesTests` (decimal parser, amount rules, folding, highlight ranges, line snapshots).
+- `Api.Tests/AuditFixSyncApiTests` (grace window, epoch bump + no loop + no bump storm, rate limit) — in the `SyncEndpointTests` class so epoch bumps never run beside other pulls; `AuditFixOrderApiTests` (REST amount rules, snapshot).
+- `Mobile.Tests/SyncAuditFixTests` (adoption, recover resync, 429 inline wait, StopAsync, discard impact, other-account prompt, storage, due-date warning); migrator v5→v6 upgrade and 20k-row key backfill in `LocalSchemaMigratorTests`.
+- Epoch tests bump the shared dev database's epoch: dev devices do one full resync afterwards.
+
 ## Rules
 
 - A bug fix ships with a test that failed before the fix.
