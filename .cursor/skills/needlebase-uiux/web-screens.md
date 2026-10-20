@@ -2,6 +2,18 @@
 
 Oversight and management tool. Persistent sidebar, denser data, keyboard-friendly. Same identity as mobile.
 
+**Built today [code]:** Razor Pages `Account/Login`, `Account/Register`, `Account/Logout`, `Index`, `Terms`, `Privacy`, `Error`, with `_AuthLayout` (auth card 448px) and `_Layout` (Bootstrap top navbar `navbar-expand-md`, footer with Terms/Privacy links). No Forgot password link until reset is built. Everything below the auth section is **[planned]**, mostly Slice 6.
+
+## Responsive rules [rec]
+
+| Width | Layout |
+|-------|--------|
+| <768 | Drawer nav; **tables become cards** (one card per row: primary line, secondary line, trailing status/amount, tap → detail); filters in an offcanvas; sticky primary action at the bottom |
+| 768–1199 | Icon sidebar; tables keep 4–5 key columns (hide secondary columns with `d-none d-lg-table-cell`) |
+| ≥1200 | Full sidebar + full tables; optional split detail |
+
+Many owners will open the web app **on a phone**, so the <768 layout is a first-class case. Money columns right-aligned, tabular figures. Page `max-width` 1200–1440.
+
 Sample business: **Ama Stitches**, Accra. Currency **GH₵**.
 
 ---
@@ -77,6 +89,8 @@ Tailor role: see assigned cards primarily.
 - Record payment drawer  
 
 Local pending payments show “On device / waiting to sync” — never provider-confirmed.
+
+Destructive and money actions use a Bootstrap confirm modal naming the record and the consequence ([content-and-states.md §3](content-and-states.md#3-feedback-which-surface)).
 
 ---
 

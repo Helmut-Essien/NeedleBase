@@ -15,7 +15,7 @@ Sample business: **Ama Stitches**, Accra. Currency **GH₵**.
 | Welcome | Logo, short promise (“Manage orders & measurements — works offline”), Log in / Create account | Brand-first, no metric clutter; no Shell nav bar |
 | Sign up | Name, phone/email, password | Clear validation; no Shell nav bar |
 | Login | Phone/email + password; Forgot password | In-page “Sign in” only |
-| Password recovery | Phone/email → instructions | No Shell nav bar |
+| Password recovery | Phone/email → instructions | **Hidden until built** (decision). No Forgot password link on mobile or web; add the link in the same change that ships the reset flow |
 | Business profile | Business name, phone, location (optional), logo optional | Solo-friendly; no staff required |
 | Offline explainer | One screen: local save + sync later | Mandatory once; no Shell nav bar |
 | Trial / activation | Plan summary + Start | Soft; then Home |
@@ -36,7 +36,11 @@ Structure (top → bottom):
 5. **Outstanding balances** (top few)  
 6. Recent activity (compact)
 
-Avoid vanity KPIs. Strong hierarchy; few cards.
+**KPI rule (resolves Figma vs this spec):** a number card is allowed only if it is (1) **actionable**, meaning tapping it opens the filtered list it counts, and (2) **backed by real data**, showing a real count or an honest 0, never a sample value. At most 2 KPI cards. Anything else (revenue totals, growth %, charts) is a vanity KPI and stays off Home.
+
+**Implemented Home [code, from Figma *Mobile — Home*]:** header (initials + greeting + business name; **no notifications bell** — removed until a real screen exists), an "Offline-ready" card, KPI cards **Active orders** and **Ready to collect** (`ActiveOrdersCount`, `ReadyToCollectCount`), 4 quick actions (Add customer · New order · Payment · Measure), **Orders in progress** by stage + View all, and **Needs attention** with the empty state "Nothing needs attention right now". Both KPIs pass the rule once Orders exist (Slice 3). Until then they honestly show 0 and must link to the Orders list when it ships. Open item: the "Offline-ready" card is replaced by the SyncChip in Slice 4.
+
+Strong hierarchy; few cards.
 
 ---
 
@@ -77,11 +81,13 @@ Entry layout: section headers + stacked fields; sticky Save; “Saved on this de
 | Status update | Bottom sheet with statuses + optional note |
 | Calendar | Fitting / delivery agenda |
 
-Statuses: New → Cutting → Sewing → Fitting → Ready → Collected (+ Cancelled, Overdue flag).
+Statuses: New → Cutting → Sewing → Fitting → Ready → Collected (+ Cancelled, Overdue flag). Chip colours/icons: [content-and-states.md §6](content-and-states.md#6-status-names--colours-single-source). **All of Orders is [planned Slice 3]**. Today the tab shows `OrdersPlaceholderPage`.
 
 ---
 
 ## Payments & receipts
+
+**[planned Slice 5]**: methods from domain (Cash, MoMo, Bank, Other). NeedleBase *records* payments; it doesn't process MoMo (Terms §5.1), so copy must never say "paid via MoMo" as if confirmed by the network. Use "MoMo payment recorded".
 
 - Customer / order balances  
 - Record payment: amount, method (Cash, MoMo, Bank, Other), order link, note  
@@ -94,6 +100,8 @@ Default currency GH₵.
 ---
 
 ## Staff & settings (More)
+
+**[planned]**: More tab contents. Built so far [code]: placeholder intro + **About** card with Terms and Conditions / Privacy Policy rows (push `TermsPage`/`PrivacyPage`) + app version. Everything else here is planned.
 
 | Solo | Multi-employee |
 |------|----------------|

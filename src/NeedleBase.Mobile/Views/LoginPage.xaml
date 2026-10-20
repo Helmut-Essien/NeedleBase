@@ -110,7 +110,6 @@
             <Button Text="Sign in"
                     Command="{Binding LoginCommand}"
                     IsEnabled="{Binding CanSubmit}"
-                    BackgroundColor="{StaticResource Primary}"
                     TextColor="{StaticResource White}"
                     CornerRadius="10"
                     HeightRequest="48"

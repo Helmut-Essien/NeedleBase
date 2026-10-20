@@ -140,7 +140,6 @@
                 FontSize="16"
                 FontAttributes="Bold"
                 Command="{Binding SaveCommand}"
-                BackgroundColor="{StaticResource Primary}"
                 TextColor="White"
                 IsEnabled="{Binding CanSave}"
                 Margin="16,8,16,20"

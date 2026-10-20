@@ -1,3 +1,4 @@
+using NeedleBase.Api.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NeedleBase.Application.Abstractions;
@@ -34,7 +35,7 @@ public sealed class MeasurementsController : ControllerBase
             cancellationToken);
         if (error == "Customer not found.")
         {
-            return NotFound(new { message = error });
+            return ApiProblems.CustomerNotFound(HttpContext);
         }
 
         return Ok(pageResult);
@@ -46,7 +47,7 @@ public sealed class MeasurementsController : ControllerBase
     public async Task<ActionResult<MeasurementDetailDto>> Get(string id, CancellationToken cancellationToken)
     {
         var measurement = await _measurements.GetByIdAsync(id, cancellationToken);
-        return measurement is null ? NotFound() : Ok(measurement);
+        return measurement is null ? ApiProblems.MeasurementNotFound(HttpContext) : Ok(measurement);
     }
 
     [HttpPost("customers/{customerId}/measurements")]
@@ -62,17 +63,17 @@ public sealed class MeasurementsController : ControllerBase
         var (measurement, error) = await _measurements.CreateAsync(customerId, request, cancellationToken);
         if (error == "Customer not found.")
         {
-            return NotFound(new { message = error });
+            return ApiProblems.CustomerNotFound(HttpContext);
         }
 
         if (error == "Measurement id conflict.")
         {
-            return Conflict(new { message = error });
+            return ApiProblems.MeasurementConflict(HttpContext);
         }
 
         if (error is not null || measurement is null)
         {
-            return BadRequest(new { message = error ?? "Could not save measurement." });
+            return ApiProblems.SaveFailed(HttpContext, "MEASUREMENT_SAVE_FAILED", "measurement");
         }
 
         return CreatedAtAction(nameof(Get), new { id = measurement.Id }, measurement);
@@ -90,12 +91,12 @@ public sealed class MeasurementsController : ControllerBase
         var (measurement, error) = await _measurements.UpdateAsync(id, request, cancellationToken);
         if (error == "Measurement not found.")
         {
-            return NotFound();
+            return ApiProblems.MeasurementNotFound(HttpContext);
         }
 
         if (error is not null || measurement is null)
         {
-            return BadRequest(new { message = error ?? "Could not update measurement." });
+            return ApiProblems.SaveFailed(HttpContext, "MEASUREMENT_SAVE_FAILED", "measurement");
         }
 
         return Ok(measurement);
@@ -109,7 +110,7 @@ public sealed class MeasurementsController : ControllerBase
         var (success, error) = await _measurements.DeleteAsync(id, cancellationToken);
         if (!success)
         {
-            return NotFound(new { message = error });
+            return ApiProblems.MeasurementNotFound(HttpContext);
         }
 
         return NoContent();

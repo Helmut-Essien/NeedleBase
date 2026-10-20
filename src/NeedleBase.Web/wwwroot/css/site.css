@@ -1,6 +1,8 @@
 :root {
   --nb-brand-primary: #2E9E36;
   --nb-brand-primary-dark: #247A2B;
+  /* Pressed/hover fill for primary buttons: white text 6.6:1 (primary-dark fill 5.39:1). */
+  --nb-brand-primary-pressed: #1D6B23;
   --nb-brand-primary-light: #E8F5E9;
   --nb-charcoal: #202A32;
   --nb-text-secondary: #5B656B;
@@ -53,7 +55,7 @@ a:hover {
   top: 0;
   z-index: 1000;
   padding: 0.5rem 1rem;
-  background: var(--nb-brand-primary);
+  background: var(--nb-brand-primary-dark);
   color: #fff;
 }
 
@@ -131,17 +133,29 @@ a:hover {
   text-align: start;
 }
 
-.nb-btn-primary {
-  background-color: var(--nb-brand-primary);
+.nb-btn-primary,
+.btn-primary {
+  background-color: var(--nb-brand-primary-dark);
   border-color: var(--nb-brand-primary-dark);
   color: #fff;
 }
 
 .nb-btn-primary:hover,
-.nb-btn-primary:focus {
-  background-color: var(--nb-brand-primary-dark);
-  border-color: var(--nb-brand-primary-dark);
+.nb-btn-primary:focus,
+.nb-btn-primary:active,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+  background-color: var(--nb-brand-primary-pressed);
+  border-color: var(--nb-brand-primary-pressed);
   color: #fff;
+}
+
+.nb-footer-links {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: 0.75rem;
 }
 
 .nb-btn-outline {

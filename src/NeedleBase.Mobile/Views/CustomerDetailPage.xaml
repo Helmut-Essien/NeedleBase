@@ -52,7 +52,6 @@
                         SemanticProperties.Description="Edit customer" />
                 <Button Text="Add measurements" HeightRequest="48" CornerRadius="10"
                         Command="{Binding AddMeasurementCommand}"
-                        BackgroundColor="{StaticResource Primary}"
                         TextColor="White"
                         IsEnabled="{Binding CanSubmit}"
                         SemanticProperties.Description="Add measurements for this customer" />
@@ -86,7 +85,6 @@
                            HorizontalTextAlignment="Center" />
                     <Button Text="Add measurements" HeightRequest="48" CornerRadius="10"
                             Command="{Binding AddMeasurementCommand}"
-                            BackgroundColor="{StaticResource Primary}"
                             TextColor="White"
                             HorizontalOptions="Center"
                             SemanticProperties.Description="Add first measurement" />
@@ -104,7 +102,7 @@
                                    FontAttributes="Bold"
                                    FontSize="16"
                                    TextColor="{StaticResource Charcoal}" />
-                            <Label Text="{Binding MeasuredAtUtc, StringFormat='{0:dd MMM yyyy}'}"
+                            <Label Text="{Binding MeasuredAtUtc.LocalDateTime, StringFormat='{0:dd MMM yyyy}'}"
                                    FontSize="13"
                                    TextColor="{StaticResource Gray600}" />
                         </VerticalStackLayout>

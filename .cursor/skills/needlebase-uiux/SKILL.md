@@ -1,12 +1,11 @@
 ---
 name: needlebase-uiux
 description: >-
-  Designs and implements NeedleBase UI/UX for mobile (.NET MAUI) and responsive
-  web using the product design system, information architecture, offline-first
-  sync states, and priority journeys. Use when designing screens, building UI,
-  creating components, writing copy, prototyping flows, or reviewing NeedleBase
-  interface work for tailoring business management (customers, measurements,
-  orders, production, payments, staff, subscription).
+  NeedleBase UI/UX rules for MAUI mobile and Razor web: design tokens mapped to
+  Colors.xaml/site.css, measured contrast, validation UX, proven MAUI patterns
+  (password toggle, wrapping rows, tab bar, double-back), Figma workflow and a
+  pre-merge review checklist. Use when designing or building screens, components
+  or copy, implementing Figma frames, or reviewing NeedleBase UI changes.
 ---
 
 # NeedleBase UI/UX
@@ -25,6 +24,11 @@ Use for any NeedleBase interface work: screens, components, navigation, empty/lo
 4. Wire offline/sync/subscription honesty — [offline-sync.md](offline-sync.md)
 5. Validate against priority journeys — [journeys.md](journeys.md)
 6. Capture handoff notes when delivering — [handoff.md](handoff.md)
+7. Before merge, run [review-checklist.md](review-checklist.md)
+
+## Figma workflow
+
+File key `8qquGru92p56agRvfSRBie` — pages **Auth — Login & Register**, **Mobile — Home**. Pull a frame with the Figma MCP (`get_design_context` / `get_screenshot` on the node), then map its colours to existing tokens ([design-system.md](design-system.md)) — never paste Figma hex. Figma wins on layout; the skill rules win on contrast, data honesty and offline copy. Record conflicts in the PR.
 
 ## Product personality
 
@@ -54,6 +58,7 @@ Customer registration → Measurements → Sewing order → Production tracking 
 |---|---------------|-----|
 | Job | Everyday tailor work | Business oversight |
 | Nav | Bottom 5 + New Order FAB | Left sidebar |
+| Built today | Auth, Home, Customers, Measurements, Terms/Privacy; Orders placeholder | Auth, Index, Terms/Privacy (top navbar) |
 | Offline | Full MVP offline required | Clear local-save/sync; do not claim full offline parity unless implemented |
 | Density | Touch-first, large tap targets | Tables, filters, drawers, keyboard |
 
@@ -66,20 +71,22 @@ Customer registration → Measurements → Sewing order → Production tracking 
 5. **Currency** — Default GHS; design for future multi-currency without inventing backend features.
 6. **Sample data** — Realistic Ghanaian / West African names, phone formats, garment types, GHS amounts.
 7. **No invented capabilities** — Do not claim APIs, providers, or offline features outside the brief.
+8. **No fake data on real screens** — sample data is for prototypes; shipped screens show real values or honest zero/empty states.
 
 ## Copy tone
 
-Concise, friendly, non-technical. Prefer: “Saved on this phone”, “Waiting to sync”, “Payment recorded locally”, “Couldn’t sync — try again”.
+Concise, friendly, non-technical; icons **with** labels (low-literacy friendly). Prefer: “Saved on this device”, “Waiting to sync”, “Payment recorded locally”, “Couldn’t sync — try again”.
 
 ## Anti-patterns
 
-- Metric overload on Home / Dashboard
+- Metric overload on Home / Dashboard (KPI cards only if actionable + real data, max 2 — see [mobile-screens.md](mobile-screens.md#home-dashboard))
 - Colour-only status chips
 - Silent overwrite of payments or financial conflicts
 - Subscription banner dominating everyday work or blocking login
 - Staff invitations forced on solo onboarding
 - Claiming “synced to cloud” when only local save succeeded
-- **Shell/nav title bar on any mobile screen** — duplicate grey strip above in-page headings; hide `Shell.NavBarIsVisible` app-wide and use in-page Back on pushed pages (see [needlebase-mobile](../needlebase-mobile/SKILL.md))
+- Entry points to unbuilt features (Notifications bell, Forgot password): hidden until the real screen ships
+- Shell nav title bar on any mobile screen (rule: [needlebase-mobile #14](../needlebase-mobile/SKILL.md))
 
 ## Output expectations
 
@@ -94,27 +101,19 @@ When designing or implementing UI:
 
 ## Reference map
 
+**Build-time (read when coding UI):**
+
 | Need | File |
 |------|------|
-| Nav maps, roles, IA | [information-architecture.md](information-architecture.md) |
-| Colours, type, spacing, components | [design-system.md](design-system.md) |
-| Sync, conflict, subscription states | [offline-sync.md](offline-sync.md) |
-| Mobile screen specs | [mobile-screens.md](mobile-screens.md) |
-| Web screen specs | [web-screens.md](web-screens.md) |
-| Five priority journeys | [journeys.md](journeys.md) |
-| Breakpoints, assets, handoff | [handoff.md](handoff.md) |
-| Mobile icons (MauiIcons.Material — tabs + in-page) | [../needlebase-mobile/tab-icons.md](../needlebase-mobile/tab-icons.md) |
+| Tokens ↔ Colors.xaml/site.css, contrast, components | [design-system.md](design-system.md) |
+| Formatting (GH₵, dates, +233), microcopy, feedback surfaces, states, status colours, API errors, a11y, low-end perf | [content-and-states.md](content-and-states.md) |
+| MAUI patterns & gotchas | [maui-patterns.md](maui-patterns.md) |
+| Field errors | [validation.md](validation.md) |
+| Mobile / web screen specs (built vs planned) | [mobile-screens.md](mobile-screens.md) · [web-screens.md](web-screens.md) |
+| Sync/offline/conflict/subscription UX | [offline-sync.md](offline-sync.md) |
+| Icons (single source) | [tab-icons.md](../needlebase-mobile/tab-icons.md) |
+| Pre-merge gate | [review-checklist.md](review-checklist.md) |
 
-## Implementation skills (code)
+**Design-time (planning, prototypes, IA changes):** [information-architecture.md](information-architecture.md) · [journeys.md](journeys.md) · [handoff.md](handoff.md).
 
-When scaffolding or coding (not just designing), also use:
-
-| Need | Skill |
-|------|-------|
-| Clean Architecture + solution layout | [needlebase-architecture](../needlebase-architecture/SKILL.md) |
-| Implementation slices / phases | [needlebase-phases](../needlebase-phases/SKILL.md) |
-| Domain, tenancy, DTOs | [needlebase-domain](../needlebase-domain/SKILL.md) |
-| MAUI MVVM | [needlebase-mobile](../needlebase-mobile/SKILL.md) |
-| Offline SQLite sync | [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md) |
-| ASP.NET Api | [needlebase-api](../needlebase-api/SKILL.md) |
-| Responsive web | [needlebase-web](../needlebase-web/SKILL.md) |
+Code-level skills: [needlebase-mobile](../needlebase-mobile/SKILL.md) (MAUI), [needlebase-web](../needlebase-web/SKILL.md) (Razor), [needlebase-architecture](../needlebase-architecture/SKILL.md) (layers, testing).

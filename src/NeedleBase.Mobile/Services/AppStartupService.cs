@@ -37,7 +37,7 @@ public sealed class AppStartupService
             {
                 try
                 {
-                    await _localDatabase.EnsureCreatedAsync();
+                    await _localDatabase.MigrateAsync();
                 }
                 catch (Exception dbEx)
                 {

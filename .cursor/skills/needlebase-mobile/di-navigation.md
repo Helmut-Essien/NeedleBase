@@ -1,100 +1,54 @@
-# DI & Navigation
+# DI & navigation (current code + planned)
 
-## MauiProgram registration sketch
-
-```csharp
-builder.Services.AddDbContext<LocalDbContext>(...);
-
-builder.Services.AddSingleton<IAuthService, AuthService>();
-builder.Services.AddSingleton<INavigationService, NavigationService>();
-builder.Services.AddSingleton<ISyncService, SyncService>(); // CreateScope per op
-builder.Services.AddSingleton<ICustomerLocalService, CustomerLocalService>();
-builder.Services.AddSingleton<IOrderLocalService, OrderLocalService>();
-builder.Services.AddSingleton<IPaymentLocalService, PaymentLocalService>();
-
-builder.Services.AddTransient<TokenRefreshHandler>();
-builder.Services.AddHttpClient("ApiClient", ...)
-    .AddHttpMessageHandler<TokenRefreshHandler>();
-builder.Services.AddHttpClient("HealthClient", ...); // NO ApiEndpoint rewrite handler
-
-// Tabs — Singleton
-builder.Services.AddSingleton<HomeViewModel>();
-builder.Services.AddSingleton<CustomersViewModel>();
-builder.Services.AddSingleton<OrdersViewModel>();
-builder.Services.AddSingleton<PaymentsViewModel>();
-builder.Services.AddSingleton<MoreViewModel>();
-
-// Forms — Transient
-builder.Services.AddTransient<AddCustomerViewModel>();
-builder.Services.AddTransient<CreateOrderViewModel>();
-builder.Services.AddTransient<RecordPaymentViewModel>();
-```
-
-## Shell navigation
-
-- Tabs in `AppShell.xaml` matching IA: Home, Customers, Orders, Payments, More  
-- **Tab icons via MauiIcons.Material** (not PNG): `xmlns:mi` + `xmlns:mci` + `mci:MauiIcon.Value="{mi:Material Icon=…, TargetName='.'}"` on each `<Tab>` — see [tab-icons.md](tab-icons.md). Never reuse `dotnet_bot.png` for all tabs.  
-- Prefer:
-
-```xml
-<TabBar Route="main">
-    <Tab Title="Home" Route="HomePage"
-         mci:MauiIcon.Value="{mi:Material Icon=Home, TargetName='.'}">
-        <ShellContent ContentTemplate="{DataTemplate views:HomePage}" />
-    </Tab>
-    <Tab Title="Customers" Route="CustomersPage"
-         mci:MauiIcon.Value="{mi:Material Icon=People, TargetName='.'}">
-        <ShellContent ContentTemplate="{DataTemplate views:CustomersPage}" />
-    </Tab>
-    <!-- Orders=ReceiptLong, Payments=Payments, More=Menu — same pattern -->
-</TabBar>
-```
-
-- Register routes for non-tab pages: CreateOrder, CustomerDetail, OrderDetail, SyncDetails, Settings, MeasurementEntry  
-- FAB → `GoToAsync` CreateOrder route  
-
-### Shell nav chrome (all pages)
-
-Hide the Shell title bar **everywhere** (same as Login/Register / AssetTag):
-
-```xml
-<!-- AppShell root -->
-Shell.NavBarIsVisible="False"
-
-<!-- Every ContentPage -->
-Shell.NavBarIsVisible="False"
-NavigationPage.HasNavigationBar="False"
-
-<!-- Auth ShellContent also -->
-Shell.TabBarIsVisible="False"
-FlyoutItemIsVisible="False"
-```
-
-Pushed pages: add in-page Back (`Command` → `Shell.Current.GoToAsync("..")`) with `{mi:Material Icon=ArrowBack}`.  
-Top content padding ~40 clears the status bar when the nav bar is gone (Android edge-to-edge).  
-
-Verify on device: no grey/dark Shell title strip on any screen.
-
-### Session expiry
-
-`ShowLoginAsync()` must:
-
-1. Dismiss modals  
-2. Pop **each tab** navigation stack to root  
-3. Hide tab bar / show login host  
-4. Land on Login with nav bar still hidden (auth `ShellContent` / page flags above)  
-
-### Query properties
+## Current registrations (`src/NeedleBase.Mobile/MauiProgram.cs`)
 
 ```csharp
-[QueryProperty(nameof(OrderId), "OrderId")]
-public partial class OrderDetailViewModel : BaseViewModel { ... }
+builder.Services.Configure<ApiSettings>(options => { options.BaseUrl = /* #if DEBUG */ "http://localhost:5036/" /* #else */ ApiEndpoint.ReleaseBaseUrl(); });
+builder.Services.AddSingleton(new LocalDbOptions { DbPath = Path.Combine(FileSystem.AppDataDirectory, "needlebase.db3") });
+builder.Services.AddDbContext<LocalDbContext>(...UseSqlite($"Data Source={path};Cache=Shared"));
+builder.Services.AddHttpClient("AuthClient", c => c.Timeout = TimeSpan.FromSeconds(30));
+
+// Singletons: app-lifetime services + tab VMs/pages
+ISecureStorageService→MauiSecureStorageService, IAuthService→AuthService, INavigationService→NavigationService,
+ILocalDatabaseService→LocalDatabaseService, ICustomerLocalService→CustomerLocalService,
+IMeasurementLocalService→MeasurementLocalService, AppStartupService,
+HomeViewModel, CustomersViewModel, HomePage, CustomersPage
+
+// Transients: auth + forms + pushed pages
+LoginViewModel, RegisterViewModel, CustomerEditViewModel, CustomerDetailViewModel, MeasurementEditViewModel,
+LoginPage, RegisterPage, TermsPage, PrivacyPage, CustomerEditPage, CustomerDetailPage, MeasurementEditPage,
+OrdersPlaceholderPage, PaymentsPlaceholderPage, MorePlaceholderPage
 ```
 
-## Auth clients
+Debug Android uses `adb reverse tcp:5036 tcp:5036`. Release reads the MSBuild property `NeedleBaseReleaseApiBaseUrl` (https only; stamped as assembly metadata, read by `Configuration/ApiEndpoint.cs`). Default is the placeholder `https://api.needlebase-placeholder.invalid/`; pass the real host: `dotnet publish -f net9.0-android -c Release -p:NeedleBaseReleaseApiBaseUrl=https://<api-host>/`.
 
-- **AuthClient** — login/refresh (no bearer retry loop issues)  
-- **ApiClient** — authorized calls + TokenRefreshHandler  
-- **HealthClient** — connectivity ping without endpoint rewrite handlers  
+Local SQLite schema: `ILocalDatabaseService.MigrateAsync()` at startup runs `LocalSchemaMigrator` (forward-only steps, version in `PRAGMA user_version`; pre-versioning `EnsureCreated` installs are baselined as v1). **Every `LocalDbContext` model change appends a new step**; never edit a shipped step. `LocalSchemaMigratorTests` fails on drift.
 
-Primary/fallback API URLs via configuration; never hardcode production hosts.
+
+Pages resolve their VM with `ServiceHelper.GetRequiredService<TViewModel>()` in the constructor (e.g. `HomePage`). Local services are Singletons that create a short `LocalDbContext` scope per operation.
+
+## Shell & routes (`AppShell.xaml` / `.xaml.cs`)
+
+- Auth `ShellContent`s: `LoginPage`, `RegisterPage` (tab bar hidden).
+- `<TabBar Route="main">` tabs: `HomePage`, `CustomersPage`, `OrdersPage` (→ `OrdersPlaceholderPage`), `PaymentsPage` (→ `PaymentsPlaceholderPage`), `MorePage` (→ `MorePlaceholderPage`, with About → Terms/Privacy). Icons: [tab-icons.md](tab-icons.md).
+- Registered push routes: `CustomerEditPage`, `CustomerDetailPage`, `MeasurementEditPage`, `TermsPage`, `PrivacyPage`.
+- Parameters: query string + `IQueryAttributable` on the VM, e.g. `GoToAsync($"CustomerDetailPage?customerId={Uri.EscapeDataString(id)}")`. Always escape ids.
+- Back: in-page Back → `Shell.Current.GoToAsync("..")`. Android hardware Back + double-back-to-exit is central in `AppShell.OnBackButtonPressed` ([maui-patterns.md](../needlebase-uiux/maui-patterns.md#android-back-double-press-to-exit)).
+- Nav chrome rules: [SKILL.md hard rule 14](SKILL.md) (single source).
+- Startup: `AppShell.Loaded` → `AppStartupService.RunOnceAsync` (DB init, session gate → `ShowMainAsync`/`ShowLoginAsync`).
+
+## Session navigation (`NavigationService`)
+
+`ShowLoginAsync()`: dismiss overlays, pop every tab stack to root, send `ClearAuthSensitiveStateMessage` (WeakReferenceMessenger), land on Login. `ShowMainAsync()`: `GoToAsync("//main/HomePage")`. Never `GoToAsync("/LoginPage")` alone.
+
+## Planned (not in code; add with its slice)
+
+| Item | Slice |
+|------|-------|
+| `"ApiClient"` HttpClient + mobile `TokenRefreshHandler` (buffer + clone body on 401 retry) for authorised calls; `"HealthClient"` for `/api/test/ping` without refresh handler | 3–4 |
+| `ISyncService`/`SyncService` Singleton orchestrator | 4 |
+| `IOrderLocalService`, `OrdersViewModel` (Singleton tab), `CreateOrderViewModel`/`OrderDetailViewModel` (Transient), routes `CreateOrderPage`, `OrderDetailPage`; FAB → `CreateOrderPage` | 3 |
+| `IPaymentLocalService`, `PaymentsViewModel`, `RecordPaymentViewModel` | 5 |
+| `MoreViewModel` + `SyncDetailsPage`, `SettingsPage` | 4/8 |
+
+Primary/fallback Api URLs come from configuration; never hard-code production hosts.

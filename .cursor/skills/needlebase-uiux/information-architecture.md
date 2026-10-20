@@ -16,7 +16,7 @@ Business (workspace)
 └── Settings (units, currency GHS, notifications, subscription, sync)
 ```
 
-**Order statuses (main flow):** New → Cutting → Sewing → Fitting → Ready → Collected  
+**Order statuses (main flow):** New → Cutting → Sewing → Fitting → Ready → Collected (UI label for Ready: **Ready to collect**; colours/icons in [content-and-states.md](content-and-states.md#6-status-names--colours-single-source))  
 **Side statuses:** Cancelled, Overdue (flag on due date; do not clutter primary chip set)
 
 ---
@@ -35,19 +35,19 @@ Business (workspace)
 └─────────────────────────────────────┘
 ```
 
-| Tab | Purpose | Primary children | Tab icon asset |
-|-----|---------|------------------|----------------|
-| **Home** | “What do I need to do today?” | Due/overdue, ready for collection, balances, recent activity, quick actions | `tab_home` |
-| **Customers** | Find & manage people | List → Profile (Overview, Measurements, Orders, Images/Notes) → Add/Edit | `tab_customers` |
-| **Orders** | Daily production work | List/filter → Detail → Status update; Create/Edit multi-step | `tab_orders` |
-| **Payments** | Money in | Balances, record payment, history, receipt share | `tab_payments` |
-| **More** | Secondary | Measurements hub (optional shortcut), Staff*, Settings, Sync details, Subscription, Help | `tab_more` |
+| Tab | Purpose | Primary children | Tab icon (MauiIcons) | Built? |
+|-----|---------|------------------|----------------|--------|
+| **Home** | “What do I need to do today?” | Due/overdue, ready for collection, balances, recent activity, quick actions | `Home` | ✓ (Slice 2) |
+| **Customers** | Find & manage people | List → Profile (Overview, Measurements, Orders, Images/Notes) → Add/Edit | `People` | ✓ |
+| **Orders** | Daily production work | List/filter → Detail → Status update; Create/Edit multi-step | `ReceiptLong` | Placeholder page — planned Slice 3 |
+| **Payments** | Money in | Balances, record payment, history, receipt share | `Payments` | Planned Slice 5 |
+| **More** | Secondary | Measurements hub (optional shortcut), Staff*, Settings, Sync details, Subscription, Help | `Menu` | Placeholder + About (Terms/Privacy) built; rest planned |
 
 Tab icons: MauiIcons.Material on Shell tabs — [tab-icons.md](../needlebase-mobile/tab-icons.md).
 
 \*Staff only if business has staff or Owner/Manager opted in — solo: omit or show “Invite helper” soft entry.
 
-**Primary action:** FAB **New Order** (visible on Home, Customers, Orders; optional on Payments).
+**Primary action:** FAB **New Order** (visible on Home, Customers, Orders; optional on Payments). **[planned]** No FAB in code yet; today Home has a "New order" quick action.
 
 ### Auth & onboarding (pre-shell)
 
@@ -55,12 +55,12 @@ Tab icons: MauiIcons.Material on Shell tabs — [tab-icons.md](../needlebase-mob
 Welcome
 ├── Sign up → Verify → Business profile setup → Offline explainer → Trial/activation → Home
 ├── Log in → Home (or Accept invite → role-limited Home)
-└── Password recovery
+└── Password recovery  (hidden until built — no link shown)
 ```
 
 Offline explainer: one screen — “Works without internet. Saves on this device. Syncs when you’re back online.”
 
-**Mobile chrome:** **No Shell nav title bar on any screen** (AssetTag pattern). Auth also hides the tab bar. Brand/in-page titles only; pushed screens use an in-page Back control.
+**Mobile chrome:** single source is [needlebase-mobile hard rule 14](../needlebase-mobile/SKILL.md).
 
 ### Mobile screen inventory
 
@@ -94,25 +94,7 @@ Default MVP: Tailor can update production status; cannot manage staff or subscri
 
 ## Web navigation map
 
-### Shell
-
-```
-┌──────────┬──────────────────────────────────────────┐
-│ Logo     │ Top bar: [Business] Search  SyncChip  👤 │
-│          ├──────────────────────────────────────────┤
-│ Dashboard│ Page title + actions                     │
-│ Customers│                                          │
-│ Measure. │ Main content (table / board / detail)    │
-│ Orders   │                                          │
-│ Product. │                                          │
-│ Payments │                                          │
-│ Staff*   │                                          │
-│ Reports  │                                          │
-│ Settings │                                          │
-└──────────┴──────────────────────────────────────────┘
-```
-
-\*Staff hidden for solo until invited.
+Sidebar (planned S6): Dashboard · Customers · Measurements · Orders · Production · Payments · Staff* · Reports · Settings. Top bar: business, search, SyncChip, profile. \*Staff hidden for solo until invited.
 
 | Nav item | Purpose |
 |----------|---------|
@@ -132,7 +114,9 @@ Default MVP: Tailor can update production status; cannot manage staff or subscri
 |------------|-----------|
 | ≥1200px | Persistent left sidebar expanded |
 | 768–1199px | Collapsible icon sidebar or overlay drawer |
-| <768px | Bottom or hamburger + stacked cards instead of wide tables |
+| <768px | Hamburger drawer + stacked cards instead of wide tables (no bottom nav on web; bottom nav is the mobile app's) |
+
+**Current code:** web `_Layout` is a Bootstrap top navbar (`navbar-expand-md`, collapses below 768; links: Home + user + Sign out; footer links Terms/Privacy). The sidebar above is **[planned Slice 6]** and must also collapse at `md` (768), matching [handoff.md](handoff.md).
 
 ### Role-filtered web nav
 

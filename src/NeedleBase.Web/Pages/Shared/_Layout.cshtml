@@ -12,14 +12,14 @@
 <body>
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm nb-navbar mb-3" aria-label="Primary">
+        <nav class="navbar navbar-expand-md navbar-toggleable-md nb-navbar mb-3" aria-label="Primary">
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-page="/Index">NeedleBase</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
                         aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between" id="navbarSupportedContent">
+                <div class="navbar-collapse collapse d-md-inline-flex justify-content-between" id="navbarSupportedContent">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-page="/Index">Home</a>
@@ -27,7 +27,7 @@
                     </ul>
                     @if (User.Identity?.IsAuthenticated == true)
                     {
-                        <ul class="navbar-nav align-items-sm-center gap-sm-2">
+                        <ul class="navbar-nav align-items-md-center gap-md-2">
                             <li class="nav-item">
                                 <span class="navbar-text nb-nav-user">@User.Identity.Name</span>
                             </li>
@@ -51,6 +51,11 @@
     <footer class="nb-footer footer">
         <div class="container py-3">
             &copy; 2026 - NeedleBase (HelmutCode)
+            <nav class="nb-footer-links" aria-label="Legal">
+                <a asp-area="" asp-page="/Terms">Terms and Conditions</a>
+                <span aria-hidden="true">·</span>
+                <a asp-area="" asp-page="/Privacy">Privacy Policy</a>
+            </nav>
         </div>
     </footer>
 

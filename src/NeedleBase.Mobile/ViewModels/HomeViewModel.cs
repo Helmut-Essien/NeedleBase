@@ -96,9 +96,9 @@ public partial class HomeViewModel : BaseViewModel
                 CustomersSavedText = customers.Count switch
                 {
                     0 => string.Empty,
-                    1 => "1 customer saved on this phone",
-                    >= 50 => "50+ customers saved on this phone",
-                    var n => $"{n} customers saved on this phone"
+                    1 => "1 customer saved on this device",
+                    >= 50 => "50+ customers saved on this device",
+                    var n => $"{n} customers saved on this device"
                 };
             }
         }

@@ -20,12 +20,6 @@ public partial class HomePage : ContentPage
         }
     }
 
-    private async void OnBellClicked(object? sender, EventArgs e)
-    {
-        // No notifications system yet — say so honestly instead of faking a feed.
-        await DisplayAlert("Notifications", "No new notifications.", "OK");
-    }
-
     private async void OnSignOutClicked(object? sender, EventArgs e)
     {
         var auth = ServiceHelper.GetRequiredService<IAuthService>();

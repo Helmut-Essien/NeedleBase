@@ -30,12 +30,13 @@ public static class MauiProgram
         {
             // DEBUG Android: loopback + `adb reverse tcp:5036 tcp:5036` (NeedleBase Api + Mobile).
             // Emulator without reverse: use http://10.0.2.2:5036/ instead.
-#if ANDROID && DEBUG
+#if DEBUG
             options.BaseUrl = "http://localhost:5036/";
-#elif ANDROID
-            options.BaseUrl = "https://10.0.2.2:7079/";
 #else
-            options.BaseUrl = "http://localhost:5036/";
+            // Release: from the build-time MSBuild property NeedleBaseReleaseApiBaseUrl
+            // (placeholder .invalid host unless set; see NeedleBase.Mobile.csproj).
+            options.BaseUrl = ApiEndpoint.ReleaseBaseUrl()
+                ?? "https://" + ApiEndpoint.PlaceholderHost + "/";
 #endif
         });
 

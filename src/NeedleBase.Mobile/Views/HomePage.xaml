@@ -14,7 +14,7 @@
         <VerticalStackLayout Padding="16,40,16,24" Spacing="16">
 
             <!-- 1. Header -->
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
                 <Border Grid.Column="0" WidthRequest="48" HeightRequest="48" StrokeThickness="0"
                         BackgroundColor="{StaticResource Primary}" StrokeShape="RoundRectangle 24"
                         VerticalOptions="Center">
@@ -27,14 +27,6 @@
                     <Label Text="{Binding BusinessName}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Charcoal}"
                            LineBreakMode="TailTruncation" SemanticProperties.HeadingLevel="Level1" />
                 </VerticalStackLayout>
-                <ImageButton Grid.Column="2" WidthRequest="48" HeightRequest="48" Padding="12"
-                             BackgroundColor="White" CornerRadius="24" VerticalOptions="Center"
-                             Clicked="OnBellClicked"
-                             SemanticProperties.Description="Notifications">
-                    <ImageButton.Source>
-                        <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=Notifications}" Color="{StaticResource Charcoal}" Size="24" />
-                    </ImageButton.Source>
-                </ImageButton>
             </Grid>
 
             <!-- 2. Offline-ready banner -->
@@ -51,7 +43,7 @@
                     </Border>
                     <VerticalStackLayout Grid.Column="1" Spacing="1" VerticalOptions="Center">
                         <Label Text="Offline-ready" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
-                        <Label Text="Saved on this phone · syncs when online" FontSize="13" TextColor="{StaticResource Gray600}" />
+                        <Label Text="Saved on this device · syncs when online" FontSize="13" TextColor="{StaticResource Gray600}" />
                     </VerticalStackLayout>
                 </Grid>
             </Border>

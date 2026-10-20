@@ -199,7 +199,8 @@ public partial class RegisterViewModel : BaseViewModel
             var user = await _authService.RegisterBusinessAsync(request);
             if (user is null)
             {
-                ErrorMessage = "Couldn’t register with those details. Try a different email or check your connection.";
+                ErrorMessage = _authService.LastErrorMessage
+                    ?? "Couldn’t register with those details. Try a different email or check your connection.";
                 return;
             }
 

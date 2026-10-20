@@ -1,95 +1,13 @@
-# Priority User Journeys (Prototype Targets)
+# Priority journeys (design-time + acceptance)
 
-Use these five journeys for clickable prototypes and acceptance checks. Realistic Ghanaian sample data. Implementation slices that gate on these journeys: [needlebase-phases](../needlebase-phases/phases.md).
+Five journeys gate the slices in [phases.md](../needlebase-phases/phases.md). Use them for prototypes and as end-to-end acceptance checks. Sample data: **Ama Owusu** (Owner, *Ama Stitches*, Accra) · **Kofi Asante** (Tailor) · **Efua Mensah**, +233 24 555 0123.
 
-**Persona defaults:** Ama Owusu (Owner, Ama Stitches, Accra). Staff: Kofi Asante (Tailor). Customer: Efua Mensah, +233 24 555 0123.
+| # | Journey | Steps | Must pass | Slice | Status |
+|---|---------|-------|-----------|-------|--------|
+| J1 | Register → deposit → status | Sign up + business → add Efua → dress measurements → New Order → deposit GH₵200 of GH₵800 → order detail | Business name on Home; customer + measurement saved; order ref with snapshot; balance GH₵600; status shown | S1–S3, S5 | Steps 1–4 built (no offline explainer/trial yet) |
+| J2 | Offline order → reopen → sync | Offline → New Order → kill + reopen → online → sync | Toast "Saved on this device"; pending badge survives restart; **exactly one** order after sync; Sync details empty | S4 | Planned |
+| J3 | Production + staff + web | Mobile status → Sewing; assign Kofi; web board + dashboard | Chip updates; assignee visible on web; Tailor edits only assigned items | S3, S6, S7 | Planned |
+| J4 | Extra payment → receipt | Record GH₵300 MoMo → balance → receipt → share | Outstanding GH₵300; receipt totals + method + business header; offline = "recorded on device" | S5 | Planned |
+| J5 | Invite → role → limited UI | Owner invites Kofi as Tailor → accept → Kofi's nav | Plain role summary; Kofi sees no Staff/Subscription, Payments hidden, assigned work only; web shows Accepted | S7 | Planned |
 
----
-
-## Journey 1 — Happy path (register → deposit → status)
-
-**Goal:** Register business → Add customer → Record measurements → Create order → Record deposit → View status
-
-| Step | Screen | Success criteria |
-|------|--------|------------------|
-| 1 | Welcome → Sign up → Business profile | Business name shown on Home |
-| 2 | Offline explainer → Trial | User understands local save |
-| 3 | Add customer Efua Mensah | Appears in Customers |
-| 4 | Measurements: dress template | Values saved; history entry |
-| 5 | New Order wizard | Order ref created; measurement snapshot linked |
-| 6 | Record deposit GH₵200 of GH₵800 | Balance outstanding GH₵600; receipt available |
-| 7 | Order detail | Status New (or next); payment summary correct |
-
-**Prototype notes:** End-to-end mobile primary; web can mirror order detail.
-
----
-
-## Journey 2 — Offline order → reopen → sync
-
-**Goal:** Create order offline → Close/reopen → Data remains → Reconnect → Sync without duplicates
-
-| Step | Screen | Success criteria |
-|------|--------|------------------|
-| 1 | Set Offline (chip) | Chip shows Offline |
-| 2 | New Order + save | Toast: “Saved on this device” |
-| 3 | Kill/reopen app | Order still in list with pending badge |
-| 4 | Go online → Sync | Syncing → Synced; **one** order only |
-| 5 | Sync details | Pending empty; no duplicate refs |
-
-**Must not:** Claim cloud save while offline; duplicate on sync.
-
----
-
-## Journey 3 — Production + staff + web oversight
-
-**Goal:** Update production status → Assign staff → See progress on web dashboard
-
-| Step | Screen | Success criteria |
-|------|--------|------------------|
-| 1 | Mobile order detail → status Sewing | Chip updates |
-| 2 | Assign Kofi Asante | Assignee visible |
-| 3 | Web Production board | Card in Sewing; assignee shown |
-| 4 | Web Dashboard | Workload / activity reflects change |
-
-**Roles:** Owner/Manager assigns; Tailor may only update own assigned items.
-
----
-
-## Journey 4 — Additional payment → balance → receipt
-
-**Goal:** Record additional payment → Outstanding updates → Generate receipt
-
-| Step | Screen | Success criteria |
-|------|--------|------------------|
-| 1 | Payments → Record GH₵300 on order | Method e.g. MoMo |
-| 2 | Order / customer balance | Outstanding GH₵300 (from prior 600) |
-| 3 | Receipt preview | Totals, method, business header |
-| 4 | Share/Print | Success feedback |
-| 5 | If offline | Receipt notes recorded on device / pending sync |
-
----
-
-## Journey 5 — Invite employee → role → limited UI
-
-**Goal:** Invite employee → Assign role → Employee sees only permitted functions
-
-| Step | Screen | Success criteria |
-|------|--------|------------------|
-| 1 | Owner: Staff → Invite Kofi, role Tailor | Plain permission summary shown |
-| 2 | Kofi accepts invite | Lands in Ama Stitches workspace |
-| 3 | Kofi nav | No Staff, no Subscription admin; Payments hidden (default) |
-| 4 | Kofi orders | Sees assigned work; cannot change roles |
-| 5 | Owner web Staff | Status Accepted; assignments work |
-
-**Copy:** Role descriptions in non-technical language.
-
----
-
-## Prototype checklist (all journeys)
-
-- [ ] SyncChip visible and accurate  
-- [ ] Empty/loading/error states exist on touched flows  
-- [ ] Status = colour + text + icon  
-- [ ] GHS formatting consistent  
-- [ ] No invented backend features  
-- [ ] Solo path never forces staff setup (J1)  
+**Every journey:** SyncChip accurate (from S4) · empty/loading/error states on touched screens · status = colour + text + icon · GH₵/date/phone per [content-and-states.md](content-and-states.md) · no invented backend features · solo path never forces staff setup.

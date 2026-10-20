@@ -13,7 +13,7 @@ Core workflow: Customer → Measurements → Order → Production → Payment �
 
 ## Hard rules
 
-- **BusinessId** on every tenant-owned entity and every sync operation. Never query without business scope.
+- **BusinessId** on every tenant-owned entity and every sync operation, with a fail-closed global filter ([clean-architecture](../needlebase-architecture/clean-architecture.md#tenancy-fail-closed)).
 - **ULID string IDs** (`IdGenerator.NewId()` / `Ulid.NewUlid().ToString()` via NUlid).
 - Domain/Application own the model — Api/Mobile/Web must not invent parallel entity classes.
 - Status/role values live in constants or enums in Domain/Application — do not scatter magic strings.
@@ -24,23 +24,27 @@ Core workflow: Customer → Measurements → Order → Production → Payment �
 
 ## Core entities (MVP)
 
-| Entity | Purpose | Notes |
-|--------|---------|-------|
-| `Business` | Workspace | Name, phone, currency default GHS, units |
-| `User` / membership | Identity + `StaffMembership` (UserId, BusinessId, Role) | Owner / Manager / Tailor |
-| `Customer` | Client | Name, phone, notes, optional photo ref |
-| `MeasurementProfile` | Measurements | CustomerId, garment template, fields JSON or columns, unit, dated history |
-| `Order` | Sewing job | CustomerId, ref, status, due/fitting dates, assignee, totals |
-| `OrderLine` | Garment lines | Template, qty, style notes/images, measurement snapshot |
-| `Payment` | Money in | OrderId, amount, method, note, recordedAt, sync metadata |
-| `Invitation` | Staff invite | Email/phone, role, business, expiry |
-| `DeletedItem` | Sync tombstone | EntityType, EntityId, BusinessId, DeletedAt |
-| Mobile-only: `SyncQueueItem`, `DeviceInfo` | Offline queue | In Mobile.Data only |
+| Entity | Purpose | Notes | Status |
+|--------|---------|-------|--------|
+| `Business` | Workspace | Name, phone, `CurrencyCode` "GHS", `MeasurementUnit` "cm" | **Built** |
+| `StaffMembership` | User ↔ Business + Role | UserId, BusinessId, Role (`BusinessRole`), IsActive | **Built** (tenant-filtered) |
+| `Customer` | Client | `Name`, `Phone`, `Notes`, `PhotoRef`, `CreatedAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
+| `MeasurementProfile` | Measurements | CustomerId, `GarmentTemplate`, `Unit`, `FieldsJson`, `Notes`, `MeasuredAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
+| `Order` / `OrderLine` | Sewing job / garment lines | ref, status, due/fitting dates, assignee, totals; line template, qty, measurement snapshot | Planned S3 |
+| `Payment` | Money in | OrderId, amount, method, note, recordedAt, sync metadata | Planned S5 |
+| `DeletedItem` | Sync tombstone | EntityType, EntityId, BusinessId, DeletedAt | Planned S4 |
+| `Invitation` | Staff invite | Email/phone, role, business, expiry | Planned S7 |
+| Mobile-only `SyncQueueItem`, `DeviceInfo` | Offline queue | Mobile.Data only | Planned S4 |
+
+Users are ASP.NET Identity users (Infrastructure); the domain sees `UserId` strings.
 
 ### Order status
 
 `New → Cutting → Sewing → Fitting → Ready → Collected`  
-Also: `Cancelled`. **Overdue** = derived (due date passed and not Collected/Cancelled) — badge, not necessarily stored.
+Also: `Cancelled`. **Overdue** = derived (due date passed and not Collected/Cancelled) — badge, not necessarily stored.  
+Status constants: planned S3 (follow the `BusinessRole` static-class pattern in `Domain/Enums`). UI display names/colours/icons: [content-and-states.md §6](../needlebase-uiux/content-and-states.md#6-status-names--colours-single-source) (`Ready` displays as "Ready to collect").
+
+Built constants: `BusinessRole` (Owner/Manager/Tailor), `GarmentTemplate` (+ `DisplayName`), `MeasurementUnit` (`cm`/`in`), `Common/FieldLimits`.
 
 ### Roles (plain language)
 
@@ -56,7 +60,7 @@ Cash, MoMo, Bank, Other — plus future online provider with separate confirmati
 
 ## Application contracts
 
-Place DTOs as **records** under `Application/Contracts` (or `Contracts/DTOs`):
+Place DTOs as **records** under `Application/Contracts/<Area>/` (today: `Auth/`, `Customers/`, `Measurements/`):
 
 - Auth: login, refresh, register business, accept invite  
 - CRUD Read/Create/Update/Patch per aggregate as needed  
@@ -75,15 +79,17 @@ JWT (or equivalent) should carry at least:
 
 Switching business (if multi-business later) switches claim + mobile local scope.
 
-## Add-entity checklist
+## Add-entity checklist (single source)
 
-1. Domain entity + invariants  
-2. EF config in Infrastructure (+ migration)  
-3. DTOs + use case  
-4. Api endpoint authorized + BusinessId filter  
-5. If mobile-offline: Mobile.Data mapping, sync queue ops, pull apply with `SuppressSyncQueue`, DeletedItem type  
-6. Web pages if oversight needed  
-7. Update [needlebase-uiux](../needlebase-uiux/SKILL.md) only if UX changes  
+1. Domain entity + invariants (+ status/role constants in `Domain/Enums`); field limits in `Common/FieldLimits`.
+2. EF config in Infrastructure: `BusinessId` index, **fail-closed** query filter, migration.
+3. Application DTOs (list vs detail records) + use-case service in Application.
+4. Api controller: policy-authorised, BusinessId-scoped, paginated lists, errors via `ApiProblems` with new codes.
+5. Tests: cross-tenant isolation, idempotent create (client ULID), ProblemDetails 404/409 ([testing.md](../needlebase-architecture/testing.md)).
+6. Mobile offline: Mobile.Data mapping + local service; (S4+) queue CREATE/PATCH/DELETE, pull apply with `SuppressSyncQueue`, `DeletedItem` type constant, pending count to SyncChip, test "offline create → reopen → sync once".
+7. Mobile UI if on the daily path; Web pages if oversight is needed.
+8. Field limits identical across Domain, EF, DTO validation and MAUI validation in the same change.
+9. Update [needlebase-uiux](../needlebase-uiux/SKILL.md) only if UX changes.
 
 ## Reference sample data
 

@@ -1,63 +1,48 @@
-# MVVM Patterns
+# MVVM patterns (current code)
 
-## BaseViewModel
-
-Provide at least:
-
-- `IsBusy` / `IsNotBusy` / `Title`
-- `ValidateTokenAsync` — for operations that **require** online API
-- `TryValidateTokenSilentAsync` — offline-tolerant; returns true if local session should continue
-- `NavigateToLoginAsync` → `INavigationService.ShowLoginAsync()`
-
-Local CRUD should **not** block on online token validation; only sync/push and explicit online calls should.
-
-## Commands
-
-- `[RelayCommand]` private async Task methods  
-- Disable when `IsBusy` or validation fails (`CanExecute` where useful)  
-- Catch exceptions → user-visible alert/snackbar with plain language  
-
-## Collections
-
-- `ObservableCollection<T>` for lists  
-- Prefer list item DTOs/models shaped for UI (name, phone, status chip, outstanding)  
-- Pull-to-refresh: separate `IsRefreshing` from first-load `IsBusy` (skeletons)
-
-## Page code-behind
-
-Keep thin:
+## BaseViewModel (`ViewModels/BaseViewModel.cs`)
 
 ```csharp
-public OrdersPage(OrdersViewModel vm)
+public partial class BaseViewModel : ObservableObject
 {
-    InitializeComponent();
-    BindingContext = vm;
-}
-
-protected override async void OnAppearing()
-{
-    base.OnAppearing();
-    await ((OrdersViewModel)BindingContext).LoadAsync();
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanSubmit))] private bool isBusy;
+    [ObservableProperty] private string title = string.Empty;
+    public bool CanSubmit => !IsBusy;
+    partial void OnIsBusyChanged(bool value) => OnBusyChanged();
+    protected virtual void OnBusyChanged() { }   // derived VMs recompute e.g. CanSave
 }
 ```
 
-Add/Edit: initialize once; on later appearances only refresh lookups.
+That's all it has. Don't call `ValidateTokenAsync`/`NavigateToLoginAsync` on it; they don't exist. Session handling lives in `IAuthService` (`RefreshAsync` → `TokenRefreshResult.IsTransientFailure`) and `INavigationService.ShowLoginAsync()`. Local CRUD never blocks on token validation.
 
-## Messaging
+## Commands
 
-Prefer:
+- `[RelayCommand] private async Task XAsync()`, guarded with `if (IsBusy) return; IsBusy = true; try { … } finally { IsBusy = false; }`.
+- Bind `IsEnabled="{Binding CanSubmit}"` (or a derived `CanSave`).
+- Catch expected failures → plain-language error property / `DisplayAlert`. Copy rules: [content-and-states](../needlebase-uiux/content-and-states.md).
 
-- Sync progress events on `ISyncService` (AssetTag style), or  
-- `WeakReferenceMessenger` if introduced intentionally  
+## Field validation
 
-Do not leave an empty Messages folder unused — choose one approach.
+`XError` + `HasXError` + `partial void OnXChanged(...) => XError = null;` (see `CustomerEditViewModel`). Full pattern: [validation.md](../needlebase-uiux/validation.md).
 
-## Measurement entry
+## Navigation parameters
 
-- Numeric `Keyboard` / `InputScope`  
-- Tabular-friendly fields  
-- Save goes to local service → queue sync → “Saved on this device” if offline  
+Implement `IQueryAttributable.ApplyQueryAttributes` (as `CustomerDetailViewModel`, `CustomerEditViewModel`, `MeasurementEditViewModel` do). Escape ids in query strings.
 
-## Testing ViewModels
+## Lifetimes & loading
 
-xUnit + substitutes for `IOrderLocalService`, `IAuthService`, `INavigationService`. Assert commands update collections and busy flags; assert offline save does not call navigation to login on transient refresh failure.
+- Tab VMs (`HomeViewModel`, `CustomersViewModel`) are Singletons: load in the page's `OnAppearing` via `LoadCommand`; cancel or ignore stale loads.
+- Form VMs are Transient: initialise once per instance from query attributes; don't wipe user input on every `OnAppearing`.
+- Logout clears singleton state via `ClearAuthSensitiveStateMessage` (WeakReferenceMessenger, `Messaging/`). That's the chosen messaging approach; don't add a second one.
+
+## Collections
+
+`ObservableCollection<T>` of UI-shaped items; `CollectionView` (virtualised) with `EmptyView`. Separate `IsRefreshing` (pull-to-refresh) from first-load `IsBusy` when pull-to-refresh is added.
+
+## Testing
+
+`tests/NeedleBase.Mobile.Tests`: construct VMs with real local services over EF Sqlite or hand fakes (`HomeViewModelTests`, `PasswordToggleViewModelTests`). Assert busy flags, errors, and that transient refresh failure never forces login. See [testing.md](../needlebase-architecture/testing.md).
+
+## Planned
+
+Sync progress → `ISyncService.SyncProgressChanged` event consumed by Home SyncChip (Slice 4).

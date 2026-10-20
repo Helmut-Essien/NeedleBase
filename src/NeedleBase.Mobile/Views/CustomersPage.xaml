@@ -31,7 +31,6 @@
                     Text="Add"
                     ImageSource="{mi:Material Icon=PersonAdd, IconColor=White}"
                     Command="{Binding AddCommand}"
-                    BackgroundColor="{StaticResource Primary}"
                     TextColor="White"
                     VerticalOptions="Center"
                     HeightRequest="48"
@@ -73,7 +72,6 @@
                                SemanticProperties.HeadingLevel="Level2" />
                         <Button Text="Add customer"
                                 Command="{Binding AddCommand}"
-                                BackgroundColor="{StaticResource Primary}"
                                 TextColor="White"
                                 HorizontalOptions="Center"
                                 IsVisible="{Binding ShowEmptyAdd}"

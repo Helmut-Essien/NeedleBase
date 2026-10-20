@@ -15,11 +15,11 @@ public sealed class LocalDatabaseService : ILocalDatabaseService
         _options = options;
     }
 
-    public async Task EnsureCreatedAsync(CancellationToken cancellationToken = default)
+    public async Task MigrateAsync(CancellationToken cancellationToken = default)
     {
         await using var scope = _scopeFactory.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
-        await db.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+        await LocalSchemaMigrator.MigrateAsync(db, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<bool> WipeAsync(CancellationToken cancellationToken = default)
@@ -29,7 +29,7 @@ public sealed class LocalDatabaseService : ILocalDatabaseService
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
             await db.Database.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
-            await db.Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+            await LocalSchemaMigrator.MigrateAsync(db, cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch
@@ -42,7 +42,7 @@ public sealed class LocalDatabaseService : ILocalDatabaseService
                     File.Delete(_options.DbPath);
                 }
 
-                await EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+                await MigrateAsync(cancellationToken).ConfigureAwait(false);
                 return true;
             }
             catch

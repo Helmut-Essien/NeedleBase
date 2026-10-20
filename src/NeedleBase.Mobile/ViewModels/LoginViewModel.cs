@@ -104,7 +104,7 @@ public partial class LoginViewModel : BaseViewModel
             var user = await _authService.LoginAsync(new LoginRequest(Email.Trim(), Password));
             if (user is null)
             {
-                ErrorMessage = "Invalid email or password.";
+                ErrorMessage = _authService.LastErrorMessage ?? "Invalid email or password.";
                 return;
             }
 

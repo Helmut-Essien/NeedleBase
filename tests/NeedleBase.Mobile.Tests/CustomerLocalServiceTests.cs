@@ -75,7 +75,7 @@ public class CustomerLocalServiceTests
         using (var scope = provider.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
-            db.Database.EnsureCreated();
+            LocalSchemaMigrator.MigrateAsync(db).GetAwaiter().GetResult();
         }
 
         return provider;

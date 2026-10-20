@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using NeedleBase.Application.Abstractions;
 using NeedleBase.Domain.Entities;
 using NeedleBase.Infrastructure.Identity;
 
@@ -10,7 +11,7 @@ namespace NeedleBase.Infrastructure.Persistence;
 /// so global query filters apply to <see cref="IBusinessScoped"/> entities.
 /// Documented approach for Slice 1+: <b>global query filters</b> (not per-query only).
 /// </summary>
-public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -18,8 +19,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     }
 
     /// <summary>
-    /// When non-null, all <see cref="IBusinessScoped"/> queries are filtered to this business.
-    /// Leave null for auth/bootstrap paths that must read across memberships.
+    /// All <see cref="IBusinessScoped"/> queries are filtered to this business.
+    /// Fail-closed: when null, filtered queries return no rows. Auth/bootstrap paths that
+    /// legitimately read across businesses must use <c>IgnoreQueryFilters()</c> scoped by user id.
     /// </summary>
     public string? CurrentBusinessId { get; set; }
 
@@ -59,7 +61,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(x => x.BusinessId)
                 .OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(x => CurrentBusinessId == null || x.BusinessId == CurrentBusinessId);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
         });
 
         builder.Entity<Customer>(e =>
@@ -79,7 +81,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(x => x.BusinessId)
                 .OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(x => CurrentBusinessId == null || x.BusinessId == CurrentBusinessId);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
         });
 
         builder.Entity<MeasurementProfile>(e =>
@@ -103,7 +105,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(x => x.CustomerId)
                 .OnDelete(DeleteBehavior.Cascade);
-            e.HasQueryFilter(x => CurrentBusinessId == null || x.BusinessId == CurrentBusinessId);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
         });
 
         builder.Entity<RefreshToken>(e =>

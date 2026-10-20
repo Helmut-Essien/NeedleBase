@@ -135,6 +135,7 @@ public sealed class AuthService : IAuthService
 
         _db.CurrentBusinessId = null;
         var membership = await _db.StaffMemberships
+            .IgnoreQueryFilters() // cross-business by design: scoped to this user's id
             .AsNoTracking()
             .Where(m => m.UserId == user.Id && m.IsActive)
             .OrderBy(m => m.JoinedAtUtc)
@@ -208,6 +209,7 @@ public sealed class AuthService : IAuthService
                 }
 
                 var membership = await _db.StaffMemberships
+                    .IgnoreQueryFilters() // cross-business by design: scoped to this user's id
                     .AsNoTracking()
                     .Where(m => m.UserId == user.Id && m.IsActive)
                     .OrderBy(m => m.JoinedAtUtc)

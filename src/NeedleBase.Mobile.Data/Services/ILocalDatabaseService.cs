@@ -2,7 +2,11 @@ namespace NeedleBase.Mobile.Data.Services;
 
 public interface ILocalDatabaseService
 {
-    Task EnsureCreatedAsync(CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Creates or upgrades the local SQLite schema to the latest version without data loss
+    /// (see <see cref="Data.LocalSchemaMigrator"/>).
+    /// </summary>
+    Task MigrateAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Wipes all local SQLite data. Required on explicit logout so the next user

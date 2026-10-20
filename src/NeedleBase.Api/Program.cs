@@ -18,6 +18,35 @@ CultureInfo.DefaultThreadCurrentCulture = ghanaianCulture;
 CultureInfo.DefaultThreadCurrentUICulture = ghanaianCulture;
 
 builder.Services.AddControllers();
+// RFC 9457 ProblemDetails for every error (model validation, 404/401/429 status codes, unhandled exceptions).
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = ctx =>
+    {
+        ctx.ProblemDetails.Extensions.TryAdd("traceId", ctx.HttpContext.TraceIdentifier);
+        if (!ctx.ProblemDetails.Extensions.ContainsKey("code"))
+        {
+            ctx.ProblemDetails.Extensions["code"] = ctx.ProblemDetails.Status switch
+            {
+                StatusCodes.Status400BadRequest => "VALIDATION_FAILED",
+                StatusCodes.Status401Unauthorized => "UNAUTHORIZED",
+                StatusCodes.Status403Forbidden => "FORBIDDEN",
+                StatusCodes.Status404NotFound => "NOT_FOUND",
+                StatusCodes.Status429TooManyRequests => "RATE_LIMITED",
+                StatusCodes.Status500InternalServerError => "SERVER_ERROR",
+                _ => "ERROR"
+            };
+        }
+
+        // Never leak exception text to clients outside Development.
+        if (ctx.ProblemDetails.Status >= 500 && !ctx.HttpContext.RequestServices
+                .GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+        {
+            ctx.ProblemDetails.Title = "Something went wrong";
+            ctx.ProblemDetails.Detail = "Something went wrong on our side. Please try again.";
+        }
+    };
+});
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -47,22 +76,12 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    app.UseExceptionHandler(errorApp =>
-    {
-        errorApp.Run(async context =>
-        {
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            context.Response.ContentType = "application/json";
-            await context.Response.WriteAsJsonAsync(new
-            {
-                message = "An unexpected error occurred."
-            });
-        });
-    });
+    app.UseExceptionHandler();
     app.UseHsts();
     app.UseHttpsRedirection();
 }
 
+app.UseStatusCodePages();
 app.UseRateLimiter();
 
 // Map mobile X-Auth-Token → Authorization (must run before authentication).

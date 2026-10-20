@@ -11,10 +11,10 @@ All generated NeedleBase code must follow these standards. Prefer measurable spe
 3. **No sync-over-async** — Especially in constructors, DI factories, and MAUI lifecycle.
 4. **Allocate deliberately** — Prefer `IAsyncEnumerable` / streaming for large sets; reuse buffers; avoid LINQ materialization in tight loops when a simple `for`/`foreach` is clearer and faster.
 5. **Cancellation** — Propagate `CancellationToken` on API, sync, HTTP, and long EF queries.
-6. **Fail fast, log once** — Structured exceptions; do not swallow; do not log-and-rethrow the same message at every layer.
+6. **Fail fast, log once** — Structured exceptions; do not swallow; do not log-and-rethrow the same message at every layer. Use `ILogger<T>` message templates; never log passwords, tokens, auth headers or customer PII (log ULIDs instead).
 7. **Immutability at boundaries** — DTOs as `record`; no mutable shared state across requests without locks/semaphores.
 8. **DI honesty** — Document real lifetimes; never capture Scoped services in Singletons without `IServiceScopeFactory`.
-9. **Tests for hot paths** — Auth, BusinessId filtering, sync idempotency, payment conflict — unit/integration coverage preferred over “looks right”.
+9. **Tests for hot paths** — Auth, BusinessId filtering, sync idempotency, payment conflict. Required list: [testing.md](testing.md).
 
 ## EF Core / SQL (Api + Mobile.Data)
 
@@ -37,7 +37,7 @@ All generated NeedleBase code must follow these standards. Prefer measurable spe
 - Response compression / output caching only where data is safe (never cross-tenant cache without keying on `BusinessId`).
 - Pagination on list endpoints (default page size; hard max).
 - Avoid over-fetching: separate list DTOs vs detail DTOs.
-- Prefer `IActionResult`/`Results` with correct status codes; problem details for errors.
+- Correct status codes; errors via `ApiProblems.*` ProblemDetails with `code`.
 - Sync endpoints: idempotent by ULID; distributed lock; stream or chunk large payloads.
 
 ## MAUI / MVVM
@@ -69,7 +69,7 @@ All generated NeedleBase code must follow these standards. Prefer measurable spe
 - Server-side pagination/filter for tables; no download-all-then-filter in browser for MVP-scale growth.
 - Defer non-critical dashboard widgets; parallelize independent HTTP calls with `Task.WhenAll`.
 - Cache static assets; avoid large ViewState/session blobs.
-- Do not hold DbContext — keep HttpClient handlers light and non-blocking.
+- Keep HttpClient handlers light and non-blocking.
 
 ## What “highly optimised” does NOT mean
 

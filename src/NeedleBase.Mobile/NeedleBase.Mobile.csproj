@@ -31,6 +31,18 @@
 		<NoWarn Condition="'$(TargetFramework)' == 'net9.0'">$(NoWarn);CA1416</NoWarn>
 	</PropertyGroup>
 
+	<!-- Release API base URL (G10). PLACEHOLDER: the .invalid domain never resolves, so a
+	     Release build that was not given a real URL fails visibly instead of calling a
+	     wrong host. Set it at build time, e.g.
+	     dotnet publish -f net9.0-android -c Release -p:NeedleBaseReleaseApiBaseUrl=https://YOUR-API-HOST/
+	     Debug builds ignore this and keep the localhost/adb-reverse behaviour. -->
+	<PropertyGroup>
+		<NeedleBaseReleaseApiBaseUrl Condition="'$(NeedleBaseReleaseApiBaseUrl)' == ''">https://api.needlebase-placeholder.invalid/</NeedleBaseReleaseApiBaseUrl>
+	</PropertyGroup>
+	<ItemGroup>
+		<AssemblyMetadata Include="NeedleBaseReleaseApiBaseUrl" Value="$(NeedleBaseReleaseApiBaseUrl)" />
+	</ItemGroup>
+
 
 	<ItemGroup>
 		<!-- App Icon Color="#FFFFFF"-->

@@ -2,6 +2,8 @@
 
 Highest priority: reliable offline operation with honest messaging.
 
+**Status:** sync push/pull and the SyncChip are **[planned Slice 4]**. Today mobile Home shows a static "Offline-ready · Saved on this device · syncs when online" card [code], and data is local SQLite. Don't show a chip state the app can't truthfully compute. Canonical local-save wording: **"Saved on this device"** (needlebase-mobile-sync rule 9).
+
 ## Sync states (required)
 
 | State | Indicator (chip) | User-facing meaning |
@@ -97,34 +99,11 @@ Protect unsaved web edits: beforeunload / “You have unsaved changes”; if loc
 
 ---
 
-## Subscription & entitlement screens
+## Subscription & entitlement (planned S8)
 
-NeedleBase accounts are independent (no central platform admin required).
+Surfaces: trial/activation · plan & status · expired/suspended (what still works vs locked) · "Couldn't verify plan — using last known access" · upgrade/renew → back to work.
 
-### Screens / surfaces
-
-| Surface | Content |
-|---------|---------|
-| Trial / activation | What’s included, end date, CTA continue |
-| Plan & status | Current plan, status, renewal date, usage limits if any |
-| Expired / suspended | What still works vs locked; Upgrade / Renew |
-| Connectivity during check | “Couldn’t verify plan — using last known access” (temporary) |
-| Upgrade / renew | Clear actions; return to work after success |
-
-### Behaviour rules
-
-1. Subscription UI must **not** dominate everyday Home/Dashboard.  
-2. Must **not** prevent access to **login**.  
-3. When expired: clearly list **still available** (e.g. view local data, record offline drafts per policy) vs **restricted** (e.g. invite staff, sync — follow product rules; do not invent).  
-4. Soft banner or Settings badge > full-screen block for daily work when possible.
-
-### Suggested expired banner copy
-
-> Your trial ended on 12 Oct 2026. You can still view records on this device. Renew to sync and add staff.
-
-(Adjust capabilities to real product rules when implemented.)
-
----
+Rules: never dominates Home/Dashboard · **never blocks login** · when expired, list *still available* vs *restricted* from real product rules (don't invent) · prefer a soft banner/Settings badge over a full-screen block. Example: "Your trial ended on 12 Oct 2026. You can still view records on this device. Renew to sync and add staff."
 
 ## Sample sync chip copy (short)
 

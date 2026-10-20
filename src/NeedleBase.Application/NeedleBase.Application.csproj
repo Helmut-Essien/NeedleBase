@@ -8,6 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- EF Core abstractions only, for IApplicationDbContext (no provider here). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="NUlid" Version="1.7.3" />
   </ItemGroup>
 

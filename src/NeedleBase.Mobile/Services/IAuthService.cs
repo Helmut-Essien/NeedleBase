@@ -4,6 +4,12 @@ namespace NeedleBase.Mobile.Services;
 
 public interface IAuthService
 {
+    /// <summary>
+    /// Friendly message for the last failed <see cref="LoginAsync"/> / <see cref="RegisterBusinessAsync"/>
+    /// (from the API ProblemDetails <c>code</c>); null after success.
+    /// </summary>
+    string? LastErrorMessage => null;
+
     Task<AuthUserDto?> RegisterBusinessAsync(RegisterBusinessRequest request, CancellationToken cancellationToken = default);
     Task<AuthUserDto?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default);
     Task<TokenRefreshResult> RefreshAsync(CancellationToken cancellationToken = default);

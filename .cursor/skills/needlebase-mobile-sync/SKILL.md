@@ -3,13 +3,16 @@ name: needlebase-mobile-sync
 description: >-
   Implements NeedleBase offline-first SQLite sync: LocalDbContext, sync queue,
   push/pull, conflicts, token refresh honesty, payment-safe merge rules, and
-  batched high-throughput sync. Use when changing Mobile.Data, SyncService,
-  offline save, DeletedItem pull, or sync UI state wiring.
+  batched high-throughput sync (target design, Slice 4). Use when building or
+  changing sync, SyncQueueItem, DeletedItem, push/pull endpoints, conflict
+  handling, or SyncChip/Sync details wiring.
 ---
 
 # NeedleBase Mobile Sync (Offline-First)
 
-Learned from AssetTag `LocalDbContext` + `SyncService` + sync skills; adapted for **BusinessId**, multi-entity MVP, and **payment conflict honesty**.
+> **Status: planned (Slice 4). Nothing below is built yet** except `LocalDbContext.SuppressSyncQueue` (a reserved flag, `src/NeedleBase.Mobile.Data/Data/LocalDbContext.cs:19`). There is no `SyncQueueItem`, `DeviceInfo`, `SyncService`, mobile `TokenRefreshHandler`, sync endpoints or `DeletedItem`. Today mobile data is local-only SQLite; the app calls the Api for auth only. Treat this skill as the target design; don't reference these types until Slice 4 creates them.
+
+Built today and still binding: token honesty (`TokenRefreshResult.IsTransientFailure`, tested in `AuthServiceTokenHonestyTests`) and the local services `CustomerLocalService`/`MeasurementLocalService`.
 
 UX copy/states: [needlebase-uiux offline-sync](../needlebase-uiux/offline-sync.md).
 
@@ -50,7 +53,7 @@ GET/POST api/sync/pull since LastSync → apply with SuppressSyncQueue
 Process DeletedItems → update LastSync
 ```
 
-### Orchestration tips (AssetTag-proven)
+### Orchestration
 
 - Single sync orchestrator (often Singleton) with `CreateScope()` per run  
 - Semaphores for push vs pull vs full  
@@ -83,13 +86,7 @@ List pending ops, last sync time, Retry, failed reasons, conflicts entry — mat
 
 ## Add-entity sync checklist
 
-1. Map entity in `LocalDbContext`  
-2. Include in `QueueSyncOperations` for CREATE/PATCH/DELETE  
-3. Add to push DTO + server handler (BusinessId scoped)  
-4. Add to pull apply path with suppress flag  
-5. Add DeletedItem entity type constant  
-6. Expose pending count to SyncChip  
-7. Tests: offline create → reopen → sync once  
+Use step 6 of the single checklist in [needlebase-domain](../needlebase-domain/SKILL.md#add-entity-checklist-single-source).
 
 ## Important paths (target)
 

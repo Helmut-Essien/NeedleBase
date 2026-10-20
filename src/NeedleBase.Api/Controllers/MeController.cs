@@ -1,3 +1,4 @@
+using NeedleBase.Api.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +27,7 @@ public sealed class MeController : ControllerBase
     {
         if (string.IsNullOrEmpty(_currentUser.BusinessId))
         {
-            return Unauthorized(new { message = "business_id claim is required." });
+            return ApiProblems.SessionInvalid(HttpContext);
         }
 
         var business = await _db.Businesses.AsNoTracking()
@@ -36,7 +37,7 @@ public sealed class MeController : ControllerBase
 
         if (business is null)
         {
-            return NotFound(new { message = "Business not found." });
+            return ApiProblems.BusinessNotFound(HttpContext);
         }
 
         return Ok(new

@@ -1,20 +1,10 @@
 # Developer Handoff Notes
 
-Target stack: **.NET MAUI** (mobile), **modern responsive web** + **ASP.NET Core API**. UI agents document behaviour; do not invent API contracts beyond what product defines.
+Behaviour notes for building screens (MAUI + Razor Pages). Don't invent API contracts beyond the product brief.
 
 ---
 
-## Responsive breakpoints (web)
-
-| Name | Width | Layout |
-|------|-------|--------|
-| `sm` | <768px | Stacked cards; drawer nav; single column forms |
-| `md` | 768–1199px | Collapsible sidebar; tables may scroll horizontally or reduce columns |
-| `lg` | ≥1200px | Persistent sidebar; full tables; optional split detail |
-
-Content max width ~1200–1440px inside main pane.
-
-Mobile: design at 375 and 414; large text / accessibility fonts must not break primary actions.
+Breakpoints & responsive rules: [web-screens.md](web-screens.md#responsive-rules-rec). Mobile: design at 360/375/414 wide; large fonts must not break primary actions.
 
 ---
 
@@ -64,27 +54,16 @@ Tokens: see [design-system.md](design-system.md).
 
 ---
 
-## Asset requirements
+## Assets
 
-| Asset | Spec |
-|-------|------|
-| NeedleBase logo | Supplied SVG/PNG; light & dark-safe if needed; do not recolour outside brand guide |
-| HelmutCode mark | Only where parent attribution required (e.g. About) |
-| App icon | Adaptive Android + iOS; green brand + needle metaphor if supplied |
-| **Mobile UI icons** | No custom tab PNG/SVG set — use **MauiIcons.Material** enums (`Home`, `People`, `ReceiptLong`, `Payments`, `Menu`, plus in-page actions). See [tab-icons.md](../needlebase-mobile/tab-icons.md). |
-| Empty-state illustrations | Optional, monochrome/line, spare — or MauiIcon-only |
-| Favicon (web) | From logo |
-
-Export: no UI icon bitmap pack required for mobile chrome; PDF/PNG OK for receipt logo / app icon / splash.
+Logo: supplied SVG/PNG, never recoloured or redrawn · App icon/splash: platform images · **All UI icons: MauiIcons** ([tab-icons.md](../needlebase-mobile/tab-icons.md)) · Empty states: icon-only or spare line art · Web favicon from logo · HelmutCode mark only where attribution is needed.
 
 ---
 
 ## Copy & localisation readiness
 
 - UI strings externalisable; default English (Ghana-friendly)  
-- Phone display: preserve local formats  
-- Dates: locale-aware; relative on Home (“Due today”)  
-- Money: GH₵ with 2 decimals; tabular figures  
+- Phone, dates (`dd MMM yyyy`, Africa/Accra), money (GH₵, 2 dp), microcopy and API-error mapping: **[content-and-states.md](content-and-states.md)** (single source; don't restate here)  
 
 ---
 
@@ -94,24 +73,10 @@ Export: no UI icon bitmap pack required for mobile chrome; PDF/PNG OK for receip
 - Announce sync status changes (screen reader live region on chip update)  
 - Do not use colour-only status  
 - Hit targets ≥44px mobile  
+- Font scale "Largest" + TalkBack pass on touched screens  
 
 ---
 
 ## Definition of done (UI)
 
-- [ ] Matches IA for platform  
-- [ ] Uses design tokens (no one-off hex sprawl)  
-- [ ] Offline/sync copy honest  
-- [ ] Empty/loading/error/recovery present  
-- [ ] Role-appropriate nav  
-- [ ] Sample data realistic  
-- [ ] Handoff notes updated for new components  
-
----
-
-## What not to claim
-
-- Full web offline parity (unless built)  
-- Payment provider confirmation without provider + sync success  
-- Backend features not in product brief  
-- Central platform admin for NeedleBase accounts  
+Run [review-checklist.md](review-checklist.md). Never claim: full web offline parity, provider-confirmed payments without provider + sync success, backend features outside the brief, or a central platform admin.

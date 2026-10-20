@@ -42,8 +42,43 @@ Parent brand: HelmutCode. Product: NeedleBase. Use supplied logo unchanged.
 |-------|-------|-----|
 | `color.focus.ring` | `#2E9E36` | Focus outline |
 | `color.disabled.bg` | `#E8ECEA` | Disabled controls |
-| `color.disabled.text` | `#A0A8AD` | Disabled labels |
+| `color.disabled.text` | `#5B656B` | Disabled labels (was `#A0A8AD` — 2.4:1 on white, unreadable; code uses `Gray600`) |
 | `color.overlay` | `rgba(32, 42, 50, 0.5)` | Modal scrim |
+
+### Token → code map (source of truth is code; keep this table in sync)
+
+| Token | Mobile `Resources/Styles/Colors.xaml` | Web `wwwroot/css/site.css` |
+|-------|----------------------------------------|----------------------------|
+| brand.primary `#2E9E36` | `Primary` | `--nb-brand-primary` |
+| brand.primaryDark `#247A2B` | `PrimaryDark` | `--nb-brand-primary-dark` |
+| brand.primaryPressed `#1D6B23` | `PrimaryPressed` | `--nb-brand-primary-pressed` |
+| brand.primaryLight `#E8F5E9` | `PrimaryLight` | `--nb-brand-primary-light` |
+| charcoal / text.primary `#202A32` | `Charcoal` (= `Gray950`) | `--nb-charcoal` |
+| charcoalSoft `#2D3A43` | `Gray900` | — |
+| bg.app `#F4F6F5` | `AppBackground` (= `Gray100`) | `--nb-bg-app` |
+| disabled.bg `#E8ECEA` | `Gray200` | — |
+| border.default `#DDE3DF` | `Gray300` | `--nb-border` |
+| border.strong `#C5CDC8` | `Gray400` | — |
+| text.tertiary `#8A949A` | `Gray500` | `--nb-text-tertiary` |
+| text.secondary `#5B656B` | `Gray600` | `--nb-text-secondary` |
+| semantic.warning / error / info | `SemanticWarning` / `SemanticError` / `SemanticInfo` | `--nb-warning` / `--nb-error` / — |
+
+Never invent keys (`Ink`, `Slate`, `Brand` do **not** exist). Add a token in Colors.xaml/site.css first, then here.
+
+### Contrast (measured, WCAG 2.x)
+
+| Pair | Ratio | Verdict |
+|------|-------|---------|
+| `#202A32` / `#5B656B` on white | ≥5.9:1 | Body, secondary, placeholder, disabled text ✅ |
+| `#247A2B` (PrimaryDark) on white | 5.39:1 | **Use for text links** ✅ |
+| `#DC2626` on white | 4.83:1 | Error text ✅ |
+| White on `#247A2B` (filled button) | 5.39:1 | **Primary button fill** ✅ |
+| White on `#1D6B23` (pressed/hover) | 6.6:1 | Pressed/hover fill ✅ |
+| `#2E9E36` on white / white on `#2E9E36` | 3.47:1 | Icons, selected tab, checkbox, accents, borders only — **not** text, links or button fills |
+| `#8A949A` (Gray500) on white | 3.1:1 | Non-text UI only (unselected tab icon, meta ≥18px); never body text or placeholder |
+| `#DDE3DF` on white | 1.3:1 | Decorative borders only — never text, never sole state signal |
+
+Decision (resolved): filled primary buttons use `PrimaryDark`, with pressed/hover `PrimaryPressed`. Mobile: global `Button` style in Styles.xaml (Pressed VisualState); buttons must **not** set `BackgroundColor="{StaticResource Primary}"`. Web: `.nb-btn-primary` / `.btn-primary` in site.css.
 
 **Rules:** Green = primary actions + positive feedback. Charcoal = hierarchy. White cards on `#F4F6F5`. Always pair colour with text or icons. Maintain WCAG AA.
 
@@ -100,8 +135,8 @@ Currency format (GHS): `GHS 150.00` or `GH₵150.00` — pick one and stay consi
 
 | Token | Value | Use |
 |-------|-------|-----|
-| `radius.sm` | 6 | Inputs, chips |
-| `radius.md` | 10 | Cards, buttons |
+| `radius.sm` | 8 | Inputs (mobile `RoundRectangle 8`, web inputs 8px), chips |
+| `radius.md` | 10–12 | Buttons 10 (mobile `CornerRadius="10"`, `.nb-auth-submit`); cards 12 (Home cards, web auth card) |
 | `radius.lg` | 14 | Sheets, modals |
 | `radius.full` | 999 | Avatars only — avoid pill-everything |
 
@@ -126,17 +161,7 @@ Suggested set (Lucide / Material equivalents): Home, Users, ClipboardList, Walle
 
 ### Mobile icons (implementation)
 
-Learned from AssetTag in-page chrome: **MauiIcons.Material** font icons — not PNG/SVG MauiImage bitmaps for TabBar or buttons.
-
-| Rule | Detail |
-|------|--------|
-| Package | `AathifMahir.Maui.MauiIcons.Material` + `UseMaterialMauiIcons()` |
-| Shell tabs | `mci:MauiIcon.Value="{mi:Material Icon=Home, TargetName='.'}"` (People / ReceiptLong / Payments / Menu) |
-| In-page | `{mi:Material Icon=…}`, `FontImageSource` + `MaterialIcons-Regular`, or VM `MaterialIcons` bindings |
-| Colour | Design tokens via `IconColor` / Shell `TabBarForegroundColor` + `TabBarUnselectedColor` |
-| Forbidden | PNG/WebP tab assets; same `dotnet_bot.png` on every tab |
-
-Full MAUI recipe: [needlebase-mobile/tab-icons.md](../needlebase-mobile/tab-icons.md).
+MauiIcons.Material only, always sized (tabs 22 · in-field 21 · actions 24 · empty states 48). Single source: [tab-icons.md](../needlebase-mobile/tab-icons.md).
 
 ---
 
@@ -146,13 +171,13 @@ Full MAUI recipe: [needlebase-mobile/tab-icons.md](../needlebase-mobile/tab-icon
 
 | Variant | Style | When |
 |---------|-------|------|
-| Primary | Fill `#2E9E36`, text white | Main CTA (Save, Create order, Record payment) |
+| Primary | Fill `#247A2B` (`PrimaryDark`), pressed `#1D6B23`, text white | Main CTA (Save, Create order, Record payment) |
 | Secondary | White + border `#DDE3DF`, text charcoal | Secondary actions |
 | Tertiary / ghost | Text green or charcoal | Inline, low emphasis |
 | Destructive | Fill or text `#DC2626` | Delete, cancel order (confirm first) |
-| Disabled | `#E8ECEA` / `#A0A8AD` | Unavailable |
+| Disabled | `#E8ECEA` / `#5B656B` (`Gray200` / `Gray600`) | Unavailable |
 
-Heights: mobile 48; web 40. Min tap target 44×44. Focus: 2px ring `#2E9E36` offset 2.
+Heights: mobile 48; web 48 for auth/primary form submit (`.nb-auth-submit`), 40 for dense in-app toolbar buttons. Min tap target 44×44. Focus: 2px ring `#2E9E36` offset 2 (non-text UI, 3:1 is enough).
 
 ### Inputs & forms
 
@@ -166,16 +191,7 @@ Heights: mobile 48; web 40. Min tap target 44×44. Focus: 2px ring `#2E9E36` off
 
 Always: icon + label (+ optional colour).
 
-| Status | Chip treatment |
-|--------|----------------|
-| New | Charcoal soft / neutral |
-| Cutting | Info blue tint |
-| Sewing | Primary green tint |
-| Fitting | Warning amber tint |
-| Ready | Strong success |
-| Collected | Muted / completed |
-| Cancelled | Error muted |
-| Overdue | Warning + “Overdue” label (alongside status) |
+Exact token + icon per status (single source): [content-and-states.md §6](content-and-states.md#6-status-names--colours-single-source). Summary: New neutral · Cutting info · Sewing green tint · Fitting amber · Ready to collect solid `PrimaryDark` · Collected muted · Cancelled error muted · Overdue amber badge alongside status.
 
 ### Sync chip (persistent)
 
@@ -199,15 +215,15 @@ No cards in marketing-style heroes if any; product UI cards only when they group
 
 ### Navigation
 
-- Mobile bottom nav: 5 items; active = green-tinted icon + label; inactive = tertiary text + untinted/grey icon. Each tab must have its **own** glyph (see Iconography → Mobile bottom-tab icons).
-- FAB: primary green circle, + or “Order”.
+- Mobile bottom nav: 5 items; active = green-tinted icon + label; inactive = tertiary text + untinted/grey icon. Each tab must have its **own** glyph (see Iconography → Mobile icons (implementation)).
+- FAB: `PrimaryDark` circle, + or “Order”. **[planned]** (not in code yet).
 - Web sidebar: charcoal text; active = green light bg + green accent bar or bold green label.
 
 ### Dialogs & sheets
 
 - Mobile: bottom sheets for status change, quick payment, filters.
 - Web: modal or right drawer for detail/edit without leaving list.
-- Destructive: confirm with clear consequence.
+- Destructive: confirm with clear consequence. Feedback surface rules (toast vs dialog vs inline): [content-and-states.md §3](content-and-states.md#3-feedback-which-surface).
 
 ### Empty / loading / error
 
@@ -236,3 +252,8 @@ Minimal. 150–200ms ease for sheets/toasts. No decorative looping animation. Sy
 - [ ] Form errors associated with fields
 - [ ] Touch targets ≥ 44px on mobile
 - [ ] Do not convey meaning by colour alone
+- [ ] Icon-only buttons have `SemanticProperties.Description` (mobile) / `aria-label` (web) and a stable `AutomationId`
+- [ ] One h1 per screen (no duplicate titles — e.g. logo + "Sign in" twice)
+- [ ] Large-font setting doesn't clip primary actions (WordWrap, no fixed-height text rows)
+
+Pre-merge gate: [review-checklist.md](review-checklist.md).

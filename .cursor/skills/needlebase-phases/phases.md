@@ -6,7 +6,7 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 |-------|-------|--------|
 | 0 | Scaffold: sln, Clean Architecture, health, README | Done |
 | 1 | Auth + Business tenancy (JWT, refresh, register business) | Done |
-| 2 | Customers + measurements | Done |
+| 2 | Customers + measurements | Done (its code gaps G1, G4, G5 closed 20 Oct 2026: [code-gaps.md](code-gaps.md)) |
 | 3 | Orders + production status (mobile primary) | Planned |
 | 4 | Offline sync push/pull + DeletedItem + SyncChip | Planned |
 | 5 | Payments + balances + receipts (conflict-safe) | Planned |
@@ -100,16 +100,9 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 
 ## Slice notes (cross-cutting)
 
-### Per-entity add checklist (any slice)
+### Per-entity add checklist
 
-1. Domain entity + invariants  
-2. EF config + migration  
-3. DTOs + use case  
-4. Api authorized + BusinessId  
-5. If offline: LocalDbContext, queue ops, pull apply, DeletedItem type  
-6. Mobile UI if daily path  
-7. Web if oversight path  
-8. Tests for the journey gate  
+Single source: [needlebase-domain](../needlebase-domain/SKILL.md#add-entity-checklist-single-source). Required tests: [testing.md](../needlebase-architecture/testing.md).
 
 ### Stock of “done”
 

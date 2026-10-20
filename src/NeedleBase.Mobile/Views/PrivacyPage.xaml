@@ -54,7 +54,7 @@
             <Label Text="We may update this Policy as the Service or law changes, posting the new version with a new &quot;Last updated&quot; date and giving reasonable notice of material changes through the Service or by email." FontSize="14" TextColor="{StaticResource Gray600}" LineBreakMode="WordWrap" LineHeight="1.25" />
             <Label Text="12. Contact" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" Margin="0,10,0,0" LineBreakMode="WordWrap" />
             <Label Text="HelmutCode, [registered address in Ghana], [contact email]. Data-protection contact: [contact email]. If you are a customer of a tailoring Business, please contact that Business first about its customer records." FontSize="14" TextColor="{StaticResource Gray600}" LineBreakMode="WordWrap" LineHeight="1.25" />
-            <Button Text="Back" BackgroundColor="{StaticResource Primary}" TextColor="{StaticResource White}" CornerRadius="10" HeightRequest="48" FontAttributes="Bold" FontSize="16" Margin="0,16,0,0" Clicked="OnBackClicked" SemanticProperties.Description="Back to registration" />
+            <Button Text="Back" TextColor="{StaticResource White}" CornerRadius="10" HeightRequest="48" FontAttributes="Bold" FontSize="16" Margin="0,16,0,0" Clicked="OnBackClicked" SemanticProperties.Description="Go back" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

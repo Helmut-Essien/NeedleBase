@@ -90,9 +90,74 @@ public sealed class MorePlaceholderPage : ContentPage
         Shell.SetNavBarIsVisible(this, false);
         NavigationPage.SetHasNavigationBar(this, false);
         BackgroundColor = OrdersPlaceholderPage.ResolveColor("AppBackground", Colors.WhiteSmoke);
-        Content = OrdersPlaceholderPage.Build(
+
+        var intro = OrdersPlaceholderPage.Build(
             "More",
             "Settings, sync details, and staff land in later slices.",
             MaterialIcons.Menu);
+
+        var aboutHeading = new Label
+        {
+            Text = "About",
+            FontSize = 17,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = OrdersPlaceholderPage.ResolveColor("Charcoal", Colors.Black)
+        };
+        SemanticProperties.SetHeadingLevel(aboutHeading, SemanticHeadingLevel.Level2);
+
+        var version = new Label
+        {
+            Text = $"NeedleBase version {AppInfo.Current.VersionString}",
+            FontSize = 14,
+            TextColor = OrdersPlaceholderPage.ResolveColor("Gray600", Colors.Gray)
+        };
+
+        var about = new Border
+        {
+            BackgroundColor = Colors.White,
+            Stroke = OrdersPlaceholderPage.ResolveColor("Gray300", Colors.LightGray),
+            StrokeThickness = 1,
+            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 12 },
+            Padding = new Thickness(16, 8),
+            Content = new VerticalStackLayout
+            {
+                Children =
+                {
+                    BuildLinkRow("Terms and Conditions", MaterialIcons.Description, nameof(TermsPage), "MoreTermsLink"),
+                    new BoxView { HeightRequest = 1, Color = OrdersPlaceholderPage.ResolveColor("Gray200", Colors.LightGray) },
+                    BuildLinkRow("Privacy Policy", MaterialIcons.PrivacyTip, nameof(PrivacyPage), "MorePrivacyLink")
+                }
+            }
+        };
+
+        Content = new ScrollView
+        {
+            Content = new VerticalStackLayout
+            {
+                Padding = new Thickness(16, 0, 16, 24),
+                Spacing = 12,
+                Children = { intro, aboutHeading, about, version }
+            }
+        };
+    }
+
+    private static View BuildLinkRow(string text, MaterialIcons icon, string route, string automationId)
+    {
+        var row = new Grid
+        {
+            ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) },
+            ColumnSpacing = 12,
+            MinimumHeightRequest = 48,
+            AutomationId = automationId
+        };
+        row.Add(new MauiIcon { Icon = icon, IconSize = 22, IconColor = OrdersPlaceholderPage.ResolveColor("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }, 0);
+        row.Add(new Label { Text = text, FontSize = 16, TextColor = OrdersPlaceholderPage.ResolveColor("Charcoal", Colors.Black), VerticalOptions = LayoutOptions.Center }, 1);
+        row.Add(new MauiIcon { Icon = MaterialIcons.ChevronRight, IconSize = 22, IconColor = OrdersPlaceholderPage.ResolveColor("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }, 2);
+        SemanticProperties.SetDescription(row, $"Open {text}");
+
+        var tap = new TapGestureRecognizer();
+        tap.Tapped += async (_, _) => await Shell.Current.GoToAsync(route);
+        row.GestureRecognizers.Add(tap);
+        return row;
     }
 }

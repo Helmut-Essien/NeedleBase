@@ -1,60 +1,48 @@
 ---
 name: needlebase-api
 description: >-
-  Implements NeedleBase ASP.NET Core API and Infrastructure using Clean
-  Architecture: JWT auth, Business tenancy, EF PostgreSQL, sync push/pull,
-  DeletedItem tracking, health endpoints, and high-performance query patterns.
-  Use when working on Api, Infrastructure, controllers, migrations, identity,
-  or server-side sync.
+  NeedleBase ASP.NET Core Api + Infrastructure: controllers, JWT/refresh auth
+  and policies, fail-closed Business tenancy filters, EF Core PostgreSQL and
+  migrations, ProblemDetails errors with stable codes, health/ping, and
+  (planned) sync push/pull with DeletedItem. Use when editing Api controllers,
+  middleware, Program.cs, Infrastructure persistence/identity, EF migrations,
+  or API error handling.
 ---
 
 # NeedleBase API & Infrastructure
 
 Composition: **Api** host + **Infrastructure** implementations of **Application** interfaces. Domain stays persistence-ignorant.
 
-Learned from AssetTag API: JWT + security stamp, `X-Auth-Token` mapping, DeletedItem on save, sync lock, health/ping, ULID (NUlid), en-GH money defaults — plus **BusinessId** tenancy NeedleBase requires.
+**Built:** auth (register-business, login, refresh, logout), `/api/me`, Customers + Measurements CRUD, health, ping, ProblemDetails. **Planned:** Orders (S3), sync push/pull + `DeletedItem` (S4), Payments (S5), Staff/Invitations (S7), Subscription (S8).
 
 ## Hard rules
 
 1. **ULID string IDs** (NUlid) — never int/Guid PKs for domain entities.  
-2. **BusinessId filter** — every tenant query/command; enforce from claims.  
-3. **DeletedItem** — `SaveChanges` tracks deletes for mobile pull; include BusinessId. Do not bypass without sync awareness.  
-4. **Sync push** — authorize user; scope to business; optional distributed lock per user/business (409 if busy). Idempotent on client entity ULIDs.  
+2. **BusinessId filter, fail closed** — every tenant entity gets a global filter `x.BusinessId == CurrentBusinessId` set by `BusinessTenancyMiddleware` from the `business_id` claim. **Null business id → no rows.** Login/refresh/membership checks use `.IgnoreQueryFilters()` with explicit `UserId`/`BusinessId` predicates. Every tenant endpoint has a cross-tenant isolation test.  
+   [code] Filters are `CurrentBusinessId != null && x.BusinessId == CurrentBusinessId`; `Identity/AuthService.cs` login/refresh membership lookups use `.IgnoreQueryFilters()` scoped by user id. Tests: `TenancyIsolationTests`.  
+3. **DeletedItem (planned S4)** — `SaveChanges` will track deletes for mobile pull, with BusinessId. Not in code yet; don't reference it until S4.  
+4. **Sync push (planned S4)** — authorize user; scope to business; optional distributed lock per user/business (409 if busy). Idempotent on client entity ULIDs.  
 5. **Payment conflicts** — do not silently overwrite; return conflict payload for mobile UI.  
 6. **Auth** — JWT Bearer + refresh tokens; map `X-Auth-Token` → `Authorization` for mobile. Do not log tokens in Production.  
-7. **Health** — `/health/live`, `/health/ready` (DB), mobile connectivity ping (e.g. `/api/test/ping`).  
-8. **Migrations** — prefer explicit `dotnet ef database update` / CI job (AssetTag style); document if auto-migrate is enabled.  
-9. **Email links** — use `FrontendBaseUrl` config; never hardcode Web hostnames.  
-10. **Thin endpoints** — controllers call Application use cases, not raw SQL sprawl.  
+7. **Health** — `/health/live`, `/health/ready` (DB), mobile ping `GET /api/test/ping` (`DiagnosticsController`) — all anonymous.  
+8. **Migrations** — In **Development only**, `Program.cs` listens first, then runs `MigrateAsync()` + `DevelopmentDataSeeder` (logs and continues if Postgres is down). Production never auto-migrates: apply a reviewed `dotnet ef migrations script --idempotent` after a DB backup. Never edit an applied migration.  
+9. **Email links (planned)** — use `FrontendBaseUrl` config; never hardcode Web hostnames.  
+10. **Thin endpoints** — controllers call Application use-case services and return DTOs or `ApiProblems.*`.
+   [code] `Application/Customers/` (via `IApplicationDbContext`).  
 11. **Speed & EF hygiene** — `AsNoTracking()` + DTO projection for reads; index `BusinessId` (and common filter/sort columns); no N+1; paginate lists with a hard max page size; pass `CancellationToken`; batch sync apply/`SaveChanges`; prefer `ExecuteUpdate`/`ExecuteDelete` only when DeletedItem/sync side-effects are handled. Full rules: [code-quality-performance](../needlebase-architecture/code-quality-performance.md).  
 12. **Inspect before coding** — Follow [engineering-review](../needlebase-architecture/engineering-review.md): inspect first, fix root cause (no parallel workarounds), remove obsolete code, verify with evidence.
 
 ## Layout
 
-```
-NeedleBase.Api/
-  Controllers/ or Endpoints/   Auth, Customers, Orders, Measurements,
-                               Payments, Sync, Staff, Invitations,
-                               Dashboard, Subscription, Diagnostics
-  Middleware/
-  Program.cs
-
-NeedleBase.Infrastructure/
-  Persistence/ApplicationDbContext.cs
-  Persistence/Configurations/
-  Identity/
-  Sync/
-  Email/
-  DependencyInjection.cs
-```
+Real folders and target: [solution-layout.md](../needlebase-architecture/solution-layout.md). Api today: `Controllers/` (Auth, Customers, Measurements, Me, Diagnostics), `Http/ApiProblems.cs`, `Middleware/BusinessTenancyMiddleware.cs`, `Program.cs`. Rate limiting: `auth` fixed-window policy (30/min per IP) in `Program.cs`, applied to `AuthController` via `[EnableRateLimiting("auth")]`.
 
 ## Auth & roles
 
 - Roles: Owner, Manager, Tailor (per business membership)  
-- Policies: e.g. `RequireOwner`, `RequireManagerOrOwner`, `RequireStaff`  
+- Policies (in `Infrastructure/DependencyInjection.cs`): `RequireStaff`, `RequireOwner`, `RequireManagerOrOwner`. JWT validation re-checks active membership (`IgnoreQueryFilters` + explicit predicate)  
 - Tailor: limit to assigned orders where applicable  
 
-## Sync API (contract alignment)
+## Sync API (planned S4, contract alignment)
 
 - `POST api/sync/push` — body of queued operations; returns success/fail/conflict per op id  
 - Pull — changes since `LastSync` + DeletedItems for business  
@@ -64,13 +52,26 @@ NeedleBase.Infrastructure/
 
 Default `en-GH` / GH₵ formatting for MVP; keep consistent with Web/Mobile. Design fields for future currency codes without implementing multi-currency until needed.
 
+## User-facing errors (ProblemDetails)
+
+All errors are **RFC 9457 ProblemDetails** (`application/problem+json`) [code]:
+- `AddProblemDetails(...)` adds `traceId`, a default `code` per status (`VALIDATION_FAILED`, `UNAUTHORIZED`, `FORBIDDEN`, `NOT_FOUND`, `RATE_LIMITED`, `SERVER_ERROR`), and generic 5xx copy outside Development.
+- `UseExceptionHandler()` (non-Development) + `UseStatusCodePages()` mean empty 401/404/429 bodies also become ProblemDetails. `[ApiController]` model validation returns `ValidationProblem` with `errors`.
+- Controllers return `ApiProblems.*` (`NeedleBase.Api/Http/ApiProblems.cs`). **Never** `new { message }`, never bare `NotFound()`.
+
+Rules:
+1. `title`/`detail` are end-user English (no claim names, exception text or stack traces). E.g. a missing business claim → 401 `SESSION_INVALID` "Please sign in again".
+2. `code` is a stable UPPER_SNAKE extension member; clients switch on it. Auth codes come from `AuthResult.ErrorCode` (`INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `REFRESH_INVALID`, …).
+3. New error → add a factory in `ApiProblems` + a test asserting `code` (see `AuthEndpointTests.Login_WrongPassword_ReturnsProblemDetailsWithCode`).
+4. Client mapping: [content-and-states.md §5](../needlebase-uiux/content-and-states.md#5-api-errors-to-user-copy).
+
 ## Local
 
 ```bash
 dotnet run --project src/NeedleBase.Api --launch-profile https
 ```
 
-PostgreSQL connection via user secrets / `appsettings.Development.json` — never commit secrets.
+`docker compose up -d` gives Postgres on localhost:5435. Connection string via user secrets / env var `ConnectionStrings__DefaultConnection`; never commit secrets. Tests: [testing.md](../needlebase-architecture/testing.md).
 
 ## Related
 

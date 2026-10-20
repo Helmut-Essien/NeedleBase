@@ -8,6 +8,8 @@
 
     <Color x:Key="Primary">#2E9E36</Color>
     <Color x:Key="PrimaryDark">#247A2B</Color>
+    <!-- Pressed fill for primary buttons: white text 6.6:1 (PrimaryDark fill is 5.39:1). -->
+    <Color x:Key="PrimaryPressed">#1D6B23</Color>
     <Color x:Key="PrimaryLight">#E8F5E9</Color>
     <Color x:Key="PrimaryDarkText">#202A32</Color>
     <Color x:Key="Secondary">#E8F5E9</Color>

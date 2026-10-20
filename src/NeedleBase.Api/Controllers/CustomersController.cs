@@ -1,3 +1,4 @@
+using NeedleBase.Api.Http;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NeedleBase.Application.Abstractions;
@@ -36,7 +37,7 @@ public sealed class CustomersController : ControllerBase
     public async Task<ActionResult<CustomerDetailDto>> Get(string id, CancellationToken cancellationToken)
     {
         var customer = await _customers.GetByIdAsync(id, cancellationToken);
-        return customer is null ? NotFound() : Ok(customer);
+        return customer is null ? ApiProblems.CustomerNotFound(HttpContext) : Ok(customer);
     }
 
     [HttpPost]
@@ -50,12 +51,12 @@ public sealed class CustomersController : ControllerBase
         var (customer, error) = await _customers.CreateAsync(request, cancellationToken);
         if (error == "Customer id conflict.")
         {
-            return Conflict(new { message = error });
+            return ApiProblems.CustomerConflict(HttpContext);
         }
 
         if (error is not null || customer is null)
         {
-            return BadRequest(new { message = error ?? "Could not create customer." });
+            return ApiProblems.SaveFailed(HttpContext, "CUSTOMER_SAVE_FAILED", "customer");
         }
 
         return CreatedAtAction(nameof(Get), new { id = customer.Id }, customer);
@@ -73,12 +74,12 @@ public sealed class CustomersController : ControllerBase
         var (customer, error) = await _customers.UpdateAsync(id, request, cancellationToken);
         if (error == "Customer not found.")
         {
-            return NotFound();
+            return ApiProblems.CustomerNotFound(HttpContext);
         }
 
         if (error is not null || customer is null)
         {
-            return BadRequest(new { message = error ?? "Could not update customer." });
+            return ApiProblems.SaveFailed(HttpContext, "CUSTOMER_SAVE_FAILED", "customer");
         }
 
         return Ok(customer);
@@ -92,7 +93,7 @@ public sealed class CustomersController : ControllerBase
         var (success, error) = await _customers.DeleteAsync(id, cancellationToken);
         if (!success)
         {
-            return NotFound(new { message = error });
+            return ApiProblems.CustomerNotFound(HttpContext);
         }
 
         return NoContent();

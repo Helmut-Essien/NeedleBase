@@ -1,3 +1,4 @@
+using NeedleBase.Api.Http;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +32,7 @@ public sealed class AuthController : ControllerBase
         var result = await _authService.RegisterBusinessAsync(request, GetIpAddress(), cancellationToken);
         if (!result.Succeeded || result.Tokens is null || result.User is null)
         {
-            return BadRequest(new { message = result.Error, code = result.ErrorCode });
+            return ApiProblems.Create(HttpContext, StatusCodes.Status400BadRequest, result.ErrorCode ?? "REGISTER_FAILED", "Couldn't create your account", result.Error);
         }
 
         return Ok(new
@@ -53,7 +54,7 @@ public sealed class AuthController : ControllerBase
         var result = await _authService.LoginAsync(request, GetIpAddress(), cancellationToken);
         if (!result.Succeeded || result.Tokens is null || result.User is null)
         {
-            return Unauthorized(new { message = result.Error, code = result.ErrorCode });
+            return ApiProblems.Create(HttpContext, StatusCodes.Status401Unauthorized, result.ErrorCode ?? "UNAUTHORIZED", "Couldn't sign you in", result.Error);
         }
 
         return Ok(new
@@ -75,7 +76,7 @@ public sealed class AuthController : ControllerBase
         var result = await _authService.RefreshAsync(request.RefreshToken, GetIpAddress(), cancellationToken);
         if (!result.Succeeded || result.Tokens is null)
         {
-            return Unauthorized(new { message = result.Error, code = result.ErrorCode });
+            return ApiProblems.Create(HttpContext, StatusCodes.Status401Unauthorized, result.ErrorCode ?? "UNAUTHORIZED", "Couldn't sign you in", result.Error);
         }
 
         return Ok(new

@@ -257,7 +257,6 @@
             <Button Text="Create business"
                     Command="{Binding RegisterCommand}"
                     IsEnabled="{Binding CanSubmit}"
-                    BackgroundColor="{StaticResource Primary}"
                     TextColor="{StaticResource White}"
                     CornerRadius="10"
                     HeightRequest="48"

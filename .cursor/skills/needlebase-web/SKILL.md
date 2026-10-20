@@ -1,7 +1,7 @@
 ---
 name: needlebase-web
 description: >-
-  Implements NeedleBase responsive web oversight app (Razor Pages or Blazor)
+  Implements NeedleBase responsive web oversight app (Razor Pages + Bootstrap)
   calling the API over HTTP only—no direct SQL—with pagination and parallel
   fetch performance. Use when building Web pages, dashboard, tables, production
   board, cookie session, or HttpClient auth refresh against NeedleBase.Api.
@@ -9,7 +9,7 @@ description: >-
 
 # NeedleBase Web
 
-Oversight tool for owners/managers (and limited tailor views). **No DbContext.** All data via Api HTTP — same boundary as AssetTag Portal.
+Oversight tool for owners/managers (and limited tailor views). **No DbContext.** All data via Api HTTP.
 
 UI IA/tokens: [needlebase-uiux](../needlebase-uiux/SKILL.md) (sidebar, tables, production board).
 
@@ -27,17 +27,15 @@ UI IA/tokens: [needlebase-uiux](../needlebase-uiux/SKILL.md) (sidebar, tables, p
 
 ## Tech choice
 
-Pick **one** and stick to it in skills/code:
-
-- **Razor Pages** (closest to AssetTag Portal), or  
-- **Blazor** (CSS-friendly for richer production board)
+**Decided: Razor Pages + Bootstrap 5** [code]. Styling via `wwwroot/css/site.css` `--nb-*` variables (see [design-system token map](../needlebase-uiux/design-system.md)). Don't introduce Blazor without a decision.
 
 Either way: page/components call typed HTTP services; business rules stay on Api/Application.
 
 ## Shell (from UI skill)
 
-Persistent left sidebar: Dashboard, Customers, Measurements, Orders, Production, Payments, Staff, Reports, Settings.  
-Top bar: search, SyncChip (connection/API status), profile.
+**Planned (Slice 6):** persistent left sidebar: Dashboard, Customers, Measurements, Orders, Production, Payments, Staff, Reports, Settings. Top bar: search, SyncChip, profile.  
+**Today:** `_Layout` Bootstrap top navbar `navbar-expand-md` (Home, user name, Sign out) + footer Terms/Privacy links. Collapse breakpoint for all nav = `md` (768) + `_AuthLayout` for auth/legal. Shared partials: `_PasswordToggleButton`, `_ValidationScriptsPartial`.  
+Responsive, tables→cards, states, copy: [web-screens](../needlebase-uiux/web-screens.md), [content-and-states](../needlebase-uiux/content-and-states.md).
 
 Breakpoints: see [handoff](../needlebase-uiux/handoff.md).
 
@@ -52,6 +50,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
+        // illustrative: Orders endpoint is planned (S3); today only auth + customers/measurements exist
         Orders = await _api.GetFromJsonAsync<List<OrderReadDto>>("api/orders");
     }
 }
@@ -62,6 +61,8 @@ public class IndexModel : PageModel
 - `ApiAuthService` — login, refresh, current user/business  
 - `TokenRefreshHandler` — cookie-backed bearer refresh  
 - Unauthorized → redirect to login  
+- Api errors are ProblemDetails: read `code`/`detail`/`errors`, map them to page/field messages ([content-and-states §5](../needlebase-uiux/content-and-states.md#5-api-errors-to-user-copy))  
+  [code] `ApiAuthService` reads failures via `ApiProblem.ReadAsync` and exposes `LastErrorMessage` (from `AuthErrorMessages`); Login/Register pages show it.  
 
 ## Local
 

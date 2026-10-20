@@ -59,7 +59,7 @@ public class LoginModel : PageModel
 
             if (session is null)
             {
-                ErrorMessage = "Invalid email or password.";
+                ErrorMessage = _authService.LastErrorMessage ?? "Invalid email or password.";
                 return Page();
             }
 

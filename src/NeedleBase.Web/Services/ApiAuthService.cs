@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using NeedleBase.Application.Contracts.Auth;
+using NeedleBase.Application.Contracts.Errors;
 
 namespace NeedleBase.Web.Services;
 
@@ -21,10 +22,12 @@ public sealed class ApiAuthService : IApiAuthService
         _logger = logger;
     }
 
+    public string? LastErrorMessage { get; private set; }
+
     public async Task<AuthSessionResult?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         using var response = await _httpClient.PostAsJsonAsync("api/auth/login", request, JsonOptions, cancellationToken);
-        return await ReadSessionAsync(response, cancellationToken);
+        return await ReadSessionAsync(response, AuthErrorMessages.ForLogin, cancellationToken);
     }
 
     public async Task<AuthSessionResult?> RegisterBusinessAsync(
@@ -36,7 +39,7 @@ public sealed class ApiAuthService : IApiAuthService
             request,
             JsonOptions,
             cancellationToken);
-        return await ReadSessionAsync(response, cancellationToken);
+        return await ReadSessionAsync(response, AuthErrorMessages.ForRegister, cancellationToken);
     }
 
     public async Task<TokenResponse?> RefreshAsync(
@@ -88,10 +91,17 @@ public sealed class ApiAuthService : IApiAuthService
         }
     }
 
-    private async Task<AuthSessionResult?> ReadSessionAsync(HttpResponseMessage response, CancellationToken cancellationToken)
+    private async Task<AuthSessionResult?> ReadSessionAsync(
+        HttpResponseMessage response,
+        Func<ApiProblem, string> describe,
+        CancellationToken cancellationToken)
     {
+        LastErrorMessage = null;
         if (!response.IsSuccessStatusCode)
         {
+            var problem = await ApiProblem.ReadAsync(response, cancellationToken);
+            _logger.LogInformation("Auth API returned {Status} {Code}", problem.Status, problem.Code);
+            LastErrorMessage = describe(problem);
             return null;
         }
 

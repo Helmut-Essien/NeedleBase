@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using NeedleBase.Application.Contracts.Auth;
+using NeedleBase.Application.Contracts.Errors;
 using NeedleBase.Mobile.Configuration;
 using NeedleBase.Mobile.Data.Services;
 
@@ -45,6 +46,8 @@ public sealed class AuthService : IAuthService
         _apiSettings = apiSettings.Value;
     }
 
+    public string? LastErrorMessage { get; private set; }
+
     public async Task<AuthUserDto?> RegisterBusinessAsync(
         RegisterBusinessRequest request,
         CancellationToken cancellationToken = default)
@@ -56,8 +59,10 @@ public sealed class AuthService : IAuthService
             JsonOptions,
             cancellationToken);
 
+        LastErrorMessage = null;
         if (!response.IsSuccessStatusCode)
         {
+            LastErrorMessage = AuthErrorMessages.ForRegister(await ApiProblem.ReadAsync(response, cancellationToken));
             return null;
         }
 
@@ -76,8 +81,10 @@ public sealed class AuthService : IAuthService
     {
         var client = CreateAuthClient();
         using var response = await client.PostAsJsonAsync("api/auth/login", request, JsonOptions, cancellationToken);
+        LastErrorMessage = null;
         if (!response.IsSuccessStatusCode)
         {
+            LastErrorMessage = AuthErrorMessages.ForLogin(await ApiProblem.ReadAsync(response, cancellationToken));
             return null;
         }
 

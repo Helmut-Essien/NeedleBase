@@ -30,6 +30,24 @@ public class AuthEndpointTests : IClassFixture<NeedleBaseApiFactory>
     }
 
     [Fact]
+    public async Task Login_WrongPassword_ReturnsProblemDetailsWithCode()
+    {
+        using var response = await _client.PostAsJsonAsync(
+            "/api/auth/login",
+            new LoginRequest($"nobody{Guid.NewGuid():N}@ama-stitches.test", "WrongPass1!"),
+            JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = doc.RootElement;
+        Assert.Equal(401, root.GetProperty("status").GetInt32());
+        Assert.False(string.IsNullOrWhiteSpace(root.GetProperty("title").GetString()));
+        Assert.Equal("INVALID_CREDENTIALS", root.GetProperty("code").GetString());
+        Assert.False(root.TryGetProperty("message", out _));
+    }
+
+    [Fact]
     public async Task RegisterLoginMe_HappyPath_IncludesBusinessClaims()
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];

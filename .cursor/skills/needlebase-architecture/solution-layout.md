@@ -1,85 +1,46 @@
-# Solution Layout & Scaffolding Checklist
+# Solution layout
 
-## Suggested folders (per project)
+`[now]` = exists today · `[target]` = add when the slice needs it (don't create empty folders).
 
 ```
-NeedleBase.Domain/
-  Entities/
-  Enums/
-  Exceptions/
-
-NeedleBase.Application/
-  Abstractions/          # interfaces
-  Contracts/DTOs/        # records shared with clients
-  Customers/
-  Orders/
-  Measurements/
-  Payments/
-  Sync/
-  Staff/
-  Common/
-
-NeedleBase.Infrastructure/
-  Persistence/           # DbContext, configs, migrations
-  Identity/
-  Email/
-  Sync/
-  DependencyInjection.cs # AddInfrastructure()
-
-NeedleBase.Api/
-  Controllers/ or Endpoints/
-  Middleware/
-  Program.cs
-
-NeedleBase.Web/
-  Pages/ or Components/  # Razor / Blazor — choose one and stick to it
-  Services/              # ApiAuthService, TokenRefreshHandler
-  wwwroot/
-  Program.cs
-
-NeedleBase.Mobile/
-  Views/
-  ViewModels/
-  Services/              # auth, navigation, sync facade, local app services
-  Controls/
-  Converters/
-  Configuration/
-  MauiProgram.cs
-  AppShell.xaml
-
-NeedleBase.Mobile.Data/
-  Data/LocalDbContext.cs
-  Migrations/
+NeedleBase.sln
+docker-compose.yml                 # Postgres 16 on localhost:5435 (dev/tests)
+src/
+  NeedleBase.Domain/
+    Common/FieldLimits.cs  Entities/  Enums/  Exceptions/          [now]
+  NeedleBase.Application/
+    Abstractions/   (IApplicationDbContext, IAuthService, IClock, ICurrentUser, ICustomerService, IMeasurementService, ITokenService) [now]
+    Common/         Contracts/{Auth,Customers,Errors,Measurements}/ [now]  (Errors = ApiProblem reader + AuthErrorMessages, shared by Web/Mobile)
+    Customers/      (CustomerService, MeasurementService)          [now]
+    Orders/  Payments/  Sync/  Staff/                              [target, per slice]
+  NeedleBase.Infrastructure/
+    Auth/  Identity/  Persistence/  Health/  Time/  DependencyInjection.cs [now]
+    Sync/  Email/                                                  [target]
+  NeedleBase.Api/
+    Controllers/ (Auth, Customers, Measurements, Me, Diagnostics)  Http/ApiProblems.cs  Middleware/  Program.cs [now]
+  NeedleBase.Web/          Razor Pages + Bootstrap (decided)
+    Pages/{Account,Shared}  Services/ (ApiAuthService, TokenRefreshHandler)  wwwroot/  Program.cs [now]
+  NeedleBase.Mobile/
+    Views/  ViewModels/  Services/  Configuration/  Messaging/  Resources/  AppShell.xaml  MauiProgram.cs [now]
+  NeedleBase.Mobile.Data/
+    Data/{LocalDbContext,LocalDbOptions}.cs  Services/ (Customer/Measurement local services, LocalDatabaseService) [now]
+    Data/LocalSchemaMigrator.cs  (versioned steps, PRAGMA user_version) [now]
+tests/  Domain.Tests  Application.Tests  Api.Tests  Mobile.Tests   [now] — see testing.md
 ```
-
-## AssetTag → NeedleBase name map
-
-| AssetTag | NeedleBase |
-|----------|------------|
-| `Shared/` | `Application/Contracts` (+ Domain entities) |
-| `AssetTag/` | `Api` + `Infrastructure` |
-| `Portal/` | `Web` |
-| `MobileApp/` | `Mobile` |
-| `MobileData/` | `Mobile.Data` |
 
 ## Scaffold order
 
-Prefer the slice plan in [needlebase-phases](../needlebase-phases/SKILL.md) (one slice at a time, confirm before next). Summary:
+Follow the slice plan in [phases.md](../needlebase-phases/phases.md): one slice at a time, confirm before the next.
 
-1. Create solution + Domain + Application (Slice 0)  
-2. Infrastructure + Api (auth, health, Business entity) (Slices 0–1)  
-3. Web shell calling Api (Slice 1 / 6)  
-4. Mobile + Mobile.Data with offline Customer/Order MVP (Slices 2–3)  
-5. Sync push/pull for MVP entities (Slice 4)  
-6. Payments with conflict-safe rules (Slice 5)  
-7. Web oversight board (Slice 6); Staff/roles (Slice 7); subscription surfaces (Slice 8)  
-
-## Local run (mirror AssetTag)
+## Local run
 
 ```bash
-dotnet restore NeedleBase.sln && dotnet build NeedleBase.sln
+docker compose up -d                       # Postgres for Api + Api.Tests
+dotnet build NeedleBase.sln
 dotnet run --project src/NeedleBase.Api --launch-profile https
 dotnet run --project src/NeedleBase.Web --launch-profile https
+dotnet build src/NeedleBase.Mobile -f net9.0-android
+dotnet test
 ```
 
-Api and Web are **separate processes**. Never hardcode production hostnames; use config / user secrets / CI secrets (`API_BASE_URL`, `FRONTEND_BASE_URL`).
+Api and Web are separate processes. Hosts and secrets come from config (user secrets locally, environment variables in production). Deployment/ops guidance is deferred; see Deferred in [code-gaps.md](../needlebase-phases/code-gaps.md).

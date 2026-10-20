@@ -3,17 +3,16 @@ using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Measurements;
 using NeedleBase.Domain.Entities;
-using NeedleBase.Infrastructure.Persistence;
 
-namespace NeedleBase.Infrastructure.Customers;
+namespace NeedleBase.Application.Customers;
 
 public sealed class MeasurementService : IMeasurementService
 {
-    private readonly ApplicationDbContext _db;
+    private readonly IApplicationDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
 
-    public MeasurementService(ApplicationDbContext db, ICurrentUser currentUser, IClock clock)
+    public MeasurementService(IApplicationDbContext db, ICurrentUser currentUser, IClock clock)
     {
         _db = db;
         _currentUser = currentUser;

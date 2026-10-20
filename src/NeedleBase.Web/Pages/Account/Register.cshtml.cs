@@ -98,7 +98,8 @@ public class RegisterModel : PageModel
             var session = await _authService.RegisterBusinessAsync(request, cancellationToken);
             if (session is null)
             {
-                ErrorMessage = "Registration failed. Check your details or try a different email.";
+                ErrorMessage = _authService.LastErrorMessage
+                    ?? "Registration failed. Check your details or try a different email.";
                 return Page();
             }
 
