@@ -32,9 +32,11 @@ Parent brand: HelmutCode. Product: NeedleBase. Use supplied logo unchanged.
 | Token | Hex | Use |
 |-------|-----|-----|
 | `color.semantic.success` | `#2E9E36` | Success (same as primary) |
-| `color.semantic.warning` | `#D97706` | Warning, overdue attention |
+| `color.semantic.warning` | `#D97706` | Warning, Fitting stage |
 | `color.semantic.error` | `#DC2626` | Errors, destructive |
 | `color.semantic.info` | `#2563EB` | Informational |
+| `color.semantic.errorLight` | `#FEE2E2` | Error/overdue tint background (`SemanticErrorLight`) |
+| `color.semantic.overdue` | `#B91C1C` | Overdue badge text/icon (`SemanticOverdue`) |
 
 ### States
 
@@ -172,7 +174,7 @@ MauiIcons.Material only, always sized (tabs 22 · in-field 21 · actions 24 · e
 | Variant | Style | When |
 |---------|-------|------|
 | Primary | Fill `#247A2B` (`PrimaryDark`), pressed `#1D6B23`, text white | Main CTA (Save, Create order, Record payment) |
-| Secondary | White + border `#DDE3DF`, text charcoal | Secondary actions |
+| Secondary | White + 1.5 border `#DDE3DF` (`Gray300`), text charcoal; pressed/disabled `Gray100` | Secondary actions. Mobile [code]: `Style="{StaticResource SecondaryButton}"` |
 | Tertiary / ghost | Text green or charcoal | Inline, low emphasis |
 | Destructive | Fill or text `#DC2626` | Delete, cancel order (confirm first) |
 | Disabled | `#E8ECEA` / `#5B656B` (`Gray200` / `Gray600`) | Unavailable |

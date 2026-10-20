@@ -7,7 +7,7 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 | 0 | Scaffold: sln, Clean Architecture, health, README | Done |
 | 1 | Auth + Business tenancy (JWT, refresh, register business) | Done |
 | 2 | Customers + measurements | Done (its code gaps G1, G4, G5 closed 20 Oct 2026: [code-gaps.md](code-gaps.md)) |
-| 3 | Orders + production status (mobile primary) | Planned |
+| 3 | Orders + production status (mobile primary) | Done (local-only on mobile until Slice 4 sync) |
 | 4 | Offline sync push/pull + DeletedItem + SyncChip | Planned |
 | 5 | Payments + balances + receipts (conflict-safe) | Planned |
 | 6 | Web dashboard + production board | Planned |

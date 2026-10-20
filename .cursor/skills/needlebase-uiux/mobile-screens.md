@@ -81,7 +81,7 @@ Entry layout: section headers + stacked fields; sticky Save; “Saved on this de
 | Status update | Bottom sheet with statuses + optional note |
 | Calendar | Fitting / delivery agenda |
 
-Statuses: New → Cutting → Sewing → Fitting → Ready → Collected (+ Cancelled, Overdue flag). Chip colours/icons: [content-and-states.md §6](content-and-states.md#6-status-names--colours-single-source). **All of Orders is [planned Slice 3]**. Today the tab shows `OrdersPlaceholderPage`.
+Statuses: New → Cutting → Sewing → Fitting → Ready → Collected (+ Cancelled, Overdue flag). Chip colours/icons: [content-and-states.md §6](content-and-states.md#6-status-names--colours-single-source). **Orders list + create wizard + detail/status are [code] (Slice 3).** Deposit step deferred to Slice 5.
 
 ---
 

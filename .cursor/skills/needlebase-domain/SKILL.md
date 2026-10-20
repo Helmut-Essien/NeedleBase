@@ -30,7 +30,7 @@ Core workflow: Customer → Measurements → Order → Production → Payment �
 | `StaffMembership` | User ↔ Business + Role | UserId, BusinessId, Role (`BusinessRole`), IsActive | **Built** (tenant-filtered) |
 | `Customer` | Client | `Name`, `Phone`, `Notes`, `PhotoRef`, `CreatedAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
 | `MeasurementProfile` | Measurements | CustomerId, `GarmentTemplate`, `Unit`, `FieldsJson`, `Notes`, `MeasuredAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
-| `Order` / `OrderLine` | Sewing job / garment lines | ref, status, due/fitting dates, assignee, totals; line template, qty, measurement snapshot | Planned S3 |
+| `Order` / `OrderLine` | Sewing job / garment lines | ref, status, due/fitting dates, assignee, totals; line template, qty, measurement snapshot | **Built** (S3) |
 | `Payment` | Money in | OrderId, amount, method, note, recordedAt, sync metadata | Planned S5 |
 | `DeletedItem` | Sync tombstone | EntityType, EntityId, BusinessId, DeletedAt | Planned S4 |
 | `Invitation` | Staff invite | Email/phone, role, business, expiry | Planned S7 |
@@ -42,9 +42,18 @@ Users are ASP.NET Identity users (Infrastructure); the domain sees `UserId` stri
 
 `New → Cutting → Sewing → Fitting → Ready → Collected`  
 Also: `Cancelled`. **Overdue** = derived (due date passed and not Collected/Cancelled) — badge, not necessarily stored.  
-Status constants: planned S3 (follow the `BusinessRole` static-class pattern in `Domain/Enums`). UI display names/colours/icons: [content-and-states.md §6](../needlebase-uiux/content-and-states.md#6-status-names--colours-single-source) (`Ready` displays as "Ready to collect").
+Status constants: `OrderStatus` in `Domain/Enums` (same static-class pattern as `BusinessRole`). UI display names/colours/icons: [content-and-states.md §6](../needlebase-uiux/content-and-states.md#6-status-names--colours-single-source) (`Ready` displays as "Ready to collect").
 
-Built constants: `BusinessRole` (Owner/Manager/Tailor), `GarmentTemplate` (+ `DisplayName`), `MeasurementUnit` (`cm`/`in`), `Common/FieldLimits`.
+### Order rules [code]
+
+- **Total:** `Order.TotalAmount` is always the rounded sum of line totals (computed in `ReplaceLines`). Clients may send `TotalAmount`; a mismatch is rejected (`ORDER_TOTAL_MISMATCH`), never silently overwritten. Lines are immutable after create, so `UpdateOrderRequest` has no total. **Discounts/deposits are planned** (not in code; add an explicit discount field, never a hand-typed total).
+- **Line ids** are always generated server-side (`OrderLineFactory.Build` → `IdGenerator.NewId()`); `CreateOrderLineRequest` has no `Id`. Idempotency is per order id.
+- **DisplayRef:** 8 upper-case chars (`FieldLimits.OrderDisplayRef`), default = last 8 of the ULID; unique per business (`(BusinessId, DisplayRef)` unique index, API + mobile). On collision, retry with `Order.NewRandomDisplayRef()` (Crockford base32).
+- **Rule errors:** `Domain/Exceptions/DomainRuleException` (an `ArgumentException`) carries a `Code` from `DomainErrorCodes` (`ORDER_LOCKED` for edits/status changes on Collected/Cancelled, `ORDER_STATUS_INVALID`). Callers map codes, **never** exception message text (`OrderLineFactory.FromException`).
+- **Assignee** must be an active `StaffMembership` of the business (`ASSIGNEE_INVALID`).
+- **"Today"** (overdue, due-today) uses `Application/Common/BusinessTime.Today(utcNow)` (Africa/Accra).
+
+Built constants: `BusinessRole` (Owner/Manager/Tailor), `GarmentTemplate` (+ `DisplayName`), `MeasurementUnit` (`cm`/`in`), `OrderStatus`, `Common/FieldLimits`.
 
 ### Roles (plain language)
 

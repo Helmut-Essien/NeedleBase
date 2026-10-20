@@ -19,6 +19,10 @@ None right now. The only remaining items are ops work, deferred below.
 | G6 | Clients ignored ProblemDetails | 20 Oct 2026 | Shared `Application/Contracts/Errors/{ApiProblem,AuthErrorMessages}.cs`. Mobile `IAuthService.LastErrorMessage` and web `IApiAuthService.LastErrorMessage` are shown by the Login/Register VMs and pages, with the old copy as fallback. | `Application.Tests/AuthErrorMessagesTests` |
 | G10 | Mobile Release Api URL hard-coded | 20 Oct 2026 | Release reads the MSBuild property `NeedleBaseReleaseApiBaseUrl` (assembly metadata, `Configuration/ApiEndpoint.cs`, https only). Debug is unchanged (`http://localhost:5036/` + `adb reverse`). **Default is the placeholder `https://api.needlebase-placeholder.invalid/`**, so you must set the real host at publish time. | `Mobile.Tests/ApiEndpointTests` |
 
+### Slice 3 review fixes (20 Oct 2026)
+
+Fixed from the post-Slice-3 review: customer delete with orders → 409 `CUSTOMER_HAS_ORDERS` (API + mobile guard); typed order errors (`DomainRuleException` codes → `OrderError` → `ApiProblems.ForOrder`); server-generated line ids; assignee must be an active member; server-computed total with mismatch rejection; no `ex.Message` in mobile order errors; Home stage colours from `OrderStatusPresentation` + distinct Overdue tokens; 8-char unique `DisplayRef` with collision retry; case-insensitive search; Accra "today"; XC0022 warnings; GroupBy counts; `SecondaryButton`; stray `undefined` files removed. Tests: `OrderEndpointTests`, `OrderLocalServiceTests`, `OrderSupportTests`, `Domain.Tests/OrderTests`.
+
 ## Deferred (ops, later)
 
 These are not to be implemented now. Ops guidance will get its own skill later.

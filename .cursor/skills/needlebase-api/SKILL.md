@@ -13,7 +13,7 @@ description: >-
 
 Composition: **Api** host + **Infrastructure** implementations of **Application** interfaces. Domain stays persistence-ignorant.
 
-**Built:** auth (register-business, login, refresh, logout), `/api/me`, Customers + Measurements CRUD, health, ping, ProblemDetails. **Planned:** Orders (S3), sync push/pull + `DeletedItem` (S4), Payments (S5), Staff/Invitations (S7), Subscription (S8).
+**Built:** auth (register-business, login, refresh, logout), `/api/me`, Customers + Measurements CRUD, Orders CRUD + status patch, health, ping, ProblemDetails. **Planned:** sync push/pull + `DeletedItem` (S4), Payments (S5), Staff/Invitations (S7), Subscription (S8).
 
 ## Hard rules
 
@@ -63,7 +63,9 @@ Rules:
 1. `title`/`detail` are end-user English (no claim names, exception text or stack traces). E.g. a missing business claim → 401 `SESSION_INVALID` "Please sign in again".
 2. `code` is a stable UPPER_SNAKE extension member; clients switch on it. Auth codes come from `AuthResult.ErrorCode` (`INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `REFRESH_INVALID`, …).
 3. New error → add a factory in `ApiProblems` + a test asserting `code` (see `AuthEndpointTests.Login_WrongPassword_ReturnsProblemDetailsWithCode`).
-4. Client mapping: [content-and-states.md §5](../needlebase-uiux/content-and-states.md#5-api-errors-to-user-copy).
+4. Use-case services return typed results, never English strings: `OrderResult`/`OrderError` → `ApiProblems.ForOrder` (NotFound/Customer/Measurement → 404; `ORDER_CONFLICT`, `ORDER_LOCKED` → 409; `ORDER_STATUS_INVALID`, `ASSIGNEE_INVALID`, `ORDER_TOTAL_MISMATCH` → 400; other domain validation → 400 `VALIDATION_FAILED`). `CustomerDeleteResult` → 404 or 409 `CUSTOMER_HAS_ORDERS` (pre-check + defensive `DbUpdateException` catch). Copy: `Application/Contracts/Errors/OrderErrorMessages.cs`.
+5. **Search** is case-insensitive: `Application/Common/SearchText` (`Lower` for names via `ToLower().Contains`, `Ref` trims `#` and upper-cases for refs). Application can't reference Npgsql `EF.Functions.ILike`, so `lower(...) LIKE` is used on both Postgres and SQLite.
+6. Client mapping: [content-and-states.md §5](../needlebase-uiux/content-and-states.md#5-api-errors-to-user-copy).
 
 ## Local
 

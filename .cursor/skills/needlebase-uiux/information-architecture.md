@@ -39,7 +39,7 @@ Business (workspace)
 |-----|---------|------------------|----------------|--------|
 | **Home** | “What do I need to do today?” | Due/overdue, ready for collection, balances, recent activity, quick actions | `Home` | ✓ (Slice 2) |
 | **Customers** | Find & manage people | List → Profile (Overview, Measurements, Orders, Images/Notes) → Add/Edit | `People` | ✓ |
-| **Orders** | Daily production work | List/filter → Detail → Status update; Create/Edit multi-step | `ReceiptLong` | Placeholder page — planned Slice 3 |
+| **Orders** | Daily production work | List/filter → Detail → Status update; Create multi-step | `ReceiptLong` | ✓ (Slice 3) |
 | **Payments** | Money in | Balances, record payment, history, receipt share | `Payments` | Planned Slice 5 |
 | **More** | Secondary | Measurements hub (optional shortcut), Staff*, Settings, Sync details, Subscription, Help | `Menu` | Placeholder + About (Terms/Privacy) built; rest planned |
 

@@ -32,6 +32,9 @@ Sync details: [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md).
 12. **Inspect before coding:** Follow [engineering-review](../needlebase-architecture/engineering-review.md): inspect first, fix root cause (no parallel workarounds), remove obsolete code, verify with evidence.
 13. **Icons:** UI chrome (Shell tabs, toolbars, list glyphs, empty states) uses **MauiIcons.Material** only — never PNG/SVG MauiImage tab or button icons. See [tab-icons.md](tab-icons.md).
 14. **Shell nav bar hidden app-wide:** Set `Shell.NavBarIsVisible="False"` on `AppShell` **and** on every `ContentPage` (plus `NavigationPage.HasNavigationBar="False"`). Titles live **in-page** only — never a Shell title strip. Auth `ShellContent` also keeps `Shell.TabBarIsVisible="False"`. **Pushed** detail/edit pages must provide an in-page **Back** control (`GoBackCommand` → `GoToAsync("..")`) with MauiIcons `ArrowBack` — do not rely on the Shell back button.
+15. **No exception text in UI:** local services return friendly copy (`OrderErrorMessages.For(code)`), log technical detail with `Debug.WriteLine`. Never return `ex.Message`.
+16. **Local guards mirror the API:** e.g. `ICustomerLocalService.DeleteAsync` returns `CustomerDeleteResult.HasOrders` when orders exist; order totals/refs use the shared `OrderLineFactory` rules.
+17. **Secondary buttons:** use `Style="{StaticResource SecondaryButton}"` (white, `Gray300` border, Charcoal text); don't hand-colour buttons with `PrimaryLight`.
 
 ## MVVM
 
@@ -39,7 +42,7 @@ All VMs inherit `BaseViewModel` (`IsBusy`, `Title`, `CanSubmit`). Patterns, busy
 
 ## Shell & IA (mobile)
 
-Bottom nav: **Home | Customers | Orders | Payments | More** + FAB **New Order** (planned Slice 3).  
+Bottom nav: **Home | Customers | Orders | Payments | More** + FAB **New Order**.  
 Role-filter nav (hide Staff/Payments as per domain skill). Match [needlebase-uiux information-architecture](../needlebase-uiux/information-architecture.md).
 
 ### Chrome (all screens)

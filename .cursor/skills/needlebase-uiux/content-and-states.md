@@ -51,23 +51,23 @@ Never use a toast for errors the user must act on. Never stack dialogs. A destru
 | Form | Disable primary button + spinner (`IsBusy`) [code] | n/a | Inline field + page error | Save locally, toast "Saved on this device" |
 | Dashboard/Home | Skeleton cards | Honest zeros + "Nothing needs attention right now" [code] | Card-level error; other cards still render | Works from local data |
 | Auth | Button busy state [code] | n/a | Page-level message (ProblemDetails `detail`, or the client's generic copy) | "You're offline. Connect to sign in." (login needs network; existing session keeps working offline) |
-| Placeholder (unbuilt tab) | n/a | `OrdersPlaceholderPage`: icon + h1 + "arrives in the next slice" [code] | n/a | n/a |
+| Placeholder (unbuilt tab) | n/a | Payments/More placeholders: icon + h1 + "arrives in a later slice" [code] | n/a | n/a |
 
 Skeletons: grey `Gray200` blocks matching the final layout. No shimmer animation on low-end devices [rec].
 
 ## 5. API errors to user copy
 
-Api returns **RFC 9457 ProblemDetails** (`application/problem+json`) for every error [code: `NeedleBase.Api/Http/ApiProblems.cs`, `AddProblemDetails` + `UseStatusCodePages` + `UseExceptionHandler` in Program.cs]. Fields: `title` (short, user-safe), `detail` (one user-safe sentence), `status`, `code` (stable machine id, e.g. `INVALID_CREDENTIALS`, `CUSTOMER_NOT_FOUND`, `CUSTOMER_CONFLICT`, `SESSION_INVALID`, `VALIDATION_FAILED`, `RATE_LIMITED`), `errors` (validation only), `traceId`.
+Api returns **RFC 9457 ProblemDetails** (`application/problem+json`) for every error [code: `NeedleBase.Api/Http/ApiProblems.cs`, `AddProblemDetails` + `UseStatusCodePages` + `UseExceptionHandler` in Program.cs]. Fields: `title` (short, user-safe), `detail` (one user-safe sentence), `status`, `code` (stable machine id, e.g. `INVALID_CREDENTIALS`, `CUSTOMER_NOT_FOUND`, `CUSTOMER_CONFLICT`, `CUSTOMER_HAS_ORDERS`, `ORDER_LOCKED`, `ORDER_STATUS_INVALID`, `ASSIGNEE_INVALID`, `ORDER_TOTAL_MISMATCH`, `SESSION_INVALID`, `VALIDATION_FAILED`, `RATE_LIMITED`), `errors` (validation only), `traceId`.
 Client rules:
 - Switch on `code` for behaviour. Show `detail` (or `title`) as copy; for `errors`, map each key to its field's inline error.
 - 409 conflicts appear inline on the relevant field when possible.
 - Network/timeout: "Couldn't reach NeedleBase. Check your connection." Never show exception text (`ex.Message`).
 - 5xx outside Development is always "Something went wrong on our side. Please try again."
-[code] Auth copy per `code` lives in one place: `NeedleBase.Application/Contracts/Errors/AuthErrorMessages.cs` (used by mobile `AuthService.LastErrorMessage` and web `ApiAuthService.LastErrorMessage`). Registration failures never reveal whether an email exists (`REGISTER_FAILED` is generic by design).
+[code] Auth copy per `code` lives in one place: `NeedleBase.Application/Contracts/Errors/AuthErrorMessages.cs` (used by mobile `AuthService.LastErrorMessage` and web `ApiAuthService.LastErrorMessage`). Registration failures never reveal whether an email exists (`REGISTER_FAILED` is generic by design). Order copy per `code`: `OrderErrorMessages.cs` (API `detail` and mobile local errors use the same text).
 
 ## 6. Status names & colours (single source)
 
-From domain: `New → Cutting → Sewing → Fitting → Ready → Collected`, plus `Cancelled`. **Overdue** is derived, a badge next to the status. All [planned Slice 3]. UI label "Ready" is shown as **Ready to collect** (matches Home "READY TO COLLECT" [code]).
+From domain: `New → Cutting → Sewing → Fitting → Ready → Collected`, plus `Cancelled`. **Overdue** is derived, a badge next to the status. [code: `Mobile/Helpers/OrderStatusPresentation.cs`, Home stages use `Accent(status)`]. Orders saved offline say **"Saved on this device"** (Slice 3 is local-only on mobile until Slice 4 sync). UI label "Ready" is shown as **Ready to collect** (matches Home "READY TO COLLECT" [code]).
 
 | Status | Colour token | Icon (Material) [rec] |
 |--------|--------------|------------------------|
@@ -78,7 +78,7 @@ From domain: `New → Cutting → Sewing → Fitting → Ready → Collected`, p
 | Ready to collect | white on `PrimaryDark` | `CheckCircle` |
 | Collected | `Gray600` muted | `Done` |
 | Cancelled | `SemanticError` muted | `Cancel` |
-| Overdue (badge) | `SemanticWarning` | `Schedule` |
+| Overdue (badge) | `SemanticOverdue` on `SemanticErrorLight` (distinct from Fitting) | `Schedule` |
 
 Chip = icon + text always. Check icon names exist in `MauiIcons.Material.MaterialIcons` before use.
 

@@ -36,6 +36,9 @@ Tests take `IClassFixture<NeedleBaseApiFactory>`, register a fresh business with
 | Release API URL (mobile) | placeholder by default; https only | ✓ `ApiEndpointTests` |
 | Token honesty (mobile) | transient refresh failure keeps tokens | ✓ `AuthServiceTokenHonestyTests` |
 | Offline local save | save → reload → present | ✓ `CustomerLocalServiceTests` |
+| Orders (slice 3) | typed codes `ORDER_LOCKED`/`ORDER_STATUS_INVALID`/`ASSIGNEE_INVALID`/`ORDER_TOTAL_MISMATCH`; server line ids; 8-char ref; case-insensitive search; `CUSTOMER_HAS_ORDERS` | ✓ `OrderEndpointTests`, `Domain.Tests/OrderTests` |
+| Mobile orders | friendly errors (no `ex.Message`), local delete guard, totals, search | ✓ `OrderLocalServiceTests` |
+| Order helpers | error copy, domain-code mapping, Accra "today", ref normalising | ✓ `Application.Tests/OrderSupportTests` |
 | Every new entity (slice 3+) | tenancy isolation + idempotent create + ProblemDetails 404/409 | required |
 | Sync (slice 4) | offline create → reopen → sync once, no duplicate | planned |
 | Payments (slice 5) | conflicting edits → conflict payload, never silent overwrite | planned |
