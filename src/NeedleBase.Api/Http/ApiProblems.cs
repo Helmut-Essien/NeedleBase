@@ -84,6 +84,10 @@ public static class ApiProblems
         Create(ctx, StatusCodes.Status400BadRequest, code, $"Couldn't save {what}",
             $"We couldn't save the {what}. Check the details and try again.");
 
+    public static ObjectResult SyncCursorInvalid(HttpContext ctx) =>
+        Create(ctx, StatusCodes.Status400BadRequest, NeedleBase.Application.Contracts.Sync.SyncErrorCodes.CursorInvalid,
+            "Sync needs to start again", "Your device will download your data again. Please try syncing once more.");
+
     public static ObjectResult SessionInvalid(HttpContext ctx) =>
         Create(ctx, StatusCodes.Status401Unauthorized, "SESSION_INVALID", "Please sign in again",
             "Your session is no longer valid. Please sign in again.");

@@ -31,6 +31,8 @@ public static class DependencyInjection
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IMeasurementService, MeasurementService>();
         services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<ISyncService, NeedleBase.Application.Sync.SyncService>();
+        services.AddHostedService<Sync.TombstoneCleanupService>();
         services.AddSingleton<DatabaseHealthCheck>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");

@@ -17,4 +17,8 @@ public static class FieldLimits
     public const int OrderDisplayRef = 8;
     public const int AssignedToUserId = 450;
     public const int OrderLineQuantityMax = 99;
+    public const int SyncEntityType = 20;
+    public const int SyncOperation = 10;
+    public const int SyncPushBatchMax = 200;
+    public const int SyncPullLimitMax = 500;
 }

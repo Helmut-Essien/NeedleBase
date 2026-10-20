@@ -224,6 +224,15 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<DateTimeOffset>("SyncModifiedUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<long>("SyncTxId")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BusinessId");
@@ -232,7 +241,54 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("BusinessId", "Phone");
 
+                    b.HasIndex("BusinessId", "SyncModifiedUtc", "Id");
+
+                    b.HasIndex("BusinessId", "SyncTxId", "Id");
+
                     b.ToTable("Customers", (string)null);
+                });
+
+            modelBuilder.Entity("NeedleBase.Domain.Entities.DeletedItem", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<string>("BusinessId")
+                        .IsRequired()
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<DateTimeOffset>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EntityId")
+                        .IsRequired()
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<long>("SyncTxId")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("DeletedAtUtc");
+
+                    b.HasIndex("BusinessId", "DeletedAtUtc", "Id");
+
+                    b.HasIndex("BusinessId", "EntityType", "EntityId");
+
+                    b.HasIndex("BusinessId", "SyncTxId", "Id");
+
+                    b.ToTable("DeletedItems", (string)null);
                 });
 
             modelBuilder.Entity("NeedleBase.Domain.Entities.MeasurementProfile", b =>
@@ -271,6 +327,15 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<DateTimeOffset>("SyncModifiedUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<long>("SyncTxId")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bigint");
+
                     b.Property<string>("Unit")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -283,6 +348,10 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.HasIndex("CustomerId");
 
                     b.HasIndex("BusinessId", "CustomerId", "MeasuredAtUtc");
+
+                    b.HasIndex("BusinessId", "SyncModifiedUtc", "Id");
+
+                    b.HasIndex("BusinessId", "SyncTxId", "Id");
 
                     b.ToTable("MeasurementProfiles", (string)null);
                 });
@@ -333,6 +402,15 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<DateTimeOffset>("SyncModifiedUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<long>("SyncTxId")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("bigint");
+
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -353,6 +431,10 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.HasIndex("BusinessId", "DueDate");
 
                     b.HasIndex("BusinessId", "Status");
+
+                    b.HasIndex("BusinessId", "SyncModifiedUtc", "Id");
+
+                    b.HasIndex("BusinessId", "SyncTxId", "Id");
 
                     b.ToTable("Orders", (string)null);
                 });
@@ -629,6 +711,15 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("NeedleBase.Domain.Entities.Customer", b =>
+                {
+                    b.HasOne("NeedleBase.Domain.Entities.Business", null)
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NeedleBase.Domain.Entities.DeletedItem", b =>
                 {
                     b.HasOne("NeedleBase.Domain.Entities.Business", null)
                         .WithMany()
