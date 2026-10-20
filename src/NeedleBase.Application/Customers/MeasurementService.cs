@@ -99,6 +99,7 @@ public sealed class MeasurementService : IMeasurementService
         var measuredAt = request.MeasuredAtUtc ?? now;
         try
         {
+            AmountRules.EnsureMeasurements(request.Unit, request.Fields);
             var fieldsJson = MeasurementFieldsSerializer.Serialize(request.Fields);
             var entity = MeasurementProfile.Create(
                 id,
@@ -151,6 +152,7 @@ public sealed class MeasurementService : IMeasurementService
         var measuredAt = request.MeasuredAtUtc ?? entity.MeasuredAtUtc;
         try
         {
+            AmountRules.EnsureMeasurements(request.Unit, request.Fields);
             var fieldsJson = MeasurementFieldsSerializer.Serialize(request.Fields);
             entity.Update(
                 request.GarmentTemplate,

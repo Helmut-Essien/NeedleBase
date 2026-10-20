@@ -10,17 +10,32 @@ namespace NeedleBase.Application.Orders;
 /// </summary>
 public static class OrderLineFactory
 {
-    /// <summary>Returns null lines + <see cref="OrderError.MeasurementNotFound"/> if a profile id isn't this customer's.</summary>
+    /// <summary>
+    /// Returns null lines + <see cref="OrderError.MeasurementNotFound"/> if a profile id isn't this customer's and the
+    /// request carries no snapshot. A line that already carries its measurement values (e.g. synced from a device after
+    /// the profile was deleted) keeps them and drops the link: the snapshot, not the profile, is the order's record.
+    /// Throws <see cref="ArgumentException"/> for prices outside <see cref="AmountRules"/> or too many lines.
+    /// </summary>
     public static (List<OrderLine>? Lines, OrderError Error) Build(
         string businessId,
         string orderId,
         IReadOnlyList<CreateOrderLineRequest> requests,
         IReadOnlyDictionary<string, MeasurementProfile> profilesById)
     {
+        if (requests.Count > AmountRules.OrderLinesMax)
+        {
+            throw new ArgumentException($"An order can have at most {AmountRules.OrderLinesMax} lines.", nameof(requests));
+        }
+
         var lines = new List<OrderLine>(requests.Count);
         for (var i = 0; i < requests.Count; i++)
         {
             var req = requests[i];
+            if (AmountRules.CheckUnitPrice(req.UnitPrice) is { } priceError)
+            {
+                throw new ArgumentException(priceError, nameof(requests));
+            }
+
             var garmentTemplate = req.GarmentTemplate;
             var unit = req.Unit;
             var fieldsJson = MeasurementFieldsSerializer.Serialize(req.MeasurementFields ?? new Dictionary<string, decimal?>());
@@ -28,14 +43,20 @@ public static class OrderLineFactory
 
             if (profileId is not null)
             {
-                if (!profilesById.TryGetValue(profileId, out var profile))
+                if (profilesById.TryGetValue(profileId, out var profile))
+                {
+                    garmentTemplate = profile.GarmentTemplate;
+                    unit = profile.Unit;
+                    fieldsJson = profile.FieldsJson;
+                }
+                else if (req.MeasurementFields is { Count: > 0 })
+                {
+                    profileId = null; // profile gone: keep the line's own snapshot
+                }
+                else
                 {
                     return (null, OrderError.MeasurementNotFound);
                 }
-
-                garmentTemplate = profile.GarmentTemplate;
-                unit = profile.Unit;
-                fieldsJson = profile.FieldsJson;
             }
 
             lines.Add(OrderLine.Create(
