@@ -1,4 +1,5 @@
 using NeedleBase.Mobile.Data.Sync;
+using NeedleBase.Mobile.Data.Services;
 
 namespace NeedleBase.Mobile.Services;
 
@@ -52,6 +53,9 @@ public sealed class SyncService
     private DateTimeOffset _backoffUntil = DateTimeOffset.MinValue;
     private SyncChipState? _blockedState;
     private bool _sessionExpired;
+    private bool _stopped;
+    private CancellationTokenSource? _runCts;
+    private TaskCompletionSource? _idle;
 
     public SyncService(SyncEngine engine, IAuthService auth, IConnectivity connectivity)
         : this(engine, auth, connectivity, () => DateTimeOffset.UtcNow)
@@ -81,6 +85,11 @@ public sealed class SyncService
     /// <summary>Hook triggers and run once. Safe to call repeatedly (login after logout or re-sign-in).</summary>
     public void Start()
     {
+        lock (_gate)
+        {
+            _stopped = false;
+        }
+
         if (!_started)
         {
             _started = true;
@@ -92,13 +101,38 @@ public sealed class SyncService
         Trigger();
     }
 
-    /// <summary>Stop scheduled work (sign out).</summary>
-    public void Stop()
+    /// <summary>
+    /// Sign-out step 1: block new runs, cancel the scheduled one and the one in flight, and wait until it has
+    /// finished, so nothing writes to the database after it is wiped. The wait happens outside the gate lock
+    /// (the run loop only takes the lock briefly), so it can't deadlock. <see cref="Start"/> unblocks.
+    /// </summary>
+    public async Task StopAsync()
     {
-        _delayCts?.Cancel();
+        Task idle;
+        lock (_gate)
+        {
+            _stopped = true;
+            _delayCts?.Cancel();
+            _runCts?.Cancel();
+            idle = _running && _idle is not null ? _idle.Task : Task.CompletedTask;
+        }
+
+        await idle.ConfigureAwait(false);
         ResetFailures();
         _lastBusinessId = null;
         Publish(new SyncQueueSummary(0, 0, 0, null), SyncChipState.Synced);
+    }
+
+    /// <summary>True between <see cref="StopAsync"/> and the next <see cref="Start"/>.</summary>
+    public bool IsStopped
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _stopped;
+            }
+        }
     }
 
     /// <summary>User tapped Sync now / Retry: failed items go back to the queue and a run starts immediately.</summary>
@@ -137,6 +171,14 @@ public sealed class SyncService
 
         await _engine.DiscardAsync(businessId, itemId).ConfigureAwait(false);
         Trigger();
+    }
+
+    public async Task<DiscardImpact> GetDiscardImpactAsync(string itemId)
+    {
+        var businessId = await _auth.GetBusinessIdAsync().ConfigureAwait(false);
+        return string.IsNullOrWhiteSpace(businessId)
+            ? new DiscardImpact(false, 0, 0)
+            : await _engine.GetDiscardImpactAsync(businessId, itemId).ConfigureAwait(false);
     }
 
     public async Task<int> PendingCountAsync()
@@ -208,8 +250,14 @@ public sealed class SyncService
 
     public async Task RunAsync()
     {
+        CancellationToken token;
         lock (_gate)
         {
+            if (_stopped)
+            {
+                return;
+            }
+
             if (_running)
             {
                 _rerun = true;
@@ -218,25 +266,43 @@ public sealed class SyncService
 
             _running = true;
             _rerun = false;
+            _runCts = new CancellationTokenSource();
+            _idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            token = _runCts.Token;
         }
 
-        while (true)
+        try
         {
-            await RunOnceAsync().ConfigureAwait(false);
+            while (true)
+            {
+                await RunOnceAsync(token).ConfigureAwait(false);
+                lock (_gate)
+                {
+                    if (!_rerun || _stopped)
+                    {
+                        return;
+                    }
+
+                    _rerun = false;
+                }
+            }
+        }
+        finally
+        {
+            TaskCompletionSource? idle;
             lock (_gate)
             {
-                if (!_rerun)
-                {
-                    _running = false;
-                    return;
-                }
-
-                _rerun = false;
+                _running = false;
+                _runCts?.Dispose();
+                _runCts = null;
+                idle = _idle;
             }
+
+            idle?.TrySetResult();
         }
     }
 
-    private async Task RunOnceAsync()
+    private async Task RunOnceAsync(CancellationToken token)
     {
         string? businessId;
         try
@@ -269,10 +335,14 @@ public sealed class SyncService
         await PublishAsync(businessId, SyncChipState.Syncing).ConfigureAwait(false);
         try
         {
-            await _engine.RunAsync(businessId).ConfigureAwait(false);
+            await _engine.RunAsync(businessId, token).ConfigureAwait(false);
             _failures = 0;
             _backoffUntil = DateTimeOffset.MinValue;
             _lastError = null;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            return; // stopped (sign-out): the next session starts fresh
         }
         catch (SyncSessionExpiredException)
         {
@@ -299,7 +369,7 @@ public sealed class SyncService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Sync failed: {ex}");
-            _lastError = "Something went wrong while syncing.";
+            _lastError = LocalStorageErrors.Describe(ex) ?? "Something went wrong while syncing.";
             BackOff(null);
         }
 

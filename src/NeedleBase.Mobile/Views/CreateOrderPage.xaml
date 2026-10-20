@@ -293,6 +293,10 @@
                             IsEnabled="{Binding HasDueDate}"
                             TextColor="{StaticResource Charcoal}"
                             BackgroundColor="White" />
+                <Label Text="{Binding DueDateWarning}"
+                       IsVisible="{Binding HasDueDateWarning}"
+                       FontSize="13"
+                       TextColor="{StaticResource SemanticOverdue}" />
 
                 <Label Text="Notes" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
                 <Editor Text="{Binding Notes}"

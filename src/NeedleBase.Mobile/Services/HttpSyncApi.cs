@@ -86,7 +86,13 @@ public sealed class HttpSyncApi : ISyncApi
             if (response.StatusCode == HttpStatusCode.BadRequest)
             {
                 var text = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                if (text.Contains(SyncErrorCodes.CursorInvalid, StringComparison.Ordinal))
+                var code = ReadCode(text);
+                if (code == SyncErrorCodes.EpochChanged)
+                {
+                    throw new SyncCursorInvalidException(serverReset: true);
+                }
+
+                if (code == SyncErrorCodes.CursorInvalid || text.Contains(SyncErrorCodes.CursorInvalid, StringComparison.Ordinal))
                 {
                     throw new SyncCursorInvalidException();
                 }
@@ -104,7 +110,8 @@ public sealed class HttpSyncApi : ISyncApi
             }
 
             // 5xx, 429, other 4xx: keep the queue and back off (at least as long as Retry-After says).
-            throw new SyncTransientException($"Sync failed ({(int)response.StatusCode}).", retryAfter: RetryAfter(response));
+            throw new SyncTransientException($"Sync failed ({(int)response.StatusCode}).", retryAfter: RetryAfter(response),
+                rateLimited: response.StatusCode == HttpStatusCode.TooManyRequests);
         }
     }
 }

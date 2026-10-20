@@ -71,6 +71,9 @@ public sealed class DeviceInfo
     /// Rows the server no longer has are pruned when it completes. Survives app kills: the run restarts.
     /// </summary>
     public bool ResyncPending { get; set; }
+
+    /// <summary>The pending resync follows a server restore: re-upload what the server lacks instead of pruning it (v6).</summary>
+    public bool ResyncRecover { get; set; }
 }
 
 /// <summary>

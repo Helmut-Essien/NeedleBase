@@ -142,6 +142,22 @@ public static class LocalSchemaMigrator
         CREATE INDEX IF NOT EXISTS "IX_SyncDeferred_BusinessId_ParentId" ON "SyncDeferred" ("BusinessId", "ParentId");
         """;
 
+    /// <summary>
+    /// Version 6 = second audit: server-known flag (adoption of rows from pre-sync builds; existing rows start
+    /// unknown and are confirmed by one full resync) and accent-folded search keys (reset here, recomputed by
+    /// the backfill below, which only touches NULL keys and so is safe to rerun).
+    /// </summary>
+    private const string V6Adoption = """
+        ALTER TABLE "Customers" ADD COLUMN "ServerKnown" INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE "MeasurementProfiles" ADD COLUMN "ServerKnown" INTEGER NOT NULL DEFAULT 0;
+        ALTER TABLE "Orders" ADD COLUMN "ServerKnown" INTEGER NOT NULL DEFAULT 0;
+        CREATE INDEX IF NOT EXISTS "IX_Customers_Unknown" ON "Customers" ("BusinessId") WHERE "ServerKnown" = 0;
+        CREATE INDEX IF NOT EXISTS "IX_MeasurementProfiles_Unknown" ON "MeasurementProfiles" ("BusinessId") WHERE "ServerKnown" = 0;
+        CREATE INDEX IF NOT EXISTS "IX_Orders_Unknown" ON "Orders" ("BusinessId") WHERE "ServerKnown" = 0;
+        ALTER TABLE "DeviceInfo" ADD COLUMN "ResyncRecover" INTEGER NOT NULL DEFAULT 0;
+        UPDATE "Customers" SET "SearchName" = NULL;
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
@@ -150,6 +166,7 @@ public static class LocalSchemaMigrator
         V3CustomerSearch,
         V4Sync,
         V5SyncRecovery,
+        V6Adoption,
     ];
 
     public static int LatestVersion => Steps.Length;
@@ -228,15 +245,20 @@ public static class LocalSchemaMigrator
             return;
         }
 
+        // One transaction and one prepared command: large books (tens of thousands of customers) take well under a second.
         await using var tx = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+        await using var update = connection.CreateCommand();
+        update.Transaction = tx;
+        update.CommandText = "UPDATE \"Customers\" SET \"SearchName\" = $name, \"PhoneDigits\" = $phone WHERE \"Id\" = $id;";
+        AddParameter(update, "$name", string.Empty);
+        AddParameter(update, "$phone", string.Empty);
+        AddParameter(update, "$id", string.Empty);
+        update.Prepare();
         foreach (var (id, name, phone) in rows)
         {
-            await using var update = connection.CreateCommand();
-            update.Transaction = tx;
-            update.CommandText = "UPDATE \"Customers\" SET \"SearchName\" = $name, \"PhoneDigits\" = $phone WHERE \"Id\" = $id;";
-            AddParameter(update, "$name", CustomerSearchKeys.NameKey(name));
-            AddParameter(update, "$phone", CustomerSearchKeys.PhoneDigits(phone));
-            AddParameter(update, "$id", id);
+            update.Parameters["$name"].Value = CustomerSearchKeys.NameKey(name);
+            update.Parameters["$phone"].Value = CustomerSearchKeys.PhoneDigits(phone);
+            update.Parameters["$id"].Value = id;
             await update.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 

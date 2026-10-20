@@ -13,4 +13,7 @@ public interface ILocalDatabaseService
     /// cannot read prior tenant PII. Returns false if wipe fails.
     /// </summary>
     Task<bool> WipeAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Changes on this device that haven't reached the server (all businesses). Used before a wipe.</summary>
+    Task<int> CountUnsyncedAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
 }

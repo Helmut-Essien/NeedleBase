@@ -15,6 +15,7 @@ public partial class RegisterViewModel : BaseViewModel
     public RegisterViewModel(IAuthService authService, INavigationService navigation)
     {
         _authService = authService;
+        _authService.OtherAccountDataPrompt ??= AuthPrompts.OtherAccountAsync;
         _navigation = navigation;
         Title = "Register business";
 

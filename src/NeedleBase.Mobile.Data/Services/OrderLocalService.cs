@@ -285,6 +285,10 @@ public sealed class OrderLocalService : IOrderLocalService
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return (await GetByIdAsync(businessId, entity.Id, cancellationToken).ConfigureAwait(false), null);
         }
+        catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
+        {
+            return (null, LocalStorageErrors.StorageFullMessage);
+        }
         catch (ArgumentException ex)
         {
             return Fail(OrderLineFactory.FromException(ex), ex.Message);
@@ -319,6 +323,10 @@ public sealed class OrderLocalService : IOrderLocalService
             entity.SetStatus(status, DateTimeOffset.UtcNow);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return (await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false), null);
+        }
+        catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
+        {
+            return (null, LocalStorageErrors.StorageFullMessage);
         }
         catch (ArgumentException ex)
         {

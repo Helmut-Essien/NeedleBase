@@ -23,6 +23,12 @@ public sealed record SyncQueueEntry(
     string? Code,
     bool ServerCopyDeleted);
 
+/// <summary>Never-synced record being discarded, and the local children that go with it.</summary>
+public sealed record DiscardImpact(bool NeverSynced, int Measurements, int Orders)
+{
+    public int Children => Measurements + Orders;
+}
+
 /// <summary>
 /// One sync run = push queued changes (batches of <see cref="BatchSize"/>, parents first), then pull server
 /// changes page by page. Each page is applied in one SQLite transaction together with its cursor, with
@@ -45,11 +51,13 @@ public sealed class SyncEngine
     public async Task RunAsync(string businessId, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(businessId);
+        await AdoptAsync(businessId, cancellationToken).ConfigureAwait(false);
         await PushAsync(businessId, cancellationToken).ConfigureAwait(false);
 
         if (await IsResyncPendingAsync(businessId, cancellationToken).ConfigureAwait(false))
         {
             await ResyncAsync(businessId, cancellationToken).ConfigureAwait(false);
+            await PushAsync(businessId, cancellationToken).ConfigureAwait(false); // rows adopted by the resync
             return;
         }
 
@@ -57,9 +65,133 @@ public sealed class SyncEngine
         {
             await PullAsync(businessId, cancellationToken).ConfigureAwait(false);
         }
-        catch (SyncCursorInvalidException)
+        catch (SyncCursorInvalidException ex)
         {
-            await ResyncAsync(businessId, cancellationToken).ConfigureAwait(false);
+            // Expired cursor, or a new server epoch (database restored/moved): start over from scratch, once.
+            await ResyncAsync(businessId, recover: ex.ServerReset, cancellationToken).ConfigureAwait(false);
+            await PushAsync(businessId, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    // ------------------------------------------------------------------ adoption (rows from pre-sync builds)
+
+    /// <summary>
+    /// Finds rows that are neither server-known nor queued (written by a build without the sync queue, or
+    /// pulled before schema v6). On a device that never synced this business they can only be local, so they
+    /// are queued as creates. Otherwise one full resync decides: rows the server sends become server-known,
+    /// the rest are queued as creates (see <see cref="PruneAsync"/>). Safe to call every run: once every row is
+    /// known or queued it is a single indexed query.
+    /// </summary>
+    private async Task AdoptAsync(string businessId, CancellationToken ct)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+        var customers = await UnadoptedCustomers(db, businessId).Select(c => c.Id).ToListAsync(ct).ConfigureAwait(false);
+        var measurements = await UnadoptedMeasurements(db, businessId).Select(m => m.Id).ToListAsync(ct).ConfigureAwait(false);
+        var orders = await UnadoptedOrders(db, businessId).Select(o => o.Id).ToListAsync(ct).ConfigureAwait(false);
+        if (customers.Count + measurements.Count + orders.Count == 0)
+        {
+            return;
+        }
+
+        var info = await GetOrAddDeviceInfoAsync(db, businessId, ct).ConfigureAwait(false);
+        db.SuppressSyncQueue = true;
+        try
+        {
+            if (info.PullCursor is null && info.LastSyncUtc is null && !info.ResyncPending)
+            {
+                await QueueCreatesAsync(db, businessId, customers, measurements, orders, ct).ConfigureAwait(false);
+            }
+            else
+            {
+                info.ResyncPending = true;
+            }
+
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            db.SuppressSyncQueue = false;
+        }
+
+        LocalSyncSignals.RaiseQueueChanged();
+    }
+
+    private static IQueryable<Customer> UnadoptedCustomers(LocalDbContext db, string businessId) =>
+        db.Customers.Where(c => c.BusinessId == businessId && !EF.Property<bool>(c, LocalDbContext.ServerKnownColumn) &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Customer && q.EntityId == c.Id));
+
+    private static IQueryable<MeasurementProfile> UnadoptedMeasurements(LocalDbContext db, string businessId) =>
+        db.MeasurementProfiles.Where(m => m.BusinessId == businessId && !EF.Property<bool>(m, LocalDbContext.ServerKnownColumn) &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Measurement && q.EntityId == m.Id));
+
+    private static IQueryable<Order> UnadoptedOrders(LocalDbContext db, string businessId) =>
+        db.Orders.Where(o => o.BusinessId == businessId && !EF.Property<bool>(o, LocalDbContext.ServerKnownColumn) &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Order && q.EntityId == o.Id));
+
+    private static IQueryable<Customer> UnqueuedCustomers(LocalDbContext db, string businessId) =>
+        db.Customers.Where(c => c.BusinessId == businessId &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Customer && q.EntityId == c.Id));
+
+    private static IQueryable<MeasurementProfile> UnqueuedMeasurements(LocalDbContext db, string businessId) =>
+        db.MeasurementProfiles.Where(m => m.BusinessId == businessId &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Measurement && q.EntityId == m.Id));
+
+    private static IQueryable<Order> UnqueuedOrders(LocalDbContext db, string businessId) =>
+        db.Orders.Where(o => o.BusinessId == businessId &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Order && q.EntityId == o.Id));
+
+    /// <summary>Queues creates for the given unqueued rows (skips any that gained a queue item meanwhile).</summary>
+    private static async Task QueueCreatesAsync(LocalDbContext db, string businessId, IReadOnlyCollection<string> customerIds,
+        IReadOnlyCollection<string> measurementIds, IReadOnlyCollection<string> orderIds, CancellationToken ct, bool includeKnown = false)
+    {
+        // includeKnown: recover mode, where server-known rows the restored server lacks are re-uploaded too.
+        var now = DateTimeOffset.UtcNow;
+        var entities = new List<object>();
+        if (customerIds.Count > 0)
+        {
+            entities.AddRange(await (includeKnown ? UnqueuedCustomers(db, businessId) : UnadoptedCustomers(db, businessId)).Where(c => customerIds.Contains(c.Id)).ToListAsync(ct).ConfigureAwait(false));
+        }
+
+        if (measurementIds.Count > 0)
+        {
+            entities.AddRange(await (includeKnown ? UnqueuedMeasurements(db, businessId) : UnadoptedMeasurements(db, businessId)).Where(m => measurementIds.Contains(m.Id)).ToListAsync(ct).ConfigureAwait(false));
+        }
+
+        if (orderIds.Count > 0)
+        {
+            entities.AddRange(await (includeKnown ? UnqueuedOrders(db, businessId) : UnadoptedOrders(db, businessId)).Where(o => orderIds.Contains(o.Id)).Include(o => o.Lines)
+                .ToListAsync(ct).ConfigureAwait(false));
+        }
+
+        foreach (var entity in entities)
+        {
+            db.SyncQueue.Add(SyncQueueWriter.CreateItemFor(entity, now));
+        }
+    }
+
+    private static async Task MarkServerKnownAsync(LocalDbContext db, string businessId, IEnumerable<string> customerIds,
+        IEnumerable<string> measurementIds, IEnumerable<string> orderIds, CancellationToken ct)
+    {
+        var c = customerIds.ToList();
+        var m = measurementIds.ToList();
+        var o = orderIds.ToList();
+        if (c.Count > 0)
+        {
+            await db.Customers.Where(x => x.BusinessId == businessId && c.Contains(x.Id) && !EF.Property<bool>(x, LocalDbContext.ServerKnownColumn))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => EF.Property<bool>(x, LocalDbContext.ServerKnownColumn), true), ct).ConfigureAwait(false);
+        }
+
+        if (m.Count > 0)
+        {
+            await db.MeasurementProfiles.Where(x => x.BusinessId == businessId && m.Contains(x.Id) && !EF.Property<bool>(x, LocalDbContext.ServerKnownColumn))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => EF.Property<bool>(x, LocalDbContext.ServerKnownColumn), true), ct).ConfigureAwait(false);
+        }
+
+        if (o.Count > 0)
+        {
+            await db.Orders.Where(x => x.BusinessId == businessId && o.Contains(x.Id) && !EF.Property<bool>(x, LocalDbContext.ServerKnownColumn))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => EF.Property<bool>(x, LocalDbContext.ServerKnownColumn), true), ct).ConfigureAwait(false);
         }
     }
 
@@ -88,12 +220,38 @@ public sealed class SyncEngine
             }
 
             var request = new SyncPushRequest { Operations = batch.Select(ToOperation).ToList() };
-            var response = await _api.PushAsync(request, cancellationToken).ConfigureAwait(false);
+            var response = await WithRateLimitWaitAsync(ct => _api.PushAsync(request, ct), cancellationToken).ConfigureAwait(false);
             await ApplyPushResultsAsync(businessId, batch, response, cancellationToken).ConfigureAwait(false);
 
             if (batch.Count < BatchSize)
             {
                 return;
+            }
+        }
+    }
+
+    /// <summary>Longest Retry-After the engine sits out inside a run; longer ones end the run (normal backoff).</summary>
+    public static readonly TimeSpan MaxInlineRateLimitWait = TimeSpan.FromSeconds(30);
+
+    /// <summary>Waits between attempts are capped by <see cref="MaxInlineRateLimitWait"/>; tests shorten them.</summary>
+    public Func<TimeSpan, CancellationToken, Task> Delay { get; set; } = Task.Delay;
+
+    /// <summary>
+    /// A 429 means "not processed, slow down": wait Retry-After and send the same request again, so a big first
+    /// pull keeps going (pages already applied stay applied). Gives up after a few tries.
+    /// </summary>
+    private async Task<T> WithRateLimitWaitAsync<T>(Func<CancellationToken, Task<T>> call, CancellationToken ct)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return await call(ct).ConfigureAwait(false);
+            }
+            catch (SyncTransientException ex) when (ex.RateLimited && attempt < 10 &&
+                                                    (ex.RetryAfter ?? TimeSpan.FromSeconds(1)) <= MaxInlineRateLimitWait)
+            {
+                await Delay(ex.RetryAfter ?? TimeSpan.FromSeconds(1), ct).ConfigureAwait(false);
             }
         }
     }
@@ -201,6 +359,13 @@ public sealed class SyncEngine
             }
 
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            var appliedUpserts = sent.Where(s => s.Operation == SyncOperation.Upsert &&
+                results.TryGetValue(s.Id, out var r) && r.Status == SyncOpStatus.Applied).ToList();
+            await MarkServerKnownAsync(db, businessId,
+                appliedUpserts.Where(s => s.EntityType == SyncEntityType.Customer).Select(s => s.EntityId),
+                appliedUpserts.Where(s => s.EntityType == SyncEntityType.Measurement).Select(s => s.EntityId),
+                appliedUpserts.Where(s => s.EntityType == SyncEntityType.Order).Select(s => s.EntityId),
+                cancellationToken).ConfigureAwait(false);
             await ApplyDeferredAsync(db, businessId, cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -239,8 +404,8 @@ public sealed class SyncEngine
 
         while (true)
         {
-            var page = await _api.PullAsync(new SyncPullRequest { Cursor = cursor, Limit = BatchSize }, cancellationToken)
-                .ConfigureAwait(false);
+            var request = new SyncPullRequest { Cursor = cursor, Limit = BatchSize };
+            var page = await WithRateLimitWaitAsync(ct => _api.PullAsync(request, ct), cancellationToken).ConfigureAwait(false);
             seen?.Add(page);
             var last = !page.HasMore;
             await ApplyPageAsync(businessId, page, last && seen is not null ? seen : null, cancellationToken).ConfigureAwait(false);
@@ -257,13 +422,21 @@ public sealed class SyncEngine
     /// device has that the server no longer sends are pruned, unless they still have queued changes.
     /// If the app dies mid-way, <see cref="DeviceInfo.ResyncPending"/> makes the next run start over.
     /// </summary>
-    public async Task ResyncAsync(string businessId, CancellationToken cancellationToken = default)
+    public Task ResyncAsync(string businessId, CancellationToken cancellationToken = default) =>
+        ResyncAsync(businessId, recover: false, cancellationToken);
+
+    /// <param name="recover">
+    /// After a server restore (new epoch): rows the server lacks are re-uploaded (queued as creates), never
+    /// pruned. Sticky in <see cref="DeviceInfo.ResyncRecover"/> until the resync completes.
+    /// </param>
+    public async Task ResyncAsync(string businessId, bool recover, CancellationToken cancellationToken = default)
     {
         await using (var scope = _scopeFactory.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
             var info = await GetOrAddDeviceInfoAsync(db, businessId, cancellationToken).ConfigureAwait(false);
             info.ResyncPending = true;
+            info.ResyncRecover |= recover;
             info.PullCursor = null;
             await db.SyncDeferred.Where(d => d.BusinessId == businessId).ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
@@ -333,6 +506,8 @@ public sealed class SyncEngine
             }
 
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await MarkServerKnownAsync(db, businessId, page.Customers.Select(c => c.Id), page.Measurements.Select(m => m.Id),
+                page.Orders.Select(o => o.Id), cancellationToken).ConfigureAwait(false);
 
             if (page.Deleted.Count > 0)
             {
@@ -342,13 +517,13 @@ public sealed class SyncEngine
 
             await ApplyDeferredAsync(db, businessId, cancellationToken).ConfigureAwait(false);
 
-            if (pruneWith is not null)
-            {
-                await PruneAsync(db, businessId, pruneWith, cancellationToken).ConfigureAwait(false);
-            }
-
             // Cursor saved in the same transaction as the page: a kill can't leave them out of step.
             var info = await GetOrAddDeviceInfoAsync(db, businessId, cancellationToken).ConfigureAwait(false);
+            if (pruneWith is not null)
+            {
+                await PruneAsync(db, businessId, pruneWith, info.ResyncRecover, cancellationToken).ConfigureAwait(false);
+            }
+
             info.PullCursor = page.Cursor;
             if (!page.HasMore)
             {
@@ -356,6 +531,7 @@ public sealed class SyncEngine
                 if (pruneWith is not null)
                 {
                     info.ResyncPending = false;
+                    info.ResyncRecover = false;
                 }
             }
 
@@ -556,7 +732,12 @@ public sealed class SyncEngine
         item.ConflictServerJson = null;
     }
 
-    private static async Task PruneAsync(LocalDbContext db, string businessId, SeenIds seen, CancellationToken ct)
+    /// <summary>
+    /// After a full pull: rows the server didn't send and that have no queued change are either gone on the
+    /// server (server-known: delete here) or were never synced (not server-known: queue them as creates, so
+    /// work from pre-sync builds is uploaded rather than lost). A customer stays while anything kept needs it.
+    /// </summary>
+    private static async Task PruneAsync(LocalDbContext db, string businessId, SeenIds seen, bool recover, CancellationToken ct)
     {
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         var queue = await db.SyncQueue.AsNoTracking().Where(q => q.BusinessId == businessId)
@@ -564,18 +745,32 @@ public sealed class SyncEngine
         var keep = queue.Select(q => q.EntityId).Concat(queue.Where(q => q.ParentId != null).Select(q => q.ParentId!))
             .ToHashSet(StringComparer.Ordinal);
 
-        var orders = (await db.Orders.Where(o => o.BusinessId == businessId).Select(o => new { o.Id, o.CustomerId }).ToListAsync(ct)
-            .ConfigureAwait(false)).Where(o => !seen.Orders.Contains(o.Id) && !keep.Contains(o.Id)).Select(o => o.Id).ToList();
-        var measurementIds = (await db.MeasurementProfiles.Where(m => m.BusinessId == businessId).Select(m => m.Id).ToListAsync(ct)
-            .ConfigureAwait(false)).Where(id => !seen.Measurements.Contains(id) && !keep.Contains(id)).ToList();
-        var remainingOrderCustomers = (await db.Orders.Where(o => o.BusinessId == businessId && !orders.Contains(o.Id))
-            .Select(o => o.CustomerId).ToListAsync(ct).ConfigureAwait(false)).ToHashSet(StringComparer.Ordinal);
-        var customerIds = (await db.Customers.Where(c => c.BusinessId == businessId).Select(c => c.Id).ToListAsync(ct)
-            .ConfigureAwait(false)).Where(id => !seen.Customers.Contains(id) && !keep.Contains(id) && !remainingOrderCustomers.Contains(id)).ToList();
+        var orders = (await db.Orders.Where(o => o.BusinessId == businessId)
+            .Select(o => new { o.Id, o.CustomerId, Known = !recover && EF.Property<bool>(o, LocalDbContext.ServerKnownColumn) })
+            .ToListAsync(ct).ConfigureAwait(false)).Where(o => !seen.Orders.Contains(o.Id) && !keep.Contains(o.Id)).ToList();
+        var measurements = (await db.MeasurementProfiles.Where(m => m.BusinessId == businessId)
+            .Select(m => new { m.Id, m.CustomerId, Known = !recover && EF.Property<bool>(m, LocalDbContext.ServerKnownColumn) })
+            .ToListAsync(ct).ConfigureAwait(false)).Where(m => !seen.Measurements.Contains(m.Id) && !keep.Contains(m.Id)).ToList();
+        var deleteOrders = orders.Where(o => o.Known).Select(o => o.Id).ToList();
+        var adoptOrders = orders.Where(o => !o.Known).Select(o => o.Id).ToList();
+        var deleteMeasurements = measurements.Where(m => m.Known).Select(m => m.Id).ToList();
+        var adoptMeasurements = measurements.Where(m => !m.Known).ToList();
 
-        await db.Orders.Where(o => o.BusinessId == businessId && orders.Contains(o.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
-        await db.MeasurementProfiles.Where(m => m.BusinessId == businessId && measurementIds.Contains(m.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
-        await db.Customers.Where(c => c.BusinessId == businessId && customerIds.Contains(c.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        var neededCustomers = (await db.Orders.Where(o => o.BusinessId == businessId && !deleteOrders.Contains(o.Id))
+            .Select(o => o.CustomerId).ToListAsync(ct).ConfigureAwait(false))
+            .Concat(adoptMeasurements.Select(m => m.CustomerId))
+            .ToHashSet(StringComparer.Ordinal);
+        var customers = (await db.Customers.Where(c => c.BusinessId == businessId)
+            .Select(c => new { c.Id, Known = !recover && EF.Property<bool>(c, LocalDbContext.ServerKnownColumn) })
+            .ToListAsync(ct).ConfigureAwait(false)).Where(c => !seen.Customers.Contains(c.Id) && !keep.Contains(c.Id)).ToList();
+        var adoptCustomers = customers.Where(c => !c.Known).Select(c => c.Id).ToList();
+        var deleteCustomers = customers.Where(c => c.Known && !neededCustomers.Contains(c.Id)).Select(c => c.Id).ToList();
+
+        await db.Orders.Where(o => o.BusinessId == businessId && deleteOrders.Contains(o.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        await db.MeasurementProfiles.Where(m => m.BusinessId == businessId && deleteMeasurements.Contains(m.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        await db.Customers.Where(c => c.BusinessId == businessId && deleteCustomers.Contains(c.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        await QueueCreatesAsync(db, businessId, adoptCustomers, adoptMeasurements.Select(m => m.Id).ToList(), adoptOrders, ct, includeKnown: recover).ConfigureAwait(false);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
     /// <summary>Upserts the server's copy into SQLite using preloaded <paramref name="state"/>. Caller sets SuppressSyncQueue.</summary>
@@ -604,6 +799,7 @@ public sealed class SyncEngine
             var entry = db.Entry(entity);
             entry.Property(c => c.CreatedAtUtc).CurrentValue = customer.CreatedAtUtc;
             entry.Property(c => c.DateModifiedUtc).CurrentValue = customer.DateModifiedUtc;
+            entry.Property(LocalDbContext.ServerKnownColumn).CurrentValue = true;
         }
 
         if (measurement is not null && state.HasCustomer(measurement.CustomerId))
@@ -622,6 +818,7 @@ public sealed class SyncEngine
             }
 
             db.Entry(entity).Property(m => m.DateModifiedUtc).CurrentValue = measurement.DateModifiedUtc;
+            db.Entry(entity).Property(LocalDbContext.ServerKnownColumn).CurrentValue = true;
         }
 
         if (order is not null && state.HasCustomer(order.CustomerId))
@@ -659,6 +856,7 @@ public sealed class SyncEngine
             entry.Property(o => o.Notes).CurrentValue = order.Notes;
             entry.Property(o => o.CreatedAtUtc).CurrentValue = order.CreatedAtUtc;
             entry.Property(o => o.DateModifiedUtc).CurrentValue = order.DateModifiedUtc;
+            entry.Property(LocalDbContext.ServerKnownColumn).CurrentValue = true;
         }
     }
 
@@ -742,6 +940,34 @@ public sealed class SyncEngine
         await db.SyncQueue.Where(q => q.BusinessId == businessId && q.State == SyncQueueState.Failed)
             .ExecuteUpdateAsync(s => s.SetProperty(q => q.State, SyncQueueState.Pending).SetProperty(q => q.LastError, (string?)null),
                 cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// What <see cref="DiscardAsync"/> would delete besides the change itself: a never-synced customer takes its
+    /// measurements and orders on this device with it. Shown to the user before they confirm.
+    /// </summary>
+    public async Task<DiscardImpact> GetDiscardImpactAsync(string businessId, string itemId, CancellationToken cancellationToken = default)
+    {
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+        var item = await db.SyncQueue.AsNoTracking().FirstOrDefaultAsync(q => q.BusinessId == businessId && q.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+        if (item is null)
+        {
+            return new DiscardImpact(false, 0, 0);
+        }
+
+        var neverSynced = item.Operation == SyncOperation.Upsert && item.BaseModifiedUtc is null;
+        if (!neverSynced || item.EntityType != SyncEntityType.Customer)
+        {
+            return new DiscardImpact(neverSynced, 0, 0);
+        }
+
+        var measurements = await db.MeasurementProfiles.CountAsync(m => m.BusinessId == businessId && m.CustomerId == item.EntityId, cancellationToken)
+            .ConfigureAwait(false);
+        var orders = await db.Orders.CountAsync(o => o.BusinessId == businessId && o.CustomerId == item.EntityId, cancellationToken)
+            .ConfigureAwait(false);
+        return new DiscardImpact(true, measurements, orders);
     }
 
     /// <summary>

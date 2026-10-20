@@ -140,6 +140,10 @@ public sealed class CustomerLocalService : ICustomerLocalService
                 await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 return (await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false), null);
             }
+            catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
+            {
+                return (null, LocalStorageErrors.StorageFullMessage);
+            }
             catch (ArgumentException ex)
             {
                 return (null, ex.Message);
@@ -159,6 +163,10 @@ public sealed class CustomerLocalService : ICustomerLocalService
             db.Customers.Add(entity);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return (MapDetail(entity, 0), null);
+        }
+        catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
+        {
+            return (null, LocalStorageErrors.StorageFullMessage);
         }
         catch (ArgumentException ex)
         {
@@ -190,6 +198,10 @@ public sealed class CustomerLocalService : ICustomerLocalService
             entity.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, DateTimeOffset.UtcNow);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return (await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false), null);
+        }
+        catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
+        {
+            return (null, LocalStorageErrors.StorageFullMessage);
         }
         catch (ArgumentException ex)
         {

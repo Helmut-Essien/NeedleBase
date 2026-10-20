@@ -22,6 +22,27 @@ public sealed class LocalDatabaseService : ILocalDatabaseService
         await LocalSchemaMigrator.MigrateAsync(db, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task<int> CountUnsyncedAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+            var queued = await db.SyncQueue.CountAsync(cancellationToken).ConfigureAwait(false);
+            // Rows created before sync existed (never queued, never seen by the server) are unsynced too.
+            var queuedIds = db.SyncQueue.Select(q => q.EntityId);
+            var unadopted =
+                await db.Customers.CountAsync(c => !EF.Property<bool>(c, LocalDbContext.ServerKnownColumn) && !queuedIds.Contains(c.Id), cancellationToken).ConfigureAwait(false) +
+                await db.MeasurementProfiles.CountAsync(m => !EF.Property<bool>(m, LocalDbContext.ServerKnownColumn) && !queuedIds.Contains(m.Id), cancellationToken).ConfigureAwait(false) +
+                await db.Orders.CountAsync(o => !EF.Property<bool>(o, LocalDbContext.ServerKnownColumn) && !queuedIds.Contains(o.Id), cancellationToken).ConfigureAwait(false);
+            return queued + unadopted;
+        }
+        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            return 0; // no readable store: nothing to protect
+        }
+    }
+
     public async Task<bool> WipeAsync(CancellationToken cancellationToken = default)
     {
         try

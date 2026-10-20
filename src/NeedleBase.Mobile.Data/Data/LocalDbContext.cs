@@ -22,6 +22,13 @@ public sealed class LocalDbContext : DbContext
     public const string SearchNameColumn = "SearchName";
     public const string PhoneDigitsColumn = "PhoneDigits";
 
+    /// <summary>
+    /// Shadow flag (schema v6): true once the server is known to have the row (pulled, or a push was applied).
+    /// A row that is neither server-known nor queued was made by a build that had no sync queue; the engine
+    /// adopts it (queues it as a create) instead of pruning it.
+    /// </summary>
+    public const string ServerKnownColumn = "ServerKnown";
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         StampCustomerSearchKeys();
@@ -91,6 +98,8 @@ public sealed class LocalDbContext : DbContext
             e.Property<string>(PhoneDigitsColumn).HasMaxLength(FieldLimits.Phone);
             e.HasIndex(nameof(Customer.BusinessId), SearchNameColumn);
             e.HasIndex(nameof(Customer.BusinessId), PhoneDigitsColumn);
+            e.Property<bool>(ServerKnownColumn);
+            e.HasIndex(x => x.BusinessId, "IX_Customers_Unknown").HasFilter("\"ServerKnown\" = 0");
         });
 
         builder.Entity<MeasurementProfile>(e =>
@@ -106,6 +115,8 @@ public sealed class LocalDbContext : DbContext
             e.Property(x => x.Notes).HasMaxLength(FieldLimits.Notes);
             e.HasIndex(x => x.BusinessId);
             e.HasIndex(x => new { x.BusinessId, x.CustomerId, x.MeasuredAtUtc });
+            e.Property<bool>(ServerKnownColumn);
+            e.HasIndex(x => x.BusinessId, "IX_MeasurementProfiles_Unknown").HasFilter("\"ServerKnown\" = 0");
             e.HasOne<Customer>()
                 .WithMany()
                 .HasForeignKey(x => x.CustomerId)
@@ -130,6 +141,8 @@ public sealed class LocalDbContext : DbContext
             e.HasIndex(x => new { x.BusinessId, x.DisplayRef }).IsUnique();
             e.HasIndex(x => new { x.BusinessId, x.CustomerId });
             e.HasIndex(x => new { x.BusinessId, x.CreatedAtUtc });
+            e.Property<bool>(ServerKnownColumn);
+            e.HasIndex(x => x.BusinessId, "IX_Orders_Unknown").HasFilter("\"ServerKnown\" = 0");
             e.HasOne<Customer>()
                 .WithMany()
                 .HasForeignKey(x => x.CustomerId)

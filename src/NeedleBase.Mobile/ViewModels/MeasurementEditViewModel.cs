@@ -223,10 +223,17 @@ public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributabl
                 continue;
             }
 
-            if (!decimal.TryParse(field.ValueText, out var number))
+            if (!DecimalInput.TryParse(field.ValueText, out var number))
             {
-                field.Error = $"{field.Label} must be a number.";
+                field.Error = $"{field.Label} must be a number. {DecimalInput.Hint}";
                 ErrorMessage = field.Error;
+                return;
+            }
+
+            if (AmountRules.CheckMeasurement(Unit, field.Key, number) is { } rangeError)
+            {
+                field.Error = rangeError;
+                ErrorMessage = rangeError;
                 return;
             }
 
@@ -292,7 +299,7 @@ public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributabl
         foreach (var field in Fields)
         {
             if (string.IsNullOrWhiteSpace(field.ValueText) ||
-                !decimal.TryParse(field.ValueText, out var value))
+                !DecimalInput.TryParse(field.ValueText, out var value))
             {
                 continue;
             }
@@ -302,7 +309,7 @@ public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributabl
                 : fromUnit == MeasurementUnit.Inches && toUnit == MeasurementUnit.Centimetres
                     ? value * CmPerInch
                     : value;
-            field.ValueText = converted.ToString("0.##");
+            field.ValueText = DecimalInput.Format(decimal.Round(converted, 2));
         }
     }
 

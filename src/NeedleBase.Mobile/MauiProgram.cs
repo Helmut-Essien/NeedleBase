@@ -46,7 +46,7 @@ public static class MauiProgram
         builder.Services.AddDbContext<LocalDbContext>((sp, options) =>
         {
             var path = sp.GetRequiredService<LocalDbOptions>().DbPath;
-            options.UseSqlite($"Data Source={path};Cache=Shared");
+            options.UseSqlite(NeedleBase.Mobile.Data.Data.LocalDbConnection.Build(path));
         });
 
         builder.Services.AddHttpClient("AuthClient", client =>

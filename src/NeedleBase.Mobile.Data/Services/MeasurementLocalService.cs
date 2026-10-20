@@ -97,6 +97,7 @@ public sealed class MeasurementLocalService : IMeasurementLocalService
 
         try
         {
+            AmountRules.EnsureMeasurements(request.Unit, request.Fields);
             var fieldsJson = MeasurementFieldsSerializer.Serialize(request.Fields);
             var existing = await db.MeasurementProfiles
                 .FirstOrDefaultAsync(m => m.BusinessId == businessId && m.Id == id, cancellationToken)
@@ -131,6 +132,10 @@ public sealed class MeasurementLocalService : IMeasurementLocalService
             db.MeasurementProfiles.Add(entity);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return (MapDetail(entity), null);
+        }
+        catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
+        {
+            return (null, LocalStorageErrors.StorageFullMessage);
         }
         catch (ArgumentException ex)
         {

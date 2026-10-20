@@ -13,10 +13,13 @@ public interface ISyncApi
 /// Network/server trouble (offline, timeout, 5xx/429, refresh failed transiently). Retry later; keep the queue.
 /// <see cref="RetryAfter"/> is the server's Retry-After, when it sent one.
 /// </summary>
-public sealed class SyncTransientException(string message, Exception? inner = null, TimeSpan? retryAfter = null)
+public sealed class SyncTransientException(string message, Exception? inner = null, TimeSpan? retryAfter = null, bool rateLimited = false)
     : Exception(message, inner)
 {
     public TimeSpan? RetryAfter { get; } = retryAfter;
+
+    /// <summary>429: the request wasn't processed; the engine waits Retry-After and carries on within the run.</summary>
+    public bool RateLimited { get; } = rateLimited;
 }
 
 /// <summary>The session is no longer valid (refresh rejected). Keep the queue; the user must sign in.</summary>
@@ -32,4 +35,11 @@ public sealed class SyncRejectedException(string? code) : Exception("The server 
 }
 
 /// <summary>The server rejected the stored pull cursor (unreadable or older than tombstone retention): resync from scratch.</summary>
-public sealed class SyncCursorInvalidException() : Exception("Sync cursor rejected.");
+public sealed class SyncCursorInvalidException(bool serverReset = false) : Exception("Sync cursor rejected.")
+{
+    /// <summary>
+    /// The server's data was restored or moved (SYNC_EPOCH_CHANGED): records it no longer has are uploaded
+    /// again from this device instead of being deleted here.
+    /// </summary>
+    public bool ServerReset { get; } = serverReset;
+}

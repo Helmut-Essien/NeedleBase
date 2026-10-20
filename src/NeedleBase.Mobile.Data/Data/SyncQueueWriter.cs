@@ -109,14 +109,24 @@ internal static class SyncQueueWriter
 
     private static bool HasRealChange(EntityEntry entry) =>
         entry.Properties.Any(p => p.IsModified &&
-            p.Metadata.Name is not (LocalDbContext.SearchNameColumn or LocalDbContext.PhoneDigitsColumn) &&
+            p.Metadata.Name is not (LocalDbContext.SearchNameColumn or LocalDbContext.PhoneDigitsColumn or LocalDbContext.ServerKnownColumn) &&
             !Equals(p.OriginalValue, p.CurrentValue));
 
     private static DateTimeOffset? OriginalModified(EntityEntry entry) =>
         entry.State == EntityState.Added ? null : (DateTimeOffset?)entry.OriginalValues["DateModifiedUtc"];
 
+    /// <summary>A create item for a row that exists locally but was never queued (adoption; see LocalDbContext.ServerKnownColumn).</summary>
+    internal static SyncQueueItem CreateItemFor(object entity, DateTimeOffset now)
+    {
+        var (type, id, businessId, parentId, label, payload) = Describe(entity);
+        return NewItem(type, id, businessId, parentId, label, SyncOperation.Upsert, payload, null, now);
+    }
+
     private static (string Type, string Id, string BusinessId, string? ParentId, string Label, string Payload) Describe(EntityEntry entry) =>
-        entry.Entity switch
+        Describe(entry.Entity);
+
+    private static (string Type, string Id, string BusinessId, string? ParentId, string Label, string Payload) Describe(object entity) =>
+        entity switch
         {
             Customer c => (SyncEntityType.Customer, c.Id, c.BusinessId, null, c.Name, SyncJson.Serialize(SyncMapper.ToDto(c))),
             MeasurementProfile m => (SyncEntityType.Measurement, m.Id, m.BusinessId, m.CustomerId,

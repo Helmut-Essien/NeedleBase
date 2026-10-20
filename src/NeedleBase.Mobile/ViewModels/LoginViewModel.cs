@@ -15,6 +15,7 @@ public partial class LoginViewModel : BaseViewModel
     public LoginViewModel(IAuthService authService, INavigationService navigation)
     {
         _authService = authService;
+        _authService.OtherAccountDataPrompt ??= AuthPrompts.OtherAccountAsync;
         _navigation = navigation;
         Title = "Sign in";
 

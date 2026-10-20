@@ -36,9 +36,12 @@ public partial class HomePage : ContentPage
             return;
         }
 
+        // Stop and wait for any sync in flight first, so nothing is written after the wipe.
+        await sync.StopAsync();
         var wiped = await auth.LogoutAsync();
         if (!wiped)
         {
+            sync.Start(); // still signed in: carry on syncing
             await DisplayAlert(
                 "Couldn't sign out",
                 "Local data couldn't be cleared. Stay signed in and try again.",
@@ -46,7 +49,6 @@ public partial class HomePage : ContentPage
             return;
         }
 
-        sync.Stop();
         // ShowLoginAsync clears singleton tab VM state (and pops stacks).
         await navigation.ShowLoginAsync();
     }

@@ -22,8 +22,8 @@ public sealed class CustomerPickRow
     private static FormattedString BuildName(string name, string? term)
     {
         var formatted = new FormattedString();
-        var index = CustomerSearchKeys.WordPrefixIndex(name, term);
-        if (index < 0 || term is null)
+        var (index, length) = CustomerSearchKeys.WordPrefixMatch(name, term);
+        if (index < 0)
         {
             formatted.Spans.Add(new Span { Text = name });
             return formatted;
@@ -36,12 +36,12 @@ public sealed class CustomerPickRow
 
         formatted.Spans.Add(new Span
         {
-            Text = name.Substring(index, term.Length),
+            Text = name.Substring(index, length),
             FontAttributes = FontAttributes.Bold,
             TextColor = ResolveColor("PrimaryDark", Color.FromArgb("#247A2B"))
         });
 
-        var rest = index + term.Length;
+        var rest = index + length;
         if (rest < name.Length)
         {
             formatted.Spans.Add(new Span { Text = name[rest..] });

@@ -27,6 +27,16 @@ public interface IAuthService
     Task<string?> GetAccessTokenAsync();
     Task StoreTokensAsync(TokenResponse tokens);
     Task StoreSessionAsync(AuthUserDto user);
+
+    /// <summary>
+    /// Asked before signing in as a different account/business would wipe unsynced changes (argument = how many).
+    /// Return true to continue (wipe), false to cancel the sign-in. When unset, such a sign-in is refused.
+    /// </summary>
+    Func<int, Task<bool>>? OtherAccountDataPrompt
+    {
+        get => null;
+        set { }
+    }
     Task<string?> GetBusinessIdAsync();
     Task<AuthUserDto?> GetCachedUserAsync();
 }

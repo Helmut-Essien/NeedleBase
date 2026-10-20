@@ -75,6 +75,11 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
+        if (!await AcceptOwnerChangeAsync(payload.User, payload.RefreshToken, cancellationToken))
+        {
+            return null;
+        }
+
         await StoreTokensAsync(new TokenResponse(payload.AccessToken, payload.RefreshToken));
         await StoreSessionAsync(payload.User);
         return payload.User;
@@ -93,6 +98,11 @@ public sealed class AuthService : IAuthService
 
         var payload = await response.Content.ReadFromJsonAsync<AuthResponsePayload>(JsonOptions, cancellationToken);
         if (payload?.AccessToken is null || payload.RefreshToken is null || payload.User is null)
+        {
+            return null;
+        }
+
+        if (!await AcceptOwnerChangeAsync(payload.User, payload.RefreshToken, cancellationToken))
         {
             return null;
         }
@@ -244,6 +254,44 @@ public sealed class AuthService : IAuthService
     {
         await _secureStorage.SetAsync(AccessTokenKey, tokens.AccessToken);
         await _secureStorage.SetAsync(RefreshTokenKey, tokens.RefreshToken);
+    }
+
+    public Func<int, Task<bool>>? OtherAccountDataPrompt { get; set; }
+
+    public const string OtherAccountCancelledMessage =
+        "Sign-in cancelled. The unsynced changes from the other account are still on this device.";
+
+    /// <summary>
+    /// A different account/business is about to replace this device's data. If that data includes unsynced
+    /// changes, the user must confirm; otherwise the new session is dropped (its refresh token revoked) and the
+    /// old data stays untouched.
+    /// </summary>
+    private async Task<bool> AcceptOwnerChangeAsync(AuthUserDto user, string refreshToken, CancellationToken cancellationToken)
+    {
+        var previous = await _secureStorage.GetAsync(LocalDataOwnerKey);
+        if (string.IsNullOrEmpty(previous) || previous == user.UserId + "|" + user.BusinessId)
+        {
+            return true;
+        }
+
+        var pending = await _localDatabase.CountUnsyncedAsync(cancellationToken);
+        if (pending == 0 || (OtherAccountDataPrompt is { } prompt && await prompt(pending)))
+        {
+            return true;
+        }
+
+        LastErrorMessage = OtherAccountCancelledMessage;
+        try
+        {
+            using var response = await CreateAuthClient().PostAsJsonAsync(
+                "api/auth/logout", new LogoutRequest(refreshToken), JsonOptions, cancellationToken);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            // Best effort: the unused token simply expires.
+        }
+
+        return false;
     }
 
     public async Task StoreSessionAsync(AuthUserDto user)

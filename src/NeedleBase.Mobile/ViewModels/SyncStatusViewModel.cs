@@ -98,8 +98,43 @@ public partial class SyncStatusViewModel : BaseViewModel
         await LoadItemsAsync();
     }
 
+    /// <summary>Asks the user (title, message, accept, cancel). Replaceable in tests.</summary>
+    public Func<string, string, string, string, Task<bool>> Confirm { get; set; } =
+        (title, message, accept, cancel) => Shell.Current.DisplayAlert(title, message, accept, cancel);
+
+    public static (string Title, string Message, string Accept) DiscardPrompt(DiscardImpact impact)
+    {
+        if (impact.Children > 0)
+        {
+            var parts = new List<string>();
+            if (impact.Orders > 0)
+            {
+                parts.Add(impact.Orders == 1 ? "1 order" : $"{impact.Orders} orders");
+            }
+
+            if (impact.Measurements > 0)
+            {
+                parts.Add(impact.Measurements == 1 ? "1 measurement" : $"{impact.Measurements} measurements");
+            }
+
+            return ("Discard customer and their records?",
+                $"This customer never synced. Discarding also deletes their {string.Join(" and ", parts)} from this device. This can't be undone.",
+                "Discard all");
+        }
+
+        return impact.NeverSynced
+            ? ("Discard this change?", "It never synced, so it will be deleted from this device. This can't be undone.", "Discard")
+            : ("Discard this change?", "Your change will be dropped and the version saved in NeedleBase will be shown again.", "Discard");
+    }
+
     private async Task DiscardAsync(SyncItemRow row)
     {
+        var (title, message, accept) = DiscardPrompt(await _sync.GetDiscardImpactAsync(row.Id));
+        if (!await Confirm(title, message, accept, "Cancel"))
+        {
+            return;
+        }
+
         await _sync.DiscardAsync(row.Id);
         await LoadItemsAsync();
     }

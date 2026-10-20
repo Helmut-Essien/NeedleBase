@@ -218,10 +218,20 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
     private string totalAmountText = "0";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DueDateWarning), nameof(HasDueDateWarning))]
     private DateTime dueDate = DateTime.Today.AddDays(7);
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DueDateWarning), nameof(HasDueDateWarning))]
     private bool hasDueDate = true;
+
+    /// <summary>Past due dates are allowed (back-entering an order) but flagged, not blocked.</summary>
+    public string? DueDateWarning =>
+        HasDueDate && DateOnly.FromDateTime(DueDate.Date) < BusinessTime.Today(DateTimeOffset.UtcNow)
+            ? "Due date is in the past."
+            : null;
+
+    public bool HasDueDateWarning => DueDateWarning is not null;
 
     [ObservableProperty]
     private string notes = string.Empty;
@@ -460,10 +470,15 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
             return;
         }
 
-        if (!decimal.TryParse(UnitPriceText, NumberStyles.Number, CultureInfo.InvariantCulture, out var price) ||
-            price < 0)
+        if (!DecimalInput.TryParse(UnitPriceText, out var price))
         {
-            ErrorMessage = "Enter a valid unit price.";
+            ErrorMessage = "Enter a valid unit price. " + DecimalInput.Hint;
+            return;
+        }
+
+        if (AmountRules.CheckUnitPrice(price) is { } priceError)
+        {
+            ErrorMessage = priceError;
             return;
         }
 
