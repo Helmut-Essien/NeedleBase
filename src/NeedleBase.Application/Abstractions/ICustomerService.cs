@@ -22,5 +22,14 @@ public interface ICustomerService
         UpdateCustomerRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<(bool Success, string? Error)> DeleteAsync(string id, CancellationToken cancellationToken = default);
+    Task<CustomerDeleteResult> DeleteAsync(string id, CancellationToken cancellationToken = default);
+}
+
+public enum CustomerDeleteResult
+{
+    Deleted = 0,
+    NotFound,
+
+    /// <summary>Customer still has orders (FK restrict). API: 409 CUSTOMER_HAS_ORDERS.</summary>
+    HasOrders
 }

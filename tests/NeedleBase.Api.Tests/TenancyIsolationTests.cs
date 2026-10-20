@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NeedleBase.Application.Contracts.Auth;
 using NeedleBase.Application.Contracts.Customers;
 using NeedleBase.Application.Contracts.Measurements;
+using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Infrastructure.Persistence;
 
@@ -36,6 +37,7 @@ public class TenancyIsolationTests : IClassFixture<NeedleBaseApiFactory>
         var (token, _) = await RegisterAsync("N");
         var customer = await CreateCustomerAsync(token, "Fail Closed");
         await CreateMeasurementAsync(token, customer.Id);
+        var orderId = await CreateOrderAsync(token, customer.Id);
 
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -43,10 +45,13 @@ public class TenancyIsolationTests : IClassFixture<NeedleBaseApiFactory>
 
         Assert.Equal(0, await db.Customers.CountAsync());
         Assert.Equal(0, await db.MeasurementProfiles.CountAsync());
+        Assert.Equal(0, await db.Orders.CountAsync());
+        Assert.Equal(0, await db.OrderLines.CountAsync());
         Assert.Equal(0, await db.StaffMemberships.CountAsync());
 
         // Rows exist; only the explicit bypass can see them.
         Assert.True(await db.Customers.IgnoreQueryFilters().AnyAsync(c => c.Id == customer.Id));
+        Assert.True(await db.Orders.IgnoreQueryFilters().AnyAsync(o => o.Id == orderId));
     }
 
     [Fact]
@@ -56,6 +61,7 @@ public class TenancyIsolationTests : IClassFixture<NeedleBaseApiFactory>
         var (tokenB, _) = await RegisterAsync("B");
         var customer = await CreateCustomerAsync(tokenA, "Efua Mensah");
         var measurementId = await CreateMeasurementAsync(tokenA, customer.Id);
+        var orderId = await CreateOrderAsync(tokenA, customer.Id);
 
         var update = new UpdateCustomerRequest("Hijacked", "+233245550999", null, null);
         await AssertNotFound(HttpMethod.Get, $"/api/customers/{customer.Id}", tokenB);
@@ -66,6 +72,14 @@ public class TenancyIsolationTests : IClassFixture<NeedleBaseApiFactory>
         await AssertNotFound(HttpMethod.Get, $"/api/measurements/{measurementId}", tokenB);
         await AssertNotFound(HttpMethod.Put, $"/api/measurements/{measurementId}", tokenB, UpdateMeasurementBody());
         await AssertNotFound(HttpMethod.Delete, $"/api/measurements/{measurementId}", tokenB);
+        await AssertNotFound(HttpMethod.Get, $"/api/orders/{orderId}", tokenB);
+        await AssertNotFound(HttpMethod.Put, $"/api/orders/{orderId}", tokenB, new UpdateOrderRequest { Notes = "x" });
+        await AssertNotFound(
+            HttpMethod.Patch,
+            $"/api/orders/{orderId}/status",
+            tokenB,
+            new UpdateOrderStatusRequest { Status = OrderStatus.Cutting });
+        await AssertNotFound(HttpMethod.Delete, $"/api/orders/{orderId}", tokenB);
 
         using var getA = Authorized(HttpMethod.Get, $"/api/customers/{customer.Id}", tokenA);
         using var getAResponse = await _client.SendAsync(getA);
@@ -109,6 +123,34 @@ public class TenancyIsolationTests : IClassFixture<NeedleBaseApiFactory>
         using var response = await _client.SendAsync(request);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = await response.Content.ReadFromJsonAsync<MeasurementDetailDto>(JsonOptions);
+        return created!.Id;
+    }
+
+    private async Task<string> CreateOrderAsync(string token, string customerId)
+    {
+        using var request = Authorized(
+            HttpMethod.Post,
+            "/api/orders",
+            token,
+            new CreateOrderRequest
+            {
+                CustomerId = customerId,
+                TotalAmount = 100m,
+                Lines =
+                [
+                    new CreateOrderLineRequest
+                    {
+                        GarmentTemplate = GarmentTemplate.Shirt,
+                        Quantity = 1,
+                        UnitPrice = 100m,
+                        Unit = MeasurementUnit.Centimetres,
+                        MeasurementFields = new Dictionary<string, decimal?>()
+                    }
+                ]
+            });
+        using var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var created = await response.Content.ReadFromJsonAsync<OrderDetailDto>(JsonOptions);
         return created!.Id;
     }
 

@@ -13,5 +13,12 @@ public interface IApplicationDbContext
 
     DbSet<MeasurementProfile> MeasurementProfiles { get; }
 
+    /// <summary>Read-only use: assignee membership checks (tenant-filtered).</summary>
+    DbSet<StaffMembership> StaffMemberships { get; }
+
+    DbSet<Order> Orders { get; }
+
+    DbSet<OrderLine> OrderLines { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

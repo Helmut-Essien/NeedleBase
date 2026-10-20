@@ -88,14 +88,14 @@ public sealed class CustomersController : ControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        var (success, error) = await _customers.DeleteAsync(id, cancellationToken);
-        if (!success)
+        return await _customers.DeleteAsync(id, cancellationToken) switch
         {
-            return ApiProblems.CustomerNotFound(HttpContext);
-        }
-
-        return NoContent();
+            CustomerDeleteResult.Deleted => NoContent(),
+            CustomerDeleteResult.HasOrders => ApiProblems.CustomerHasOrders(HttpContext),
+            _ => ApiProblems.CustomerNotFound(HttpContext)
+        };
     }
 }

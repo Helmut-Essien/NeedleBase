@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using NeedleBase.Application.Contracts.Errors;
+using NeedleBase.Application.Orders;
 
 namespace NeedleBase.Api.Http;
 
@@ -46,6 +48,37 @@ public static class ApiProblems
     public static ObjectResult MeasurementConflict(HttpContext ctx) =>
         Create(ctx, StatusCodes.Status409Conflict, "MEASUREMENT_CONFLICT", "Measurement already exists",
             "This measurement has already been saved.");
+
+    public static ObjectResult CustomerHasOrders(HttpContext ctx) =>
+        Create(ctx, StatusCodes.Status409Conflict, "CUSTOMER_HAS_ORDERS", "Customer has orders",
+            "This customer has orders. Finish or cancel them before deleting the customer.");
+
+    /// <summary>Single mapping from <see cref="OrderError"/> to status + stable code + friendly detail.</summary>
+    public static ObjectResult ForOrder(HttpContext ctx, OrderError error)
+    {
+        var (status, code, title) = error switch
+        {
+            OrderError.NotFound => (StatusCodes.Status404NotFound, OrderErrorMessages.OrderNotFound, "Order not found"),
+            OrderError.CustomerNotFound => (StatusCodes.Status404NotFound, OrderErrorMessages.CustomerNotFound, "Customer not found"),
+            OrderError.MeasurementNotFound => (StatusCodes.Status404NotFound, OrderErrorMessages.MeasurementNotFound, "Measurement not found"),
+            OrderError.IdConflict => (StatusCodes.Status409Conflict, OrderErrorMessages.OrderConflict, "Order already exists"),
+            OrderError.Locked => (StatusCodes.Status409Conflict, OrderErrorMessages.OrderLocked, "Order can't be changed"),
+            OrderError.StatusInvalid => (StatusCodes.Status400BadRequest, OrderErrorMessages.OrderStatusInvalid, "Unknown status"),
+            OrderError.AssigneeInvalid => (StatusCodes.Status400BadRequest, OrderErrorMessages.AssigneeInvalid, "Assignee not on this team"),
+            OrderError.TotalMismatch => (StatusCodes.Status400BadRequest, OrderErrorMessages.TotalMismatch, "Total doesn't match"),
+            _ => (StatusCodes.Status400BadRequest, OrderErrorMessages.Validation, "Check the order details")
+        };
+
+        return Create(ctx, status, code, title, OrderErrorMessages.For(code));
+    }
+
+    public static ObjectResult OrderNotFound(HttpContext ctx) =>
+        Create(ctx, StatusCodes.Status404NotFound, "ORDER_NOT_FOUND", "Order not found",
+            "We couldn't find that order. It may have been deleted.");
+
+    public static ObjectResult OrderConflict(HttpContext ctx) =>
+        Create(ctx, StatusCodes.Status409Conflict, "ORDER_CONFLICT", "Order already exists",
+            "This order has already been saved.");
 
     public static ObjectResult SaveFailed(HttpContext ctx, string code, string what) =>
         Create(ctx, StatusCodes.Status400BadRequest, code, $"Couldn't save {what}",

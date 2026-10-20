@@ -31,8 +31,8 @@ public sealed class CustomerService : ICustomerService
         var query = _db.Customers.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = search.Trim();
-            query = query.Where(c => c.Name.Contains(term) || c.Phone.Contains(term));
+            var term = SearchText.Lower(search);
+            query = query.Where(c => c.Name.ToLower().Contains(term) || c.Phone.Contains(term));
         }
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
@@ -171,7 +171,7 @@ public sealed class CustomerService : ICustomerService
         }
     }
 
-    public async Task<(bool Success, string? Error)> DeleteAsync(
+    public async Task<CustomerDeleteResult> DeleteAsync(
         string id,
         CancellationToken cancellationToken = default)
     {
@@ -180,13 +180,33 @@ public sealed class CustomerService : ICustomerService
             .ConfigureAwait(false);
         if (entity is null)
         {
-            return (false, "Customer not found.");
+            return CustomerDeleteResult.NotFound;
+        }
+
+        // Orders reference customers with FK Restrict: never orphan or cascade-delete orders.
+        if (await _db.Orders.AnyAsync(o => o.CustomerId == id, cancellationToken).ConfigureAwait(false))
+        {
+            return CustomerDeleteResult.HasOrders;
         }
 
         // MeasurementProfiles cascade via FK OnDelete(Cascade).
         _db.Customers.Remove(entity);
-        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return (true, null);
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateException)
+        {
+            // Defensive: an order was added between the check and the delete (FK violation).
+            if (await _db.Orders.AnyAsync(o => o.CustomerId == id, cancellationToken).ConfigureAwait(false))
+            {
+                return CustomerDeleteResult.HasOrders;
+            }
+
+            throw;
+        }
+
+        return CustomerDeleteResult.Deleted;
     }
 
     private string EnsureBusiness()

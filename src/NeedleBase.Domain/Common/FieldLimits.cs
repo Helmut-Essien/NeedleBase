@@ -13,4 +13,8 @@ public static class FieldLimits
     public const int GarmentTemplate = 40;
     public const int MeasurementUnit = 20;
     public const int FieldsJson = 8000;
+    public const int OrderStatus = 20;
+    public const int OrderDisplayRef = 8;
+    public const int AssignedToUserId = 450;
+    public const int OrderLineQuantityMax = 99;
 }
