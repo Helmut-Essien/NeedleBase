@@ -70,6 +70,8 @@ Tests: `Api.Tests/SyncEndpointTests`, `Mobile.Tests/SyncEngineTests`, `LocalSche
 Edge-case audit fixes (20 Oct 2026): commit-ordered pull (txid + snapshot cap), tombstone retention/resurrection, parent-deleted/delete-refused conflicts, deferred children, Discard, re-sign-in without wipe, non-retryable 400/403, Retry-After; migration `20261020135519_SyncTxOrder`, migrator v5; tests `Api.Tests/SyncEdgeCaseApiTests`, `Mobile.Tests/SyncEdgeCaseTests`.
 
 Second audit fixes (20 Oct 2026): adoption of pre-sync rows (ServerKnown, migrator v6), discard impact prompt, other-account sign-in prompt, shared decimal parser + amount rules, sync epoch (`SyncState`, recover resync), refresh grace window, per-user sync rate limit, StopAsync before wipe, accent-folded search (makes commit 97b1d85's "accent-insensitive" claim true), SQLite busy timeout + storage-full copy, order-line snapshots; migration `20261020153002_SyncEpochRefreshGrace`.
+
+Third audit fixes (21 Oct 2026): lenient sync push, Android Back guard (`IBackAware`), foreground/periodic/pull-to-refresh sync, wipe on deactivation (`AccessRevokedService`), +233 phone normalisation + duplicate warning, server search keys, optional `baseModifiedUtc` → 409 `STALE_UPDATE`, refresh rate-limit policy + forwarded headers, 118 in cap, page cap, en-GH line totals, background epoch bump (503 `SYNC_MAINTENANCE`), per email+IP login throttle (no lockout), changed-only measurement checks; migration `20261021094529_CustomerSearchKeysPhone`, migrator v7. Device checks still open: Back during save, resume sync, duplicate prompt, deactivation wipe, v7 upgrade.
 Deviations (conservative): pull is by opaque cursor (not a raw `LastSync` time); no per-business distributed lock (the skill marks it optional; push is idempotent instead). Mark Done after Journey 2 passes on two devices.
 
 ## Slice 5 acceptance — Payments (Journey 1 deposit + Journey 4)
@@ -101,6 +103,7 @@ Deviations (conservative): pull is by opaque cursor (not a raw `LastSync` time);
 
 - Trial/subscription surfaces per uiux (non-blocking for everyday work)
 - Empty/loading/error/recovery on major flows; Sync details complete
+- **Per-row pending-sync badge** (backlog, not built): Customers, Orders (and Payments once Slice 5 lands) rows show a small "Not synced yet" badge while the row has a queued `SyncQueueItem`, and "Needs attention" when its op is failed/conflicted; tap opens Sync details. List DTO gets a pending flag from the local queue (no server change); clears on ack/pull. Tests: list VM shows/clears the badge; no badge for synced rows.
 - Indexes on BusinessId + hot filters; list page-size caps enforced
 - Smoke tests for auth, BusinessId isolation, sync idempotency, payment conflict path
 - No invented multi-currency or multi-business switching

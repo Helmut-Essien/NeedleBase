@@ -52,6 +52,19 @@ Code gaps: [code-gaps.md](../needlebase-phases/code-gaps.md).
 - `Application.Tests/AuditFixRulesTests` (decimal parser, amount rules, folding, highlight ranges, line snapshots).
 - `Api.Tests/AuditFixSyncApiTests` (grace window, epoch bump + no loop + no bump storm, rate limit) — in the `SyncEndpointTests` class so epoch bumps never run beside other pulls; `AuditFixOrderApiTests` (REST amount rules, snapshot).
 - `Mobile.Tests/SyncAuditFixTests` (adoption, recover resync, 429 inline wait, StopAsync, discard impact, other-account prompt, storage, due-date warning); migrator v5→v6 upgrade and 20k-row key backfill in `LocalSchemaMigratorTests`.
+## Third-audit regression tests
+
+- `Domain.Tests/PhoneNumbersTests`; `Application.Tests/Audit3RulesTests` (lenient lines, changed-only measurements, 118 in, page cap, stale check).
+- `Api.Tests/Audit3OrderApiTests` (phone 400 + matches, `STALE_UPDATE` on customer/order/status, server search keys, huge page, `LOGIN_THROTTLED`), `LoginThrottleTests`, `Audit3SyncApiTests` (lenient push, phone replay, measurement stale, backfill keeps DateModifiedUtc) — sync ones in `SyncEndpointTests`.
+- `Mobile.Tests/Audit3Tests` (phones, migrator v7, over-limit edit, revoked flag + wipe, AccessRevoked event, foreground/pull-to-refresh sync, en-GH totals, `IBackAware`).
+- Epoch bumps run in the background: pulls get 503 `SYNC_MAINTENANCE` until done; tests use `ApplicationDbContext.WaitForEpochBumpAsync()` and retry on 503.
+
+## Typed error regression tests
+
+- `Application.Tests/RecordResultTests` (distinct codes, copy, deconstruct, null replay is not success), `OrderErrorMappingTests` (every `OrderError` → same code as `ApiProblems.ForOrder`).
+- `Api.Tests/TypedRecordErrorApiTests` (customer/measurement 404/409/400 statuses + codes unchanged, `MEASUREMENT_SAVE_FAILED`, measurement `STALE_UPDATE`).
+- `Mobile.Tests/Audit3Tests` (phone error by `RecordError.PhoneInvalid`), `OrderLocalServiceTests` (order `RecordError` + codes, copy unchanged).
+
 - Epoch tests bump the shared dev database's epoch: dev devices do one full resync afterwards.
 
 ## Rules

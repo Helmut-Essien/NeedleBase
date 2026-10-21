@@ -21,7 +21,7 @@ NameError = string.IsNullOrWhiteSpace(Name) ? "Name is required." : null;
 if (HasNameError || HasPhoneError) return;
 ```
 
-In use: `CustomerEditViewModel` (`NameError`, `PhoneError`), `MeasurementFieldItem` (`Error`, `HasError`), Register (incl. `TermsError`).
+In use: `CustomerEditViewModel` (`NameError`, `PhoneError` — format via `PhoneNumbers.Check`, only for a new or changed number; local/server `RecordError.PhoneInvalid` (`PHONE_INVALID`) maps to `PhoneError` by code, never by message text), `MeasurementFieldItem` (`Error`, `HasError`), Register (incl. `TermsError`).
 
 XAML: error label directly under the field; field Border turns red.
 

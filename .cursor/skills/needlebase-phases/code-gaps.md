@@ -23,9 +23,13 @@ None right now. The only remaining items are ops work, deferred below.
 
 Fixed from the post-Slice-3 review: customer delete with orders → 409 `CUSTOMER_HAS_ORDERS` (API + mobile guard); typed order errors (`DomainRuleException` codes → `OrderError` → `ApiProblems.ForOrder`); server-generated line ids; assignee must be an active member; server-computed total with mismatch rejection; no `ex.Message` in mobile order errors; Home stage colours from `OrderStatusPresentation` + distinct Overdue tokens; 8-char unique `DisplayRef` with collision retry; case-insensitive search; Accra "today"; XC0022 warnings; GroupBy counts; `SecondaryButton`; stray `undefined` files removed. Tests: `OrderEndpointTests`, `OrderLocalServiceTests`, `OrderSupportTests`, `Domain.Tests/OrderTests`.
 
+Fixed 21 Oct 2026: customer and measurement services (server + device) no longer return English strings; typed `RecordResult<T>`/`RecordError` with stable codes, mapped by `ApiProblems.ForRecord`, `SyncService` and the mobile VMs by code. HTTP statuses and codes unchanged. Tests: `Api.Tests/TypedRecordErrorApiTests`, `Application.Tests/RecordResultTests`, `Mobile.Tests/Audit3Tests` (phone by code). Follow-up 21 Oct 2026: device `OrderLocalService` (`SaveAsync`, `UpdateStatusAsync`) also returns `RecordResult<OrderDetailDto>`; `OrderError` → `RecordError` via `Application/Orders/OrderErrorMapping` (`ORDER_NOT_FOUND`, `ORDER_CONFLICT`, `ORDER_LOCKED`, `ORDER_STATUS_INVALID`, `ASSIGNEE_INVALID`, `ORDER_TOTAL_MISMATCH`, same codes as `ApiProblems.ForOrder`); UI copy unchanged (`OrderErrorMessages`). Tests: `Application.Tests/OrderErrorMappingTests`, `Mobile.Tests/OrderLocalServiceTests`.
+
+Open (backlog, Slice 8): per-row pending-sync badges on lists; today only the sync chip + Sync details show pending counts.
+
 ## Deferred (ops, later)
 
-These are not to be implemented now. Ops guidance will get its own skill later.
+These are not to be implemented now (there is deliberately no ops/deployment skill; keep the notes here).
 
 ### G3: No CI
 - **Files:** there is no `.github/workflows/`.
@@ -46,3 +50,8 @@ These are not to be implemented now. Ops guidance will get its own skill later.
 - **Files:** `src/NeedleBase.Mobile/NeedleBase.Mobile.csproj` has no Release signing properties.
 - **Later:** signing via MSBuild properties fed from env/CI secrets, with the keystore kept outside the repo.
 - **Acceptance:** a Release publish with the secrets set produces a signed AAB; without them it fails clearly.
+
+### G11: Production proxy / multi-instance settings (from third audit, 21 Oct 2026)
+- **Files:** `src/NeedleBase.Api/Program.cs` (ForwardedHeaders), `Infrastructure/Identity/LoginThrottle.cs` (in memory), `ApplicationDbContext` epoch bump guard (per process).
+- **Later:** set `ForwardedHeaders:KnownProxies`/`KnownNetworks` for the real proxy and the Web host; if the Api runs on more than one instance, move the login throttle to a shared store and the epoch-bump guard to a DB advisory lock.
+- **Acceptance:** behind the proxy, two clients on different IPs get separate auth limits; with 2 instances a throttled email+IP stays throttled on both.

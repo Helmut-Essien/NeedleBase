@@ -58,7 +58,7 @@ public class IndexModel : PageModel
 
 ## Services to include
 
-- `ApiAuthService` — login, refresh, current user/business  
+- `ApiAuthService` — login, refresh, current user/business (the `AuthApi` client adds the browser IP as X-Forwarded-For via `ForwardClientIpHandler`, so the Api's per-IP limits and login throttle see each visitor; a 429 `LOGIN_THROTTLED` shows the shared `AuthErrorMessages` copy)  
 - `TokenRefreshHandler` — cookie-backed bearer refresh  
 - Unauthorized → redirect to login  
 - Api errors are ProblemDetails: read `code`/`detail`/`errors`, map them to page/field messages ([content-and-states §5](../needlebase-uiux/content-and-states.md#5-api-errors-to-user-copy))  

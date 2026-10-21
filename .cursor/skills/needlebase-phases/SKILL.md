@@ -25,8 +25,8 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 
 ## Where things are
 
-- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). Today S0–S3 are Done; S4 (Offline sync) is next.
-- Code that doesn't meet the skills yet, ranked: [code-gaps.md](code-gaps.md). Open items are ops-only and deferred; G1, G2, G4, G5, G6, G10 are done.
+- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). Today S0–S3 are Done; S4 (Offline sync) is code-complete with automated tests (three audits fixed) and waits for on-device verification (Journey 2); S5 (Payments) follows.
+- Code that doesn't meet the skills yet, ranked: [code-gaps.md](code-gaps.md). G1, G2, G4, G5, G6, G10 are done; G3, G7, G8, G9, G11 are deferred ops/scale items.
 - Add-entity checklist: [needlebase-domain](../needlebase-domain/SKILL.md#add-entity-checklist-single-source).
 
 ## How to work a slice

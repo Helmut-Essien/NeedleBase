@@ -69,7 +69,7 @@ Cash, MoMo, Bank, Other — plus future online provider with separate confirmati
 
 ## Amount rules & snapshots (second audit)
 
-- Input rules live in Application (`AmountRules`, `DecimalInput`), not the domain (pulled/old data must still load): unit price > 0, ≤ 2 decimals, ≤ GH₵ 1,000,000; ≤ 50 lines; measurements > 0 and ≤ 300 cm / 120 in.
+- Input rules live in Application (`AmountRules`, `DecimalInput`), not the domain (pulled/old data must still load): unit price > 0, ≤ 2 decimals, ≤ GH₵ 1,000,000; ≤ 50 lines; measurements > 0 and ≤ 300 cm / 118 in (same physical cap). Sync push is lenient (skips these limits) so queued/legacy data never fails; an edit re-checks only changed fields.
 - `DecimalInput.TryParse`: one '.' or ','; refuses thousands-looking input ("1,000", "1.000", "12,500") except a zero integer part ("0.125").
 - Order lines **snapshot** measurement values. If the referenced profile is gone but the line carries fields, the line keeps its snapshot with `MeasurementProfileId = null`; with no fields → `MEASUREMENT_NOT_FOUND`.
 - Search keys: `CustomerSearchKeys.NameKey` folds accents (FormD, ɛ→e, ɔ→o, ŋ→n) and splits on hyphens/apostrophes; `WordPrefixMatch` returns the range in the original string. Phone terms of 4+ digits also match anywhere (non-Ghana numbers).
@@ -110,3 +110,6 @@ Switching business (if multi-business later) switches claim + mobile local scope
 ## Reference sample data
 
 Business: Ama Stitches, Accra. Customer: Efua Mensah, +233…. Currency: GH₵. See UI journeys skill for flows.
+
+## Phones (third audit)
+- `Domain/Common/PhoneNumbers`: `Normalize` is applied by `Customer` on every create/update (Ghana numbers stored as `+233XXXXXXXXX`); `Check` is the strict format rule (9–15 digits; Ghana exactly 9 national digits) used by REST/UI for new or changed numbers only; `Same` compares numbers regardless of formatting. Changing `Normalize` needs a server backfill and a device schema step.

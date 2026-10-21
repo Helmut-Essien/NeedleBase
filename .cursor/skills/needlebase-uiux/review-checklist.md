@@ -42,3 +42,6 @@ Run on every UI PR before asking for review. Evidence = a build with 0 errors/0 
 
 ## Safety
 - [ ] `.vscode` launch/tasks untouched
+- [ ] Edit/wizard VMs with a save implement `IBackAware` (Android Back can't pop mid-save)
+- [ ] Money shown via en-GH formatted properties, not XAML `StringFormat`
+- [ ] Phone fields: `PhoneNumbers.Check` on new/changed numbers; duplicate number warns, never blocks

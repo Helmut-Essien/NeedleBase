@@ -46,7 +46,7 @@ Never use a toast for errors the user must act on. Never stack dialogs. A destru
 
 | Screen type | Loading | Empty | Error | Offline |
 |-------------|---------|-------|-------|---------|
-| List (Customers, Orders, Payments) | Skeleton rows [rec]; today `ActivityIndicator` [code] | `CollectionView.EmptyView` icon + 1 line + 1 CTA ("Add your first customer") [code on Customers/CustomerDetail] | Inline "Couldn't load" + Try again; keep showing cached rows if any | Local list still works; pending rows show badge [planned Slice 4] |
+| List (Customers, Orders, Payments) | Skeleton rows [rec]; today `ActivityIndicator` [code] | `CollectionView.EmptyView` icon + 1 line + 1 CTA ("Add your first customer") [code on Customers/CustomerDetail] | Inline "Couldn't load" + Try again; keep showing cached rows if any | Local list still works; unsynced work shows in the sync chip + Sync details (pending / needs-attention counts) [code: `SyncStatusViewModel`, `SyncDetailsPage`]. Per-row pending badge not built yet [planned Slice 8 polish, `needlebase-phases/phases.md`] |
 | Detail | Skeleton header [rec] | n/a | "This record isn't available" + Back | Read local copy |
 | Form | Disable primary button + spinner (`IsBusy`) [code] | n/a | Inline field + page error | Save locally, toast "Saved on this device" |
 | Dashboard/Home | Skeleton cards | Honest zeros + "Nothing needs attention right now" [code] | Card-level error; other cards still render | Works from local data |
@@ -57,7 +57,7 @@ Skeletons: grey `Gray200` blocks matching the final layout. No shimmer animation
 
 ## 5. API errors to user copy
 
-Api returns **RFC 9457 ProblemDetails** (`application/problem+json`) for every error [code: `NeedleBase.Api/Http/ApiProblems.cs`, `AddProblemDetails` + `UseStatusCodePages` + `UseExceptionHandler` in Program.cs]. Fields: `title` (short, user-safe), `detail` (one user-safe sentence), `status`, `code` (stable machine id, e.g. `INVALID_CREDENTIALS`, `CUSTOMER_NOT_FOUND`, `CUSTOMER_CONFLICT`, `CUSTOMER_HAS_ORDERS`, `ORDER_LOCKED`, `ORDER_STATUS_INVALID`, `ASSIGNEE_INVALID`, `ORDER_TOTAL_MISMATCH`, `SESSION_INVALID`, `VALIDATION_FAILED`, `RATE_LIMITED`), `errors` (validation only), `traceId`.
+Api returns **RFC 9457 ProblemDetails** (`application/problem+json`) for every error [code: `NeedleBase.Api/Http/ApiProblems.cs`, `AddProblemDetails` + `UseStatusCodePages` + `UseExceptionHandler` in Program.cs]. Fields: `title` (short, user-safe), `detail` (one user-safe sentence), `status`, `code` (stable machine id, e.g. `INVALID_CREDENTIALS`, `CUSTOMER_NOT_FOUND`, `MEASUREMENT_NOT_FOUND`, `CUSTOMER_CONFLICT`, `MEASUREMENT_CONFLICT`, `CUSTOMER_HAS_ORDERS`, `CUSTOMER_SAVE_FAILED`, `MEASUREMENT_SAVE_FAILED`, `ORDER_LOCKED`, `ORDER_STATUS_INVALID`, `ASSIGNEE_INVALID`, `ORDER_TOTAL_MISMATCH`, `SESSION_INVALID`, `VALIDATION_FAILED`, `RATE_LIMITED`, `LOGIN_THROTTLED`, `PHONE_INVALID`, `STALE_UPDATE`, `SYNC_MAINTENANCE`; device-only `STORAGE_FULL`), `errors` (validation only), `traceId`.
 Client rules:
 - Switch on `code` for behaviour. Show `detail` (or `title`) as copy; for `errors`, map each key to its field's inline error.
 - 409 conflicts appear inline on the relevant field when possible.
@@ -67,7 +67,7 @@ Client rules:
 
 ## 6. Status names & colours (single source)
 
-From domain: `New → Cutting → Sewing → Fitting → Ready → Collected`, plus `Cancelled`. **Overdue** is derived, a badge next to the status. [code: `Mobile/Helpers/OrderStatusPresentation.cs`, Home stages use `Accent(status)`]. Orders saved offline say **"Saved on this device"** (Slice 3 is local-only on mobile until Slice 4 sync). Unknown statuses from a newer server show **Other status** (`OrderStatusPresentation.UnknownStatusLabel`). UI label "Ready" is shown as **Ready to collect** (matches Home "READY TO COLLECT" [code]).
+From domain: `New → Cutting → Sewing → Fitting → Ready → Collected`, plus `Cancelled`. **Overdue** is derived, a badge next to the status. [code: `Mobile/Helpers/OrderStatusPresentation.cs`, Home stages use `Accent(status)`]. Orders saved offline say **"Saved on this device"** (then sync in the background, Slice 4). Unknown statuses from a newer server show **Other status** (`OrderStatusPresentation.UnknownStatusLabel`). UI label "Ready" is shown as **Ready to collect** (matches Home "READY TO COLLECT" [code]).
 
 | Status | Colour token | Icon (Material) [rec] |
 |--------|--------------|------------------------|
@@ -103,13 +103,16 @@ Second-audit copy: past due date is allowed with the inline warning "Due date is
 
 - Use a template (`GarmentTemplate`) to pick fields, in the order they are measured on the body, top to bottom [rec].
 - Large numeric fields (≥48 high), a unit next to each, and decimals allowed (1 dp).
-- Range sanity [rec]: warn (don't block) when a value is outside a plausible range for the unit, e.g. "120 in for waist? Check the unit." Never silently convert units.
+- Range sanity [rec]: warn (don't block) when a value is outside a plausible range for the unit, e.g. "60 in for neck? Check the unit." (hard limits: > 0 and ≤ 300 cm / 118 in [code]) Never silently convert units.
 - Show the last value and date as a hint when re-measuring [rec]. History uses `dd MMM yyyy` [code].
 - Orders snapshot measurements; later edits don't change past orders (domain).
 
 ## 9. Search, filter, lists
 
-- Search sits at the top and matches name **and** phone (users search by number). Search local data on mobile.
+- Search sits at the top and matches name **and** phone (users search by number). Search local data on mobile; the API uses the same keys (accent-folded word prefix, local or +233 phone digits) [code].
+- Phones are stored as `+233XXXXXXXXX` (typed `024 555 0123` is fine); a bad format is an inline phone error, only for a new or changed number [code]. Adding a customer whose number is already saved asks "Same phone number — {names} already has this number. Save another customer anyway?" (**Save anyway** / **Cancel**); never blocks [code].
+- Money is always formatted en-GH (`GH₵ 1,250.00`) via view-model/DTO properties, never XAML `StringFormat` (that follows the phone's language) [code].
+- Pull-to-refresh syncs first (waits up to 15 s) and then shows what is on the device [code].
 - **Search-as-you-type (one rule everywhere)** [code: `Application/Common/CustomerSearchKeys`, `Mobile.Data/Services/CustomerSearchFilter`, `Mobile/Helpers/SearchDebouncer`]: debounce **250 ms**, a newer keystroke cancels the stale query; results capped in SQL (picker 30). Name = case-insensitive **any word prefix** ("men" → Efua Mensah, "fua" does not). Phone = national-digit prefix, so `024`, `24 123`, `0244` and `+23324` all match `+233 24 …`; a single digit is ignored. LIKE wildcards in input are dropped. Customers tab, Orders list (customer part) and the New order picker share it.
 - **Customer picker** (New order step 1) [code]: search field (Search icon, 48 high, white, `Gray300` border, clear `Close` button when non-empty, autofocus); empty query shows **Recent customers** (newest orders, then newest added); rows = initials avatar + name with the matched word prefix **bold `PrimaryDark`** (`FormattedString`) + phone formatted `+233 24 555 0123`; empty state `No customers match "x"` + **Add new customer** (opens Add customer prefilled with what was typed, returns with them selected); selected customer = card with **Change**. Pre-filled when started from Customer detail.
 - Filters are chips (mobile) or a filter bar (web): status, due (Today / This week / Late), assignee.
