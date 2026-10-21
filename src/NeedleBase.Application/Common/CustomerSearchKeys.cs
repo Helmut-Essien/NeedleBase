@@ -9,7 +9,7 @@ public sealed record CustomerSearchQuery(string? NameTerm, string? PhoneTerm)
 }
 
 /// <summary>
-/// One matching rule for customer search (mobile local store; Api can adopt it).
+/// One matching rule for customer search (mobile local store and server API/web).
 /// Name: case-insensitive, any word prefix ("men" finds "Efua Mensah").
 /// Phone: national digits prefix, so "024", "24 123", "0244" and "+23324" all match +233 24 ...
 /// Stored keys are precomputed (<see cref="NameKey"/>, <see cref="PhoneDigits"/>) so SQL stays a LIKE on an indexed column.
@@ -17,6 +17,10 @@ public sealed record CustomerSearchQuery(string? NameTerm, string? PhoneTerm)
 public static class CustomerSearchKeys
 {
     private const string GhanaCountryCode = "233";
+
+    /// <summary>Stored key columns (shadow properties on Customers, server and device).</summary>
+    public const string SearchNameColumn = "SearchName";
+    public const string PhoneDigitsColumn = "PhoneDigits";
 
     /// <summary>
     /// Folded, separator-collapsed name with a leading space: "Adwóa  Mensah-Owusu" → " adwoa mensah owusu".

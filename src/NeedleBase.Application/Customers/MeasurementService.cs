@@ -19,7 +19,7 @@ public sealed class MeasurementService : IMeasurementService
         _clock = clock;
     }
 
-    public async Task<(PaginatedResponse<MeasurementListItemDto>? Page, string? Error)> ListForCustomerAsync(
+    public async Task<RecordResult<PaginatedResponse<MeasurementListItemDto>>> ListForCustomerAsync(
         string customerId,
         int page,
         int pageSize,
@@ -33,7 +33,7 @@ public sealed class MeasurementService : IMeasurementService
             .ConfigureAwait(false);
         if (!customerExists)
         {
-            return (null, "Customer not found.");
+            return RecordResult.Fail(RecordError.CustomerNotFound);
         }
 
         var query = _db.MeasurementProfiles.AsNoTracking().Where(m => m.CustomerId == customerId);
@@ -53,7 +53,7 @@ public sealed class MeasurementService : IMeasurementService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return (PaginatedResponse<MeasurementListItemDto>.Create(items, total, page, pageSize), null);
+        return PaginatedResponse<MeasurementListItemDto>.Create(items, total, page, pageSize);
     }
 
     public async Task<MeasurementDetailDto?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
@@ -65,7 +65,7 @@ public sealed class MeasurementService : IMeasurementService
         return entity is null ? null : MapDetail(entity);
     }
 
-    public async Task<(MeasurementDetailDto? Measurement, string? Error)> CreateAsync(
+    public async Task<RecordResult<MeasurementDetailDto>> CreateAsync(
         string customerId,
         CreateMeasurementRequest request,
         CancellationToken cancellationToken = default)
@@ -76,7 +76,7 @@ public sealed class MeasurementService : IMeasurementService
             .ConfigureAwait(false);
         if (!customerExists)
         {
-            return (null, "Customer not found.");
+            return RecordResult.Fail(RecordError.CustomerNotFound);
         }
 
         var id = string.IsNullOrWhiteSpace(request.Id) ? IdGenerator.NewId() : request.Id.Trim();
@@ -89,17 +89,21 @@ public sealed class MeasurementService : IMeasurementService
         {
             if (!string.Equals(existing.BusinessId, businessId, StringComparison.Ordinal))
             {
-                return (null, "Measurement id conflict.");
+                return RecordResult.Fail(RecordError.MeasurementConflict);
             }
 
-            return (await GetByIdAsync(id, cancellationToken).ConfigureAwait(false), null);
+            return await GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
         }
 
         var now = _clock.UtcNow;
         var measuredAt = request.MeasuredAtUtc ?? now;
         try
         {
-            AmountRules.EnsureMeasurements(request.Unit, request.Fields);
+            if (!request.Lenient)
+            {
+                AmountRules.EnsureMeasurements(request.Unit, request.Fields);
+            }
+
             var fieldsJson = MeasurementFieldsSerializer.Serialize(request.Fields);
             var entity = MeasurementProfile.Create(
                 id,
@@ -113,7 +117,7 @@ public sealed class MeasurementService : IMeasurementService
                 now);
             _db.MeasurementProfiles.Add(entity);
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return (MapDetail(entity), null);
+            return MapDetail(entity);
         }
         catch (DbUpdateException)
         {
@@ -124,18 +128,18 @@ public sealed class MeasurementService : IMeasurementService
                 .ConfigureAwait(false);
             if (raced is not null && string.Equals(raced.BusinessId, businessId, StringComparison.Ordinal))
             {
-                return (await GetByIdAsync(id, cancellationToken).ConfigureAwait(false), null);
+                return await GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
             }
 
-            return (null, "Measurement id conflict.");
+            return RecordResult.Fail(RecordError.MeasurementConflict);
         }
         catch (ArgumentException ex)
         {
-            return (null, ex.Message);
+            return RecordResult.Fail(RecordError.Validation, ex.Message);
         }
     }
 
-    public async Task<(MeasurementDetailDto? Measurement, string? Error)> UpdateAsync(
+    public async Task<RecordResult<MeasurementDetailDto>> UpdateAsync(
         string id,
         UpdateMeasurementRequest request,
         CancellationToken cancellationToken = default)
@@ -145,14 +149,24 @@ public sealed class MeasurementService : IMeasurementService
             .ConfigureAwait(false);
         if (entity is null)
         {
-            return (null, "Measurement not found.");
+            return RecordResult.Fail(RecordError.MeasurementNotFound);
+        }
+
+        if (StaleUpdate.IsStale(request.BaseModifiedUtc, entity.DateModifiedUtc))
+        {
+            return RecordResult.Fail(RecordError.Stale);
         }
 
         var now = _clock.UtcNow;
         var measuredAt = request.MeasuredAtUtc ?? entity.MeasuredAtUtc;
         try
         {
-            AmountRules.EnsureMeasurements(request.Unit, request.Fields);
+            if (!request.Lenient)
+            {
+                AmountRules.EnsureChangedMeasurements(request.Unit, request.Fields, entity.Unit,
+                    MeasurementFieldsSerializer.Deserialize(entity.FieldsJson));
+            }
+
             var fieldsJson = MeasurementFieldsSerializer.Serialize(request.Fields);
             entity.Update(
                 request.GarmentTemplate,
@@ -162,15 +176,15 @@ public sealed class MeasurementService : IMeasurementService
                 measuredAt,
                 now);
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return (MapDetail(entity), null);
+            return MapDetail(entity);
         }
         catch (ArgumentException ex)
         {
-            return (null, ex.Message);
+            return RecordResult.Fail(RecordError.Validation, ex.Message);
         }
     }
 
-    public async Task<(bool Success, string? Error)> DeleteAsync(
+    public async Task<RecordError> DeleteAsync(
         string id,
         CancellationToken cancellationToken = default)
     {
@@ -179,12 +193,12 @@ public sealed class MeasurementService : IMeasurementService
             .ConfigureAwait(false);
         if (entity is null)
         {
-            return (false, "Measurement not found.");
+            return RecordError.MeasurementNotFound;
         }
 
         _db.MeasurementProfiles.Remove(entity);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        return (true, null);
+        return RecordError.None;
     }
 
     private static MeasurementDetailDto MapDetail(MeasurementProfile entity) =>

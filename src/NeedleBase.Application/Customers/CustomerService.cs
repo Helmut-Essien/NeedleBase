@@ -1,3 +1,4 @@
+using NeedleBase.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Common;
@@ -31,8 +32,7 @@ public sealed class CustomerService : ICustomerService
         var query = _db.Customers.AsNoTracking();
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = SearchText.Lower(search);
-            query = query.Where(c => c.Name.ToLower().Contains(term) || c.Phone.Contains(term));
+            query = CustomerSearchFilter.Apply(query, CustomerSearchKeys.Parse(search));
         }
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
@@ -87,7 +87,32 @@ public sealed class CustomerService : ICustomerService
             customer.MeasurementCount);
     }
 
-    public async Task<(CustomerDetailDto? Customer, string? Error)> CreateAsync(
+    /// <summary>Customers whose number is the same as <paramref name="phone"/> (any formatting), for a duplicate warning.</summary>
+    public async Task<IReadOnlyList<CustomerListItemDto>> FindByPhoneAsync(
+        string? phone,
+        string? excludeId,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureBusiness();
+        var digits = CustomerSearchKeys.PhoneDigits(PhoneNumbers.Normalize(phone));
+        if (digits.Length < PhoneNumbers.MinDigits - 1)
+        {
+            return [];
+        }
+
+        var normalized = PhoneNumbers.Normalize(phone);
+        var rows = await _db.Customers.AsNoTracking()
+            .Where(c => EF.Property<string>(c, CustomerSearchKeys.PhoneDigitsColumn) == digits || c.Phone == normalized)
+            .Where(c => excludeId == null || c.Id != excludeId)
+            .OrderBy(c => c.Name)
+            .Take(5)
+            .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return rows.Where(c => PhoneNumbers.Same(c.Phone, normalized)).ToList();
+    }
+
+    public async Task<RecordResult<CustomerDetailDto>> CreateAsync(
         CreateCustomerRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -104,10 +129,15 @@ public sealed class CustomerService : ICustomerService
         {
             if (!string.Equals(existing.BusinessId, businessId, StringComparison.Ordinal))
             {
-                return (null, "Customer id conflict.");
+                return RecordResult.Fail(RecordError.CustomerConflict);
             }
 
-            return (await GetByIdAsync(id, cancellationToken).ConfigureAwait(false), null);
+            return await GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (!request.Lenient && PhoneNumbers.Check(request.Phone) is { } phoneError)
+        {
+            return RecordResult.Fail(RecordError.PhoneInvalid, phoneError);
         }
 
         try
@@ -123,7 +153,7 @@ public sealed class CustomerService : ICustomerService
             _db.Customers.Add(entity);
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var detail = await GetByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false);
-            return (detail, null);
+            return detail;
         }
         catch (DbUpdateException)
         {
@@ -134,18 +164,18 @@ public sealed class CustomerService : ICustomerService
                 .ConfigureAwait(false);
             if (raced is not null && string.Equals(raced.BusinessId, businessId, StringComparison.Ordinal))
             {
-                return (await GetByIdAsync(id, cancellationToken).ConfigureAwait(false), null);
+                return await GetByIdAsync(id, cancellationToken).ConfigureAwait(false);
             }
 
-            return (null, "Customer id conflict.");
+            return RecordResult.Fail(RecordError.CustomerConflict);
         }
         catch (ArgumentException ex)
         {
-            return (null, ex.Message);
+            return RecordResult.Fail(RecordError.Validation, ex.Message);
         }
     }
 
-    public async Task<(CustomerDetailDto? Customer, string? Error)> UpdateAsync(
+    public async Task<RecordResult<CustomerDetailDto>> UpdateAsync(
         string id,
         UpdateCustomerRequest request,
         CancellationToken cancellationToken = default)
@@ -155,7 +185,19 @@ public sealed class CustomerService : ICustomerService
             .ConfigureAwait(false);
         if (entity is null)
         {
-            return (null, "Customer not found.");
+            return RecordResult.Fail(RecordError.CustomerNotFound);
+        }
+
+        if (StaleUpdate.IsStale(request.BaseModifiedUtc, entity.DateModifiedUtc))
+        {
+            return RecordResult.Fail(RecordError.Stale);
+        }
+
+        // Only a changed number must pass the format rule, so an old customer's notes stay editable.
+        if (!request.Lenient && !PhoneNumbers.Same(request.Phone, entity.Phone) &&
+            PhoneNumbers.Check(request.Phone) is { } phoneError)
+        {
+            return RecordResult.Fail(RecordError.PhoneInvalid, phoneError);
         }
 
         try
@@ -163,11 +205,11 @@ public sealed class CustomerService : ICustomerService
             entity.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, _clock.UtcNow);
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var detail = await GetByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false);
-            return (detail, null);
+            return detail;
         }
         catch (ArgumentException ex)
         {
-            return (null, ex.Message);
+            return RecordResult.Fail(RecordError.Validation, ex.Message);
         }
     }
 

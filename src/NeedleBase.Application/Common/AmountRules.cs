@@ -11,7 +11,7 @@ public static class AmountRules
     public const decimal UnitPriceMax = 1_000_000m;
     public const int OrderLinesMax = 50;
     public const decimal MaxCentimetres = 300m;
-    public const decimal MaxInches = 120m;
+    public const decimal MaxInches = 118m; // 300 cm ≈ 118.1 in: same physical cap in both units
 
     public static string? CheckUnitPrice(decimal price)
     {
@@ -64,5 +64,27 @@ public static class AmountRules
                 throw new ArgumentException(error, nameof(fields));
             }
         }
+    }
+
+    /// <summary>
+    /// Update variant: only values that differ from what is stored are checked (all of them if the unit
+    /// changed), so a profile saved before the limits existed stays editable (notes, other fields).
+    /// </summary>
+    public static void EnsureChangedMeasurements(
+        string? unit,
+        IReadOnlyDictionary<string, decimal?>? fields,
+        string? previousUnit,
+        IReadOnlyDictionary<string, decimal?> previousFields)
+    {
+        if (fields is null)
+        {
+            return;
+        }
+
+        var unitChanged = !string.Equals(unit?.Trim(), previousUnit?.Trim(), StringComparison.OrdinalIgnoreCase);
+        var changed = fields
+            .Where(f => unitChanged || !previousFields.TryGetValue(f.Key, out var old) || old != f.Value)
+            .ToDictionary(f => f.Key, f => f.Value);
+        EnsureMeasurements(unit, changed);
     }
 }

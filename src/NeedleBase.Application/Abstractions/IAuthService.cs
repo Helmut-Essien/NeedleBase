@@ -15,8 +15,14 @@ public sealed record AuthResult(
     TokenResponse? Tokens,
     AuthUserDto? User,
     string? Error,
-    string? ErrorCode = null)
+    string? ErrorCode = null,
+    TimeSpan? RetryAfter = null)
 {
+    public const string LoginThrottledCode = "LOGIN_THROTTLED";
+
+    public static AuthResult Throttled(TimeSpan retryAfter) =>
+        new(false, null, null, "Too many wrong tries from here. Wait a moment, then try again.", LoginThrottledCode, retryAfter);
+
     public static AuthResult Ok(TokenResponse tokens, AuthUserDto user) =>
         new(true, tokens, user, null);
 

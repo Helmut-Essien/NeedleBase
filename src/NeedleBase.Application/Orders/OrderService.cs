@@ -44,12 +44,12 @@ public sealed class OrderService : IOrderService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var term = SearchText.Lower(search);
             var refTerm = SearchText.Ref(search);
+            var matching = CustomerSearchFilter.Apply(_db.Customers.AsNoTracking(), CustomerSearchKeys.Parse(search))
+                .Select(c => c.Id);
             query = query.Where(x =>
                 x.Order.DisplayRef.Contains(refTerm) ||
-                x.CustomerName.ToLower().Contains(term) ||
-                x.CustomerPhone.Contains(term));
+                matching.Contains(x.Order.CustomerId));
         }
 
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
@@ -166,7 +166,7 @@ public sealed class OrderService : IOrderService
                     .ToDictionaryAsync(m => m.Id, StringComparer.Ordinal, cancellationToken)
                     .ConfigureAwait(false);
 
-            var (lines, lineError) = OrderLineFactory.Build(businessId, id, request.Lines, profilesById);
+            var (lines, lineError) = OrderLineFactory.Build(businessId, id, request.Lines, profilesById, request.Lenient);
             if (lines is null)
             {
                 return OrderResult.Fail(lineError);
@@ -239,7 +239,15 @@ public sealed class OrderService : IOrderService
             return OrderResult.Fail(OrderError.NotFound);
         }
 
-        if (!await IsActiveMemberAsync(request.AssignedToUserId, cancellationToken).ConfigureAwait(false))
+        if (StaleUpdate.IsStale(request.BaseModifiedUtc, entity.DateModifiedUtc))
+        {
+            return OrderResult.Fail(OrderError.Stale);
+        }
+
+        // Re-saving the current assignee is allowed even if they have since been deactivated (editing notes on
+        // their order must not fail); a newly chosen assignee must be an active member.
+        if (!string.Equals(request.AssignedToUserId?.Trim(), entity.AssignedToUserId, StringComparison.Ordinal) &&
+            !await IsActiveMemberAsync(request.AssignedToUserId, cancellationToken).ConfigureAwait(false))
         {
             return OrderResult.Fail(OrderError.AssigneeInvalid);
         }
@@ -272,6 +280,11 @@ public sealed class OrderService : IOrderService
         if (entity is null)
         {
             return OrderResult.Fail(OrderError.NotFound);
+        }
+
+        if (StaleUpdate.IsStale(request.BaseModifiedUtc, entity.DateModifiedUtc))
+        {
+            return OrderResult.Fail(OrderError.Stale);
         }
 
         try

@@ -14,7 +14,9 @@ public enum OrderError
     StatusInvalid,
     AssigneeInvalid,
     TotalMismatch,
-    Invalid
+    Invalid,
+    /// <summary>BaseModifiedUtc no longer matches (someone else changed it). API: 409 STALE_UPDATE.</summary>
+    Stale
 }
 
 public sealed record OrderResult(OrderDetailDto? Order, OrderError Error, string? Detail = null)

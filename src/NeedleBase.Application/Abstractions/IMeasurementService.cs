@@ -5,7 +5,7 @@ namespace NeedleBase.Application.Abstractions;
 
 public interface IMeasurementService
 {
-    Task<(PaginatedResponse<MeasurementListItemDto>? Page, string? Error)> ListForCustomerAsync(
+    Task<RecordResult<PaginatedResponse<MeasurementListItemDto>>> ListForCustomerAsync(
         string customerId,
         int page,
         int pageSize,
@@ -13,15 +13,15 @@ public interface IMeasurementService
 
     Task<MeasurementDetailDto?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
-    Task<(MeasurementDetailDto? Measurement, string? Error)> CreateAsync(
+    Task<RecordResult<MeasurementDetailDto>> CreateAsync(
         string customerId,
         CreateMeasurementRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<(MeasurementDetailDto? Measurement, string? Error)> UpdateAsync(
+    Task<RecordResult<MeasurementDetailDto>> UpdateAsync(
         string id,
         UpdateMeasurementRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<(bool Success, string? Error)> DeleteAsync(string id, CancellationToken cancellationToken = default);
+    Task<RecordError> DeleteAsync(string id, CancellationToken cancellationToken = default);
 }

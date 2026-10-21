@@ -26,6 +26,7 @@ public static class OrderErrorMessages
         CustomerNotFound => "We couldn't find that customer.",
         MeasurementNotFound => "We couldn't find those measurements for this customer.",
         Validation => "Check the order details and try again.",
+        NeedleBase.Application.Common.StaleUpdate.Code => "Someone else saved a newer version. Reload to see it, then make your change again.",
         _ => Fallback
     };
 }

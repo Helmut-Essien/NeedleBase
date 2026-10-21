@@ -144,6 +144,9 @@ public static class SyncErrorCodes
     /// </summary>
     public const string EpochChanged = "SYNC_EPOCH_CHANGED";
     public const string PayloadInvalid = "SYNC_PAYLOAD_INVALID";
+
+    /// <summary>503: the server is re-stamping data for a new epoch in the background. Retry after Retry-After.</summary>
+    public const string Maintenance = "SYNC_MAINTENANCE";
     public const string StaleBase = "SYNC_CONFLICT";
     public const string Deleted = "SYNC_DELETED_ELSEWHERE";
 
@@ -158,4 +161,13 @@ public static class SyncErrorCodes
     /// business's id gets the same answer as any other unsavable record, so existence is not revealed.
     /// </summary>
     public const string Rejected = "SYNC_REJECTED";
+}
+
+/// <summary>
+/// Sync can't be served right now because a new-epoch re-stamp is running in the background (see
+/// ApplicationDbContext). The API answers 503 SYNC_MAINTENANCE with Retry-After; devices keep their queue and retry.
+/// </summary>
+public sealed class SyncMaintenanceException() : Exception("Sync maintenance is running.")
+{
+    public static readonly TimeSpan RetryAfter = TimeSpan.FromSeconds(10);
 }

@@ -29,7 +29,7 @@ public static class AuthErrorMessages
 
     private static string? Common(ApiProblem problem) => problem.Code switch
     {
-        "ACCOUNT_LOCKED" => "Too many wrong tries. Your account is locked for a few minutes. Try again later.",
+        "ACCOUNT_LOCKED" or "LOGIN_THROTTLED" => "Too many wrong tries. Wait a few minutes, then try again.",
         "ACCOUNT_DEACTIVATED" => "This account has been turned off. Ask your business owner to turn it back on.",
         "NO_MEMBERSHIP" or "BUSINESS_MISSING" => "This account isn't linked to a business. Ask your business owner to add you.",
         "RATE_LIMITED" => RateLimited,

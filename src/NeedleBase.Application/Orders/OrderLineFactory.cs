@@ -20,9 +20,11 @@ public static class OrderLineFactory
         string businessId,
         string orderId,
         IReadOnlyList<CreateOrderLineRequest> requests,
-        IReadOnlyDictionary<string, MeasurementProfile> profilesById)
+        IReadOnlyDictionary<string, MeasurementProfile> profilesById,
+        bool lenient = false)
     {
-        if (requests.Count > AmountRules.OrderLinesMax)
+        // lenient (sync push): input limits added after data may already be queued on devices are skipped.
+        if (!lenient && requests.Count > AmountRules.OrderLinesMax)
         {
             throw new ArgumentException($"An order can have at most {AmountRules.OrderLinesMax} lines.", nameof(requests));
         }
@@ -31,7 +33,7 @@ public static class OrderLineFactory
         for (var i = 0; i < requests.Count; i++)
         {
             var req = requests[i];
-            if (AmountRules.CheckUnitPrice(req.UnitPrice) is { } priceError)
+            if (!lenient && AmountRules.CheckUnitPrice(req.UnitPrice) is { } priceError)
             {
                 throw new ArgumentException(priceError, nameof(requests));
             }
@@ -49,9 +51,9 @@ public static class OrderLineFactory
                     unit = profile.Unit;
                     fieldsJson = profile.FieldsJson;
                 }
-                else if (req.MeasurementFields is { Count: > 0 })
+                else if (lenient || req.MeasurementFields is { Count: > 0 })
                 {
-                    profileId = null; // profile gone: keep the line's own snapshot
+                    profileId = null; // profile gone: keep the line's own snapshot (synced lines never dead-end)
                 }
                 else
                 {

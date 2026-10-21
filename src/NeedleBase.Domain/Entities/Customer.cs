@@ -51,7 +51,7 @@ public class Customer : Entity, IBusinessScoped
         ArgumentException.ThrowIfNullOrWhiteSpace(phone);
 
         name = name.Trim();
-        phone = phone.Trim();
+        phone = PhoneNumbers.Normalize(phone);
         if (name.Length > FieldLimits.CustomerName)
         {
             throw new ArgumentException($"Name must be at most {FieldLimits.CustomerName} characters.", nameof(name));

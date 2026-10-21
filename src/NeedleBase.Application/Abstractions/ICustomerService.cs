@@ -11,13 +11,18 @@ public interface ICustomerService
         string? search,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<CustomerListItemDto>> FindByPhoneAsync(
+        string? phone,
+        string? excludeId,
+        CancellationToken cancellationToken = default);
+
     Task<CustomerDetailDto?> GetByIdAsync(string id, CancellationToken cancellationToken = default);
 
-    Task<(CustomerDetailDto? Customer, string? Error)> CreateAsync(
+    Task<RecordResult<CustomerDetailDto>> CreateAsync(
         CreateCustomerRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<(CustomerDetailDto? Customer, string? Error)> UpdateAsync(
+    Task<RecordResult<CustomerDetailDto>> UpdateAsync(
         string id,
         UpdateCustomerRequest request,
         CancellationToken cancellationToken = default);

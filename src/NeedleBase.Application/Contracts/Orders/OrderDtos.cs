@@ -41,6 +41,10 @@ public sealed record OrderLineDto(
 {
     public string GarmentDisplay => Domain.Enums.GarmentTemplate.DisplayName(GarmentTemplate);
 
+    /// <summary>Always en-GH ("GH₵ 1,250.00"), whatever the phone's language (XAML StringFormat uses the device culture).</summary>
+    public string LineTotalDisplay =>
+        $"GH₵ {LineTotal.ToString("N2", System.Globalization.CultureInfo.GetCultureInfo("en-GH"))} · {SnapshotLabel}";
+
     public string SnapshotLabel =>
         MeasurementFields.Count > 0 || !string.IsNullOrWhiteSpace(MeasurementProfileId)
             ? "Measurements snapped"
@@ -98,6 +102,14 @@ public sealed class CreateOrderLineRequest
 
 public sealed class CreateOrderRequest
 {
+    /// <summary>
+    /// Set only by sync push (never bound from JSON): skip input rules added after data may already have been
+    /// queued on devices (amount/measurement limits, phone format), so legacy data never fails permanently.
+    /// Domain invariants still apply.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Lenient { get; set; }
+
     /// <summary>Optional client ULID for offline idempotency.</summary>
     [MaxLength(FieldLimits.Id)]
     public string? Id { get; set; }
@@ -129,6 +141,9 @@ public sealed class CreateOrderRequest
 
 public sealed class UpdateOrderRequest
 {
+    /// <summary>Optional optimistic concurrency: the DateModifiedUtc the client last saw. Stale → 409 STALE_UPDATE.</summary>
+    public DateTimeOffset? BaseModifiedUtc { get; set; }
+
     public DateOnly? DueDate { get; set; }
 
     public DateOnly? FittingDate { get; set; }
@@ -142,6 +157,9 @@ public sealed class UpdateOrderRequest
 
 public sealed class UpdateOrderStatusRequest
 {
+    /// <summary>Optional optimistic concurrency: the DateModifiedUtc the client last saw. Stale → 409 STALE_UPDATE.</summary>
+    public DateTimeOffset? BaseModifiedUtc { get; set; }
+
     [Required, MaxLength(FieldLimits.OrderStatus)]
     public string Status { get; set; } = string.Empty;
 }

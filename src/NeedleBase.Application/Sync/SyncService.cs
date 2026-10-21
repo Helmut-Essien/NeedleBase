@@ -137,10 +137,10 @@ public sealed class SyncService : ISyncService
                 return Conflict(op, code: SyncErrorCodes.Deleted);
             }
 
-            var (created, error) = await _customers.CreateAsync(
-                new CreateCustomerRequest(dto.Name, dto.Phone, dto.Notes, dto.PhotoRef, dto.Id), ct).ConfigureAwait(false);
-            return created is null
-                ? error == "Customer id conflict." ? Rejected(op) : Failed(op, SyncErrorCodes.PayloadInvalid, error)
+            var created = await _customers.CreateAsync(
+                new CreateCustomerRequest(dto.Name, dto.Phone, dto.Notes, dto.PhotoRef, dto.Id) { Lenient = true }, ct).ConfigureAwait(false);
+            return !created.IsSuccess
+                ? created.Error == RecordError.CustomerConflict ? Rejected(op) : Failed(op, SyncErrorCodes.PayloadInvalid, created.Message)
                 : Applied(op, customer: await LoadCustomerAsync(dto.Id, ct).ConfigureAwait(false));
         }
 
@@ -156,7 +156,7 @@ public sealed class SyncService : ISyncService
         }
 
         var (updated, updateError) = await _customers.UpdateAsync(
-            dto.Id, new UpdateCustomerRequest(dto.Name, dto.Phone, dto.Notes, dto.PhotoRef), ct).ConfigureAwait(false);
+            dto.Id, new UpdateCustomerRequest(dto.Name, dto.Phone, dto.Notes, dto.PhotoRef) { Lenient = true }, ct).ConfigureAwait(false);
         return updated is null
             ? Failed(op, SyncErrorCodes.PayloadInvalid, updateError)
             : Applied(op, customer: await LoadCustomerAsync(dto.Id, ct).ConfigureAwait(false));
@@ -197,10 +197,11 @@ public sealed class SyncService : ISyncService
                 return Conflict(op, code: SyncErrorCodes.Deleted);
             }
 
-            var (created, error) = await _measurements.CreateAsync(
+            var created = await _measurements.CreateAsync(
                 dto.CustomerId,
                 new CreateMeasurementRequest
                 {
+                    Lenient = true,
                     Id = dto.Id,
                     GarmentTemplate = dto.GarmentTemplate,
                     Unit = dto.Unit,
@@ -209,13 +210,13 @@ public sealed class SyncService : ISyncService
                     MeasuredAtUtc = dto.MeasuredAtUtc
                 },
                 ct).ConfigureAwait(false);
-            if (created is null)
+            if (!created.IsSuccess)
             {
-                return error switch
+                return created.Error switch
                 {
-                    "Customer not found." => Conflict(op, code: SyncErrorCodes.ParentDeleted),
-                    "Measurement id conflict." => Rejected(op),
-                    _ => Failed(op, SyncErrorCodes.PayloadInvalid, error)
+                    RecordError.CustomerNotFound => Conflict(op, code: SyncErrorCodes.ParentDeleted),
+                    RecordError.MeasurementConflict => Rejected(op),
+                    _ => Failed(op, SyncErrorCodes.PayloadInvalid, created.Message)
                 };
             }
 
@@ -236,6 +237,7 @@ public sealed class SyncService : ISyncService
             dto.Id,
             new UpdateMeasurementRequest
             {
+                Lenient = true,
                 GarmentTemplate = dto.GarmentTemplate,
                 Unit = dto.Unit,
                 Fields = fields,
@@ -287,6 +289,7 @@ public sealed class SyncService : ISyncService
             var create = await _orders.CreateAsync(
                 new CreateOrderRequest
                 {
+                    Lenient = true,
                     Id = dto.Id,
                     CustomerId = dto.CustomerId,
                     DueDate = dto.DueDate,
@@ -391,7 +394,7 @@ public sealed class SyncService : ISyncService
     }
 
     private static bool SameCustomer(Customer c, SyncCustomerDto d) =>
-        c.Name == d.Name.Trim() && c.Phone == d.Phone.Trim() &&
+        c.Name == d.Name.Trim() && NeedleBase.Domain.Common.PhoneNumbers.Same(c.Phone, d.Phone) &&
         c.Notes == Clean(d.Notes) && c.PhotoRef == Clean(d.PhotoRef);
 
     private static bool SameMeasurement(MeasurementProfile m, SyncMeasurementDto d) =>

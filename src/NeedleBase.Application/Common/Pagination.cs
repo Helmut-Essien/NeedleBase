@@ -55,6 +55,13 @@ public sealed class PaginatedResponse<T>
             pageSize = maxPageSize;
         }
 
+        // (page - 1) * pageSize must stay a valid int offset: a huge page would overflow to a negative Skip (500).
+        var maxPage = int.MaxValue / pageSize;
+        if (page > maxPage)
+        {
+            page = maxPage;
+        }
+
         return (page, pageSize);
     }
 }

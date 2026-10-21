@@ -42,6 +42,14 @@ public sealed record CustomerDetailDto(
 
 public sealed class CreateCustomerRequest
 {
+    /// <summary>
+    /// Set only by sync push (never bound from JSON): skip input rules added after data may already have been
+    /// queued on devices (amount/measurement limits, phone format), so legacy data never fails permanently.
+    /// Domain invariants still apply.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Lenient { get; set; }
+
     public CreateCustomerRequest()
     {
     }
@@ -74,6 +82,17 @@ public sealed class CreateCustomerRequest
 
 public sealed class UpdateCustomerRequest
 {
+    /// <summary>
+    /// Set only by sync push (never bound from JSON): skip input rules added after data may already have been
+    /// queued on devices (amount/measurement limits, phone format), so legacy data never fails permanently.
+    /// Domain invariants still apply.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Lenient { get; set; }
+
+    /// <summary>Optional optimistic concurrency: the DateModifiedUtc the client last saw. Stale → 409 STALE_UPDATE.</summary>
+    public DateTimeOffset? BaseModifiedUtc { get; set; }
+
     public UpdateCustomerRequest()
     {
     }
