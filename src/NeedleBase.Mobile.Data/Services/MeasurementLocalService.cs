@@ -73,7 +73,7 @@ public sealed class MeasurementLocalService : IMeasurementLocalService
         return entity is null ? null : MapDetail(entity);
     }
 
-    public async Task<(MeasurementDetailDto? Measurement, string? Error)> SaveAsync(
+    public async Task<RecordResult<MeasurementDetailDto>> SaveAsync(
         string businessId,
         string customerId,
         CreateMeasurementRequest request,
@@ -89,7 +89,7 @@ public sealed class MeasurementLocalService : IMeasurementLocalService
             .ConfigureAwait(false);
         if (!customerExists)
         {
-            return (null, "Customer not found.");
+            return RecordResult.Fail(RecordError.CustomerNotFound);
         }
 
         var now = DateTimeOffset.UtcNow;
@@ -97,11 +97,21 @@ public sealed class MeasurementLocalService : IMeasurementLocalService
 
         try
         {
-            AmountRules.EnsureMeasurements(request.Unit, request.Fields);
             var fieldsJson = MeasurementFieldsSerializer.Serialize(request.Fields);
             var existing = await db.MeasurementProfiles
                 .FirstOrDefaultAsync(m => m.BusinessId == businessId && m.Id == id, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (existing is null)
+            {
+                AmountRules.EnsureMeasurements(request.Unit, request.Fields);
+            }
+            else
+            {
+                // Only edited values are checked: an older profile over today's limits keeps editable notes.
+                AmountRules.EnsureChangedMeasurements(request.Unit, request.Fields, existing.Unit,
+                    MeasurementFieldsSerializer.Deserialize(existing.FieldsJson));
+            }
 
             if (existing is not null)
             {
@@ -115,7 +125,7 @@ public sealed class MeasurementLocalService : IMeasurementLocalService
                     measuredAt,
                     now);
                 await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                return (MapDetail(existing), null);
+                return MapDetail(existing);
             }
 
             var measuredAtCreate = request.MeasuredAtUtc ?? now;
@@ -131,15 +141,15 @@ public sealed class MeasurementLocalService : IMeasurementLocalService
                 now);
             db.MeasurementProfiles.Add(entity);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return (MapDetail(entity), null);
+            return MapDetail(entity);
         }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {
-            return (null, LocalStorageErrors.StorageFullMessage);
+            return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
         }
         catch (ArgumentException ex)
         {
-            return (null, ex.Message);
+            return RecordResult.Fail(RecordError.Validation, ex.Message);
         }
     }
 

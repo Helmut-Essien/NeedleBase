@@ -36,6 +36,16 @@ public sealed class SyncService
         [TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(60), TimeSpan.FromMinutes(5)];
 
     private static readonly TimeSpan SaveDebounce = TimeSpan.FromSeconds(2);
+
+    /// <summary>While the app is in the foreground, pull other devices' changes at least this often.</summary>
+    public static readonly TimeSpan ForegroundInterval = TimeSpan.FromMinutes(10);
+
+    /// <summary>Pull-to-refresh waits at most this long for sync before showing what is on the device.</summary>
+    public static readonly TimeSpan RefreshWait = TimeSpan.FromSeconds(15);
+
+    private CancellationTokenSource? _foregroundCts;
+    private DateTimeOffset _lastForegroundRun = DateTimeOffset.MinValue;
+    private static readonly TimeSpan ForegroundThrottle = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan MaxRetryAfter = TimeSpan.FromHours(1);
 
     private readonly SyncEngine _engine;
@@ -76,6 +86,9 @@ public sealed class SyncService
     public SyncEngine Engine => _engine;
 
     public event EventHandler<SyncStatusSnapshot>? StatusChanged;
+
+    /// <summary>Raised when sync lost its session because the server revoked access (see AccessRevokedService).</summary>
+    public event EventHandler? AccessRevoked;
 
     public bool IsOnline => _connectivity.NetworkAccess == NetworkAccess.Internet;
 
@@ -193,7 +206,76 @@ public sealed class SyncService
         return summary.Pending + summary.NeedsAttention;
     }
 
+    /// <summary>Unsynced changes (queued or needing attention) for a business, even after the tokens were cleared.</summary>
+    public async Task<int> PendingCountForAsync(string businessId)
+    {
+        var summary = await _engine.GetSummaryAsync(businessId).ConfigureAwait(false);
+        return summary.Pending + summary.NeedsAttention;
+    }
+
     public void Trigger() => _ = RunAsync();
+
+    /// <summary>
+    /// App came to the foreground (resume / first window): sync now, unless a backoff or a blocking state is
+    /// already deciding when to retry, and keep syncing every <see cref="ForegroundInterval"/> while visible.
+    /// </summary>
+    public void OnForeground()
+    {
+        var now = _now();
+        if (now - _lastForegroundRun >= ForegroundThrottle &&
+            !IsStopped && _started && !IsBackingOff && _blockedState is null && !_sessionExpired)
+        {
+            _lastForegroundRun = now; // a dialog or picker closing also "activates": don't sync every time
+            Trigger();
+        }
+
+        _foregroundCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _foregroundCts = cts;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                while (true)
+                {
+                    await Task.Delay(ForegroundInterval, cts.Token).ConfigureAwait(false);
+                    if (_started && !IsStopped && !IsBackingOff && _blockedState is null && !_sessionExpired)
+                    {
+                        await RunAsync().ConfigureAwait(false);
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
+    }
+
+    /// <summary>App went to the background: stop the foreground timer (no battery use while hidden).</summary>
+    public void OnBackground()
+    {
+        _foregroundCts?.Cancel();
+        _foregroundCts = null;
+    }
+
+    /// <summary>Pull-to-refresh: sync now when possible, waiting at most <see cref="RefreshWait"/>.</summary>
+    public async Task SyncForRefreshAsync()
+    {
+        if (IsStopped || !_started || !IsOnline || _sessionExpired || _blockedState is not null)
+        {
+            return;
+        }
+
+        try
+        {
+            var run = SyncNowAsync();
+            await Task.WhenAny(run, Task.Delay(RefreshWait)).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Refresh sync failed: {ex.Message}");
+        }
+    }
 
     private void ResetFailures()
     {
@@ -349,6 +431,10 @@ public sealed class SyncService
             // Keep the queue and the local data; signing in again (same account) continues where it left off.
             _sessionExpired = true;
             _lastError = "Sign in again to sync. Your changes are kept on this device.";
+            if (await _auth.GetAccessRevokedAsync().ConfigureAwait(false) is not null)
+            {
+                AccessRevoked?.Invoke(this, EventArgs.Empty); // deactivated / removed: the device is wiped instead
+            }
         }
         catch (SyncAccessDeniedException)
         {

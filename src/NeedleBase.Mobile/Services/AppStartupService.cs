@@ -10,16 +10,19 @@ public sealed class AppStartupService
     private readonly IAuthService _authService;
     private readonly INavigationService _navigation;
     private readonly ILocalDatabaseService _localDatabase;
+    private readonly AccessRevokedService _accessRevoked;
     private bool _started;
 
     public AppStartupService(
         IAuthService authService,
         INavigationService navigation,
-        ILocalDatabaseService localDatabase)
+        ILocalDatabaseService localDatabase,
+        AccessRevokedService accessRevoked)
     {
         _authService = authService;
         _navigation = navigation;
         _localDatabase = localDatabase;
+        _accessRevoked = accessRevoked;
     }
 
     public async Task RunOnceAsync(Page host)
@@ -50,6 +53,12 @@ public sealed class AppStartupService
                     continue;
                 }
 
+                // A revoke seen earlier whose wipe didn't finish (app killed, storage error): finish it first.
+                if (await _accessRevoked.HandleAsync(host))
+                {
+                    return;
+                }
+
                 if (!await _authService.HasStoredTokensAsync())
                 {
                     await _navigation.ShowLoginAsync();
@@ -58,6 +67,11 @@ public sealed class AppStartupService
 
                 // Soft validate: transient refresh failure keeps session (offline honesty).
                 var refresh = await _authService.RefreshAsync();
+                if (refresh.AccessRevoked && await _accessRevoked.HandleAsync(host))
+                {
+                    return;
+                }
+
                 if (!(refresh.Succeeded || refresh.IsTransientFailure))
                 {
                     await _authService.ClearTokensAsync();

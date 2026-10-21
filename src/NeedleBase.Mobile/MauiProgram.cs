@@ -72,6 +72,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMeasurementLocalService, MeasurementLocalService>();
         builder.Services.AddSingleton<IOrderLocalService, OrderLocalService>();
         builder.Services.AddSingleton<AppStartupService>();
+        builder.Services.AddSingleton<AccessRevokedService>();
 
         builder.Services.AddTransient<LoginViewModel>();
         builder.Services.AddTransient<RegisterViewModel>();

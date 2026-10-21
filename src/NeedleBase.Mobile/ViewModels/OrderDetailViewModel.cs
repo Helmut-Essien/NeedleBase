@@ -218,17 +218,17 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
                 return;
             }
 
-            var (order, error) = await _orders.UpdateStatusAsync(
+            var result = await _orders.UpdateStatusAsync(
                 businessId,
                 OrderId,
                 SelectedStatusOption.Status);
-            if (error is not null || order is null)
+            if (!result.IsSuccess)
             {
-                ErrorMessage = error ?? "Couldn't update status.";
+                ErrorMessage = result.Message ?? "Couldn't update status.";
                 return;
             }
 
-            ApplyDetail(order);
+            ApplyDetail(result.Value!);
             ShowStatusPicker = false;
             await Toast.Make("Saved on this device", ToastDuration.Short, 14).Show();
         }

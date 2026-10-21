@@ -142,14 +142,9 @@
                                     </MultiBinding>
                                 </Label.Text>
                             </Label>
-                            <Label FontSize="13" TextColor="{StaticResource Gray600}">
-                                <Label.Text>
-                                    <MultiBinding StringFormat="GH₵ {0:N2} · {1}">
-                                        <Binding Path="LineTotal" />
-                                        <Binding Path="SnapshotLabel" />
-                                    </MultiBinding>
-                                </Label.Text>
-                            </Label>
+                            <Label FontSize="13"
+                                   TextColor="{StaticResource Gray600}"
+                                   Text="{Binding LineTotalDisplay}" />
                         </VerticalStackLayout>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>

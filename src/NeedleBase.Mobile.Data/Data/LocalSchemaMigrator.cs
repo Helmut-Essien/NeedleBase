@@ -158,6 +158,15 @@ public static class LocalSchemaMigrator
         UPDATE "Customers" SET "SearchName" = NULL;
         """;
 
+    /// <summary>
+    /// Version 7 = phone normalisation (+233 form, <see cref="NeedleBase.Domain.Common.PhoneNumbers"/>): keys are
+    /// reset and the backfill below rewrites Phone with the keys. Not queued for sync: the server runs the same
+    /// rule on its own rows, so both sides converge without a push.
+    /// </summary>
+    private const string V7PhoneNormalize = """
+        UPDATE "Customers" SET "SearchName" = NULL;
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
@@ -167,6 +176,7 @@ public static class LocalSchemaMigrator
         V4Sync,
         V5SyncRecovery,
         V6Adoption,
+        V7PhoneNormalize,
     ];
 
     public static int LatestVersion => Steps.Length;
@@ -219,7 +229,8 @@ public static class LocalSchemaMigrator
     }
 
     /// <summary>
-    /// Fills SearchName/PhoneDigits for rows written before v3 (same C# rules as SaveChanges).
+    /// Fills SearchName/PhoneDigits for rows written before v3 (same C# rules as SaveChanges) and, since v7,
+    /// normalises Phone (same rule as the domain).
     /// Idempotent: only touches rows where SearchName is NULL.
     /// </summary>
     private static async Task BackfillCustomerSearchKeysAsync(DbConnection connection, CancellationToken cancellationToken)
@@ -249,15 +260,23 @@ public static class LocalSchemaMigrator
         await using var tx = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
         await using var update = connection.CreateCommand();
         update.Transaction = tx;
-        update.CommandText = "UPDATE \"Customers\" SET \"SearchName\" = $name, \"PhoneDigits\" = $phone WHERE \"Id\" = $id;";
+        update.CommandText = "UPDATE \"Customers\" SET \"SearchName\" = $name, \"PhoneDigits\" = $phone, \"Phone\" = $number WHERE \"Id\" = $id;";
         AddParameter(update, "$name", string.Empty);
         AddParameter(update, "$phone", string.Empty);
+        AddParameter(update, "$number", string.Empty);
         AddParameter(update, "$id", string.Empty);
         update.Prepare();
         foreach (var (id, name, phone) in rows)
         {
+            var number = NeedleBase.Domain.Common.PhoneNumbers.Normalize(phone);
+            if (number.Length == 0 || number.Length > NeedleBase.Domain.Common.FieldLimits.Phone)
+            {
+                number = phone;
+            }
+
             update.Parameters["$name"].Value = CustomerSearchKeys.NameKey(name);
-            update.Parameters["$phone"].Value = CustomerSearchKeys.PhoneDigits(phone);
+            update.Parameters["$phone"].Value = CustomerSearchKeys.PhoneDigits(number);
+            update.Parameters["$number"].Value = number;
             update.Parameters["$id"].Value = id;
             await update.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }

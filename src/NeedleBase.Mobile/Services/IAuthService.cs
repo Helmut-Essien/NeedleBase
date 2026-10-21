@@ -37,6 +37,15 @@ public interface IAuthService
         get => null;
         set { }
     }
+    /// <summary>ACCOUNT_DEACTIVATED / NO_MEMBERSHIP when the server revoked access and the wipe is still due.</summary>
+    Task<string?> GetAccessRevokedAsync() => Task.FromResult<string?>(null);
+
+    /// <summary>Business whose data is on this device (kept after tokens are cleared).</summary>
+    Task<string?> GetLocalDataBusinessIdAsync() => GetBusinessIdAsync();
+
+    /// <summary>Access revoked: wipe local data and the session. False if the wipe failed (flag kept for retry).</summary>
+    Task<bool> WipeRevokedAccessAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
+
     Task<string?> GetBusinessIdAsync();
     Task<AuthUserDto?> GetCachedUserAsync();
 }

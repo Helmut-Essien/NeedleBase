@@ -1,3 +1,4 @@
+using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Orders;
 
 namespace NeedleBase.Mobile.Data.Services;
@@ -26,12 +27,12 @@ public interface IOrderLocalService
         int take = 5,
         CancellationToken cancellationToken = default);
 
-    Task<(OrderDetailDto? Order, string? Error)> SaveAsync(
+    Task<RecordResult<OrderDetailDto>> SaveAsync(
         string businessId,
         CreateOrderRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<(OrderDetailDto? Order, string? Error)> UpdateStatusAsync(
+    Task<RecordResult<OrderDetailDto>> UpdateStatusAsync(
         string businessId,
         string id,
         string status,

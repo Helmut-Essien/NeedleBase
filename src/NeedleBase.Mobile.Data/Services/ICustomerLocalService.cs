@@ -1,3 +1,4 @@
+using NeedleBase.Application.Common;
 using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Contracts.Customers;
 
@@ -17,17 +18,23 @@ public interface ICustomerLocalService
         int take = 8,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<CustomerListItemDto>> FindByPhoneAsync(
+        string businessId,
+        string? phone,
+        string? excludeId,
+        CancellationToken cancellationToken = default);
+
     Task<CustomerDetailDto?> GetByIdAsync(
         string businessId,
         string id,
         CancellationToken cancellationToken = default);
 
-    Task<(CustomerDetailDto? Customer, string? Error)> SaveAsync(
+    Task<RecordResult<CustomerDetailDto>> SaveAsync(
         string businessId,
         CreateCustomerRequest request,
         CancellationToken cancellationToken = default);
 
-    Task<(CustomerDetailDto? Customer, string? Error)> UpdateAsync(
+    Task<RecordResult<CustomerDetailDto>> UpdateAsync(
         string businessId,
         string id,
         UpdateCustomerRequest request,

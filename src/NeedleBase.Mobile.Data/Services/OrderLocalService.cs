@@ -205,7 +205,7 @@ public sealed class OrderLocalService : IOrderLocalService
         return new OrderCountsDto(active, ready, byStatus);
     }
 
-    public async Task<(OrderDetailDto? Order, string? Error)> SaveAsync(
+    public async Task<RecordResult<OrderDetailDto>> SaveAsync(
         string businessId,
         CreateOrderRequest request,
         CancellationToken cancellationToken = default)
@@ -223,7 +223,8 @@ public sealed class OrderLocalService : IOrderLocalService
             .ConfigureAwait(false);
         if (existing is not null)
         {
-            return (await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false), null);
+            var replay = await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false);
+            return replay is null ? RecordResult.Fail(RecordError.Validation, OrderErrorMessages.Fallback) : replay;
         }
 
         var customerExists = await db.Customers.AsNoTracking()
@@ -283,11 +284,11 @@ public sealed class OrderLocalService : IOrderLocalService
 
             db.Orders.Add(entity);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return (await GetByIdAsync(businessId, entity.Id, cancellationToken).ConfigureAwait(false), null);
+            return await GetByIdAsync(businessId, entity.Id, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {
-            return (null, LocalStorageErrors.StorageFullMessage);
+            return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
         }
         catch (ArgumentException ex)
         {
@@ -299,7 +300,7 @@ public sealed class OrderLocalService : IOrderLocalService
         }
     }
 
-    public async Task<(OrderDetailDto? Order, string? Error)> UpdateStatusAsync(
+    public async Task<RecordResult<OrderDetailDto>> UpdateStatusAsync(
         string businessId,
         string id,
         string status,
@@ -322,11 +323,12 @@ public sealed class OrderLocalService : IOrderLocalService
         {
             entity.SetStatus(status, DateTimeOffset.UtcNow);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return (await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false), null);
+            var replay = await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false);
+            return replay is null ? RecordResult.Fail(RecordError.Validation, OrderErrorMessages.Fallback) : replay;
         }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {
-            return (null, LocalStorageErrors.StorageFullMessage);
+            return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
         }
         catch (ArgumentException ex)
         {
@@ -338,28 +340,17 @@ public sealed class OrderLocalService : IOrderLocalService
     /// Friendly, user-safe copy for the UI. Technical detail goes to the debug log only
     /// (never <c>ex.Message</c> to the screen).
     /// </summary>
-    private static (OrderDetailDto? Order, string? Error) Fail(OrderError error, string? technicalDetail)
+    private static RecordFailure Fail(OrderError error, string? technicalDetail)
     {
         if (technicalDetail is not null)
         {
             System.Diagnostics.Debug.WriteLine($"OrderLocalService {error}: {technicalDetail}");
         }
 
-        return (null, OrderErrorMessages.For(ToCode(error)));
+        // Detail = the order copy (same wording as before); never ex.Message.
+        return RecordResult.Fail(OrderErrorMapping.ToRecord(error), OrderErrorMessages.For(OrderErrorMapping.Code(error)));
     }
 
-    private static string ToCode(OrderError error) => error switch
-    {
-        OrderError.NotFound => OrderErrorMessages.OrderNotFound,
-        OrderError.CustomerNotFound => OrderErrorMessages.CustomerNotFound,
-        OrderError.MeasurementNotFound => OrderErrorMessages.MeasurementNotFound,
-        OrderError.IdConflict => OrderErrorMessages.OrderConflict,
-        OrderError.Locked => OrderErrorMessages.OrderLocked,
-        OrderError.StatusInvalid => OrderErrorMessages.OrderStatusInvalid,
-        OrderError.AssigneeInvalid => OrderErrorMessages.AssigneeInvalid,
-        OrderError.TotalMismatch => OrderErrorMessages.TotalMismatch,
-        _ => OrderErrorMessages.Validation
-    };
 
     private static OrderDetailDto MapDetail(
         Order order,

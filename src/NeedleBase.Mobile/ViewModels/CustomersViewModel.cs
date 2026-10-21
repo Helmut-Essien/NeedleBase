@@ -15,8 +15,9 @@ public partial class CustomersViewModel : BaseViewModel
     private int _loadGeneration;
     private readonly SearchDebouncer _searchDebounce = new();
 
-    public CustomersViewModel(ICustomerLocalService customers, IAuthService auth)
+    public CustomersViewModel(ICustomerLocalService customers, IAuthService auth, SyncService? sync = null)
     {
+        _sync = sync;
         _customers = customers;
         _auth = auth;
         Title = "Customers";
@@ -194,6 +195,9 @@ public partial class CustomersViewModel : BaseViewModel
         }
     }
 
+    private readonly SyncService? _sync;
+
+    /// <summary>Pull-to-refresh syncs first (bounded wait), then reloads from the device.</summary>
     [RelayCommand]
     private async Task RefreshAsync()
     {
@@ -204,6 +208,11 @@ public partial class CustomersViewModel : BaseViewModel
         }
 
         IsRefreshing = true;
+        if (_sync is not null)
+        {
+            await _sync.SyncForRefreshAsync();
+        }
+
         await LoadAsync();
     }
 

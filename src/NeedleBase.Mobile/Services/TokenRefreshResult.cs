@@ -10,14 +10,26 @@ public readonly record struct TokenRefreshResult(
     bool Succeeded,
     TokenResponse? Token,
     string Message,
-    bool IsTransientFailure)
+    bool IsTransientFailure,
+    string? ErrorCode = null)
 {
+    /// <summary>The server said this account is deactivated or no longer a member: local data must be wiped.</summary>
+    public bool AccessRevoked => AccessRevokedCodes.IsRevoked(ErrorCode);
+
     public static TokenRefreshResult Ok(TokenResponse token, string message = "Refreshed") =>
         new(true, token, message, false);
 
     public static TokenRefreshResult Transient(string message) =>
         new(false, null, message, true);
 
-    public static TokenRefreshResult InvalidSession(string message) =>
-        new(false, null, message, false);
+    public static TokenRefreshResult InvalidSession(string message, string? errorCode = null) =>
+        new(false, null, message, false, errorCode);
+}
+
+public static class AccessRevokedCodes
+{
+    public const string AccountDeactivated = "ACCOUNT_DEACTIVATED";
+    public const string NoMembership = "NO_MEMBERSHIP";
+
+    public static bool IsRevoked(string? code) => code is AccountDeactivated or NoMembership;
 }

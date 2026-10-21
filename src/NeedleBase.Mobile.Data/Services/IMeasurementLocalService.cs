@@ -1,3 +1,4 @@
+using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Measurements;
 
 namespace NeedleBase.Mobile.Data.Services;
@@ -14,7 +15,7 @@ public interface IMeasurementLocalService
         string id,
         CancellationToken cancellationToken = default);
 
-    Task<(MeasurementDetailDto? Measurement, string? Error)> SaveAsync(
+    Task<RecordResult<MeasurementDetailDto>> SaveAsync(
         string businessId,
         string customerId,
         CreateMeasurementRequest request,

@@ -24,6 +24,12 @@ public sealed class AuthService : IAuthService
     /// <summary>Who the local SQLite data belongs to ("userId|businessId"). Not cleared when a session expires.</summary>
     public const string LocalDataOwnerKey = "local_data_owner";
 
+    /// <summary>
+    /// Set when refresh says the account is deactivated / no longer a member; cleared only after the local wipe.
+    /// Survives a crash or kill, so the next start finishes the wipe.
+    /// </summary>
+    public const string AccessRevokedKey = "access_revoked";
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -147,8 +153,14 @@ public sealed class AuthService : IAuthService
 
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
             {
+                var code = ReadProblemCode(await response.Content.ReadAsStringAsync(cancellationToken));
+                if (AccessRevokedCodes.IsRevoked(code))
+                {
+                    await _secureStorage.SetAsync(AccessRevokedKey, code!);
+                }
+
                 await ClearTokensAsync();
-                return TokenRefreshResult.InvalidSession("Session expired.");
+                return TokenRefreshResult.InvalidSession("Session expired.", code);
             }
 
             if ((int)response.StatusCode >= 500 || response.StatusCode == HttpStatusCode.TooManyRequests)
@@ -187,6 +199,48 @@ public sealed class AuthService : IAuthService
         finally
         {
             RefreshLock.Release();
+        }
+    }
+
+    public async Task<string?> GetAccessRevokedAsync()
+    {
+        var code = await _secureStorage.GetAsync(AccessRevokedKey);
+        return string.IsNullOrWhiteSpace(code) ? null : code;
+    }
+
+    public async Task<string?> GetLocalDataBusinessIdAsync()
+    {
+        var owner = await _secureStorage.GetAsync(LocalDataOwnerKey);
+        var bar = owner?.IndexOf('|') ?? -1;
+        return bar >= 0 ? owner![(bar + 1)..] : null;
+    }
+
+    public async Task<bool> WipeRevokedAccessAsync(CancellationToken cancellationToken = default)
+    {
+        if (!await _localDatabase.WipeAsync(cancellationToken))
+        {
+            return false; // flag kept: the next start tries again
+        }
+
+        await ClearTokensAsync();
+        _secureStorage.Remove(LocalDataOwnerKey);
+        _secureStorage.Remove(AccessRevokedKey);
+        return true;
+    }
+
+    private static string? ReadProblemCode(string body)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.ValueKind == JsonValueKind.Object &&
+                   doc.RootElement.TryGetProperty("code", out var code) && code.ValueKind == JsonValueKind.String
+                ? code.GetString()
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 
@@ -307,6 +361,7 @@ public sealed class AuthService : IAuthService
         }
 
         await _secureStorage.SetAsync(LocalDataOwnerKey, owner);
+        _secureStorage.Remove(AccessRevokedKey);
         await _secureStorage.SetAsync(BusinessIdKey, user.BusinessId);
         await _secureStorage.SetAsync(BusinessNameKey, user.BusinessName);
         await _secureStorage.SetAsync(UserIdKey, user.UserId);

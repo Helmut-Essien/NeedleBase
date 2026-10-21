@@ -17,8 +17,13 @@ public partial class App : Microsoft.Maui.Controls.Application
     {
         var window = new Window(new AppShell());
         window.Stopped += OnWindowStopped;
+        window.Stopped += (_, _) => Sync?.OnBackground();
+        window.Activated += (_, _) => Sync?.OnForeground(); // first show and every return to the foreground
         return window;
     }
+
+    private static NeedleBase.Mobile.Services.SyncService? Sync =>
+        NeedleBase.Mobile.Services.ServiceHelper.GetService<NeedleBase.Mobile.Services.SyncService>();
 
     private static void OnWindowStopped(object? sender, EventArgs e)
     {

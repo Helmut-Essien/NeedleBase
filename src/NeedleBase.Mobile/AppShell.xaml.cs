@@ -45,6 +45,21 @@ public partial class AppShell : Shell
     /// </summary>
     protected override bool OnBackButtonPressed()
     {
+        // The page's view model first: no pop while it is saving (the save then navigates itself, which would
+        // pop a second page), and a wizard steps back before leaving.
+        if (CurrentPage?.BindingContext is IBackAware aware)
+        {
+            if (!aware.CanGoBack || aware.TryHandleBack())
+            {
+                return true;
+            }
+        }
+
+        if (_popping)
+        {
+            return true; // a pop is already running: a fast second press must not pop the page below too
+        }
+
         if (CanGoBack())
         {
             _lastRootBackPressUtc = DateTimeOffset.MinValue;
@@ -92,8 +107,11 @@ public partial class AppShell : Shell
         return false;
     }
 
+    private bool _popping;
+
     private async Task PopBackAsync()
     {
+        _popping = true;
         try
         {
             if (Navigation.ModalStack.Count > 0)
@@ -112,6 +130,10 @@ public partial class AppShell : Shell
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Back pop failed: {ex.Message}");
+        }
+        finally
+        {
+            _popping = false;
         }
     }
 

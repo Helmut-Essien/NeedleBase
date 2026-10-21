@@ -1,3 +1,4 @@
+using NeedleBase.Domain.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NeedleBase.Application.Abstractions;
@@ -92,6 +93,34 @@ public sealed class CustomerLocalService : ICustomerLocalService
         }, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>Customers with the same number (any formatting), for the non-blocking duplicate warning on create.</summary>
+    public async Task<IReadOnlyList<CustomerListItemDto>> FindByPhoneAsync(
+        string businessId,
+        string? phone,
+        string? excludeId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(businessId);
+        var normalized = PhoneNumbers.Normalize(phone);
+        var digits = CustomerSearchKeys.PhoneDigits(normalized);
+        if (digits.Length < PhoneNumbers.MinDigits - 1)
+        {
+            return [];
+        }
+
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+        var rows = await db.Customers.AsNoTracking()
+            .Where(c => c.BusinessId == businessId && EF.Property<string>(c, LocalDbContext.PhoneDigitsColumn) == digits)
+            .Where(c => excludeId == null || c.Id != excludeId)
+            .OrderBy(c => c.Name)
+            .Take(5)
+            .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return rows.Where(c => PhoneNumbers.Same(c.Phone, normalized)).ToList();
+    }
+
     public async Task<CustomerDetailDto?> GetByIdAsync(
         string businessId,
         string id,
@@ -117,7 +146,7 @@ public sealed class CustomerLocalService : ICustomerLocalService
         return MapDetail(customer, count);
     }
 
-    public async Task<(CustomerDetailDto? Customer, string? Error)> SaveAsync(
+    public async Task<RecordResult<CustomerDetailDto>> SaveAsync(
         string businessId,
         CreateCustomerRequest request,
         CancellationToken cancellationToken = default)
@@ -132,21 +161,27 @@ public sealed class CustomerLocalService : ICustomerLocalService
         var existing = await db.Customers
             .FirstOrDefaultAsync(c => c.BusinessId == businessId && c.Id == id, cancellationToken)
             .ConfigureAwait(false);
+        var phoneChanged = existing is null || !PhoneNumbers.Same(request.Phone, existing.Phone);
+        if (phoneChanged && PhoneNumbers.Check(request.Phone) is { } phoneError)
+        {
+            return RecordResult.Fail(RecordError.PhoneInvalid, phoneError);
+        }
+
         if (existing is not null)
         {
             try
             {
                 existing.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, now);
                 await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-                return (await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false), null);
+                return await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
             {
-                return (null, LocalStorageErrors.StorageFullMessage);
+                return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
             }
             catch (ArgumentException ex)
             {
-                return (null, ex.Message);
+                return RecordResult.Fail(RecordError.Validation, ex.Message);
             }
         }
 
@@ -162,19 +197,19 @@ public sealed class CustomerLocalService : ICustomerLocalService
                 now);
             db.Customers.Add(entity);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return (MapDetail(entity, 0), null);
+            return MapDetail(entity, 0);
         }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {
-            return (null, LocalStorageErrors.StorageFullMessage);
+            return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
         }
         catch (ArgumentException ex)
         {
-            return (null, ex.Message);
+            return RecordResult.Fail(RecordError.Validation, ex.Message);
         }
     }
 
-    public async Task<(CustomerDetailDto? Customer, string? Error)> UpdateAsync(
+    public async Task<RecordResult<CustomerDetailDto>> UpdateAsync(
         string businessId,
         string id,
         UpdateCustomerRequest request,
@@ -190,22 +225,28 @@ public sealed class CustomerLocalService : ICustomerLocalService
             .ConfigureAwait(false);
         if (entity is null)
         {
-            return (null, "Customer not found.");
+            return RecordResult.Fail(RecordError.CustomerNotFound);
+        }
+
+        // Only a changed number must pass the format rule, so an old customer's notes stay editable.
+        if (!PhoneNumbers.Same(request.Phone, entity.Phone) && PhoneNumbers.Check(request.Phone) is { } phoneError)
+        {
+            return RecordResult.Fail(RecordError.PhoneInvalid, phoneError);
         }
 
         try
         {
             entity.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, DateTimeOffset.UtcNow);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return (await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false), null);
+            return await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {
-            return (null, LocalStorageErrors.StorageFullMessage);
+            return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
         }
         catch (ArgumentException ex)
         {
-            return (null, ex.Message);
+            return RecordResult.Fail(RecordError.Validation, ex.Message);
         }
     }
 

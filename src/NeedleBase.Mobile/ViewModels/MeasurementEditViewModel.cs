@@ -9,7 +9,7 @@ using NeedleBase.Mobile.Services;
 
 namespace NeedleBase.Mobile.ViewModels;
 
-public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributable
+public partial class MeasurementEditViewModel : BaseViewModel, IBackAware, IQueryAttributable
 {
     private const string SavedCopy = "Saved on this device. Will sync when you're online.";
     private const decimal CmPerInch = 2.54m;
@@ -31,6 +31,8 @@ public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributabl
 
     public bool CanSave => !IsBusy && ReadyToSave;
     public bool CanGoBack => !IsSaving;
+
+    public bool TryHandleBack() => false;
 
     protected override void OnBusyChanged() => OnPropertyChanged(nameof(CanSave));
 
@@ -265,10 +267,10 @@ public partial class MeasurementEditViewModel : BaseViewModel, IQueryAttributabl
                     : _originalMeasuredAtUtc
             };
 
-            var (saved, error) = await _measurements.SaveAsync(businessId, CustomerId, request);
-            if (error is not null || saved is null)
+            var saved = await _measurements.SaveAsync(businessId, CustomerId, request);
+            if (!saved.IsSuccess)
             {
-                ErrorMessage = error ?? "Could not save measurements.";
+                ErrorMessage = saved.Message ?? "Could not save measurements.";
                 return;
             }
 

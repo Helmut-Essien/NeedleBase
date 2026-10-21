@@ -30,7 +30,7 @@ public sealed class CreateOrderLineDraft : ObservableObject
     public IRelayCommand? RemoveCommand { get; set; }
 }
 
-public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
+public partial class CreateOrderViewModel : BaseViewModel, IBackAware, IQueryAttributable
 {
     private readonly IOrderLocalService _orders;
     private readonly ICustomerLocalService _customers;
@@ -244,6 +244,18 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
     private bool isSaving;
 
     public bool CanGoBack => !IsSaving;
+
+    /// <summary>Android Back on a later step goes back one step instead of leaving the wizard.</summary>
+    public bool TryHandleBack()
+    {
+        if (Step > 0 && !IsSaving)
+        {
+            BackStep();
+            return true;
+        }
+
+        return false;
+    }
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasLines => Lines.Count > 0;
     public bool HasSelectedCustomer => SelectedCustomer is not null;
@@ -612,12 +624,14 @@ public partial class CreateOrderViewModel : BaseViewModel, IQueryAttributable
                 Lines = lineRequests
             };
 
-            var (order, error) = await _orders.SaveAsync(businessId, request);
-            if (error is not null || order is null)
+            var result = await _orders.SaveAsync(businessId, request);
+            if (!result.IsSuccess)
             {
-                ErrorMessage = error ?? "Couldn't save the order.";
+                ErrorMessage = result.Message ?? "Couldn't save the order.";
                 return;
             }
+
+            var order = result.Value!;
 
             await Toast.Make("Saved on this device", ToastDuration.Short, 14).Show();
             // Replace wizard with detail on the same nav stack.

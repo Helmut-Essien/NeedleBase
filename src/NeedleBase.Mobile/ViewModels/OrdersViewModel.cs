@@ -28,8 +28,9 @@ public partial class OrdersViewModel : BaseViewModel
     private readonly SearchDebouncer _searchDebounce = new();
     private bool _suppressFilterReload = true;
 
-    public OrdersViewModel(IOrderLocalService orders, IAuthService auth)
+    public OrdersViewModel(IOrderLocalService orders, IAuthService auth, SyncService? sync = null)
     {
+        _sync = sync;
         _orders = orders;
         _auth = auth;
         Title = "Orders";
@@ -228,6 +229,9 @@ public partial class OrdersViewModel : BaseViewModel
         }
     }
 
+    private readonly SyncService? _sync;
+
+    /// <summary>Pull-to-refresh syncs first (bounded wait), then reloads from the device.</summary>
     [RelayCommand]
     private async Task RefreshAsync()
     {
@@ -238,6 +242,11 @@ public partial class OrdersViewModel : BaseViewModel
         }
 
         IsRefreshing = true;
+        if (_sync is not null)
+        {
+            await _sync.SyncForRefreshAsync();
+        }
+
         await LoadAsync();
     }
 

@@ -1,3 +1,4 @@
+using NeedleBase.Application.Common;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using NeedleBase.Application.Contracts.Customers;
@@ -7,7 +8,7 @@ using NeedleBase.Mobile.Services;
 
 namespace NeedleBase.Mobile.ViewModels;
 
-public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
+public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAttributable
 {
     private bool _returnSelects;
     private const string SavedCopy = "Saved on this device. Will sync when you're online.";
@@ -57,6 +58,8 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
 
     partial void OnPhoneChanged(string value) => PhoneError = null;
     public bool CanGoBack => !IsSaving;
+
+    public bool TryHandleBack() => false;
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
@@ -131,6 +134,7 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
 
             Name = detail.Name;
             Phone = detail.Phone;
+            _loadedPhone = detail.Phone;
             Notes = detail.Notes ?? string.Empty;
         }
         finally
@@ -138,6 +142,8 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
             IsBusy = false;
         }
     }
+
+    private string? _loadedPhone;
 
     [RelayCommand]
     private async Task SaveAsync()
@@ -166,6 +172,12 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
             PhoneError = "Phone is too long.";
         }
 
+        // Format rule only for a new or changed number, so an old customer's notes stay editable.
+        if (!HasPhoneError && (_loadedPhone is null || !PhoneNumbers.Same(Phone, _loadedPhone)))
+        {
+            PhoneError = PhoneNumbers.Check(Phone);
+        }
+
         if (HasNameError || HasPhoneError)
         {
             return;
@@ -190,14 +202,38 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
 
             if (string.IsNullOrWhiteSpace(CustomerId))
             {
-                var (created, error) = await _customers.SaveAsync(
+                // Non-blocking duplicate warning: same number already saved on this device.
+                var matches = await _customers.FindByPhoneAsync(businessId, Phone, null);
+                if (matches.Count > 0)
+                {
+                    var names = string.Join(", ", matches.Select(m => m.Name));
+                    var keep = await Shell.Current.DisplayAlert(
+                        "Same phone number",
+                        $"{names} already has this number. Save another customer anyway?",
+                        "Save anyway",
+                        "Cancel");
+                    if (!keep)
+                    {
+                        return;
+                    }
+                }
+
+                var result = await _customers.SaveAsync(
                     businessId,
                     new CreateCustomerRequest(Name, Phone, Notes, null));
-                if (error is not null || created is null)
+                if (result.Error == RecordError.PhoneInvalid)
                 {
-                    ErrorMessage = error ?? "Could not save customer.";
+                    PhoneError = result.Message;
                     return;
                 }
+
+                if (!result.IsSuccess)
+                {
+                    ErrorMessage = result.Message ?? "Could not save customer.";
+                    return;
+                }
+
+                var created = result.Value!;
 
                 if (_returnSelects)
                 {
@@ -213,13 +249,19 @@ public partial class CustomerEditViewModel : BaseViewModel, IQueryAttributable
                 return;
             }
 
-            var (updated, updateError) = await _customers.UpdateAsync(
+            var updated = await _customers.UpdateAsync(
                 businessId,
                 CustomerId,
                 new UpdateCustomerRequest(Name, Phone, Notes, null));
-            if (updateError is not null || updated is null)
+            if (updated.Error == RecordError.PhoneInvalid)
             {
-                ErrorMessage = updateError ?? "Could not update customer.";
+                PhoneError = updated.Message;
+                return;
+            }
+
+            if (!updated.IsSuccess)
+            {
+                ErrorMessage = updated.Message ?? "Could not update customer.";
                 return;
             }
 

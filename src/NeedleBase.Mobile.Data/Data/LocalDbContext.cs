@@ -19,8 +19,8 @@ public sealed class LocalDbContext : DbContext
     /// <summary>When true, SaveChanges will not enqueue sync ops (Slice 4).</summary>
     public bool SuppressSyncQueue { get; set; }
 
-    public const string SearchNameColumn = "SearchName";
-    public const string PhoneDigitsColumn = "PhoneDigits";
+    public const string SearchNameColumn = CustomerSearchKeys.SearchNameColumn;
+    public const string PhoneDigitsColumn = CustomerSearchKeys.PhoneDigitsColumn;
 
     /// <summary>
     /// Shadow flag (schema v6): true once the server is known to have the row (pulled, or a push was applied).
