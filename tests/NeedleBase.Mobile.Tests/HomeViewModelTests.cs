@@ -1,3 +1,4 @@
+using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Auth;
 using NeedleBase.Application.Contracts.Customers;
 using NeedleBase.Application.Contracts.Orders;
@@ -64,19 +65,26 @@ public class HomeViewModelTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<CustomerListItemDto>>(Array.Empty<CustomerListItemDto>());
 
+        public Task<IReadOnlyList<CustomerListItemDto>> FindByPhoneAsync(
+            string businessId,
+            string? phone,
+            string? excludeId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<CustomerListItemDto>>([]);
+
         public Task<CustomerDetailDto?> GetByIdAsync(
             string businessId,
             string id,
             CancellationToken cancellationToken = default) =>
             Task.FromResult<CustomerDetailDto?>(null);
 
-        public Task<(CustomerDetailDto? Customer, string? Error)> SaveAsync(
+        public Task<RecordResult<CustomerDetailDto>> SaveAsync(
             string businessId,
             CreateCustomerRequest request,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<(CustomerDetailDto? Customer, string? Error)> UpdateAsync(
+        public Task<RecordResult<CustomerDetailDto>> UpdateAsync(
             string businessId,
             string id,
             UpdateCustomerRequest request,
@@ -117,13 +125,13 @@ public class HomeViewModelTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<OrderListItemDto>>(Array.Empty<OrderListItemDto>());
 
-        public Task<(OrderDetailDto? Order, string? Error)> SaveAsync(
+        public Task<RecordResult<OrderDetailDto>> SaveAsync(
             string businessId,
             CreateOrderRequest request,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
-        public Task<(OrderDetailDto? Order, string? Error)> UpdateStatusAsync(
+        public Task<RecordResult<OrderDetailDto>> UpdateStatusAsync(
             string businessId,
             string id,
             string status,

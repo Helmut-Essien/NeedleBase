@@ -21,7 +21,8 @@ public class AuthErrorMessagesTests
 
     [Theory]
     [InlineData("INVALID_CREDENTIALS", "Wrong email or password")]
-    [InlineData("ACCOUNT_LOCKED", "locked")]
+    [InlineData("ACCOUNT_LOCKED", "Wait a few minutes")]
+    [InlineData("LOGIN_THROTTLED", "Wait a few minutes")]
     [InlineData("ACCOUNT_DEACTIVATED", "turned off")]
     [InlineData("NO_MEMBERSHIP", "isn't linked to a business")]
     public void ForLogin_MapsKnownCodes(string code, string expectedFragment)

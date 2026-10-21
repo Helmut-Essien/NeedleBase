@@ -52,8 +52,8 @@ public class AuditFixRulesTests
     [Theory]
     [InlineData(MeasurementUnit.Centimetres, 300, true)]
     [InlineData(MeasurementUnit.Centimetres, 301, false)]
-    [InlineData(MeasurementUnit.Inches, 120, true)]
-    [InlineData(MeasurementUnit.Inches, 120.5, false)]
+    [InlineData(MeasurementUnit.Inches, 118, true)]
+    [InlineData(MeasurementUnit.Inches, 118.5, false)]
     [InlineData(MeasurementUnit.Inches, 0, false)]
     public void Measurement_Rules(string unit, double value, bool ok)
     {

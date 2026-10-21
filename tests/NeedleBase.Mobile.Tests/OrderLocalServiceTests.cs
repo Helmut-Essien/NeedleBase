@@ -1,3 +1,4 @@
+using NeedleBase.Application.Common;
 using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Contracts.Errors;
 using Microsoft.EntityFrameworkCore;
@@ -129,8 +130,20 @@ public class OrderLocalServiceTests
             ]
         };
 
-        var (_, mismatch) = await orders.SaveAsync(biz, Request(1m));
+        var mismatchResult = await orders.SaveAsync(biz, Request(1m));
+        Assert.Equal(RecordError.TotalMismatch, mismatchResult.Error);
+        Assert.Equal(OrderErrorMessages.TotalMismatch, mismatchResult.Code);
+        var (_, mismatch) = mismatchResult;
         Assert.Equal(OrderErrorMessages.For(OrderErrorMessages.TotalMismatch), mismatch);
+
+        var orphan = Request(null);
+        orphan.CustomerId = "no-such-customer";
+        var noCustomer = await orders.SaveAsync(biz, orphan);
+        Assert.Equal(RecordError.CustomerNotFound, noCustomer.Error);
+        Assert.Equal(OrderErrorMessages.For(OrderErrorMessages.CustomerNotFound), noCustomer.Message);
+        var noOrder = await orders.UpdateStatusAsync(biz, "no-such-order", OrderStatus.Ready);
+        Assert.Equal(RecordError.OrderNotFound, noOrder.Error);
+        Assert.Equal(OrderErrorMessages.OrderNotFound, noOrder.Code);
 
         var (order, error) = await orders.SaveAsync(biz, Request(null));
         Assert.Null(error);
@@ -142,7 +155,9 @@ public class OrderLocalServiceTests
         Assert.DoesNotContain("Unknown", statusError);
 
         await orders.UpdateStatusAsync(biz, order.Id, OrderStatus.Collected);
-        var (_, lockedError) = await orders.UpdateStatusAsync(biz, order.Id, OrderStatus.Sewing);
+        var locked = await orders.UpdateStatusAsync(biz, order.Id, OrderStatus.Sewing);
+        Assert.Equal(RecordError.OrderLocked, locked.Error);
+        var (_, lockedError) = locked;
         Assert.Equal(OrderErrorMessages.For(OrderErrorMessages.OrderLocked), lockedError);
 
         Assert.Contains(await orders.SearchAsync(biz, search: "akosua", status: null), o => o.Id == order.Id);

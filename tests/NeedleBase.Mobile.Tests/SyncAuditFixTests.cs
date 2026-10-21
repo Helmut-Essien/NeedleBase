@@ -136,8 +136,8 @@ public partial class SyncEdgeCaseTests
     [Theory]
     [InlineData(MeasurementUnit.Centimetres, 300.0, true)]
     [InlineData(MeasurementUnit.Centimetres, 300.5, false)]
-    [InlineData(MeasurementUnit.Inches, 120.0, true)]
-    [InlineData(MeasurementUnit.Inches, 121.0, false)]
+    [InlineData(MeasurementUnit.Inches, 118.0, true)]
+    [InlineData(MeasurementUnit.Inches, 118.5, false)]
     [InlineData(MeasurementUnit.Centimetres, 0.0, false)]
     [InlineData(MeasurementUnit.Centimetres, -5.0, false)]
     public async Task Measurement_OutOfRange_IsRejectedOnDevice(string unit, double value, bool ok)

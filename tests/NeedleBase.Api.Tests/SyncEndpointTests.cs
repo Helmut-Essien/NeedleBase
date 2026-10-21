@@ -250,10 +250,24 @@ public partial class SyncEndpointTests : IClassFixture<NeedleBaseApiFactory>
 
     private async Task<SyncPullResponse> PullAsync(string token, string? cursor, int limit)
     {
-        using var request = Authorized(HttpMethod.Post, "/api/sync/pull", token, new SyncPullRequest { Cursor = cursor, Limit = limit });
-        using var response = await _client.SendAsync(request);
+        var response = await SendPullAsync(token, cursor, limit);
+        for (var attempt = 0; response.StatusCode == HttpStatusCode.ServiceUnavailable && attempt < 50; attempt++)
+        {
+            response.Dispose(); // background epoch re-stamp from an epoch test: wait it out like a device would
+            await NeedleBase.Infrastructure.Persistence.ApplicationDbContext.WaitForEpochBumpAsync().WaitAsync(TimeSpan.FromSeconds(60));
+            await Task.Delay(50);
+            response = await SendPullAsync(token, cursor, limit);
+        }
+
+        using var _ = response;
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         return (await response.Content.ReadFromJsonAsync<SyncPullResponse>(JsonOptions))!;
+    }
+
+    private async Task<HttpResponseMessage> SendPullAsync(string token, string? cursor, int limit)
+    {
+        using var request = Authorized(HttpMethod.Post, "/api/sync/pull", token, new SyncPullRequest { Cursor = cursor, Limit = limit });
+        return await _client.SendAsync(request);
     }
 
     /// <summary>Runs one full sync (all pages) and merges the pages.</summary>

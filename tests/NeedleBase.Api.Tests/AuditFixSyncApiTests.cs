@@ -70,6 +70,9 @@ public partial class SyncEndpointTests
 
         await SetHighWaterAsync(long.MaxValue / 2);       // simulate ids going backwards (restore to a new cluster)
 
+        // The re-stamp runs in the background: meanwhile sync answers 503 SYNC_MAINTENANCE with Retry-After.
+        await AssertMaintenanceThenWaitAsync(token, cursor);
+
         var (status, code, reset) = await PullRawAsync(token, cursor);
         Assert.Equal(HttpStatusCode.BadRequest, status);
         Assert.Equal(SyncErrorCodes.EpochChanged, code);
@@ -97,6 +100,8 @@ public partial class SyncEndpointTests
         var ahead = decoded.Encode();                     // a restore that also rolled SyncState back
         var before = await EpochAsync();
 
+        await AssertMaintenanceThenWaitAsync(token, ahead);
+        Assert.Equal(before + 1, await EpochAsync());
         Assert.Equal(SyncErrorCodes.EpochChanged, (await PullRawAsync(token, ahead)).Code);
         Assert.Equal(before + 1, await EpochAsync());
         Assert.Equal(SyncErrorCodes.EpochChanged, (await PullRawAsync(token, ahead)).Code);
@@ -133,7 +138,37 @@ public partial class SyncEndpointTests
 
     // ================================================================ helpers
 
+    private async Task AssertMaintenanceThenWaitAsync(string token, string? cursor)
+    {
+        using (var request = Authorized(HttpMethod.Post, "/api/sync/pull", token, new SyncPullRequest { Cursor = cursor, Limit = 200 }))
+        using (var response = await _client.SendAsync(request))
+        {
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+            Assert.NotNull(response.Headers.RetryAfter?.Delta);
+            using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(SyncErrorCodes.Maintenance, doc.RootElement.GetProperty("code").GetString());
+        }
+
+        await ApplicationDbContext.WaitForEpochBumpAsync().WaitAsync(TimeSpan.FromSeconds(60));
+    }
+
+    /// <summary>One pull; a 503 SYNC_MAINTENANCE (a background re-stamp, possibly a no-op re-check) is waited out like a device would.</summary>
     private async Task<(HttpStatusCode Status, string? Code, string? Reset)> PullRawAsync(string token, string? cursor)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            var result = await PullRawOnceAsync(token, cursor);
+            if (result.Status != HttpStatusCode.ServiceUnavailable || attempt >= 50)
+            {
+                return result;
+            }
+
+            await ApplicationDbContext.WaitForEpochBumpAsync().WaitAsync(TimeSpan.FromSeconds(60));
+            await Task.Delay(50);
+        }
+    }
+
+    private async Task<(HttpStatusCode Status, string? Code, string? Reset)> PullRawOnceAsync(string token, string? cursor)
     {
         using var request = Authorized(HttpMethod.Post, "/api/sync/pull", token, new SyncPullRequest { Cursor = cursor, Limit = 200 });
         using var response = await _client.SendAsync(request);
