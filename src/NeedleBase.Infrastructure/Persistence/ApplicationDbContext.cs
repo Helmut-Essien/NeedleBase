@@ -16,9 +16,65 @@ namespace NeedleBase.Infrastructure.Persistence;
 /// </summary>
 public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplicationDbContext
 {
+    private readonly DbContextOptions<ApplicationDbContext> _options;
+
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
+        _options = options;
+    }
+
+    // One background epoch re-stamp per process. It rewrites every synced row in one transaction, which can take
+    // long on a big database: running it inside a pull request would time the request out (and the next pull
+    // would start it again). Meanwhile sync answers 503 SYNC_MAINTENANCE.
+    private static readonly object EpochBumpGate = new();
+    private static Task? _epochBump;
+
+    /// <summary>True while a background epoch re-stamp is running (tests and push use it).</summary>
+    public static bool EpochBumpRunning
+    {
+        get
+        {
+            lock (EpochBumpGate)
+            {
+                return _epochBump is { IsCompleted: false };
+            }
+        }
+    }
+
+    /// <summary>Completes when no background epoch re-stamp is running (tests, shutdown).</summary>
+    public static Task WaitForEpochBumpAsync()
+    {
+        lock (EpochBumpGate)
+        {
+            return _epochBump ?? Task.CompletedTask;
+        }
+    }
+
+    private void StartEpochBump(long minimumCap)
+    {
+        lock (EpochBumpGate)
+        {
+            if (_epochBump is { IsCompleted: false })
+            {
+                return;
+            }
+
+            var options = _options;
+            _epochBump = Task.Run(async () =>
+            {
+                try
+                {
+                    await using var db = new ApplicationDbContext(options);
+                    await db.BumpSyncEpochAsync(minimumCap, CancellationToken.None).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    // The next pull sees the cap still behind and starts it again.
+                    System.Diagnostics.Trace.TraceWarning($"Sync epoch bump failed: {ex.Message}");
+                }
+            });
+        }
     }
 
     /// <summary>
@@ -55,6 +111,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public async Task<SyncWatermark> GetSyncWatermarkAsync(long minimumCap = 0, CancellationToken cancellationToken = default)
     {
         var cap = await Database.SqlQueryRaw<long>(CapSql).SingleAsync(cancellationToken).ConfigureAwait(false);
+        if (EpochBumpRunning)
+        {
+            throw new NeedleBase.Application.Contracts.Sync.SyncMaintenanceException();
+        }
+
         var state = await SyncStates.AsNoTracking().SingleOrDefaultAsync(s => s.Id == 1, cancellationToken).ConfigureAwait(false);
         if (state is null)
         {
@@ -63,10 +124,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
 
         if (cap < Math.Max(state.HighWaterTx, minimumCap))
         {
-            // Transaction ids went backwards: this is a different cluster (restore/move). Start a new epoch.
-            await BumpSyncEpochAsync(minimumCap, cancellationToken).ConfigureAwait(false);
-            cap = await Database.SqlQueryRaw<long>(CapSql).SingleAsync(cancellationToken).ConfigureAwait(false);
-            state = await SyncStates.AsNoTracking().SingleAsync(s => s.Id == 1, cancellationToken).ConfigureAwait(false);
+            // Transaction ids went backwards: this is a different cluster (restore/move). Start a new epoch in the
+            // background; this and every pull until it is done get 503 SYNC_MAINTENANCE (devices retry).
+            StartEpochBump(minimumCap);
+            throw new NeedleBase.Application.Contracts.Sync.SyncMaintenanceException();
         }
         else if (cap >= state.HighWaterTx + HighWaterStep)
         {
@@ -148,6 +209,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     /// </summary>
     private async Task StampSyncChangesAsync(CancellationToken cancellationToken)
     {
+        foreach (var entry in ChangeTracker.Entries<Customer>())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified)
+            {
+                entry.Property(CustomerSearchKeys.SearchNameColumn).CurrentValue = CustomerSearchKeys.NameKey(entry.Entity.Name);
+                entry.Property(CustomerSearchKeys.PhoneDigitsColumn).CurrentValue = CustomerSearchKeys.PhoneDigits(entry.Entity.Phone);
+            }
+        }
+
         var now = SyncTime.Normalize(DateTimeOffset.UtcNow);
         var tombstones = new List<(string BusinessId, string Type, string Id)>();
         var recreated = new List<(string BusinessId, string Type, string Id)>();
@@ -273,6 +343,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.HasIndex(x => x.BusinessId);
             e.HasIndex(x => new { x.BusinessId, x.Name });
             e.HasIndex(x => new { x.BusinessId, x.Phone });
+            // Search keys (see CustomerSearchKeys): stamped on every save; null until the startup backfill reaches old rows.
+            e.Property<string?>(CustomerSearchKeys.SearchNameColumn).HasMaxLength(Domain.Common.FieldLimits.CustomerName + 1);
+            e.Property<string?>(CustomerSearchKeys.PhoneDigitsColumn).HasMaxLength(Domain.Common.FieldLimits.Phone);
+            e.HasIndex(nameof(Customer.BusinessId), CustomerSearchKeys.SearchNameColumn);
+            // Pattern ops so the phone prefix LIKE ('024%') can use the index under any database collation.
+            e.HasIndex(nameof(Customer.BusinessId), CustomerSearchKeys.PhoneDigitsColumn).HasOperators(null!, "varchar_pattern_ops");
             e.HasOne<Business>()
                 .WithMany()
                 .HasForeignKey(x => x.BusinessId)

@@ -27,12 +27,14 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddSingleton<LoginThrottle>();
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IMeasurementService, MeasurementService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<ISyncService, NeedleBase.Application.Sync.SyncService>();
         services.AddHostedService<Sync.TombstoneCleanupService>();
+        services.AddHostedService<CustomerKeyBackfillService>();
         services.AddSingleton<DatabaseHealthCheck>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
@@ -56,9 +58,9 @@ public static class DependencyInjection
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequireUppercase = false;
                 options.User.RequireUniqueEmail = true;
-                options.Lockout.AllowedForNewUsers = true;
-                options.Lockout.MaxFailedAccessAttempts = 5;
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                // No account-wide lockout: anyone could lock an owner out with their email. LoginThrottle slows
+                // guessing per email + IP instead.
+                options.Lockout.AllowedForNewUsers = false;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();

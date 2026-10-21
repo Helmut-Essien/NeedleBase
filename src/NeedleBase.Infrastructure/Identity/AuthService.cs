@@ -16,13 +16,16 @@ public sealed class AuthService : IAuthService
     private readonly ApplicationDbContext _db;
     private readonly ITokenService _tokenService;
     private readonly IClock _clock;
+    private readonly LoginThrottle _throttle;
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext db,
         ITokenService tokenService,
-        IClock clock)
+        IClock clock,
+        LoginThrottle throttle)
     {
+        _throttle = throttle;
         _userManager = userManager;
         _db = db;
         _tokenService = tokenService;
@@ -108,30 +111,25 @@ public sealed class AuthService : IAuthService
         CancellationToken cancellationToken = default)
     {
         var email = request.Email.Trim();
-        var user = await _userManager.FindByEmailAsync(email);
-
-        if (user is null)
+        if (_throttle.RetryAfter(email, ipAddress) is { } wait)
         {
+            return AuthResult.Throttled(wait);
+        }
+
+        var user = await _userManager.FindByEmailAsync(email);
+        // Password first: account state (deactivated) is only revealed to someone who knows the password.
+        // No account-wide lockout (Identity lockout is off; any old LockoutEnd is ignored): see LoginThrottle.
+        if (user is null || !await _userManager.CheckPasswordAsync(user, request.Password))
+        {
+            _throttle.RecordFailure(email, ipAddress);
             return AuthResult.Fail("Invalid email or password.", "INVALID_CREDENTIALS");
         }
 
+        _throttle.RecordSuccess(email, ipAddress);
         if (!user.IsActive)
         {
             return AuthResult.Fail("Account deactivated. Contact your business owner.", "ACCOUNT_DEACTIVATED");
         }
-
-        if (await _userManager.IsLockedOutAsync(user))
-        {
-            return AuthResult.Fail("Too many failed attempts. Try again later.", "ACCOUNT_LOCKED");
-        }
-
-        if (!await _userManager.CheckPasswordAsync(user, request.Password))
-        {
-            await _userManager.AccessFailedAsync(user);
-            return AuthResult.Fail("Invalid email or password.", "INVALID_CREDENTIALS");
-        }
-
-        await _userManager.ResetAccessFailedCountAsync(user);
 
         _db.CurrentBusinessId = null;
         var membership = await _db.StaffMemberships

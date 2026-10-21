@@ -220,9 +220,17 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<string>("PhoneDigits")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<string>("PhotoRef")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("SearchName")
+                        .HasMaxLength(201)
+                        .HasColumnType("character varying(201)");
 
                     b.Property<DateTimeOffset>("SyncModifiedUtc")
                         .ValueGeneratedOnAdd()
@@ -240,6 +248,12 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.HasIndex("BusinessId", "Name");
 
                     b.HasIndex("BusinessId", "Phone");
+
+                    b.HasIndex("BusinessId", "PhoneDigits");
+
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("BusinessId", "PhoneDigits"), new[] { null, "varchar_pattern_ops" });
+
+                    b.HasIndex("BusinessId", "SearchName");
 
                     b.HasIndex("BusinessId", "SyncModifiedUtc", "Id");
 
