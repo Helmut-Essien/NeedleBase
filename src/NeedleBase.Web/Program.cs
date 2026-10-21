@@ -30,6 +30,7 @@ builder.Services.AddSession(options =>
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IApiAuthService, ApiAuthService>();
+builder.Services.AddTransient<ForwardClientIpHandler>();
 builder.Services.AddTransient<TokenRefreshHandler>();
 builder.Services.AddTransient<UnauthorizedRedirectHandler>();
 
@@ -66,7 +67,8 @@ builder.Services.AddHttpClient("AuthApi", client =>
     client.DefaultRequestHeaders.Accept.Add(
         new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
     client.Timeout = TimeSpan.FromSeconds(30);
-});
+})
+    .AddHttpMessageHandler<ForwardClientIpHandler>();
 
 builder.Services.AddHttpClient("NeedleBaseApi", client =>
 {

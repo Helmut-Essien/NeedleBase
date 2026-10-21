@@ -47,11 +47,18 @@ public sealed class AuthController : ControllerBase
     [AllowAnonymous]
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> Login(
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken)
     {
         var result = await _authService.LoginAsync(request, GetIpAddress(), cancellationToken);
+        if (result.RetryAfter is { } wait)
+        {
+            Response.Headers.RetryAfter = ((int)Math.Ceiling(wait.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return ApiProblems.Create(HttpContext, StatusCodes.Status429TooManyRequests, AuthResult.LoginThrottledCode, "Too many tries", result.Error);
+        }
+
         if (!result.Succeeded || result.Tokens is null || result.User is null)
         {
             return ApiProblems.Create(HttpContext, StatusCodes.Status401Unauthorized, result.ErrorCode ?? "UNAUTHORIZED", "Couldn't sign you in", result.Error);
@@ -66,6 +73,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("refresh-token")]
+    [EnableRateLimiting(AuthRateLimits.RefreshPolicy)]
     [AllowAnonymous]
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]

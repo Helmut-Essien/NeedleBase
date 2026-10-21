@@ -53,6 +53,30 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // Auth attempts per IP per minute. Configurable (RateLimits:AuthPermitPerMinute) so integration tests, which
 // register many accounts from one address, are not throttled; production keeps the default.
 var authPermitPerMinute = builder.Configuration.GetValue("RateLimits:AuthPermitPerMinute", 30);
+// Token refresh is routine (every app start and every expired access token, from a whole shop behind one IP), so it
+// has its own, larger per-IP budget and never eats into the login/register budget.
+var refreshPermitPerMinute = builder.Configuration.GetValue("RateLimits:RefreshPermitPerMinute", 300);
+
+// Behind a reverse proxy / the web front end, the client IP arrives in X-Forwarded-For. It is trusted only from
+// loopback (default) plus ForwardedHeaders:KnownProxies (IPs) / KnownNetworks (CIDR), comma-separated.
+builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                               Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    foreach (var proxy in Split(builder.Configuration["ForwardedHeaders:KnownProxies"]))
+    {
+        options.KnownProxies.Add(System.Net.IPAddress.Parse(proxy));
+    }
+
+    foreach (var network in Split(builder.Configuration["ForwardedHeaders:KnownNetworks"]))
+    {
+        options.KnownNetworks.Add(Microsoft.AspNetCore.HttpOverrides.IPNetwork.Parse(network));
+    }
+
+    static IEnumerable<string> Split(string? value) =>
+        (value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+});
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -63,6 +87,16 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = authPermitPerMinute,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy(AuthRateLimits.RefreshPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = refreshPermitPerMinute,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             }));
@@ -95,6 +129,9 @@ builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
 var app = builder.Build();
+
+// First, so every later step (rate limits, login throttle, refresh-token IP) sees the real client IP.
+app.UseForwardedHeaders();
 
 if (app.Environment.IsDevelopment())
 {
@@ -175,6 +212,11 @@ static Task WriteMinimalHealthResponse(HttpContext context, HealthReport report)
 public partial class Program;
 
 /// <summary>Sync endpoint rate limit (per user). Generous: 200-row pages, so a 60,000-row first pull fits the burst.</summary>
+internal static class AuthRateLimits
+{
+    public const string RefreshPolicy = "refresh";
+}
+
 internal static class SyncRateLimit
 {
     public const string PolicyName = "sync";

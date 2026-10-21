@@ -26,15 +26,32 @@ public sealed class SyncController : ControllerBase
     [HttpPost("push")]
     [ProducesResponseType(typeof(SyncPushResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<SyncPushResponse>> Push(SyncPushRequest request, CancellationToken cancellationToken) =>
-        Ok(await _sync.PushAsync(request, cancellationToken));
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<ActionResult<SyncPushResponse>> Push(SyncPushRequest request, CancellationToken cancellationToken)
+    {
+        // Writes would queue behind the re-stamp's row locks; let the device retry instead.
+        if (NeedleBase.Infrastructure.Persistence.ApplicationDbContext.EpochBumpRunning)
+        {
+            return ApiProblems.SyncMaintenance(HttpContext);
+        }
+
+        return Ok(await _sync.PushAsync(request, cancellationToken));
+    }
 
     [HttpPost("pull")]
     [ProducesResponseType(typeof(SyncPullResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<ActionResult<SyncPullResponse>> Pull(SyncPullRequest request, CancellationToken cancellationToken)
     {
-        var (page, error) = await _sync.PullAsync(request, cancellationToken);
-        return page is null ? ApiProblems.SyncCursorInvalid(HttpContext, error) : Ok(page);
+        try
+        {
+            var (page, error) = await _sync.PullAsync(request, cancellationToken);
+            return page is null ? ApiProblems.SyncCursorInvalid(HttpContext, error) : Ok(page);
+        }
+        catch (SyncMaintenanceException)
+        {
+            return ApiProblems.SyncMaintenance(HttpContext);
+        }
     }
 }

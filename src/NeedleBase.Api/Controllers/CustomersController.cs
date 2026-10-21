@@ -31,6 +31,17 @@ public sealed class CustomersController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>Customers with the same number (any formatting), for a non-blocking duplicate warning.</summary>
+    [HttpGet("phone-matches")]
+    [ProducesResponseType(typeof(IReadOnlyList<CustomerListItemDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<CustomerListItemDto>>> PhoneMatches(
+        [FromQuery] string? phone,
+        [FromQuery] string? excludeId,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await _customers.FindByPhoneAsync(phone, excludeId, cancellationToken));
+    }
+
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(CustomerDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -48,16 +59,13 @@ public sealed class CustomersController : ControllerBase
         [FromBody] CreateCustomerRequest request,
         CancellationToken cancellationToken)
     {
-        var (customer, error) = await _customers.CreateAsync(request, cancellationToken);
-        if (error == "Customer id conflict.")
+        var result = await _customers.CreateAsync(request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            return ApiProblems.CustomerConflict(HttpContext);
+            return ApiProblems.ForRecord(HttpContext, result.Error, "CUSTOMER_SAVE_FAILED", "customer");
         }
 
-        if (error is not null || customer is null)
-        {
-            return ApiProblems.SaveFailed(HttpContext, "CUSTOMER_SAVE_FAILED", "customer");
-        }
+        var customer = result.Value!;
 
         return CreatedAtAction(nameof(Get), new { id = customer.Id }, customer);
     }
@@ -66,21 +74,19 @@ public sealed class CustomersController : ControllerBase
     [ProducesResponseType(typeof(CustomerDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<CustomerDetailDto>> Update(
         string id,
         [FromBody] UpdateCustomerRequest request,
         CancellationToken cancellationToken)
     {
-        var (customer, error) = await _customers.UpdateAsync(id, request, cancellationToken);
-        if (error == "Customer not found.")
+        var result = await _customers.UpdateAsync(id, request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            return ApiProblems.CustomerNotFound(HttpContext);
+            return ApiProblems.ForRecord(HttpContext, result.Error, "CUSTOMER_SAVE_FAILED", "customer");
         }
 
-        if (error is not null || customer is null)
-        {
-            return ApiProblems.SaveFailed(HttpContext, "CUSTOMER_SAVE_FAILED", "customer");
-        }
+        var customer = result.Value!;
 
         return Ok(customer);
     }

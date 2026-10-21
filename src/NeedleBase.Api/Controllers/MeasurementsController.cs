@@ -28,17 +28,17 @@ public sealed class MeasurementsController : ControllerBase
         [FromQuery] int pageSize = PaginationDefaults.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
-        var (pageResult, error) = await _measurements.ListForCustomerAsync(
+        var result = await _measurements.ListForCustomerAsync(
             customerId,
             page,
             pageSize,
             cancellationToken);
-        if (error == "Customer not found.")
+        if (!result.IsSuccess)
         {
-            return ApiProblems.CustomerNotFound(HttpContext);
+            return ApiProblems.ForRecord(HttpContext, result.Error, "MEASUREMENT_SAVE_FAILED", "measurement");
         }
 
-        return Ok(pageResult);
+        return Ok(result.Value);
     }
 
     [HttpGet("measurements/{id}")]
@@ -60,21 +60,13 @@ public sealed class MeasurementsController : ControllerBase
         [FromBody] CreateMeasurementRequest request,
         CancellationToken cancellationToken)
     {
-        var (measurement, error) = await _measurements.CreateAsync(customerId, request, cancellationToken);
-        if (error == "Customer not found.")
+        var result = await _measurements.CreateAsync(customerId, request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            return ApiProblems.CustomerNotFound(HttpContext);
+            return ApiProblems.ForRecord(HttpContext, result.Error, "MEASUREMENT_SAVE_FAILED", "measurement");
         }
 
-        if (error == "Measurement id conflict.")
-        {
-            return ApiProblems.MeasurementConflict(HttpContext);
-        }
-
-        if (error is not null || measurement is null)
-        {
-            return ApiProblems.SaveFailed(HttpContext, "MEASUREMENT_SAVE_FAILED", "measurement");
-        }
+        var measurement = result.Value!;
 
         return CreatedAtAction(nameof(Get), new { id = measurement.Id }, measurement);
     }
@@ -88,16 +80,13 @@ public sealed class MeasurementsController : ControllerBase
         [FromBody] UpdateMeasurementRequest request,
         CancellationToken cancellationToken)
     {
-        var (measurement, error) = await _measurements.UpdateAsync(id, request, cancellationToken);
-        if (error == "Measurement not found.")
+        var result = await _measurements.UpdateAsync(id, request, cancellationToken);
+        if (!result.IsSuccess)
         {
-            return ApiProblems.MeasurementNotFound(HttpContext);
+            return ApiProblems.ForRecord(HttpContext, result.Error, "MEASUREMENT_SAVE_FAILED", "measurement");
         }
 
-        if (error is not null || measurement is null)
-        {
-            return ApiProblems.SaveFailed(HttpContext, "MEASUREMENT_SAVE_FAILED", "measurement");
-        }
+        var measurement = result.Value!;
 
         return Ok(measurement);
     }
@@ -107,8 +96,8 @@ public sealed class MeasurementsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        var (success, error) = await _measurements.DeleteAsync(id, cancellationToken);
-        if (!success)
+        var error = await _measurements.DeleteAsync(id, cancellationToken);
+        if (error != RecordError.None)
         {
             return ApiProblems.MeasurementNotFound(HttpContext);
         }
