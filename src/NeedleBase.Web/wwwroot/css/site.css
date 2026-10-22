@@ -6,11 +6,11 @@
   --nb-brand-primary-light: #E8F5E9;
   --nb-charcoal: #202A32;
   --nb-text-secondary: #5B656B;
-  --nb-text-tertiary: #8A949A;
+  --nb-text-tertiary: #69737A; /* 4.7:1 on white (AA); was #8A949A at 3.1:1 */
   --nb-bg-app: #F4F6F5;
   --nb-bg-surface: #FFFFFF;
   --nb-border: #DDE3DF;
-  --nb-warning: #D97706;
+  --nb-warning: #B45309; /* 5:1 on white (AA) for overdue text */
   --nb-error: #DC2626;
   --nb-focus: #2E9E36;
   --nb-space-4: 1rem;
@@ -42,7 +42,7 @@ a {
 }
 
 a:hover {
-  color: var(--nb-brand-primary);
+  color: var(--nb-brand-primary-pressed);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
@@ -188,7 +188,7 @@ a:hover {
   justify-content: center;
   margin-bottom: 0;
   padding-block: 1.5rem;
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   background: linear-gradient(180deg, var(--nb-brand-primary-light) 0%, var(--nb-bg-app) 42%, var(--nb-bg-app) 100%);
 }
 
@@ -435,7 +435,7 @@ a:hover {
 }
 
 .nb-auth-footer a {
-  color: var(--nb-brand-primary);
+  color: var(--nb-brand-primary-dark);
   font-weight: 600;
   text-decoration: none;
 }
@@ -567,3 +567,11 @@ a.nb-stat:focus-visible, .nb-table a:focus-visible, .form-select:focus-visible {
 .nb-chip--payment { background: var(--nb-brand-primary-light); color: var(--nb-brand-primary-dark); }
 .nb-chip--auth { background: #FDECEC; color: #9B1C1C; }
 .nb-chip--customer, .nb-chip--measurement { background: #FFF4E0; color: #8A4B00; }
+
+/* Click feedback: site.js marks the submitting button busy so a slow network can't double-submit. */
+.btn[aria-busy="true"] { cursor: progress; opacity: 0.75; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+.nb-surface-box { background: var(--nb-bg-surface); border-color: var(--nb-border) !important; }

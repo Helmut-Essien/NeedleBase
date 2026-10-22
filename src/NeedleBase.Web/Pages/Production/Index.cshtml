@@ -18,6 +18,8 @@
     {
         <p class="nb-empty">@(Model.MineOnly ? "Nothing assigned to you right now." : "No active orders. New orders from the app show here.")</p>
     }
+    else
+    {
     <div class="nb-board">
         @foreach (var col in Model.Board)
         {
@@ -50,4 +52,5 @@
             </section>
         }
     </div>
+    }
 }

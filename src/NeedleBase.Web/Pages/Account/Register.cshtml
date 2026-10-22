@@ -81,7 +81,7 @@
         <span asp-validation-for="Input.AcceptTerms" class="text-danger small nb-auth-error"></span>
     </div>
     <div class="d-grid">
-        <button type="submit" class="btn nb-btn-primary nb-auth-submit">Create business</button>
+        <button type="submit" class="btn nb-btn-primary nb-auth-submit" data-pending-text="Creating business…">Create business</button>
     </div>
 </form>
 
@@ -91,6 +91,6 @@
 </p>
 
 @section Scripts {
-    <script src="~/js/password-toggle.js" asp-append-version="true"></script>
+    <script src="~/js/password-toggle.js" asp-append-version="true" defer></script>
     <partial name="_ValidationScriptsPartial" />
 }

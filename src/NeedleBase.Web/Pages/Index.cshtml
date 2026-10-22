@@ -29,7 +29,7 @@
         <section aria-labelledby="money-heading" class="mb-4">
             <h2 id="money-heading" class="nb-section-title">Money</h2>
             <div class="nb-stats">
-                <a class="nb-stat" asp-page="/Payments/Index"><span class="nb-stat__value nb-money">@m.OutstandingDisplay</span><span class="nb-stat__label">Left to collect · @m.OrdersWithBalance orders</span></a>
+                <a class="nb-stat" asp-page="/Payments/Index"><span class="nb-stat__value nb-money">@m.OutstandingDisplay</span><span class="nb-stat__label">Left to collect · @m.OrdersWithBalance @(m.OrdersWithBalance == 1 ? "order" : "orders")</span></a>
                 <div class="nb-stat"><span class="nb-stat__value nb-money">@m.ReceivedTodayDisplay</span><span class="nb-stat__label">Recorded today</span></div>
                 <div class="nb-stat"><span class="nb-stat__value nb-money">@m.ReceivedLast7DaysDisplay</span><span class="nb-stat__label">Recorded in the last 7 days</span></div>
             </div>

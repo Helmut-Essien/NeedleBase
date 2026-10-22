@@ -175,6 +175,25 @@ app.UseAuthorization();
 
 // Signed-in pages carry business data: never store them (shared PCs, Back after sign-out, proxies).
 // Pages only: CSS/JS keep their long-lived cache (low-end phones, mobile data).
+// Content-Security-Policy + basic hardening headers on every response. Everything is served from this site
+// (no CDN, no inline script/style), so 'self' is enough. Development adds ws: for browser hot-reload.
+var csp = "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; font-src 'self'; " +
+          "connect-src 'self'" + (app.Environment.IsDevelopment() ? " ws: wss:" : "") +
+          "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        var h = context.Response.Headers;
+        h.ContentSecurityPolicy = csp;
+        h.XContentTypeOptions = "nosniff";
+        h["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        h.XFrameOptions = "DENY";
+        return Task.CompletedTask;
+    });
+    await next();
+});
+
 app.Use(async (context, next) =>
 {
     context.Response.OnStarting(() =>
