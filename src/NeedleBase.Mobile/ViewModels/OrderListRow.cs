@@ -13,9 +13,10 @@ public sealed class OrderListRow
         StatusDisplay = OrderStatusPresentation.DisplayName(item.Status);
         StatusBackground = OrderStatusPresentation.Background(item.Status);
         StatusForeground = OrderStatusPresentation.Foreground(item.Status);
-        StatusIconImage = OrderStatusPresentation.IconImage(item.Status);
-        OverdueIconImage = OrderStatusPresentation.OverdueIconImage(14);
+        StatusIconImage = OrderStatusPresentation.RowIconImage(item.Status);
+        OverdueIconImage = OrderStatusPresentation.RowOverdueIconImage();
         SecondaryLine = item.SecondaryLine;
+        SubLine = $"#{item.DisplayRef} · {item.SecondaryLine}";
         IsOverdue = item.IsOverdue;
     }
 
@@ -29,5 +30,8 @@ public sealed class OrderListRow
     public ImageSource StatusIconImage { get; }
     public ImageSource OverdueIconImage { get; }
     public string SecondaryLine { get; }
+
+    /// <summary>"#REF · due · amount", precomputed (no MultiBinding per row).</summary>
+    public string SubLine { get; }
     public bool IsOverdue { get; }
 }

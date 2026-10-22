@@ -19,14 +19,18 @@ public sealed class SearchDebouncer
     {
         var next = new CancellationTokenSource();
         Interlocked.Exchange(ref _current, next)?.Cancel();
-        return RunCoreAsync(action, next.Token);
+        return RunCoreAsync(action, next);
     }
+
+    /// <summary>A keystroke is waiting out the delay or its query is running.</summary>
+    public bool IsPending => Volatile.Read(ref _current) is { IsCancellationRequested: false };
 
     /// <summary>Cancel pending and in-flight work (e.g. logout, leaving the page).</summary>
     public void Cancel() => Interlocked.Exchange(ref _current, null)?.Cancel();
 
-    private async Task RunCoreAsync(Func<CancellationToken, Task> action, CancellationToken token)
+    private async Task RunCoreAsync(Func<CancellationToken, Task> action, CancellationTokenSource source)
     {
+        var token = source.Token;
         try
         {
             await Task.Delay(Delay, token);
@@ -35,6 +39,10 @@ public sealed class SearchDebouncer
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
             // Superseded by a newer keystroke.
+        }
+        finally
+        {
+            Interlocked.CompareExchange(ref _current, null, source); // done: no longer pending
         }
     }
 }

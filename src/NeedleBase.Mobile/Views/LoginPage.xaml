@@ -77,13 +77,13 @@
                         <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"
                                IsVisible="{Binding IsPasswordHidden}" AutomationProperties.IsInAccessibleTree="False">
                             <Image.Source>
-                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=VisibilityOff}" Color="{StaticResource Gray600}" Size="21" />
+                                <FontImageSource FontFamily="MaterialIcons" Glyph="{mi:Material Icon=VisibilityOff}" Color="{StaticResource Gray600}" Size="21" />
                             </Image.Source>
                         </Image>
                         <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"
                                IsVisible="{Binding IsPasswordVisible}" AutomationProperties.IsInAccessibleTree="False">
                             <Image.Source>
-                                <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=Visibility}" Color="{StaticResource Gray600}" Size="21" />
+                                <FontImageSource FontFamily="MaterialIcons" Glyph="{mi:Material Icon=Visibility}" Color="{StaticResource Gray600}" Size="21" />
                             </Image.Source>
                         </Image>
                         <Button BackgroundColor="Transparent" BorderWidth="0" WidthRequest="44" HeightRequest="44"

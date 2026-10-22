@@ -9,5 +9,13 @@ public static class LocalDbConnection
     /// </summary>
     public const int BusyTimeoutSeconds = 30;
 
-    public static string Build(string path) => $"Data Source={path};Cache=Shared;Default Timeout={BusyTimeoutSeconds}";
+    /// <summary>
+    /// Private cache (no <c>Cache=Shared</c>): shared-cache table locks make readers wait for a writer's whole
+    /// transaction (SQLITE_LOCKED). With WAL (set by <see cref="LocalSchemaMigrator"/>) readers never wait for
+    /// the sync writer; writers still queue behind each other for up to <see cref="BusyTimeoutSeconds"/>.
+    /// </summary>
+    public static string Build(string path) => $"Data Source={path};Default Timeout={BusyTimeoutSeconds}";
+
+    /// <summary>SQLite side files of a WAL database (and a leftover rollback journal from older builds).</summary>
+    public static IEnumerable<string> SideFiles(string path) => [path + "-wal", path + "-shm", path + "-journal"];
 }

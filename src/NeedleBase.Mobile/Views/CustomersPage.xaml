@@ -60,7 +60,7 @@
                         <Image WidthRequest="48" HeightRequest="48" HorizontalOptions="Center"
                                SemanticProperties.Description="No customers">
                             <Image.Source>
-                                <FontImageSource FontFamily="MaterialIcons-Regular"
+                                <FontImageSource FontFamily="MaterialIcons"
                                                  Glyph="{mi:Material Icon=People}"
                                                  Color="{StaticResource Gray600}"
                                                  Size="48" />
@@ -113,7 +113,7 @@
                                    VerticalOptions="Center"
                                    AutomationProperties.IsInAccessibleTree="False">
                                 <Image.Source>
-                                    <FontImageSource FontFamily="MaterialIcons-Regular"
+                                    <FontImageSource FontFamily="MaterialIcons"
                                                      Glyph="{mi:Material Icon=ChevronRight}"
                                                      Color="{StaticResource Gray600}"
                                                      Size="24" />

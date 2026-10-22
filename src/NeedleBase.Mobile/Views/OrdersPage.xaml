@@ -55,13 +55,14 @@
                 <CollectionView ItemsSource="{Binding Items}"
                                 SelectionMode="Single"
                                 SelectedItem="{Binding SelectedItem}"
+                                ItemSizingStrategy="MeasureFirstItem"
                                 Margin="0,0,0,72">
                     <CollectionView.EmptyView>
                         <VerticalStackLayout Padding="24" Spacing="12" VerticalOptions="Center">
                             <Image WidthRequest="48" HeightRequest="48" HorizontalOptions="Center"
                                    SemanticProperties.Description="No orders">
                                 <Image.Source>
-                                    <FontImageSource FontFamily="MaterialIcons-Regular"
+                                    <FontImageSource FontFamily="MaterialIcons"
                                                      Glyph="{mi:Material Icon=ReceiptLong}"
                                                      Color="{StaticResource Gray600}"
                                                      Size="48" />
@@ -99,7 +100,7 @@
                                        VerticalOptions="Center"
                                        AutomationProperties.IsInAccessibleTree="False">
                                     <Image.Source>
-                                        <FontImageSource FontFamily="MaterialIcons-Regular"
+                                        <FontImageSource FontFamily="MaterialIcons"
                                                          Glyph="{mi:Material Icon=ChevronRight}"
                                                          Color="{StaticResource Gray600}"
                                                          Size="24" />
@@ -144,14 +145,8 @@
                                 </HorizontalStackLayout>
                                 <Label Grid.Row="2" Grid.Column="0"
                                        FontSize="13"
-                                       TextColor="{StaticResource Gray600}">
-                                    <Label.Text>
-                                        <MultiBinding StringFormat="#{0} · {1}">
-                                            <Binding Path="DisplayRef" />
-                                            <Binding Path="SecondaryLine" />
-                                        </MultiBinding>
-                                    </Label.Text>
-                                </Label>
+                                       Text="{Binding SubLine}"
+                                       TextColor="{StaticResource Gray600}" />
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>

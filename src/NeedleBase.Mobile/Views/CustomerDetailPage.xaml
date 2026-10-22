@@ -78,7 +78,7 @@
                     <Image WidthRequest="48" HeightRequest="48" HorizontalOptions="Center"
                            SemanticProperties.Description="No measurements">
                         <Image.Source>
-                            <FontImageSource FontFamily="MaterialIcons-Regular"
+                            <FontImageSource FontFamily="MaterialIcons"
                                              Glyph="{mi:Material Icon=Straighten}"
                                              Color="{StaticResource Gray600}"
                                              Size="48" />

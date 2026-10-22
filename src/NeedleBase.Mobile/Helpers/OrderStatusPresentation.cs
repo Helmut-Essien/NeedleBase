@@ -71,11 +71,50 @@ public static class OrderStatusPresentation
     public static ImageSource IconImage(string status, double size = 14) =>
         IconImage(Icon(status), Foreground(status), size);
 
+    // List rows share one icon per status (built on the UI thread) instead of new image sources per row.
+    private static readonly Dictionary<string, ImageSource> RowIcons = new(StringComparer.Ordinal);
+    private static ImageSource? _rowOverdueIcon;
+
+    public static ImageSource RowIconImage(string status)
+    {
+        lock (RowIcons)
+        {
+            if (!RowIcons.TryGetValue(status, out var icon))
+            {
+                icon = IconImage(status);
+                RowIcons[status] = icon;
+            }
+
+            return icon;
+        }
+    }
+
+    public static ImageSource RowOverdueIconImage() => _rowOverdueIcon ??= OverdueIconImage(14);
+
+    /// <summary>
+    /// Font alias MauiIcons registers in UseMaterialMauiIcons(). The XAML <c>{mi:Material}</c> extension sets it
+    /// itself, so "MaterialIcons-Regular" only appeared to work there; in code it fell back to a system font. XAML uses this alias too.
+    /// </summary>
+    public const string MaterialFontFamily = "MaterialIcons";
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<MaterialIcons, string> Glyphs = new();
+
+    /// <summary>
+    /// The font glyph for a MauiIcons enum member. The enum's numeric value is only an index; the real
+    /// codepoint is in its [Description] (what the XAML <c>{mi:Material}</c> extension uses). Casting the enum to
+    /// int drew unrelated characters (e.g. U+076E, an Arabic letter, for Straighten/Fitting).
+    /// </summary>
+    public static string Glyph(MaterialIcons icon) => Glyphs.GetOrAdd(icon, static i =>
+        typeof(MaterialIcons).GetField(i.ToString())?
+            .GetCustomAttributes(typeof(System.ComponentModel.DescriptionAttribute), false)
+            .OfType<System.ComponentModel.DescriptionAttribute>()
+            .FirstOrDefault()?.Description ?? string.Empty);
+
     public static ImageSource IconImage(MaterialIcons icon, Color color, double size = 14) =>
         new FontImageSource
         {
-            FontFamily = "MaterialIcons-Regular",
-            Glyph = char.ConvertFromUtf32(unchecked((int)icon)),
+            FontFamily = MaterialFontFamily,
+            Glyph = Glyph(icon),
             Color = color,
             Size = size
         };

@@ -43,6 +43,13 @@
 		<AssemblyMetadata Include="NeedleBaseReleaseApiBaseUrl" Value="$(NeedleBaseReleaseApiBaseUrl)" />
 	</ItemGroup>
 
+	<!-- Release startup speed: profiled AOT (startup paths precompiled to native code, the rest JIT), which keeps
+	     the APK smaller than full AOT. Stated explicitly so it can't be switched off by accident. Debug is unchanged. -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' And $(TargetFramework.Contains('-android'))">
+		<RunAOTCompilation>true</RunAOTCompilation>
+		<AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+	</PropertyGroup>
+
 
 	<ItemGroup>
 		<!-- App Icon Color="#FFFFFF"-->

@@ -40,7 +40,9 @@ public sealed class AppStartupService
             {
                 try
                 {
+                    var startupPerf = System.Diagnostics.Stopwatch.StartNew();
                     await _localDatabase.MigrateAsync();
+                    NeedleBase.Mobile.Helpers.Perf.Log("startup.migrate", startupPerf.ElapsedMilliseconds);
                 }
                 catch (Exception dbEx)
                 {

@@ -17,8 +17,14 @@ public partial class HomePage : ContentPage
         base.OnAppearing();
         if (BindingContext is HomeViewModel vm)
         {
-            await vm.LoadCommand.ExecuteAsync(null);
+            await vm.AppearAsync();
         }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        (BindingContext as HomeViewModel)?.Disappear();
     }
 
     private async void OnSignOutClicked(object? sender, EventArgs e)
