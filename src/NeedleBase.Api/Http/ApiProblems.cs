@@ -92,18 +92,20 @@ public static class ApiProblems
     };
 
     /// <summary>Payment errors: status + stable code + the shared friendly copy.</summary>
-    public static ObjectResult ForPayment(HttpContext ctx, NeedleBase.Application.Common.RecordError error)
+    public static ObjectResult ForPayment(HttpContext ctx, NeedleBase.Application.Common.RecordError error, string? detail = null)
     {
         var status = error switch
         {
             NeedleBase.Application.Common.RecordError.PaymentNotFound or NeedleBase.Application.Common.RecordError.OrderNotFound => StatusCodes.Status404NotFound,
             NeedleBase.Application.Common.RecordError.PaymentConflict or NeedleBase.Application.Common.RecordError.PaymentOrderLocked
+                or NeedleBase.Application.Common.RecordError.PaymentExceedsBalance
                 or NeedleBase.Application.Common.RecordError.Stale => StatusCodes.Status409Conflict,
             NeedleBase.Application.Common.RecordError.PaymentForbidden => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status400BadRequest
         };
         var code = RecordErrorMessages.Code(error);
-        return Create(ctx, status, code, "Couldn't save the payment", RecordErrorMessages.For(error));
+        return Create(ctx, status, code, "Couldn't save the payment",
+            string.IsNullOrWhiteSpace(detail) ? RecordErrorMessages.For(error) : detail);
     }
 
     public static ObjectResult StaleUpdate(HttpContext ctx) =>

@@ -85,8 +85,21 @@ public sealed class PaymentService : IPaymentService
         return entity is null ? RecordResult.Fail(RecordError.PaymentNotFound) : ToDto(entity);
     }
 
-    public async Task<RecordResult<PaymentDto>> RecordAsync(
+    public Task<RecordResult<PaymentDto>> RecordAsync(
         string orderId, RecordPaymentRequest request, CancellationToken cancellationToken = default)
+    {
+        // Sync push already runs each op in a transaction; REST gets its own so the locks hold to commit.
+        return _db.HasActiveTransaction
+            ? RecordLockedAsync(orderId, request, cancellationToken)
+            : _db.InTransactionAsync(async ct =>
+            {
+                var result = await RecordLockedAsync(orderId, request, ct).ConfigureAwait(false);
+                return (result, result.IsSuccess);
+            }, cancellationToken);
+    }
+
+    private async Task<RecordResult<PaymentDto>> RecordLockedAsync(
+        string orderId, RecordPaymentRequest request, CancellationToken cancellationToken)
     {
         var businessId = EnsureBusiness();
         if (!PaymentRules.CanManage(_currentUser.Role))
@@ -94,6 +107,11 @@ public sealed class PaymentService : IPaymentService
             return RecordResult.Fail(RecordError.PaymentForbidden);
         }
 
+        var id = string.IsNullOrWhiteSpace(request.Id) ? IdGenerator.NewId() : request.Id.Trim();
+
+        // Two devices / REST racing sync / an order delete: lock first, then read, so the balance check, the order's
+        // existence and the insert all see the same committed state (serialised per order and per payment id).
+        await _db.LockForPaymentAsync(orderId, id, cancellationToken).ConfigureAwait(false);
         var order = await _db.Orders.AsNoTracking()
             .Where(o => o.Id == orderId)
             .Select(o => new { o.Id, o.CustomerId, o.Status, o.TotalAmount })
@@ -103,9 +121,9 @@ public sealed class PaymentService : IPaymentService
             return RecordResult.Fail(RecordError.OrderNotFound);
         }
 
-        var id = string.IsNullOrWhiteSpace(request.Id) ? IdGenerator.NewId() : request.Id.Trim();
         var method = request.Method?.Trim() ?? string.Empty;
         var note = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+
 
         // Ids are global (another business's row is invisible through the tenant filter but still owns the key).
         var existing = await _db.Payments.IgnoreQueryFilters().AsNoTracking()
@@ -126,12 +144,23 @@ public sealed class PaymentService : IPaymentService
             return RecordResult.Fail(error, detail);
         }
 
+        var now = Sync.SyncTime.Normalize(_clock.UtcNow); // µs, as stored: responses match later reads
+        var recordedAt = Sync.SyncTime.Normalize(request.RecordedAtUtc ?? now);
+        if (recordedAt > now + PaymentRules.FutureTolerance || recordedAt < PaymentRules.EarliestDate)
+        {
+            // A phone with a wrong clock still recorded real money: keep it, dated when it reached the server.
+            if (!request.Lenient)
+            {
+                return RecordResult.Fail(RecordError.PaymentInvalid, "The payment date can't be in the future.");
+            }
+
+            recordedAt = now;
+        }
+
         Payment entity;
         try
         {
-            var now = Sync.SyncTime.Normalize(_clock.UtcNow); // µs, as stored: responses match later reads
-            entity = Payment.Create(id, businessId, order.Id, order.CustomerId, request.Amount, method, note,
-                Sync.SyncTime.Normalize(request.RecordedAtUtc ?? now), now);
+            entity = Payment.Create(id, businessId, order.Id, order.CustomerId, request.Amount, method, note, recordedAt, now);
         }
         catch (DomainRuleException ex)
         {
@@ -142,42 +171,41 @@ public sealed class PaymentService : IPaymentService
             return RecordResult.Fail(RecordError.PaymentInvalid);
         }
 
+        // The id lock above makes a duplicate-key insert unreachable; anything else is a real fault.
         _db.Payments.Add(entity);
-        try
-        {
-            await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-        catch (DbUpdateException)
-        {
-            // Lost an insert race on the same id: same answer as the replay check above.
-            _db.ChangeTracker.Clear();
-            var raced = await _db.Payments.IgnoreQueryFilters().AsNoTracking()
-                .FirstOrDefaultAsync(p => p.Id == id, cancellationToken).ConfigureAwait(false);
-            if (raced is not null && raced.BusinessId == businessId && raced.OrderId == orderId &&
-                raced.Amount == request.Amount && raced.Method == method && raced.Note == note)
-            {
-                return ToDto(raced);
-            }
-
-            if (raced is not null)
-            {
-                return RecordResult.Fail(RecordError.PaymentConflict);
-            }
-
-            throw;
-        }
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return ToDto(entity);
     }
 
-    public async Task<RecordResult<PaymentDto>> VoidAsync(string id, VoidPaymentRequest request, CancellationToken cancellationToken = default)
+    public Task<RecordResult<PaymentDto>> VoidAsync(string id, VoidPaymentRequest request, CancellationToken cancellationToken = default)
     {
         EnsureBusiness();
         if (!PaymentRules.CanManage(_currentUser.Role))
         {
-            return RecordResult.Fail(RecordError.PaymentForbidden);
+            return Task.FromResult<RecordResult<PaymentDto>>(RecordResult.Fail(RecordError.PaymentForbidden));
         }
 
+        // Two voids at once (REST + sync): serialised, so the first reason really wins.
+        return _db.HasActiveTransaction
+            ? VoidLockedAsync(id, request, cancellationToken)
+            : _db.InTransactionAsync(async ct =>
+            {
+                var result = await VoidLockedAsync(id, request, ct).ConfigureAwait(false);
+                return (result, result.IsSuccess);
+            }, cancellationToken);
+    }
+
+    private async Task<RecordResult<PaymentDto>> VoidLockedAsync(string id, VoidPaymentRequest request, CancellationToken cancellationToken)
+    {
+        var orderId = await _db.Payments.AsNoTracking().Where(p => p.Id == id).Select(p => p.OrderId)
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (orderId is null)
+        {
+            return RecordResult.Fail(RecordError.PaymentNotFound);
+        }
+
+        await _db.LockForPaymentAsync(orderId, id, cancellationToken).ConfigureAwait(false);
         var entity = await _db.Payments.FirstOrDefaultAsync(p => p.Id == id, cancellationToken).ConfigureAwait(false);
         if (entity is null)
         {

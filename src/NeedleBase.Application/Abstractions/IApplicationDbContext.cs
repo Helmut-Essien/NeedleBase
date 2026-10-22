@@ -49,6 +49,18 @@ public interface IApplicationDbContext
     /// Runs <paramref name="work"/> in one database transaction (inside the retrying execution strategy);
     /// commits only when it returns Commit = true, otherwise rolls back.
     /// </summary>
+    /// <summary>True while a transaction from <see cref="InTransactionAsync{T}"/> (or sync push) is open.</summary>
+    bool HasActiveTransaction { get; }
+
+    /// <summary>
+    /// Inside a transaction: serialises payment writes on one order (row lock) and on one payment id
+    /// (transaction advisory lock), so balance checks and id-replay checks can't race.
+    /// </summary>
+    /// <summary>Inside a transaction: row-locks one order (delete vs. a payment being recorded on it).</summary>
+    Task LockOrderAsync(string orderId, CancellationToken cancellationToken = default);
+
+    Task LockForPaymentAsync(string orderId, string paymentId, CancellationToken cancellationToken = default);
+
     Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<(T Result, bool Commit)>> work, CancellationToken cancellationToken = default);
 }
 

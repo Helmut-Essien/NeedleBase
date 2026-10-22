@@ -43,7 +43,9 @@ public sealed record OrderPaymentsDto(
     public string PaidSummary => $"{Money.Format(PaidAmount)} of {Money.Format(TotalAmount)} paid";
 
     /// <summary>"GH₵ 600.00 left", "Paid in full" or "GH₵ 50.00 overpaid".</summary>
-    public string BalanceDisplay => Balance > 0
+    public string BalanceDisplay => OrderStatus == Domain.Enums.OrderStatus.Cancelled
+        ? (PaidAmount > 0 ? $"Order cancelled · {Money.Format(PaidAmount)} recorded" : "Order cancelled")
+        : Balance > 0
         ? $"{Money.Format(Balance)} left"
         : Balance == 0 ? "Paid in full" : $"{Money.Format(-Balance)} overpaid";
 }

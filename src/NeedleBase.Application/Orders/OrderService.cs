@@ -299,11 +299,24 @@ public sealed class OrderService : IOrderService
         }
     }
 
-    public async Task<OrderError> DeleteAsync(
+    public Task<OrderError> DeleteAsync(
         string id,
         CancellationToken cancellationToken = default)
     {
         EnsureBusiness();
+        // Locked against a payment being recorded at the same moment (else the FK would fail with a 500).
+        return _db.HasActiveTransaction
+            ? DeleteLockedAsync(id, cancellationToken)
+            : _db.InTransactionAsync(async ct =>
+            {
+                var error = await DeleteLockedAsync(id, ct).ConfigureAwait(false);
+                return (error, error == OrderError.None);
+            }, cancellationToken);
+    }
+
+    private async Task<OrderError> DeleteLockedAsync(string id, CancellationToken cancellationToken)
+    {
+        await _db.LockOrderAsync(id, cancellationToken).ConfigureAwait(false);
         var entity = await _db.Orders
             .Include(o => o.Lines)
             .FirstOrDefaultAsync(o => o.Id == id, cancellationToken)

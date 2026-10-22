@@ -182,6 +182,32 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         }, cancellationToken);
     }
 
+    public bool HasActiveTransaction => Database.CurrentTransaction is not null;
+
+    public async Task LockForPaymentAsync(string orderId, string paymentId, CancellationToken cancellationToken = default)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Payment locks need a transaction.");
+        }
+
+        // Advisory key is per payment id (any business), the row lock is the order's. Always in this order (no deadlock).
+        await Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock(hashtextextended({"payment:" + paymentId}, 0))", cancellationToken).ConfigureAwait(false);
+        await LockOrderAsync(orderId, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task LockOrderAsync(string orderId, CancellationToken cancellationToken = default)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Order locks need a transaction.");
+        }
+
+        await Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT 1 FROM \"Orders\" WHERE \"Id\" = {orderId} FOR UPDATE", cancellationToken).ConfigureAwait(false);
+    }
+
     public Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<(T Result, bool Commit)>> work, CancellationToken cancellationToken = default)
     {
         var strategy = Database.CreateExecutionStrategy();

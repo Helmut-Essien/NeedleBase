@@ -31,7 +31,7 @@ public sealed class PaymentsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await _payments.ListAsync(page, pageSize, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error);
+        return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error, result.Message);
     }
 
     [HttpGet("api/payments/{id}")]
@@ -40,7 +40,7 @@ public sealed class PaymentsController : ControllerBase
     public async Task<IActionResult> Get(string id, CancellationToken cancellationToken)
     {
         var result = await _payments.GetAsync(id, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error);
+        return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error, result.Message);
     }
 
     [HttpGet("api/orders/{orderId}/payments")]
@@ -49,7 +49,7 @@ public sealed class PaymentsController : ControllerBase
     public async Task<IActionResult> ForOrder(string orderId, CancellationToken cancellationToken)
     {
         var result = await _payments.GetForOrderAsync(orderId, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error);
+        return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error, result.Message);
     }
 
     [HttpPost("api/orders/{orderId}/payments")]
@@ -64,7 +64,7 @@ public sealed class PaymentsController : ControllerBase
         var result = await _payments.RecordAsync(orderId, request, cancellationToken);
         return result.IsSuccess
             ? CreatedAtAction(nameof(Get), new { id = result.Value!.Id }, result.Value)
-            : ApiProblems.ForPayment(HttpContext, result.Error);
+            : ApiProblems.ForPayment(HttpContext, result.Error, result.Message);
     }
 
     [HttpPost("api/payments/{id}/void")]
@@ -75,6 +75,6 @@ public sealed class PaymentsController : ControllerBase
     public async Task<IActionResult> Void(string id, [FromBody] VoidPaymentRequest request, CancellationToken cancellationToken)
     {
         var result = await _payments.VoidAsync(id, request, cancellationToken);
-        return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error);
+        return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error, result.Message);
     }
 }

@@ -439,6 +439,9 @@ public sealed class SyncService : ISyncService
             return Failed(op, SyncErrorCodes.PayloadInvalid, "Missing payment.");
         }
 
+        var (syncMethod, syncNote) = PaymentRules.NormalizeSyncMethod(dto.Method, dto.Note);
+        dto = dto with { Method = syncMethod, Note = syncNote };
+
         if (!PaymentRules.CanManage(_currentUser.Role))
         {
             return Failed(op, RecordErrorMessages.PaymentForbidden, RecordErrorMessages.For(RecordError.PaymentForbidden));
@@ -459,6 +462,13 @@ public sealed class SyncService : ISyncService
 
             if (!created.IsSuccess)
             {
+                if (created.Error == RecordError.PaymentConflict &&
+                    await _db.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.Id == dto.Id, ct).ConfigureAwait(false) is { } raced)
+                {
+                    // Another phone pushed this id (with other content) a moment earlier: same answer as the replay path.
+                    return Conflict(op, code: SyncErrorCodes.PaymentMismatch, payment: SyncMapper.ToDto(raced));
+                }
+
                 return created.Error switch
                 {
                     RecordError.OrderNotFound => Conflict(op, code: SyncErrorCodes.ParentDeleted),
@@ -685,6 +695,14 @@ public sealed class SyncService : ISyncService
                     }
 
                     fetched = rows.Count;
+                    break;
+                }
+
+                case SyncCursor.PhasePayments when !PaymentRules.CanManage(_currentUser.Role):
+                {
+                    // Tailors never receive payments. Forget the position, so a later promotion pulls them all.
+                    cursor.Payments = null;
+                    fetched = 0;
                     break;
                 }
 
