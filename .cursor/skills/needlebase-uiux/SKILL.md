@@ -117,3 +117,7 @@ When designing or implementing UI:
 **Design-time (planning, prototypes, IA changes):** [information-architecture.md](information-architecture.md) · [journeys.md](journeys.md) · [handoff.md](handoff.md).
 
 Code-level skills: [needlebase-mobile](../needlebase-mobile/SKILL.md) (MAUI), [needlebase-web](../needlebase-web/SKILL.md) (Razor), [needlebase-architecture](../needlebase-architecture/SKILL.md) (layers, testing).
+
+## Activity log copy (22 Oct 2026)
+
+Plain past tense with the order ref (“Order #ORD-12: New → Cutting”, “Voided payment GH₵ 50.00 (Cash): entered twice”). Times “22 Oct 2026, 14:05” Accra. Hidden values show “(hidden)”, never the value. Empty: “No activity yet…”; filtered empty: “Nothing matches these filters.” Details are a native disclosure (keyboard + 44px target).

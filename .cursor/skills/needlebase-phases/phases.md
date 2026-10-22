@@ -10,7 +10,7 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 | 3 | Orders + production status (mobile primary) | Done (mobile data syncs via Slice 4) |
 | 4 | Offline sync push/pull + DeletedItem + SyncChip | In progress: code + automated tests done 20 Oct 2026; Journey 2 not yet verified on devices (two-device sync, airplane mode) |
 | 5 | Payments + balances + receipts (conflict-safe) | In progress: code + automated tests done 22 Oct 2026; Journey 1 steps 6–7 and Journey 4 not yet verified on a device |
-| 6 | Web dashboard + production board | Planned |
+| 6 | Web dashboard + production board | In progress: code + automated tests done 22 Oct 2026; Journey 3 (phone change → web) not yet verified with a signed-in phone and browser |
 | 7 | Staff invites + role-limited UI | Planned |
 | 8 | Subscription/trial + polish | Planned |
 
@@ -101,6 +101,15 @@ Device checks still open: record deposit offline → sync → second device sees
 - Role-aware nav (hide Staff/Subscription until Slice 7/8 if not ready — do not fake)
 - Journey 3 passes (mobile status/assign → visible on web)
 
+**Slice 6 status (22 Oct 2026):** built [code]; Journey 3 not yet run end to end in a browser with a signed-in phone.
+Api: `GET api/dashboard/summary` (`Application/Dashboard/DashboardService.cs`, `Contracts/Dashboard`), `GET api/staff/names` (active members of the business: user id, name, role; no email/phone; max 500), `GET api/orders` gains `sort=due` (due date, no-date last), `status=open` (not Collected/Cancelled) and `assignedTo=me|<userId>`; `OrderListItemDto.AssignedToUserId`. No migration.
+Web: sidebar shell (`_Layout`, `_NavLinks`; collapses to a top menu below 768px), Dashboard (`Pages/Index`), Production board (`Pages/Production`), Orders list + detail with status change (`Pages/Orders`), Customers list, Payments list (Owner/Manager). Typed client `Services/NeedleBaseApi` + `ApiResult` (ok / ProblemDetails / offline); `AppPageModel` maps 401 → login, 403/other → page message.
+Tests: `Web.Tests` (client, page models, role gating, error mapping, 401 handler, rendered pages against a fake Api), `Api.Tests/DashboardApiTests`.
+Decisions (defaults): web is read-mostly — the only write is order status change (PATCH with `baseModifiedUtc`, STALE_UPDATE shows the fresh order); creating/editing customers, measurements, orders, assignment and recording payments stay in the app for now; board moves go through Order detail (no drag and drop); each board column shows the 30 earliest-due cards with a "See all" link; Tailors' board starts on "Assigned to me" (toggle to everyone); money (dashboard totals, payments, order balance) shown only when the cookie role is Owner/Manager **and** the Api returns it; outstanding = sum of positive balances on non-cancelled orders; "received" uses Accra calendar days; Staff, Reports, Settings, Subscription and Measurements are not in the nav until built; a 403 from the Api no longer signs the user out.
+Edge-case audit (22 Oct 2026): order status PATCH now locks the order row (two PATCHes with the same `baseModifiedUtc` can't both win); a STALE reply when the order already has the requested status shows "Status is X" (double submit); web token refresh no longer re-reads the cookie per call (parallel page fetches raced on HttpContext and could restore the pre-refresh token), refresh sign-out happens inside the per-user lock, the cached identity is cloned before claims change; only connection-refused calls are retried (a timed-out PATCH is never replayed; no 3 × 30 s waits); bare 502/503/504 show the offline state; signed-in pages send `Cache-Control: no-store` (static files keep caching); forwarded headers run first (no HTTPS redirect loop behind a proxy); antiforgery/404 errors show a friendly Error page; Orders keeps `assigned=me` from the board's "See all"; lists show "past the end" instead of "no orders" for a stale page link; `assignedTo=me` without a user id matches nothing; dashboard outstanding is one query; keyboard focus rings on nav/cards.
+Known limits (decisions): a role change takes effect on the web at the next token refresh (the Api's JWT role is authoritative until then); one business per user (no switching); Tailors see order totals (not payments/balances); staff names include each member's role; no extra index for `assignedTo` (Status/DueDate indexes cover current tenant sizes).
+Deferred: web create/edit forms (amount/phone/measurement validation will reuse the shared parsers when they land); auto-refresh (the page shows data as of load — refresh to see phone changes); customer detail page.
+
 ## Slice 7 acceptance — Staff + roles (Journey 5)
 
 - `Invitation`, `StaffMembership`; roles Owner / Manager / Tailor
@@ -130,6 +139,9 @@ Single source: [needlebase-domain](../needlebase-domain/SKILL.md#add-entity-chec
 ### Stock of “done”
 
 Mark a slice **Done** in the table only when its acceptance list is met (or explicitly waived by the user in writing). Do not start the next slice without confirmation.
+
+### Audit trail (cross-cutting, 22 Oct 2026)
+Not owned by one slice (only “Recent activity” was in the IA). Built after Slice 6: `AuditEvents` (append-only), Api `GET /api/audit`, web **Activity** page + order History panel + customer History link. Slice 7 must keep emitting `staff.*` (captured automatically from `StaffMembership` changes) and emit `auth.password_changed` from the password-change endpoint it adds. Mobile read-only history: deferred.
 
 ## Out of scope until explicitly requested
 

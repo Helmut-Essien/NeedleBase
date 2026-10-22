@@ -103,3 +103,16 @@ dotnet run --project src/NeedleBase.Api --launch-profile https
 `GET api/payments`, `GET api/payments/{id}`, `GET|POST api/orders/{orderId}/payments`, `POST api/payments/{id}/void`. Owner/Manager only (403 `PAYMENT_FORBIDDEN`). Codes: `PAYMENT_NOT_FOUND` 404, `PAYMENT_CONFLICT` 409 (same id, different content), `PAYMENT_EXCEEDS_BALANCE` / `PAYMENT_ORDER_LOCKED` 409, `PAYMENT_INVALID` 400. Order DELETE with payments → 409 `ORDER_HAS_PAYMENTS`. Create is idempotent on the client id.
 
 Second audit: `PAYMENT_EXCEEDS_BALANCE` → 409 with the specific detail; `RecordedAtUtc` more than 5 minutes ahead or before 2020 → 400 `PAYMENT_INVALID` (sync push dates it at server time instead); void runs under the payment lock.
+
+## Slice 6 endpoints (22 Oct 2026)
+
+- `GET api/dashboard/summary` (RequireStaff): active/overdue/due-7d/fittings-7d, counts per status, `Money` only for Owner/Manager (null for Tailor). Accra calendar days.
+- `GET api/staff/names` (RequireStaff): active members of the caller's business — `userId`, `name`, `role`; never email/phone; max 500.
+- `GET api/orders`: `sort=due` (due asc, no date last, then id), `status=open` (excludes Collected/Cancelled), `assignedTo=me|<userId>` (max 64 chars); list items carry `assignedToUserId`.
+
+## Audit (22 Oct 2026)
+
+- `GET /api/audit` (RequireManagerOrOwner; Tailor 403). Query: `page`, `pageSize` (≤100), `userId`, `action` (exact or prefix ending “.”, e.g. `payment.`), `entityType`, `entityId`, `orderId`, `customerId`, `source`, `from`/`to` (Accra dates, inclusive; from>to → 400), `search` (literal, summary). Newest first.
+- Owner sees everything incl. `auth.*`, IP and user agent; Manager sees data + payment events, no `auth.*`, no IP/UA. Events without a business (unknown-email logins) are visible to no tenant.
+- Optional headers: `X-NeedleBase-Client: web`, `X-Device-Id`, `X-Correlation-Id`. Sync push/pull bodies take an optional `deviceId`.
+- New write endpoints need nothing extra (capture is in SaveChanges); new security/read-sensitive endpoints call `IAuditLog.WriteAsync` with a throttle key if noisy.

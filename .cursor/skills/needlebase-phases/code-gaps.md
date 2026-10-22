@@ -83,3 +83,24 @@ Device speed (22 Oct 2026): Orders and Customers tabs cache rows and reload only
 ### Slice 5 second audit (22 Oct 2026)
 - Closed: purge could delete a never-acknowledged payment; EXCEEDS_BALANCE returned 400 and lost its detail; racing voids could overwrite the first reason; future/ancient payment dates accepted; unknown sync method failed real money forever; same-id push race mapped to Rejected; Order detail balance stale after a pulled void; unnamed method radios.
 - Open (decision): payments dated before the order are allowed (deposit taken before the order was entered).
+
+## Slice 6 — Web oversight (22 Oct 2026)
+
+- Nothing was assigned to Slice 6 here. Fixed on the way: `UnauthorizedRedirectHandler` redirected on 403 too, signing a Tailor out when a role-limited call (payments) was refused; now 401 only.
+- Open: web pages don't auto-refresh; a phone change shows on the next load (Journey 3 = refresh). Web has no create/edit forms yet.
+
+### Slice 6 edge-case audit (22 Oct 2026)
+
+- Fixed: status PATCH race (row lock), web refresh races on parallel fetches, PATCH timeout replay, bare 503/504 not shown as offline, private pages cacheable, forwarded headers after HTTPS redirection, blank 400 on expired antiforgery, board "See all" dropping the mine filter, past-end paging copy, `assignedTo=me` with no user.
+- Open: web role changes wait for the next token refresh; multi-business switching not supported; no `(BusinessId, AssignedToUserId)` index.
+
+## Audit trail (22 Oct 2026)
+
+- Done: `AuditEvents` table (append-only, tenant-scoped, DB guard trigger, 6 indexes), capture in `ApplicationDbContext.SaveChanges` (REST, web, sync push incl. restore/keep-mine, seeding), security events (login ok/failed/throttled/blocked, logout, token reuse, register), sync session rows, payments-view rows, `GET /api/audit`, web Activity page/History panel, 2-year purge job (`Audit:RetentionDays`).
+- Open: no password-change endpoint yet → `auth.password_changed` reserved (Slice 7). Throttle is per process (several Api instances → up to one row each). Payments seen on phones via sync are not logged as views. Keep-theirs/Discard on the phone change nothing on the server, so nothing is logged. TRUNCATE/DROP by the schema owner bypass the guard (run prod with a non-owner role). Mobile history screen deferred. Token reuse not covered by an automated test (needs the 30 s grace to pass).
+
+### Audit trail edge-case audit (22 Oct 2026)
+
+- Fixed: a SaveChanges retried after a failure (order-ref race, raced creates, sync replays) logged the failed attempt too (stale rows now dropped before capture); an emoji at a summary/user-agent cut point could leave half a character and fail the user's save; failed and throttled sign-ins shared one counter; the throttle scanned all keys on every call once full and could grow without bound under a flood; `::ffff:` IPv4 addresses; empty sync pushes logged a row; new-row snapshots repeated customer/order ids; dates in diffs were raw ISO UTC (now Accra "22 Oct 2026, 14:05"); raw field names (now "due date", "assignee"…); Managers offered a "Sign-in" filter that always returned nothing; no "Business details" filter; a former member's filter showed as "Everyone"; retention days unbounded above (now 30–36,500).
+- Fixed (test): `CursorAheadOfCap_SameEpoch` counted epochs before letting a pull settle a re-stamp that had to be retried; now waits for the pull, still asserts exactly one bump.
+- Open: pull session rows carry no item counts (sessions span many pages; one row per phone per hour); `search` is an unindexed ILIKE over one business's summaries and the total count scans the filtered rows (fine to ~10⁵ rows per business; add pg_trgm / keyset paging if it grows).

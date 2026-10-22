@@ -117,3 +117,7 @@ Business: Ama Stitches, Accra. Customer: Efua Mensah, +233…. Currency: GH₵. 
 
 ## Payment (Slice 5)
 `Payment` is immutable: Amount (>0, ≤ 50,000,000, max 2 decimals, never rounded), Method (`PaymentMethod` Cash/MoMo/Bank/Other), Note, RecordedAtUtc, OrderId, CustomerId. Only change: `Void(reason, now)` — one-way, idempotent, first reason wins. Balance = order total − sum of non-voided payments (`PaymentRules.Paid`). Entry rules in `PaymentRules.CheckEntry` (strict for REST/device, lenient for sync push).
+
+## AuditEvent (22 Oct 2026)
+
+Append-only record: business, actor + role snapshot, action (`entity.verb`, see `AuditActions`), entity type/id, order/customer links, summary (≤300), masked changes JSON, source (api/web/sync/system), device, IP, UA, correlation id, UTC time. No FKs (survives deletes). Never edited; purged after `Audit:RetentionDays` (730).

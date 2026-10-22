@@ -93,3 +93,9 @@ Code gaps: [code-gaps.md](../needlebase-phases/code-gaps.md).
 **Slice 5 edge tests:** concurrent REST records never overpay, same-id race stores once, delete-vs-record never 500s, Tailor pull gets no payments and a promoted cursor re-pulls; parser/receipt/purge/role-cache/Sync-details wording in `Mobile.Tests/PaymentSyncTests`; migrator v7→v8 with rows in `LocalSchemaMigratorTests`.
 
 Second audit tests: concurrent voids, same-id push race, future dates, unknown method, 409 detail, purge of unacknowledged rows, Order detail live balance. The API test retry helper retries only `SYNC_MAINTENANCE` 503s, at most 5 times.
+
+## Audit trail tests (22 Oct 2026)
+
+- Api (`AuditTrailApiTests`, real Postgres): every write path emits its event (REST, web header, sync push, delete + restore), masking (phone last 4, notes never copied), tenancy, roles (Tailor 403; Manager no `auth.*`/IP), filters + validation, rollback leaves no row, append-only trigger + purge, login failure throttle + unknown email masked, payments-view throttle, sync session rows, 200-item push.
+- New write path or entity: assert its `AuditActions` row (and that sensitive values are absent).
+- Mobile: push/pull carry `deviceId`. Web: Activity page model + render, order History panel role gating, client query.

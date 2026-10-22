@@ -61,3 +61,13 @@ Don't add Mediator/CQRS, caches, Redis or message buses without a measured need.
 | Offline sync (planned Slice 4) | [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md) |
 | Web | [needlebase-web](../needlebase-web/SKILL.md) |
 | Screens, tokens, copy | [needlebase-uiux](../needlebase-uiux/SKILL.md) |
+
+## Audit trail (22 Oct 2026)
+
+- `AuditEvent` (Domain) is append-only; never update/delete it in code. Only `AuditRetentionService.PurgeAsync` deletes, inside `SET LOCAL needlebase.audit_purge = 'on'` (trigger `trg_audit_events_guard` refuses everything else).
+- Data changes: `ApplicationDbContext` turns the change tracker into rows (`Infrastructure/Audit/AuditCapture`) in the **same** SaveChanges/transaction → a committed change always has its row, a rolled-back one never does. If the audit insert itself fails, the change fails (deliberate). Describing a change never throws (falls back to `<type>.changed`).
+- Security/activity events (`IAuditLog`) are best effort in their own context; they never fail the request. Noisy ones pass a throttle key + window (one row per window, the next row says “+N more”).
+- Who/where comes from the scoped `AuditContext`, filled by `BusinessTenancyMiddleware` (user, role, business, IP after forwarded headers, UA, correlation id, `X-Device-Id`, source sync/web/api via `X-NeedleBase-Client`).
+- Masking: no secrets on audited entities; phones last 4 digits; Notes/Note/PhotoRef “(hidden)”; measurements → field names only. Adding an entity: add a case in `AuditCapture` + action constants.
+- Audit rows never sync (no sync trigger, not in pull, not in the epoch restamp).
+- Never add `AuditEvent` rows to an auditing context by hand: any still "Added" at the next SaveChanges are treated as leftovers of a failed save and dropped. Text cuts must not split surrogate pairs (`AuditMask.Short`, `AuditEvent.Create`).

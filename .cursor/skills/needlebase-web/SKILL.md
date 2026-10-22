@@ -60,7 +60,15 @@ public class IndexModel : PageModel
 
 - `ApiAuthService` — login, refresh, current user/business (the `AuthApi` client adds the browser IP as X-Forwarded-For via `ForwardClientIpHandler`, so the Api's per-IP limits and login throttle see each visitor; a 429 `LOGIN_THROTTLED` shows the shared `AuthErrorMessages` copy)  
 - `TokenRefreshHandler` — cookie-backed bearer refresh  
-- Unauthorized → redirect to login  
+- Unauthorized → redirect to login (401 only; a 403 is a role answer shown on the page, never a sign-out)  
+- `INeedleBaseApi` / `NeedleBaseApi` (Slice 6) — typed calls returning `ApiResult<T>`: Ok, Fail(ApiProblem) or Offline (network/timeout/garbled body). Paging clamped to `PaginationDefaults`; query values trimmed + escaped; ids path-escaped. Pages derive from `AppPageModel` (`PageError`, `IsOffline`, `Loaded`; `Fail()` → login on 401) and render `_PageState` for loading/empty/error/offline. Independent calls run with `Task.WhenAll`.  
+- `TokenRefreshHandler`: read the token from `ctx.User` (never `AuthenticateAsync` per call — pages fetch in parallel); refresh + sign-out only inside the per-user lock; retry only connection-refused (never replay a timed-out PATCH/POST). Bare 502/503/504 → `ApiResult.Offline`.  
+- `UnauthorizedRedirectHandler` only logs; the page redirects on 401 via `AppPageModel.Fail`.  
+- Signed-in Razor pages get `Cache-Control: no-store` (middleware, pages only). `UseForwardedHeaders` is the first middleware. Status-code pages re-execute `/Error?code=` (400 = expired form copy).  
+- Paging query key is `p` (Razor Pages reserves `page`); `_Pager` partial + `PagerModel`.  
+- Role gating: `User.CanSeePayments()` (Owner/Manager) **and** the Api's answer (e.g. dashboard `Money` null) must both allow money. Nav (`_NavLinks`) lists only built pages.  
+- Tables use `nb-table nb-table--cards` with `data-label` on each cell (cards below 768px). Status chips: `_StatusChip` partial.  
+- Tests: `tests/NeedleBase.Web.Tests` — `FakeApi` for page models; `RenderTests` boots the real app with a test auth scheme to render pages (no network, no data).  
 - Api errors are ProblemDetails: read `code`/`detail`/`errors`, map them to page/field messages ([content-and-states §5](../needlebase-uiux/content-and-states.md#5-api-errors-to-user-copy))  
   [code] `ApiAuthService` reads failures via `ApiProblem.ReadAsync` and exposes `LastErrorMessage` (from `AuthErrorMessages`); Login/Register pages show it.  
 
@@ -76,4 +84,10 @@ Run **both** processes for local dev.
 ## Related
 
 - [needlebase-api](../needlebase-api/SKILL.md)  
-- [needlebase-architecture](../needlebase-architecture/SKILL.md)  
+- [needlebase-architecture](../needlebase-architecture/SKILL.md)
+
+## Activity (22 Oct 2026)
+
+- `/Activity` (Owner/Manager; nav link via `User.CanSeeActivity()`): filters person/kind/from/to/words + hidden `order`/`customer`, `p` paging, 50 per page, `_ActivityItem` partial with a no-JS `<details>` for field changes.
+- Order detail loads the last 20 entries in parallel (History panel, “See all” → `/Activity?order=`); a failed history call only hides the panel. Customers list has a History link (`/Activity?customer=`).
+- Both HttpClients send `X-NeedleBase-Client: web`; the Api client also forwards the browser IP (`ForwardClientIpHandler`).
