@@ -22,4 +22,7 @@ public static class DomainErrorCodes
 
     /// <summary>Unknown order status value.</summary>
     public const string OrderStatusInvalid = "ORDER_STATUS_INVALID";
+
+    /// <summary>Payment amount/method not acceptable (amount ≤ 0, more than 2 decimals, too large, unknown method).</summary>
+    public const string PaymentInvalid = "PAYMENT_INVALID";
 }

@@ -24,7 +24,16 @@ public enum RecordError
     OrderLocked,
     OrderStatusInvalid,
     AssigneeInvalid,
-    TotalMismatch
+    TotalMismatch,
+    PaymentNotFound,
+    PaymentConflict,
+    PaymentInvalid,
+    /// <summary>The amount is more than what's left to pay (entry rule; sync stores real overpayments).</summary>
+    PaymentExceedsBalance,
+    /// <summary>The order is cancelled: no new payments.</summary>
+    PaymentOrderLocked,
+    /// <summary>Only the owner or a manager can record or void payments.</summary>
+    PaymentForbidden
 }
 
 /// <summary>A failure without a value type; converts to any <see cref="RecordResult{T}"/>.</summary>

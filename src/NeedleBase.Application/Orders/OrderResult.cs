@@ -16,7 +16,9 @@ public enum OrderError
     TotalMismatch,
     Invalid,
     /// <summary>BaseModifiedUtc no longer matches (someone else changed it). API: 409 STALE_UPDATE.</summary>
-    Stale
+    Stale,
+    /// <summary>Delete refused: money was recorded against the order. API: 409 ORDER_HAS_PAYMENTS.</summary>
+    HasPayments
 }
 
 public sealed record OrderResult(OrderDetailDto? Order, OrderError Error, string? Detail = null)

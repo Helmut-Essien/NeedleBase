@@ -12,6 +12,7 @@ public static class OrderErrorMessages
     public const string Validation = "VALIDATION_FAILED";
     public const string CustomerNotFound = "CUSTOMER_NOT_FOUND";
     public const string MeasurementNotFound = "MEASUREMENT_NOT_FOUND";
+    public const string HasPayments = "ORDER_HAS_PAYMENTS";
 
     public const string Fallback = "Couldn't save the order. Check the details and try again.";
 
@@ -26,6 +27,7 @@ public static class OrderErrorMessages
         CustomerNotFound => "We couldn't find that customer.",
         MeasurementNotFound => "We couldn't find those measurements for this customer.",
         Validation => "Check the order details and try again.",
+        HasPayments => "Payments are recorded on this order, so it can't be deleted. Cancel it instead.",
         NeedleBase.Application.Common.StaleUpdate.Code => "Someone else saved a newer version. Reload to see it, then make your change again.",
         _ => Fallback
     };

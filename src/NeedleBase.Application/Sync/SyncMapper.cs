@@ -22,4 +22,9 @@ public static class SyncMapper
         new(o.Id, o.CustomerId, o.DisplayRef, o.Status, o.DueDate, o.FittingDate, o.AssignedToUserId,
             o.TotalAmount, o.Notes, SyncTime.Normalize(o.CreatedAtUtc), SyncTime.Normalize(o.DateModifiedUtc),
             lines.OrderBy(l => l.SortOrder).Select(ToDto).ToList());
+
+    public static SyncPaymentDto ToDto(Payment p) =>
+        new(p.Id, p.OrderId, p.CustomerId, p.Amount, p.Method, p.Note, SyncTime.Normalize(p.RecordedAtUtc),
+            p.IsVoided, p.VoidedAtUtc is { } voided ? SyncTime.Normalize(voided) : null, p.VoidReason,
+            SyncTime.Normalize(p.CreatedAtUtc), SyncTime.Normalize(p.DateModifiedUtc));
 }

@@ -20,6 +20,8 @@ public interface IApplicationDbContext
 
     DbSet<OrderLine> OrderLines { get; }
 
+    DbSet<Payment> Payments { get; }
+
     /// <summary>Sync tombstones (written by the DbContext on delete; read by sync pull).</summary>
     DbSet<DeletedItem> DeletedItems { get; }
 

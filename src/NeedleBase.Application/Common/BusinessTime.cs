@@ -13,6 +13,9 @@ public static class BusinessTime
     public static DateOnly Today(DateTimeOffset utcNow) =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(utcNow, Zone).DateTime);
 
+    /// <summary>The instant in Accra time (for display: receipts, payment dates).</summary>
+    public static DateTimeOffset ToLocal(DateTimeOffset utc) => TimeZoneInfo.ConvertTime(utc, Zone);
+
     private static TimeZoneInfo Resolve()
     {
         try

@@ -313,6 +313,11 @@ public sealed class OrderService : IOrderService
             return OrderError.NotFound;
         }
 
+        if (await _db.Payments.AsNoTracking().AnyAsync(p => p.OrderId == id, cancellationToken).ConfigureAwait(false))
+        {
+            return OrderError.HasPayments; // money records are never deleted with their order
+        }
+
         _db.Orders.Remove(entity);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return OrderError.None;

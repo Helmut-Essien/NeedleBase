@@ -18,9 +18,11 @@ public static class OrderErrorMapping
         OrderError.AssigneeInvalid => RecordError.AssigneeInvalid,
         OrderError.TotalMismatch => RecordError.TotalMismatch,
         OrderError.Stale => RecordError.Stale,
+        OrderError.HasPayments => RecordError.Validation,
         _ => RecordError.Validation
     };
 
     /// <summary>Stable ProblemDetails/UI code for an order error (same values the API sends).</summary>
-    public static string Code(OrderError error) => RecordErrorMessages.Code(ToRecord(error));
+    public static string Code(OrderError error) =>
+        error == OrderError.HasPayments ? OrderErrorMessages.HasPayments : RecordErrorMessages.Code(ToRecord(error));
 }

@@ -67,6 +67,24 @@ public sealed record SyncOrderDto(
     DateTimeOffset DateModifiedUtc,
     IReadOnlyList<SyncOrderLineDto> Lines);
 
+/// <summary>
+/// A payment. Immutable except for the one-way void; never deleted. Payments sync in their own pull phase after
+/// orders/deletes (cursor phase 4) and a device defers one whose order it doesn't have yet.
+/// </summary>
+public sealed record SyncPaymentDto(
+    string Id,
+    string OrderId,
+    string CustomerId,
+    decimal Amount,
+    string Method,
+    string? Note,
+    DateTimeOffset RecordedAtUtc,
+    bool IsVoided,
+    DateTimeOffset? VoidedAtUtc,
+    string? VoidReason,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset DateModifiedUtc);
+
 public sealed record SyncDeletedItemDto(string EntityType, string EntityId, DateTimeOffset DeletedAtUtc);
 
 public sealed class SyncPushOperation
@@ -90,6 +108,7 @@ public sealed class SyncPushOperation
     public SyncCustomerDto? Customer { get; set; }
     public SyncMeasurementDto? Measurement { get; set; }
     public SyncOrderDto? Order { get; set; }
+    public SyncPaymentDto? Payment { get; set; }
 }
 
 public sealed class SyncPushRequest
@@ -105,7 +124,8 @@ public sealed record SyncPushResult(
     string? Message,
     SyncCustomerDto? Customer = null,
     SyncMeasurementDto? Measurement = null,
-    SyncOrderDto? Order = null);
+    SyncOrderDto? Order = null,
+    SyncPaymentDto? Payment = null);
 
 public sealed record SyncPushResponse(IReadOnlyList<SyncPushResult> Results);
 
@@ -131,7 +151,11 @@ public sealed record SyncPullResponse(
     IReadOnlyList<SyncDeletedItemDto> Deleted,
     string Cursor,
     bool HasMore,
-    DateTimeOffset ServerTimeUtc);
+    DateTimeOffset ServerTimeUtc)
+{
+    /// <summary>Payments (phase 4). Older servers omit it: treat null as none.</summary>
+    public IReadOnlyList<SyncPaymentDto>? Payments { get; init; }
+}
 
 /// <summary>Stable codes in <see cref="SyncPushResult.Code"/> and sync ProblemDetails.</summary>
 public static class SyncErrorCodes
@@ -155,6 +179,12 @@ public static class SyncErrorCodes
 
     /// <summary>A delete the server refused because the record still has dependents (e.g. a customer with orders).</summary>
     public const string DeleteRefused = "SYNC_DELETE_REFUSED";
+
+    /// <summary>
+    /// The server already has this payment id with different content (amount/method/note/order). Payments are never
+    /// overwritten or dropped silently: the device keeps both or takes the server copy (user's choice).
+    /// </summary>
+    public const string PaymentMismatch = "SYNC_PAYMENT_MISMATCH";
 
     /// <summary>
     /// The server could not store the record (e.g. its id is taken). Deliberately generic: a foreign

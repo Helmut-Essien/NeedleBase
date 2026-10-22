@@ -7,6 +7,8 @@ using NeedleBase.Application.Contracts.Measurements;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Sync;
 using NeedleBase.Application.Orders;
+using NeedleBase.Application.Payments;
+using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Domain.Entities;
 using NeedleBase.Domain.Enums;
 
@@ -26,6 +28,7 @@ public sealed class SyncService : ISyncService
     private readonly ICustomerService _customers;
     private readonly IMeasurementService _measurements;
     private readonly IOrderService _orders;
+    private readonly IPaymentService _payments;
 
     public SyncService(
         IApplicationDbContext db,
@@ -33,8 +36,10 @@ public sealed class SyncService : ISyncService
         IClock clock,
         ICustomerService customers,
         IMeasurementService measurements,
-        IOrderService orders)
+        IOrderService orders,
+        IPaymentService payments)
     {
+        _payments = payments;
         _db = db;
         _currentUser = currentUser;
         _clock = clock;
@@ -95,6 +100,7 @@ public sealed class SyncService : ISyncService
             SyncEntityType.Customer => ApplyCustomerAsync(op, ct),
             SyncEntityType.Measurement => ApplyMeasurementAsync(op, ct),
             SyncEntityType.Order => ApplyOrderAsync(op, ct),
+            SyncEntityType.Payment => ApplyPaymentAsync(op, ct),
             _ => Task.FromResult(Failed(op, SyncErrorCodes.PayloadInvalid, "Unknown entity type."))
         };
     }
@@ -268,6 +274,12 @@ public sealed class SyncService : ISyncService
             }
 
             var deleteError = await _orders.DeleteAsync(op.EntityId, ct).ConfigureAwait(false);
+            if (deleteError == OrderError.HasPayments)
+            {
+                // Money was recorded against it (maybe on another device): keep the order, send it back.
+                return Conflict(op, order: await LoadOrderAsync(op.EntityId, ct).ConfigureAwait(false), code: SyncErrorCodes.DeleteRefused);
+            }
+
             return deleteError is OrderError.None or OrderError.NotFound
                 ? Applied(op)
                 : Failed(op, OrderCode(deleteError), OrderErrorMessages.For(OrderCode(deleteError)));
@@ -408,6 +420,93 @@ public sealed class SyncService : ISyncService
 
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
+    /// <summary>
+    /// Payments: immutable + one-way void, so the merge is monotonic and needs no BaseModifiedUtc:
+    /// unknown id → create (lenient: the money was really taken, so overpayment/cancelled order are stored;
+    /// missing order → ParentDeleted conflict); same content → Applied (replay), plus the void if the device has it;
+    /// different content under the same id → Conflict with the server copy (never overwritten). Delete is refused.
+    /// </summary>
+    private async Task<SyncPushResult> ApplyPaymentAsync(SyncPushOperation op, CancellationToken ct)
+    {
+        if (op.Operation == SyncOperation.Delete)
+        {
+            return Failed(op, SyncErrorCodes.PayloadInvalid, "Payments can't be deleted. Void it instead.");
+        }
+
+        var dto = op.Payment;
+        if (dto is null || dto.Id != op.EntityId)
+        {
+            return Failed(op, SyncErrorCodes.PayloadInvalid, "Missing payment.");
+        }
+
+        if (!PaymentRules.CanManage(_currentUser.Role))
+        {
+            return Failed(op, RecordErrorMessages.PaymentForbidden, RecordErrorMessages.For(RecordError.PaymentForbidden));
+        }
+
+        var existing = await _db.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.Id == dto.Id, ct).ConfigureAwait(false);
+        if (existing is null)
+        {
+            var created = await _payments.RecordAsync(dto.OrderId, new RecordPaymentRequest
+            {
+                Id = dto.Id,
+                Amount = dto.Amount,
+                Method = dto.Method,
+                Note = dto.Note,
+                RecordedAtUtc = dto.RecordedAtUtc,
+                Lenient = true
+            }, ct).ConfigureAwait(false);
+
+            if (!created.IsSuccess)
+            {
+                return created.Error switch
+                {
+                    RecordError.OrderNotFound => Conflict(op, code: SyncErrorCodes.ParentDeleted),
+                    // Id taken by another business (invisible here): same generic answer as any unsavable record.
+                    RecordError.PaymentConflict => Rejected(op),
+                    _ => Failed(op, created.Code ?? RecordErrorMessages.PaymentInvalid, created.Message)
+                };
+            }
+
+            if (dto.IsVoided)
+            {
+                var voided = await _payments.VoidAsync(dto.Id, new VoidPaymentRequest { Reason = dto.VoidReason }, ct).ConfigureAwait(false);
+                if (!voided.IsSuccess)
+                {
+                    return Failed(op, voided.Code ?? RecordErrorMessages.PaymentInvalid, voided.Message);
+                }
+            }
+
+            return Applied(op, payment: await LoadPaymentAsync(dto.Id, ct).ConfigureAwait(false));
+        }
+
+        if (!SamePayment(existing, dto))
+        {
+            return Conflict(op, code: SyncErrorCodes.PaymentMismatch, payment: SyncMapper.ToDto(existing));
+        }
+
+        if (dto.IsVoided && !existing.IsVoided)
+        {
+            var voided = await _payments.VoidAsync(dto.Id, new VoidPaymentRequest { Reason = dto.VoidReason }, ct).ConfigureAwait(false);
+            if (!voided.IsSuccess)
+            {
+                return Failed(op, voided.Code ?? RecordErrorMessages.PaymentInvalid, voided.Message);
+            }
+        }
+
+        // Replay, or the server already voided it (the void wins: it only ever goes one way).
+        return Applied(op, payment: await LoadPaymentAsync(dto.Id, ct).ConfigureAwait(false));
+    }
+
+    private static bool SamePayment(Payment p, SyncPaymentDto d) =>
+        p.OrderId == d.OrderId && p.Amount == d.Amount && p.Method == d.Method?.Trim() && p.Note == Clean(d.Note);
+
+    private async Task<SyncPaymentDto?> LoadPaymentAsync(string id, CancellationToken ct)
+    {
+        var entity = await _db.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id, ct).ConfigureAwait(false);
+        return entity is null ? null : SyncMapper.ToDto(entity);
+    }
+
     private static string OrderCode(OrderError error) => error switch
     {
         OrderError.NotFound => OrderErrorMessages.OrderNotFound,
@@ -418,6 +517,7 @@ public sealed class SyncService : ISyncService
         OrderError.StatusInvalid => OrderErrorMessages.OrderStatusInvalid,
         OrderError.AssigneeInvalid => OrderErrorMessages.AssigneeInvalid,
         OrderError.TotalMismatch => OrderErrorMessages.TotalMismatch,
+        OrderError.HasPayments => OrderErrorMessages.HasPayments,
         _ => OrderErrorMessages.Validation
     };
 
@@ -444,24 +544,29 @@ public sealed class SyncService : ISyncService
         SyncPushOperation op,
         SyncCustomerDto? customer = null,
         SyncMeasurementDto? measurement = null,
-        SyncOrderDto? order = null) =>
-        new(op.OpId, SyncOpStatus.Applied, null, null, customer, measurement, order);
+        SyncOrderDto? order = null,
+        SyncPaymentDto? payment = null) =>
+        new(op.OpId, SyncOpStatus.Applied, null, null, customer, measurement, order, payment);
 
     private static SyncPushResult Conflict(
         SyncPushOperation op,
         SyncCustomerDto? customer = null,
         SyncMeasurementDto? measurement = null,
         SyncOrderDto? order = null,
-        string code = SyncErrorCodes.StaleBase) =>
+        string code = SyncErrorCodes.StaleBase,
+        SyncPaymentDto? payment = null) =>
         new(op.OpId, SyncOpStatus.Conflict, code,
             code switch
             {
                 SyncErrorCodes.Deleted => "This record was deleted on another device.",
                 SyncErrorCodes.ParentDeleted => "Its customer was deleted on another device.",
-                SyncErrorCodes.DeleteRefused => "This customer has orders, so they weren't deleted.",
+                SyncErrorCodes.DeleteRefused => order is not null
+                    ? "Payments are recorded on this order, so it wasn't deleted."
+                    : "This customer has orders, so they weren't deleted.",
+                SyncErrorCodes.PaymentMismatch => "Another device saved a different payment with the same id. NeedleBase will not discard a payment without your choice.",
                 _ => "This record was changed on another device."
             },
-            customer, measurement, order);
+            customer, measurement, order, payment);
 
     private static SyncPushResult Rejected(SyncPushOperation op) =>
         new(op.OpId, SyncOpStatus.Failed, SyncErrorCodes.Rejected, "This record could not be saved.");
@@ -522,9 +627,10 @@ public sealed class SyncService : ISyncService
         var measurements = new List<SyncMeasurementDto>();
         var orders = new List<SyncOrderDto>();
         var deleted = new List<SyncDeletedItemDto>();
+        var payments = new List<SyncPaymentDto>();
         var hasMore = false;
 
-        while (cursor.Phase <= SyncCursor.PhaseDeletes)
+        while (cursor.Phase <= SyncCursor.PhaseLast)
         {
             int fetched;
             switch (cursor.Phase)
@@ -582,6 +688,22 @@ public sealed class SyncService : ISyncService
                     break;
                 }
 
+                case SyncCursor.PhasePayments:
+                {
+                    var rows = await After(_db.Payments.AsNoTracking(), cursor.Payments, cap)
+                        .Take(remaining)
+                        .Select(p => new { Entity = p, Tx = EF.Property<long>(p, SyncTime.TxColumn) })
+                        .ToListAsync(cancellationToken).ConfigureAwait(false);
+                    payments.AddRange(rows.Select(r => SyncMapper.ToDto(r.Entity)));
+                    if (rows.Count > 0)
+                    {
+                        cursor.Payments = new SyncPosition(rows[^1].Tx, rows[^1].Entity.Id);
+                    }
+
+                    fetched = rows.Count;
+                    break;
+                }
+
                 default:
                 {
                     var rows = await After(_db.DeletedItems.AsNoTracking(), cursor.Deletes, cap)
@@ -620,6 +742,7 @@ public sealed class SyncService : ISyncService
                 Measurements = cursor.Measurements,
                 Orders = cursor.Orders,
                 Deletes = cursor.Deletes,
+                Payments = cursor.Payments,
                 Epoch = cursor.Epoch
             };
         next.IssuedTicks = now.UtcTicks;
@@ -628,7 +751,7 @@ public sealed class SyncService : ISyncService
             next.Cap = 0; // next sync takes a new watermark
         }
 
-        return (new SyncPullResponse(customers, measurements, orders, deleted, next.Encode(), hasMore, now), null);
+        return (new SyncPullResponse(customers, measurements, orders, deleted, next.Encode(), hasMore, now) { Payments = payments }, null);
     }
 
     /// <summary>Rows after <paramref name="position"/> and strictly below the watermark, in (tx, id) order.</summary>

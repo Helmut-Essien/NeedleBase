@@ -6,7 +6,7 @@ namespace NeedleBase.Application.Sync;
 
 /// <summary>
 /// Opaque pull cursor (base64url JSON), version 2. Phases run in dependency order: 0 customers,
-/// 1 measurements, 2 orders, 3 deletes. Every phase is capped below <see cref="Cap"/> (the snapshot
+/// 1 measurements, 2 orders, 3 deletes, 4 payments. Every phase is capped below <see cref="Cap"/> (the snapshot
 /// xmin when this sync started): all transactions below it have finished, so nothing can later commit
 /// with a smaller id. A fresh cursor starts deletes at the cap: a first pull needs no tombstones.
 /// <see cref="IssuedTicks"/> lets the server refuse a cursor older than tombstone retention.
@@ -19,6 +19,14 @@ public sealed class SyncCursor
     public const int PhaseOrders = 2;
     public const int PhaseDeletes = 3;
 
+    /// <summary>
+    /// Added in Slice 5 after deletes so v2 cursors stay valid (a stored cursor simply starts reading payments).
+    /// Payments are never deleted (void only) and the server refuses to delete an order with payments, so a
+    /// payment never needs a tombstone ahead of it.
+    /// </summary>
+    public const int PhasePayments = 4;
+    public const int PhaseLast = PhasePayments;
+
     [JsonPropertyName("v")] public int Version { get; set; } = CurrentVersion;
     [JsonPropertyName("p")] public int Phase { get; set; }
     [JsonPropertyName("x")] public long Cap { get; set; }
@@ -30,11 +38,12 @@ public sealed class SyncCursor
     [JsonPropertyName("m")] public SyncPosition? Measurements { get; set; }
     [JsonPropertyName("o")] public SyncPosition? Orders { get; set; }
     [JsonPropertyName("d")] public SyncPosition? Deletes { get; set; }
+    [JsonPropertyName("y")] public SyncPosition? Payments { get; set; }
 
     /// <summary>Highest transaction position this cursor has read up to (0 if none).</summary>
     [JsonIgnore]
     public long HighestPosition =>
-        new[] { Customers?.Tx ?? 0, Measurements?.Tx ?? 0, Orders?.Tx ?? 0, Deletes?.Tx ?? 0 }.Max();
+        new[] { Customers?.Tx ?? 0, Measurements?.Tx ?? 0, Orders?.Tx ?? 0, Deletes?.Tx ?? 0, Payments?.Tx ?? 0 }.Max();
 
     /// <summary>Never synced (no cursor given): a first pull.</summary>
     public bool IsFresh => Cap == 0 && IssuedTicks == 0;
@@ -61,7 +70,7 @@ public sealed class SyncCursor
             var base64 = value.Replace('-', '+').Replace('_', '/');
             base64 = base64.PadRight(base64.Length + ((4 - (base64.Length % 4)) % 4), '=');
             var decoded = JsonSerializer.Deserialize<SyncCursor>(Encoding.UTF8.GetString(Convert.FromBase64String(base64)));
-            if (decoded is null || decoded.Version != CurrentVersion || decoded.Phase is < PhaseCustomers or > PhaseDeletes)
+            if (decoded is null || decoded.Version != CurrentVersion || decoded.Phase is < PhaseCustomers or > PhaseLast)
             {
                 return false;
             }
