@@ -24,8 +24,11 @@ public sealed class NavigationService : INavigationService
     private readonly CustomersViewModel _customersViewModel;
     private readonly OrdersViewModel _ordersViewModel;
 
-    public NavigationService(CustomersViewModel customersViewModel, OrdersViewModel ordersViewModel)
+    private readonly PaymentsViewModel? _paymentsViewModel;
+
+    public NavigationService(CustomersViewModel customersViewModel, OrdersViewModel ordersViewModel, PaymentsViewModel? paymentsViewModel = null)
     {
+        _paymentsViewModel = paymentsViewModel;
         _customersViewModel = customersViewModel;
         _ordersViewModel = ordersViewModel;
     }
@@ -40,6 +43,7 @@ public sealed class NavigationService : INavigationService
         // Clear singleton tab VM PII on every path to login (logout + session expiry).
         _customersViewModel.ClearSessionState();
         _ordersViewModel.ClearSessionState();
+        _paymentsViewModel?.ClearSessionState();
         // Drop cached Login/Register form secrets (Shell may reuse auth pages/VMs).
         WeakReferenceMessenger.Default.Send(new ClearAuthSensitiveStateMessage());
 

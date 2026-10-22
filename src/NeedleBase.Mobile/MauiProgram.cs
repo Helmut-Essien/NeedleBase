@@ -71,6 +71,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<ICustomerLocalService, CustomerLocalService>();
         builder.Services.AddSingleton<IMeasurementLocalService, MeasurementLocalService>();
         builder.Services.AddSingleton<IOrderLocalService, OrderLocalService>();
+        builder.Services.AddSingleton<IPaymentLocalService, PaymentLocalService>();
         builder.Services.AddSingleton<AppStartupService>();
         builder.Services.AddSingleton<AccessRevokedService>();
 
@@ -84,6 +85,9 @@ public static class MauiProgram
         builder.Services.AddTransient<MeasurementEditViewModel>();
         builder.Services.AddTransient<CreateOrderViewModel>();
         builder.Services.AddTransient<OrderDetailViewModel>();
+        builder.Services.AddSingleton<PaymentsViewModel>();
+        builder.Services.AddTransient<RecordPaymentViewModel>();
+        builder.Services.AddTransient<PaymentReceiptViewModel>();
 
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<RegisterPage>();
@@ -97,7 +101,9 @@ public static class MauiProgram
         builder.Services.AddTransient<MeasurementEditPage>();
         builder.Services.AddTransient<CreateOrderPage>();
         builder.Services.AddTransient<OrderDetailPage>();
-        builder.Services.AddTransient<PaymentsPlaceholderPage>();
+        builder.Services.AddSingleton<PaymentsPage>();
+        builder.Services.AddTransient<RecordPaymentPage>();
+        builder.Services.AddTransient<PaymentReceiptPage>();
         builder.Services.AddTransient<MorePlaceholderPage>();
 
 #if DEBUG

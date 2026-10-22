@@ -89,7 +89,8 @@ public sealed class SyncEngine
         var customers = await UnadoptedCustomers(db, businessId).Select(c => c.Id).ToListAsync(ct).ConfigureAwait(false);
         var measurements = await UnadoptedMeasurements(db, businessId).Select(m => m.Id).ToListAsync(ct).ConfigureAwait(false);
         var orders = await UnadoptedOrders(db, businessId).Select(o => o.Id).ToListAsync(ct).ConfigureAwait(false);
-        if (customers.Count + measurements.Count + orders.Count == 0)
+        var payments = await UnadoptedPayments(db, businessId).Select(p => p.Id).ToListAsync(ct).ConfigureAwait(false);
+        if (customers.Count + measurements.Count + orders.Count + payments.Count == 0)
         {
             return;
         }
@@ -100,7 +101,7 @@ public sealed class SyncEngine
         {
             if (info.PullCursor is null && info.LastSyncUtc is null && !info.ResyncPending)
             {
-                await QueueCreatesAsync(db, businessId, customers, measurements, orders, ct).ConfigureAwait(false);
+                await QueueCreatesAsync(db, businessId, customers, measurements, orders, ct, paymentIds: payments).ConfigureAwait(false);
             }
             else
             {
@@ -129,6 +130,14 @@ public sealed class SyncEngine
         db.Orders.Where(o => o.BusinessId == businessId && !EF.Property<bool>(o, LocalDbContext.ServerKnownColumn) &&
             !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Order && q.EntityId == o.Id));
 
+    private static IQueryable<Payment> UnadoptedPayments(LocalDbContext db, string businessId) =>
+        db.Payments.Where(p => p.BusinessId == businessId && !EF.Property<bool>(p, LocalDbContext.ServerKnownColumn) &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Payment && q.EntityId == p.Id));
+
+    private static IQueryable<Payment> UnqueuedPayments(LocalDbContext db, string businessId) =>
+        db.Payments.Where(p => p.BusinessId == businessId &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Payment && q.EntityId == p.Id));
+
     private static IQueryable<Customer> UnqueuedCustomers(LocalDbContext db, string businessId) =>
         db.Customers.Where(c => c.BusinessId == businessId &&
             !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Customer && q.EntityId == c.Id));
@@ -143,7 +152,8 @@ public sealed class SyncEngine
 
     /// <summary>Queues creates for the given unqueued rows (skips any that gained a queue item meanwhile).</summary>
     private static async Task QueueCreatesAsync(LocalDbContext db, string businessId, IReadOnlyCollection<string> customerIds,
-        IReadOnlyCollection<string> measurementIds, IReadOnlyCollection<string> orderIds, CancellationToken ct, bool includeKnown = false)
+        IReadOnlyCollection<string> measurementIds, IReadOnlyCollection<string> orderIds, CancellationToken ct, bool includeKnown = false,
+        IReadOnlyCollection<string>? paymentIds = null)
     {
         // includeKnown: recover mode, where server-known rows the restored server lacks are re-uploaded too.
         var now = DateTimeOffset.UtcNow;
@@ -162,6 +172,12 @@ public sealed class SyncEngine
         {
             entities.AddRange(await (includeKnown ? UnqueuedOrders(db, businessId) : UnadoptedOrders(db, businessId)).Where(o => orderIds.Contains(o.Id)).Include(o => o.Lines)
                 .ToListAsync(ct).ConfigureAwait(false));
+        }
+
+        if (paymentIds is { Count: > 0 })
+        {
+            entities.AddRange(await (includeKnown ? UnqueuedPayments(db, businessId) : UnadoptedPayments(db, businessId))
+                .Where(p => paymentIds.Contains(p.Id)).ToListAsync(ct).ConfigureAwait(false));
         }
 
         foreach (var entity in entities)
@@ -195,6 +211,16 @@ public sealed class SyncEngine
         }
     }
 
+    private static async Task MarkPaymentsKnownAsync(LocalDbContext db, string businessId, IEnumerable<string> paymentIds, CancellationToken ct)
+    {
+        var ids = paymentIds.Distinct().ToList();
+        if (ids.Count > 0)
+        {
+            await db.Payments.Where(x => x.BusinessId == businessId && ids.Contains(x.Id) && !EF.Property<bool>(x, LocalDbContext.ServerKnownColumn))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => EF.Property<bool>(x, LocalDbContext.ServerKnownColumn), true), ct).ConfigureAwait(false);
+        }
+    }
+
     // ------------------------------------------------------------------ push
 
     public async Task PushAsync(string businessId, CancellationToken cancellationToken = default)
@@ -208,7 +234,8 @@ public sealed class SyncEngine
                 // Parents first (a restored customer must exist before its order), then queue order.
                 batch = await db.SyncQueue.AsNoTracking()
                     .Where(q => q.BusinessId == businessId && q.State == SyncQueueState.Pending)
-                    .OrderBy(q => q.EntityType == SyncEntityType.Customer ? 0 : q.EntityType == SyncEntityType.Measurement ? 1 : 2)
+                    .OrderBy(q => q.EntityType == SyncEntityType.Customer ? 0 : q.EntityType == SyncEntityType.Measurement ? 1
+                        : q.EntityType == SyncEntityType.Payment ? 3 : 2) // payments after their orders
                     .ThenBy(q => q.Id)
                     .Take(BatchSize)
                     .ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -279,6 +306,9 @@ public sealed class SyncEngine
                 case SyncEntityType.Order:
                     op.Order = SyncJson.Deserialize<SyncOrderDto>(item.PayloadJson);
                     break;
+                case SyncEntityType.Payment:
+                    op.Payment = SyncJson.Deserialize<SyncPaymentDto>(item.PayloadJson);
+                    break;
             }
         }
 
@@ -307,6 +337,7 @@ public sealed class SyncEngine
                 acked.Select(r => r.Measurement?.Id),
                 acked.Select(r => r.Order?.Id),
                 cancellationToken).ConfigureAwait(false);
+            var paymentCopies = new List<SyncPaymentDto>();
 
             foreach (var sentItem in sent)
             {
@@ -329,6 +360,11 @@ public sealed class SyncEngine
                         {
                             db.SyncQueue.Remove(item);
                             ApplyServerCopy(db, state, businessId, result.Customer, result.Measurement, result.Order);
+                            if (result.Payment is not null)
+                            {
+                                paymentCopies.Add(result.Payment); // e.g. the server's void wins over this device's copy
+                            }
+
                             if (item.Operation == SyncOperation.Delete && item.EntityType == SyncEntityType.Customer)
                             {
                                 // Confirmed gone on the server: children waiting for it never will arrive.
@@ -342,10 +378,13 @@ public sealed class SyncEngine
                     case SyncOpStatus.Conflict:
                         item.State = SyncQueueState.Conflict;
                         item.ConflictCode = result.Code;
-                        item.LastError = ConflictText(result.Code);
+                        item.LastError = item.EntityType == SyncEntityType.Payment && result.Code == SyncErrorCodes.ParentDeleted
+                            ? "Its order was deleted on another device."
+                            : ConflictText(result.Code);
                         item.ConflictServerJson = result.Customer is not null ? SyncJson.Serialize(result.Customer)
                             : result.Measurement is not null ? SyncJson.Serialize(result.Measurement)
                             : result.Order is not null ? SyncJson.Serialize(result.Order)
+                            : result.Payment is not null ? SyncJson.Serialize(result.Payment)
                             : null;
                         break;
 
@@ -358,6 +397,7 @@ public sealed class SyncEngine
                 }
             }
 
+            await ApplyPaymentCopiesAsync(db, businessId, paymentCopies, cancellationToken).ConfigureAwait(false);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var appliedUpserts = sent.Where(s => s.Operation == SyncOperation.Upsert &&
                 results.TryGetValue(s.Id, out var r) && r.Status == SyncOpStatus.Applied).ToList();
@@ -366,6 +406,8 @@ public sealed class SyncEngine
                 appliedUpserts.Where(s => s.EntityType == SyncEntityType.Measurement).Select(s => s.EntityId),
                 appliedUpserts.Where(s => s.EntityType == SyncEntityType.Order).Select(s => s.EntityId),
                 cancellationToken).ConfigureAwait(false);
+            await MarkPaymentsKnownAsync(db, businessId,
+                appliedUpserts.Where(s => s.EntityType == SyncEntityType.Payment).Select(s => s.EntityId), cancellationToken).ConfigureAwait(false);
             await ApplyDeferredAsync(db, businessId, cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -379,12 +421,13 @@ public sealed class SyncEngine
     {
         SyncErrorCodes.Deleted => "Deleted on another device.",
         SyncErrorCodes.ParentDeleted => "Its customer was deleted on another device.",
-        SyncErrorCodes.DeleteRefused => "This customer has orders, so they weren't deleted.",
+        SyncErrorCodes.DeleteRefused => "Still in use on the server, so it wasn't deleted.",
+        SyncErrorCodes.PaymentMismatch => "A different payment was saved elsewhere. NeedleBase will not discard a payment without your choice.",
         _ => "Changed on another device."
     };
 
     private static DateTimeOffset? ServerModified(SyncPushResult result) =>
-        result.Customer?.DateModifiedUtc ?? result.Measurement?.DateModifiedUtc ?? result.Order?.DateModifiedUtc;
+        result.Customer?.DateModifiedUtc ?? result.Measurement?.DateModifiedUtc ?? result.Order?.DateModifiedUtc ?? result.Payment?.DateModifiedUtc;
 
     // ------------------------------------------------------------------ pull
 
@@ -475,7 +518,9 @@ public sealed class SyncEngine
                 ApplyServerCopy(db, state, businessId, customer, null, null);
             }
 
-            var deferredKeys = page.Measurements.Select(m => m.Id).Concat(page.Orders.Select(o => o.Id)).ToList();
+            var pagePayments = page.Payments ?? [];
+            var deferredKeys = page.Measurements.Select(m => m.Id).Concat(page.Orders.Select(o => o.Id))
+                .Concat(pagePayments.Select(p => p.Id)).ToList();
             var existingDeferred = await db.SyncDeferred
                 .Where(d => d.BusinessId == businessId && deferredKeys.Contains(d.EntityId))
                 .ToDictionaryAsync(d => d.EntityType + ":" + d.EntityId, cancellationToken).ConfigureAwait(false);
@@ -505,17 +550,46 @@ public sealed class SyncEngine
                 Undefer(db, existingDeferred, SyncEntityType.Order, order.Id);
             }
 
+            var changedRows = HasRowChanges(db);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             await MarkServerKnownAsync(db, businessId, page.Customers.Select(c => c.Id), page.Measurements.Select(m => m.Id),
                 page.Orders.Select(o => o.Id), cancellationToken).ConfigureAwait(false);
 
+            changedRows |= page.Deleted.Count > 0 || pruneWith is not null;
             if (page.Deleted.Count > 0)
             {
                 await ApplyDeletesAsync(db, state, businessId, page.Deleted, queued, queue, cancellationToken).ConfigureAwait(false);
                 await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             }
 
+            // Payments (phase 4) after their orders; one whose order isn't here yet waits like any other child.
+            var incoming = pagePayments.Where(p => !queued.ContainsKey(SyncEntityType.Payment + ":" + p.Id)).ToList();
+            if (incoming.Count > 0)
+            {
+                var orderIds = incoming.Select(p => p.OrderId).Distinct().ToList();
+                var localOrders = (await db.Orders.Where(o => o.BusinessId == businessId && orderIds.Contains(o.Id))
+                    .Select(o => o.Id).ToListAsync(cancellationToken).ConfigureAwait(false)).ToHashSet(StringComparer.Ordinal);
+                var ready = new List<SyncPaymentDto>();
+                foreach (var payment in incoming)
+                {
+                    if (!localOrders.Contains(payment.OrderId))
+                    {
+                        Defer(db, existingDeferred, businessId, SyncEntityType.Payment, payment.Id, payment.OrderId, SyncJson.Serialize(payment));
+                        continue;
+                    }
+
+                    ready.Add(payment);
+                    Undefer(db, existingDeferred, SyncEntityType.Payment, payment.Id);
+                }
+
+                await ApplyPaymentCopiesAsync(db, businessId, ready, cancellationToken).ConfigureAwait(false);
+                changedRows |= HasRowChanges(db);
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await MarkPaymentsKnownAsync(db, businessId, ready.Select(p => p.Id), cancellationToken).ConfigureAwait(false);
+            }
+
             await ApplyDeferredAsync(db, businessId, cancellationToken).ConfigureAwait(false);
+            changedRows |= HasRowChanges(db);
 
             // Cursor saved in the same transaction as the page: a kill can't leave them out of step.
             var info = await GetOrAddDeviceInfoAsync(db, businessId, cancellationToken).ConfigureAwait(false);
@@ -537,12 +611,22 @@ public sealed class SyncEngine
 
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+            if (changedRows)
+            {
+                LocalDataVersion.NotifyChangedBySync(businessId); // visible lists reload (debounced) after the commit
+            }
         }
         finally
         {
             db.SuppressSyncQueue = false;
         }
     }
+
+    /// <summary>True when the tracker holds an insert/update/delete of a row a list shows (not cursor/queue rows).</summary>
+    private static bool HasRowChanges(LocalDbContext db) =>
+        db.ChangeTracker.Entries().Any(e =>
+            e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted &&
+            e.Entity is Customer or MeasurementProfile or Order or OrderLine or Payment);
 
     private static void Defer(LocalDbContext db, Dictionary<string, SyncDeferredItem> existing, string businessId, string type,
         string id, string parentId, string json)
@@ -580,10 +664,12 @@ public sealed class SyncEngine
     private static async Task ApplyDeferredAsync(LocalDbContext db, string businessId, CancellationToken ct)
     {
         var ready = await db.SyncDeferred
-            .Where(d => d.BusinessId == businessId && db.Customers.Any(c => c.BusinessId == businessId && c.Id == d.ParentId))
+            .Where(d => d.BusinessId == businessId && d.EntityType != SyncEntityType.Payment &&
+                        db.Customers.Any(c => c.BusinessId == businessId && c.Id == d.ParentId))
             .ToListAsync(ct).ConfigureAwait(false);
         if (ready.Count == 0)
         {
+            await ApplyDeferredPaymentsAsync(db, businessId, ct).ConfigureAwait(false);
             return;
         }
 
@@ -607,6 +693,77 @@ public sealed class SyncEngine
 
         db.SyncDeferred.RemoveRange(ready);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        await ApplyDeferredPaymentsAsync(db, businessId, ct).ConfigureAwait(false); // their orders may have just arrived
+    }
+
+    /// <summary>Applies deferred payments whose order is now on this device. Caller sets SuppressSyncQueue.</summary>
+    private static async Task ApplyDeferredPaymentsAsync(LocalDbContext db, string businessId, CancellationToken ct)
+    {
+        var ready = await db.SyncDeferred
+            .Where(d => d.BusinessId == businessId && d.EntityType == SyncEntityType.Payment &&
+                        db.Orders.Any(o => o.BusinessId == businessId && o.Id == d.ParentId))
+            .ToListAsync(ct).ConfigureAwait(false);
+        if (ready.Count == 0)
+        {
+            return;
+        }
+
+        var queuedIds = await db.SyncQueue.Where(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Payment)
+            .Select(q => q.EntityId).ToListAsync(ct).ConfigureAwait(false);
+        var payments = ready.Select(d => SyncJson.Deserialize<SyncPaymentDto>(d.PayloadJson)!)
+            .Where(p => !queuedIds.Contains(p.Id)).ToList();
+        await ApplyPaymentCopiesAsync(db, businessId, payments, ct).ConfigureAwait(false);
+        db.SyncDeferred.RemoveRange(ready);
+        await db.SaveChangesAsync(ct).ConfigureAwait(false);
+        await MarkPaymentsKnownAsync(db, businessId, payments.Select(p => p.Id), ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Upserts server payment copies (immutable except the one-way void, so the server copy is simply taken).
+    /// Caller sets SuppressSyncQueue and makes sure each order is on this device.
+    /// </summary>
+    private static async Task ApplyPaymentCopiesAsync(LocalDbContext db, string businessId, IReadOnlyCollection<SyncPaymentDto> payments, CancellationToken ct)
+    {
+        if (payments.Count == 0)
+        {
+            return;
+        }
+
+        var ids = payments.Select(p => p.Id).Distinct().ToList();
+        var local = await db.Payments.Where(p => p.BusinessId == businessId && ids.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, ct).ConfigureAwait(false);
+        foreach (var dto in payments)
+        {
+            if (!local.TryGetValue(dto.Id, out var entity))
+            {
+                try
+                {
+                    entity = Payment.Create(dto.Id, businessId, dto.OrderId, dto.CustomerId, dto.Amount, dto.Method, dto.Note,
+                        dto.RecordedAtUtc, dto.CreatedAtUtc);
+                }
+                catch (Exception ex) when (ex is ArgumentException or NeedleBase.Domain.Exceptions.DomainRuleException)
+                {
+                    continue; // a row this build can't represent (e.g. a newer method): never crash the sync
+                }
+
+                db.Payments.Add(entity);
+                local[entity.Id] = entity;
+            }
+
+            var entry = db.Entry(entity);
+            entry.Property(p => p.OrderId).CurrentValue = dto.OrderId;
+            entry.Property(p => p.CustomerId).CurrentValue = dto.CustomerId;
+            entry.Property(p => p.Amount).CurrentValue = dto.Amount;
+            entry.Property(p => p.Method).CurrentValue = dto.Method;
+            entry.Property(p => p.Note).CurrentValue = dto.Note;
+            entry.Property(p => p.RecordedAtUtc).CurrentValue = dto.RecordedAtUtc;
+            entry.Property(p => p.IsVoided).CurrentValue = dto.IsVoided;
+            entry.Property(p => p.VoidedAtUtc).CurrentValue = dto.VoidedAtUtc;
+            entry.Property(p => p.VoidReason).CurrentValue = dto.VoidReason;
+            entry.Property(p => p.CreatedAtUtc).CurrentValue = dto.CreatedAtUtc;
+            entry.Property(p => p.DateModifiedUtc).CurrentValue = dto.DateModifiedUtc;
+            entry.Property(LocalDbContext.ServerKnownColumn).CurrentValue = true;
+        }
     }
 
     private static async Task ApplyDeletesAsync(
@@ -701,7 +858,29 @@ public sealed class SyncEngine
                 case SyncEntityType.Order:
                     if (state.Orders.TryGetValue(deleted.EntityId, out var order) && !IsNewer(order.DateModifiedUtc, deleted))
                     {
-                        db.Orders.Remove(order); // lines cascade locally
+                        if (queue.Any(q => q.ParentId == order.Id && q.EntityType == SyncEntityType.Payment && db.Entry(q).State != EntityState.Deleted))
+                        {
+                            // Payments recorded here aren't on the server yet: never drop them with the order. Ask the user.
+                            var orderLines = await db.OrderLines.Where(l => l.BusinessId == businessId && l.OrderId == order.Id)
+                                .ToListAsync(ct).ConfigureAwait(false);
+                            var payload = SyncJson.Serialize(Application.Sync.SyncMapper.ToDto(order, orderLines));
+                            var conflict = item is not null && db.Entry(item).State != EntityState.Deleted ? item : null;
+                            if (conflict is null)
+                            {
+                                conflict = NewQueueItem(businessId, SyncEntityType.Order, order.Id, order.CustomerId, "Order #" + order.DisplayRef, payload);
+                                db.SyncQueue.Add(conflict);
+                                queue.Add(conflict);
+                                queued[SyncEntityType.Order + ":" + order.Id] = conflict;
+                            }
+
+                            conflict.Operation = SyncOperation.Upsert;
+                            conflict.PayloadJson ??= payload;
+                            conflict.BaseModifiedUtc = null;
+                            MarkDeletedElsewhere(conflict, "Deleted on another device. It has payments recorded on this device.");
+                            break;
+                        }
+
+                        db.Orders.Remove(order); // lines (and server-known payments, which the server never orphans) cascade locally
                     }
 
                     break;
@@ -751,7 +930,17 @@ public sealed class SyncEngine
         var measurements = (await db.MeasurementProfiles.Where(m => m.BusinessId == businessId)
             .Select(m => new { m.Id, m.CustomerId, Known = !recover && EF.Property<bool>(m, LocalDbContext.ServerKnownColumn) })
             .ToListAsync(ct).ConfigureAwait(false)).Where(m => !seen.Measurements.Contains(m.Id) && !keep.Contains(m.Id)).ToList();
-        var deleteOrders = orders.Where(o => o.Known).Select(o => o.Id).ToList();
+        var payments = (await db.Payments.Where(p => p.BusinessId == businessId)
+            .Select(p => new { p.Id, p.OrderId, Known = !recover && EF.Property<bool>(p, LocalDbContext.ServerKnownColumn) })
+            .ToListAsync(ct).ConfigureAwait(false)).Where(p => !seen.Payments.Contains(p.Id) && !keep.Contains(p.Id)).ToList();
+        var deletePayments = payments.Where(p => p.Known).Select(p => p.Id).ToList();
+        var adoptPayments = payments.Where(p => !p.Known).ToList();
+        // An order stays while a payment that isn't being pruned still hangs off it (the local FK cascades).
+        var deletePaymentSet = deletePayments.ToHashSet(StringComparer.Ordinal);
+        var ordersWithKeptPayments = (await db.Payments.Where(p => p.BusinessId == businessId).Select(p => new { p.Id, p.OrderId })
+            .ToListAsync(ct).ConfigureAwait(false)).Where(p => !deletePaymentSet.Contains(p.Id)).Select(p => p.OrderId)
+            .ToHashSet(StringComparer.Ordinal);
+        var deleteOrders = orders.Where(o => o.Known && !ordersWithKeptPayments.Contains(o.Id)).Select(o => o.Id).ToList();
         var adoptOrders = orders.Where(o => !o.Known).Select(o => o.Id).ToList();
         var deleteMeasurements = measurements.Where(m => m.Known).Select(m => m.Id).ToList();
         var adoptMeasurements = measurements.Where(m => !m.Known).ToList();
@@ -766,10 +955,12 @@ public sealed class SyncEngine
         var adoptCustomers = customers.Where(c => !c.Known).Select(c => c.Id).ToList();
         var deleteCustomers = customers.Where(c => c.Known && !neededCustomers.Contains(c.Id)).Select(c => c.Id).ToList();
 
+        await db.Payments.Where(p => p.BusinessId == businessId && deletePayments.Contains(p.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.Orders.Where(o => o.BusinessId == businessId && deleteOrders.Contains(o.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.MeasurementProfiles.Where(m => m.BusinessId == businessId && deleteMeasurements.Contains(m.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.Customers.Where(c => c.BusinessId == businessId && deleteCustomers.Contains(c.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
-        await QueueCreatesAsync(db, businessId, adoptCustomers, adoptMeasurements.Select(m => m.Id).ToList(), adoptOrders, ct, includeKnown: recover).ConfigureAwait(false);
+        await QueueCreatesAsync(db, businessId, adoptCustomers, adoptMeasurements.Select(m => m.Id).ToList(), adoptOrders, ct, includeKnown: recover,
+            paymentIds: adoptPayments.Select(p => p.Id).ToList()).ConfigureAwait(false);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
@@ -1039,6 +1230,89 @@ public sealed class SyncEngine
             var server = Server(item);
             switch (item.ConflictCode)
             {
+                case SyncErrorCodes.PaymentMismatch:
+                {
+                    // Same id, different payment on the server. Keep theirs: take the server copy. Keep mine = "keep both":
+                    // this device's payment is re-recorded under a new id, then the server copy takes the old id.
+                    var serverPayment = SyncJson.Deserialize<SyncPaymentDto>(item.ConflictServerJson);
+                    var mine = await db.Payments.FirstOrDefaultAsync(p => p.BusinessId == businessId && p.Id == item.EntityId, cancellationToken)
+                        .ConfigureAwait(false);
+                    db.SyncQueue.Remove(item);
+                    if (keepMine && mine is not null)
+                    {
+                        var copy = Payment.Create(IdGenerator.NewId(), businessId, mine.OrderId, mine.CustomerId, mine.Amount, mine.Method,
+                            mine.Note, mine.RecordedAtUtc, DateTimeOffset.UtcNow);
+                        if (mine.IsVoided)
+                        {
+                            copy.Void(mine.VoidReason, DateTimeOffset.UtcNow);
+                        }
+
+                        db.Payments.Add(copy);
+                        db.SyncQueue.Add(SyncQueueWriter.CreateItemFor(copy, DateTimeOffset.UtcNow));
+                    }
+
+                    if (serverPayment is not null &&
+                        await db.Orders.AnyAsync(o => o.BusinessId == businessId && o.Id == serverPayment.OrderId, cancellationToken).ConfigureAwait(false))
+                    {
+                        await ApplyPaymentCopiesAsync(db, businessId, [serverPayment], cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        if (mine is not null)
+                        {
+                            db.Payments.Remove(mine);
+                        }
+
+                        (await GetOrAddDeviceInfoAsync(db, businessId, cancellationToken).ConfigureAwait(false)).ResyncPending = true;
+                    }
+
+                    break;
+                }
+
+                case SyncErrorCodes.ParentDeleted when keepMine && item.EntityType == SyncEntityType.Payment:
+                {
+                    // Its order was deleted elsewhere: re-create the order (from this device's copy), then the payment.
+                    var orderId = item.ParentId;
+                    var order = orderId is null
+                        ? null
+                        : await db.Orders.Include(o => o.Lines).FirstOrDefaultAsync(o => o.BusinessId == businessId && o.Id == orderId, cancellationToken)
+                            .ConfigureAwait(false);
+                    if (order is null)
+                    {
+                        return false;
+                    }
+
+                    var payload = SyncJson.Serialize(Application.Sync.SyncMapper.ToDto(order, order.Lines));
+                    var orderItem = await db.SyncQueue.FirstOrDefaultAsync(
+                        q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Order && q.EntityId == order.Id, cancellationToken)
+                        .ConfigureAwait(false);
+                    if (orderItem is null)
+                    {
+                        db.SyncQueue.Add(NewQueueItem(businessId, SyncEntityType.Order, order.Id, order.CustomerId, "Order #" + order.DisplayRef, payload));
+                    }
+                    else
+                    {
+                        Repend(orderItem, baseModified: null);
+                        orderItem.Operation = SyncOperation.Upsert;
+                        orderItem.PayloadJson = payload;
+                    }
+
+                    Repend(item, baseModified: null);
+                    break;
+                }
+
+                case SyncErrorCodes.DeleteRefused when item.EntityType == SyncEntityType.Order:
+                {
+                    // The server kept the order (payments were recorded on it): bring it back here.
+                    db.SyncQueue.Remove(item);
+                    var serverOrder = server.Order;
+                    var state = await LocalState.LoadAsync(db, businessId, [serverOrder?.CustomerId], [], [serverOrder?.Id], cancellationToken)
+                        .ConfigureAwait(false);
+                    ApplyServerCopy(db, state, businessId, null, null, serverOrder);
+                    (await GetOrAddDeviceInfoAsync(db, businessId, cancellationToken).ConfigureAwait(false)).ResyncPending = true;
+                    break;
+                }
+
                 case SyncErrorCodes.DeleteRefused:
                 {
                     db.SyncQueue.Remove(item);
@@ -1159,6 +1433,10 @@ public sealed class SyncEngine
         switch (type)
         {
             case SyncEntityType.Customer:
+                await db.SyncQueue.Where(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Payment &&
+                        db.Payments.Any(p => p.BusinessId == businessId && p.Id == q.EntityId && p.CustomerId == id))
+                    .ExecuteDeleteAsync(ct).ConfigureAwait(false);
+                await db.Payments.Where(p => p.BusinessId == businessId && p.CustomerId == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
                 await db.Orders.Where(o => o.BusinessId == businessId && o.CustomerId == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
                 await db.MeasurementProfiles.Where(m => m.BusinessId == businessId && m.CustomerId == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
                 await db.Customers.Where(c => c.BusinessId == businessId && c.Id == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
@@ -1169,7 +1447,15 @@ public sealed class SyncEngine
                 await db.MeasurementProfiles.Where(m => m.BusinessId == businessId && m.Id == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
                 break;
             case SyncEntityType.Order:
+                // Its payments go with it (local cascade); so do their queued changes.
+                await db.SyncQueue.Where(q => q.BusinessId == businessId && q.ParentId == id && q.EntityType == SyncEntityType.Payment)
+                    .ExecuteDeleteAsync(ct).ConfigureAwait(false);
+                await db.SyncDeferred.Where(d => d.BusinessId == businessId && d.ParentId == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+                await db.Payments.Where(p => p.BusinessId == businessId && p.OrderId == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
                 await db.Orders.Where(o => o.BusinessId == businessId && o.Id == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+                break;
+            case SyncEntityType.Payment:
+                await db.Payments.Where(p => p.BusinessId == businessId && p.Id == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
                 break;
         }
     }
@@ -1184,6 +1470,9 @@ public sealed class SyncEngine
             case SyncEntityType.Measurement:
                 var m = SyncJson.Deserialize<SyncMeasurementDto>(item.ConflictServerJson);
                 return (m?.DateModifiedUtc, null, m, null);
+            case SyncEntityType.Payment:
+                var p = SyncJson.Deserialize<SyncPaymentDto>(item.ConflictServerJson);
+                return (p?.DateModifiedUtc, null, null, null);
             default:
                 var o = SyncJson.Deserialize<SyncOrderDto>(item.ConflictServerJson);
                 return (o?.DateModifiedUtc, null, null, o);
@@ -1196,9 +1485,11 @@ public sealed class SyncEngine
         public HashSet<string> Customers { get; } = new(StringComparer.Ordinal);
         public HashSet<string> Measurements { get; } = new(StringComparer.Ordinal);
         public HashSet<string> Orders { get; } = new(StringComparer.Ordinal);
+        public HashSet<string> Payments { get; } = new(StringComparer.Ordinal);
 
         public void Add(SyncPullResponse page)
         {
+            Payments.UnionWith((page.Payments ?? []).Select(p => p.Id));
             Customers.UnionWith(page.Customers.Select(c => c.Id));
             Measurements.UnionWith(page.Measurements.Select(m => m.Id));
             Orders.UnionWith(page.Orders.Select(o => o.Id));

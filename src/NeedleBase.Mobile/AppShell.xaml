@@ -49,7 +49,7 @@
         <Tab Title="Payments"
              Route="PaymentsPage"
              mci:MauiIcon.Value="{mi:Material Icon=Payments, IconSize=22, TargetName='.'}">
-            <ShellContent ContentTemplate="{DataTemplate views:PaymentsPlaceholderPage}" />
+            <ShellContent ContentTemplate="{DataTemplate views:PaymentsPage}" />
         </Tab>
         <Tab Title="More"
              Route="MorePage"

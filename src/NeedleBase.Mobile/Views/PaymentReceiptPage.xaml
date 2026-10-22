@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             x:Class="NeedleBase.Mobile.Views.PaymentReceiptPage"
+             x:DataType="vm:PaymentReceiptViewModel"
+             Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,40,16,24" Spacing="12">
+            <Button Text="Back"
+                    ImageSource="{mi:Material Icon=ArrowBack, IconColor={StaticResource Charcoal}}"
+                    Command="{Binding GoBackCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource Charcoal}"
+                    HorizontalOptions="Start"
+                    HeightRequest="48"
+                    Padding="0,0,12,0"
+                    SemanticProperties.Description="Go back" />
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasError}"
+                   LineBreakMode="WordWrap"
+                   SemanticProperties.Description="Receipt error" />
+
+            <Border IsVisible="{Binding HasReceipt}"
+                    BackgroundColor="White"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 12"
+                    Padding="16">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="{Binding BusinessName}" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource Charcoal}"
+                           SemanticProperties.HeadingLevel="Level1" />
+                    <Label Text="Payment receipt" FontSize="14" TextColor="{StaticResource Gray600}" />
+                    <BoxView HeightRequest="1" Color="{StaticResource Gray300}" Margin="0,6" />
+                    <Label Text="{Binding Receipt.CustomerName, StringFormat='Customer: {0}'}" TextColor="{StaticResource Charcoal}" />
+                    <Label Text="{Binding Receipt.OrderDisplayRef, StringFormat='Order #{0}'}" TextColor="{StaticResource Charcoal}" />
+                    <Label Text="{Binding DateText, StringFormat='Date: {0}'}" TextColor="{StaticResource Charcoal}" />
+                    <Label Text="{Binding Receipt.Payment.AmountDisplay}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                    <Label Text="{Binding Receipt.Payment.Payment.MethodDisplay, StringFormat='Method: {0}'}" TextColor="{StaticResource Charcoal}" />
+                    <Label Text="{Binding Receipt.Payment.Payment.Note}" TextColor="{StaticResource Gray600}" LineBreakMode="WordWrap" />
+                    <Border StrokeThickness="0"
+                            BackgroundColor="{StaticResource SemanticWarningLight}"
+                            StrokeShape="RoundRectangle 8"
+                            Padding="8,4"
+                            HorizontalOptions="Start"
+                            IsVisible="{Binding Receipt.Payment.HasStatusBadge}">
+                        <Label Text="{Binding Receipt.Payment.StatusBadge}" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource Charcoal}" />
+                    </Border>
+                    <BoxView HeightRequest="1" Color="{StaticResource Gray300}" Margin="0,6" />
+                    <Label Text="{Binding TotalText, StringFormat='Order total: {0}'}" TextColor="{StaticResource Charcoal}" />
+                    <Label Text="{Binding PaidText, StringFormat='Paid so far: {0}'}" TextColor="{StaticResource Charcoal}" />
+                    <Label Text="{Binding BalanceText}" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Button Text="Share receipt"
+                    ImageSource="{mi:Material Icon=Share, IconColor=White}"
+                    Command="{Binding ShareCommand}"
+                    TextColor="White"
+                    BackgroundColor="{StaticResource PrimaryDark}"
+                    HeightRequest="48"
+                    IsVisible="{Binding HasReceipt}"
+                    SemanticProperties.Description="Share this receipt" />
+            <Button Style="{StaticResource SecondaryButton}"
+                    Text="Void payment"
+                    Command="{Binding VoidCommand}"
+                    HeightRequest="48"
+                    IsVisible="{Binding CanVoid}"
+                    IsEnabled="{Binding CanSubmit}"
+                    SemanticProperties.Description="Void this payment if it was recorded by mistake" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

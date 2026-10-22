@@ -13,7 +13,8 @@ namespace NeedleBase.Mobile.Data.Data;
 /// Auto-queue (mobile-sync rule 2): turns tracked Customer / MeasurementProfile / Order changes into
 /// <see cref="SyncQueueItem"/>s inside the same SaveChanges. One item per entity; later edits are
 /// coalesced (keeps the first base version, latest payload). A create followed by a delete before
-/// sync cancels out. Order lines travel inside their order's payload.
+/// sync cancels out. Order lines travel inside their order's payload. Payments queue as upserts only
+/// (record, then the one-way void); their ParentId is the order.
 /// </summary>
 internal static class SyncQueueWriter
 {
@@ -21,7 +22,7 @@ internal static class SyncQueueWriter
     {
         var entries = db.ChangeTracker.Entries()
             .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted &&
-                        e.Entity is Customer or MeasurementProfile or Order)
+                        e.Entity is Customer or MeasurementProfile or Order or Payment)
             .ToList();
         if (entries.Count == 0)
         {
@@ -133,6 +134,9 @@ internal static class SyncQueueWriter
                 GarmentTemplate.DisplayName(m.GarmentTemplate) + " measurements", SyncJson.Serialize(SyncMapper.ToDto(m))),
             Order o => (SyncEntityType.Order, o.Id, o.BusinessId, o.CustomerId, "Order #" + o.DisplayRef,
                 SyncJson.Serialize(SyncMapper.ToDto(o, o.Lines))),
+            Payment p => (SyncEntityType.Payment, p.Id, p.BusinessId, p.OrderId,
+                "Payment " + NeedleBase.Application.Contracts.Payments.Money.Format(p.Amount),
+                SyncJson.Serialize(SyncMapper.ToDto(p))),
             _ => throw new InvalidOperationException("Not a synced entity.")
         };
 

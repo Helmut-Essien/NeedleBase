@@ -167,6 +167,35 @@ public static class LocalSchemaMigrator
         UPDATE "Customers" SET "SearchName" = NULL;
         """;
 
+    /// <summary>
+    /// Version 8 = Payments (Slice 5). Cascade from Orders: the server refuses to delete an order with payments
+    /// and the phone refuses locally, so the cascade only runs when a pulled delete has nothing to keep.
+    /// </summary>
+    private const string V8Payments = """
+        CREATE TABLE IF NOT EXISTS "Payments" (
+            "Id" TEXT NOT NULL CONSTRAINT "PK_Payments" PRIMARY KEY,
+            "BusinessId" TEXT NOT NULL,
+            "OrderId" TEXT NOT NULL,
+            "CustomerId" TEXT NOT NULL,
+            "Amount" TEXT NOT NULL,
+            "Method" TEXT NOT NULL,
+            "Note" TEXT NULL,
+            "RecordedAtUtc" TEXT NOT NULL,
+            "IsVoided" INTEGER NOT NULL,
+            "VoidedAtUtc" TEXT NULL,
+            "VoidReason" TEXT NULL,
+            "CreatedAtUtc" TEXT NOT NULL,
+            "DateModifiedUtc" TEXT NOT NULL,
+            "ServerKnown" INTEGER NOT NULL DEFAULT 0,
+            CONSTRAINT "FK_Payments_Orders_OrderId" FOREIGN KEY ("OrderId") REFERENCES "Orders" ("Id") ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS "IX_Payments_BusinessId" ON "Payments" ("BusinessId");
+        CREATE INDEX IF NOT EXISTS "IX_Payments_BusinessId_OrderId" ON "Payments" ("BusinessId", "OrderId");
+        CREATE INDEX IF NOT EXISTS "IX_Payments_BusinessId_RecordedAtUtc" ON "Payments" ("BusinessId", "RecordedAtUtc");
+        CREATE INDEX IF NOT EXISTS "IX_Payments_OrderId" ON "Payments" ("OrderId");
+        CREATE INDEX IF NOT EXISTS "IX_Payments_Unknown" ON "Payments" ("BusinessId") WHERE "ServerKnown" = 0;
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
@@ -177,6 +206,7 @@ public static class LocalSchemaMigrator
         V5SyncRecovery,
         V6Adoption,
         V7PhoneNormalize,
+        V8Payments,
     ];
 
     public static int LatestVersion => Steps.Length;
@@ -197,6 +227,12 @@ public static class LocalSchemaMigrator
 
         try
         {
+            // WAL: list reads don't wait behind sync writes. Persistent in the file; must run outside a
+            // transaction; a no-op ("memory") for in-memory databases.
+            await ExecuteAsync(connection, null, "PRAGMA journal_mode=WAL;", cancellationToken).ConfigureAwait(false);
+            // Start each launch with an empty -wal so it can't keep growing on small phones (autocheckpoint
+            // stays at SQLite's default 1000 pages; this only reclaims the file). No-op without WAL.
+            await ExecuteAsync(connection, null, "PRAGMA wal_checkpoint(TRUNCATE);", cancellationToken).ConfigureAwait(false);
             var version = await GetVersionAsync(connection, cancellationToken).ConfigureAwait(false);
 
             if (version == 0 && await TableExistsAsync(connection, "Customers", cancellationToken).ConfigureAwait(false))
@@ -221,6 +257,8 @@ public static class LocalSchemaMigrator
         }
         finally
         {
+            // Raw ADO writes (steps, v3/v7 backfill) bypass the EF interceptors: invalidate cached lists.
+            LocalDataVersion.Bump();
             if (openedHere)
             {
                 await connection.CloseAsync().ConfigureAwait(false);

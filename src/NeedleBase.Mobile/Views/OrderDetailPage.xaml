@@ -4,6 +4,7 @@
              xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
              xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
              xmlns:orders="clr-namespace:NeedleBase.Application.Contracts.Orders;assembly=NeedleBase.Application"
+             xmlns:svc="clr-namespace:NeedleBase.Mobile.Data.Services;assembly=NeedleBase.Mobile.Data"
              x:Class="NeedleBase.Mobile.Views.OrderDetailPage"
              x:DataType="vm:OrderDetailViewModel"
              Title="{Binding Title}"
@@ -116,6 +117,47 @@
                         TextColor="White"
                         HeightRequest="48"
                         IsEnabled="{Binding CanSubmit}" />
+            </VerticalStackLayout>
+
+            <VerticalStackLayout Spacing="8" IsVisible="{Binding ShowPayments}" Margin="0,8,0,0">
+                <Label Text="Payments"
+                       FontAttributes="Bold"
+                       FontSize="18"
+                       TextColor="{StaticResource Charcoal}"
+                       SemanticProperties.HeadingLevel="Level2" />
+                <Label Text="{Binding PaidSummary}" FontSize="14" TextColor="{StaticResource Gray600}" />
+                <Label Text="{Binding BalanceText}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                <Button Text="Record payment"
+                        ImageSource="{mi:Material Icon=Payments, IconColor=White}"
+                        Command="{Binding RecordPaymentCommand}"
+                        TextColor="White"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        HeightRequest="48"
+                        IsVisible="{Binding CanRecordPayment}"
+                        SemanticProperties.Description="Record a payment for this order" />
+                <CollectionView ItemsSource="{Binding Payments}"
+                                SelectionMode="Single"
+                                SelectedItem="{Binding SelectedPayment}"
+                                IsVisible="{Binding HasPayments}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate x:DataType="svc:LocalPayment">
+                            <Grid Padding="12,10" RowDefinitions="Auto,Auto,Auto" RowSpacing="2"
+                                  BackgroundColor="White" MinimumHeightRequest="56">
+                                <Label Text="{Binding AmountDisplay}" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource Charcoal}" />
+                                <Label Grid.Row="1" Text="{Binding MethodLine}" FontSize="13" TextColor="{StaticResource Gray600}" />
+                                <Border Grid.Row="2"
+                                        StrokeThickness="0"
+                                        BackgroundColor="{StaticResource SemanticWarningLight}"
+                                        StrokeShape="RoundRectangle 8"
+                                        Padding="8,4"
+                                        HorizontalOptions="Start"
+                                        IsVisible="{Binding HasStatusBadge}">
+                                    <Label Text="{Binding StatusBadge}" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource Charcoal}" />
+                                </Border>
+                            </Grid>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
             </VerticalStackLayout>
 
             <Label Text="Garments"

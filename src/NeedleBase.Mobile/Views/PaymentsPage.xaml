@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             xmlns:svc="clr-namespace:NeedleBase.Mobile.Data.Services;assembly=NeedleBase.Mobile.Data"
+             x:Class="NeedleBase.Mobile.Views.PaymentsPage"
+             x:DataType="vm:PaymentsViewModel"
+             Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <Grid RowDefinitions="Auto,Auto,*" Padding="16,40,16,12">
+        <Label Grid.Row="0"
+               Text="{Binding Title}"
+               FontSize="24"
+               FontAttributes="Bold"
+               TextColor="{StaticResource Charcoal}"
+               Margin="0,0,0,12"
+               SemanticProperties.HeadingLevel="Level1" />
+
+        <VerticalStackLayout Grid.Row="1" Spacing="8" Margin="0,0,0,8">
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasError}"
+                   LineBreakMode="WordWrap"
+                   SemanticProperties.Description="Payments error" />
+            <VerticalStackLayout Spacing="12" Padding="8,24" IsVisible="{Binding ShowEmpty}">
+                <Image WidthRequest="48" HeightRequest="48" HorizontalOptions="Center"
+                       AutomationProperties.IsInAccessibleTree="False">
+                    <Image.Source>
+                        <FontImageSource FontFamily="MaterialIcons"
+                                         Glyph="{mi:Material Icon=Payments}"
+                                         Color="{StaticResource Gray600}"
+                                         Size="48" />
+                    </Image.Source>
+                </Image>
+                <Label Text="{Binding EmptyMessage}"
+                       LineBreakMode="WordWrap"
+                       TextColor="{StaticResource Gray600}"
+                       HorizontalTextAlignment="Center"
+                       SemanticProperties.HeadingLevel="Level2" />
+                <Button Text="Go to orders"
+                        Command="{Binding GoToOrdersCommand}"
+                        TextColor="White"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        HeightRequest="48"
+                        HorizontalOptions="Center"
+                        SemanticProperties.Description="Open the Orders tab to record a payment" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+
+        <RefreshView Grid.Row="2"
+                     IsRefreshing="{Binding IsRefreshing}"
+                     Command="{Binding LoadCommand}">
+            <CollectionView ItemsSource="{Binding Items}"
+                            SelectionMode="Single"
+                            SelectedItem="{Binding SelectedItem}"
+                            ItemSizingStrategy="MeasureFirstItem">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate x:DataType="svc:LocalPaymentListItem">
+                        <Grid Padding="12,14"
+                              RowDefinitions="Auto,Auto,Auto"
+                              ColumnDefinitions="*,Auto"
+                              ColumnSpacing="12"
+                              RowSpacing="4"
+                              BackgroundColor="White"
+                              MinimumHeightRequest="72">
+                            <Label Grid.Row="0" Grid.Column="0"
+                                   Text="{Binding Title}"
+                                   FontAttributes="Bold"
+                                   FontSize="16"
+                                   TextColor="{StaticResource Charcoal}" />
+                            <Image Grid.Row="0" Grid.Column="1" Grid.RowSpan="3"
+                                   WidthRequest="24" HeightRequest="24"
+                                   VerticalOptions="Center"
+                                   AutomationProperties.IsInAccessibleTree="False">
+                                <Image.Source>
+                                    <FontImageSource FontFamily="MaterialIcons"
+                                                     Glyph="{mi:Material Icon=ChevronRight}"
+                                                     Color="{StaticResource Gray600}"
+                                                     Size="24" />
+                                </Image.Source>
+                            </Image>
+                            <Label Grid.Row="1" Grid.Column="0"
+                                   FontSize="13"
+                                   Text="{Binding Subtitle}"
+                                   TextColor="{StaticResource Gray600}" />
+                            <Border Grid.Row="2" Grid.Column="0"
+                                    StrokeThickness="0"
+                                    BackgroundColor="{StaticResource SemanticWarningLight}"
+                                    StrokeShape="RoundRectangle 8"
+                                    Padding="8,4"
+                                    HorizontalOptions="Start"
+                                    IsVisible="{Binding HasStatusBadge}">
+                                <Label Text="{Binding StatusBadge}"
+                                       FontAttributes="Bold"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Charcoal}" />
+                            </Border>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

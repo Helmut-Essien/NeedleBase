@@ -34,6 +34,7 @@ public sealed class LocalDbContext : DbContext
         StampCustomerSearchKeys();
         var queued = !SuppressSyncQueue && SyncQueueWriter.EnqueueAsync(this, CancellationToken.None).GetAwaiter().GetResult();
         var result = base.SaveChanges(acceptAllChangesOnSuccess);
+        LocalDataVersion.Bump();
         if (queued)
         {
             Sync.LocalSyncSignals.RaiseQueueChanged();
@@ -47,6 +48,7 @@ public sealed class LocalDbContext : DbContext
         StampCustomerSearchKeys();
         var queued = !SuppressSyncQueue && await SyncQueueWriter.EnqueueAsync(this, cancellationToken).ConfigureAwait(false);
         var result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+        LocalDataVersion.Bump();
         if (queued)
         {
             Sync.LocalSyncSignals.RaiseQueueChanged();
@@ -74,9 +76,13 @@ public sealed class LocalDbContext : DbContext
     public DbSet<MeasurementProfile> MeasurementProfiles => Set<MeasurementProfile>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+    public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<SyncQueueItem> SyncQueue => Set<SyncQueueItem>();
     public DbSet<DeviceInfo> DeviceInfo => Set<DeviceInfo>();
     public DbSet<SyncDeferredItem> SyncDeferred => Set<SyncDeferredItem>();
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
+        optionsBuilder.AddInterceptors(LocalDataVersionInterceptor.Instance, LocalDataVersionTransactionInterceptor.Instance);
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -168,6 +174,29 @@ public sealed class LocalDbContext : DbContext
             e.Property(x => x.Notes).HasMaxLength(FieldLimits.Notes);
             e.HasIndex(x => x.BusinessId);
             e.HasIndex(x => new { x.BusinessId, x.OrderId });
+        });
+
+        builder.Entity<Payment>(e =>
+        {
+            e.ToTable("Payments");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.OrderId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.CustomerId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.Method).HasMaxLength(FieldLimits.PaymentMethod).IsRequired();
+            e.Property(x => x.Note).HasMaxLength(FieldLimits.Notes);
+            e.Property(x => x.VoidReason).HasMaxLength(FieldLimits.Notes);
+            e.HasIndex(x => x.BusinessId);
+            e.HasIndex(x => new { x.BusinessId, x.OrderId });
+            e.HasIndex(x => new { x.BusinessId, x.RecordedAtUtc });
+            e.Property<bool>(ServerKnownColumn);
+            e.HasIndex(x => x.BusinessId, "IX_Payments_Unknown").HasFilter("\"ServerKnown\" = 0");
+            e.HasOne<Order>()
+                .WithMany()
+                .HasForeignKey(x => x.OrderId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<SyncQueueItem>(e =>

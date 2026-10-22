@@ -3,7 +3,7 @@ using MauiIcons.Material;
 
 namespace NeedleBase.Mobile.Views;
 
-/// <summary>Shared placeholder chrome for unbuilt tabs (Payments/More). Orders uses <see cref="OrdersPage"/>.</summary>
+/// <summary>Shared placeholder chrome for unbuilt tabs (More). Orders uses <see cref="OrdersPage"/>.</summary>
 internal static class PlaceholderChrome
 {
     internal static View Build(string title, string message, MaterialIcons icon)
@@ -56,21 +56,6 @@ internal static class PlaceholderChrome
         }
 
         return fallback;
-    }
-}
-
-public sealed class PaymentsPlaceholderPage : ContentPage
-{
-    public PaymentsPlaceholderPage()
-    {
-        Title = "Payments";
-        Shell.SetNavBarIsVisible(this, false);
-        NavigationPage.SetHasNavigationBar(this, false);
-        BackgroundColor = PlaceholderChrome.ResolveColor("AppBackground", Colors.WhiteSmoke);
-        Content = PlaceholderChrome.Build(
-            "Payments",
-            "Payments and balances arrive in a later slice.",
-            MaterialIcons.Payments);
     }
 }
 

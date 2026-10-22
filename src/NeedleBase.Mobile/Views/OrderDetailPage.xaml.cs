@@ -10,4 +10,10 @@ public partial class OrderDetailPage : ContentPage
         InitializeComponent();
         BindingContext = ServiceHelper.GetRequiredService<OrderDetailViewModel>();
     }
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await ((OrderDetailViewModel)BindingContext).AppearAsync();
+    }
 }
