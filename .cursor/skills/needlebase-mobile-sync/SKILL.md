@@ -120,3 +120,7 @@ Use step 6 of the single checklist in [needlebase-domain](../needlebase-domain/S
 
 ## Payments (Slice 5)
 Pull phase 4 (after deletes; cursor stays v2). Push sorts payments last; create is lenient; unknown order → ParentDeleted; same id + same content → Applied (void merged); different content → Conflict `SYNC_PAYMENT_MISMATCH` (Keep mine = keep both under a new id; Keep theirs = server copy); payment delete op → Failed. Payments for a missing order are deferred. A pulled order delete keeps the order when it has queued payments and raises a Deleted conflict. Order delete with server payments → DeleteRefused (device applies the server order). Prune keeps orders that still have kept payments.
+
+Edge rules (22 Oct 2026): payment writes take `LockForPaymentAsync` (advisory lock on the id, then `FOR UPDATE` on the order) before reading the order and balance; `OrderService.DeleteAsync` takes `LockOrderAsync`. Pull phase 4 is skipped for non-Owner/Manager and `cursor.Payments` is reset to null, so a promoted user's next cycle pulls every payment. A Tailor device purges non-queued payments (`PurgeHiddenAsync`) and sets `ResyncPending`.
+
+Second audit: sync push maps an unknown payment method to Other and appends "[label]" to the note (`PaymentRules.NormalizeSyncMethod`, applied before replay comparison); a skewed device date is replaced by server time; `PurgeHiddenAsync` only deletes ServerKnown rows without queue items.

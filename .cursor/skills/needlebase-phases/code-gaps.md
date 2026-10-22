@@ -72,3 +72,14 @@ Device speed (22 Oct 2026): Orders and Customers tabs cache rows and reload only
 - Open: Payments tab shows the latest 100 rows, no search.
 - Open: payment role check trusts the token role claim (same as other endpoints; Slice 7 revisits).
 - Open: device verification of Journey 1 steps 6–7 and Journey 4 (phone signed out on 22 Oct).
+
+### Slice 5 edge-case audit (22 Oct 2026)
+- Closed: REST overpay race and concurrent same-id records (order row lock + advisory id lock); order delete racing a payment (500 → clean 409/404).
+- Closed: payments pulled to Tailor phones; role change served from the Payments tab cache; "10,50" read as GH₵ 1,050; receipt leaking the internal note; cancelled orders showing "left"; wrong Sync-details wording for payment conflicts; Record payment ignoring the Back guard.
+- Open (decision): Tailor phone keeps queued payments recorded while it was a manager; they fail with PAYMENT_FORBIDDEN in Sync details until an owner re-records or they are discarded.
+- Open: old app builds (pre-Slice 5) show "Customer has orders" for a refused order delete (cannot fix in old builds).
+- Open: the purge runs when a Tailor opens the Payments tab, not on the role refresh itself.
+
+### Slice 5 second audit (22 Oct 2026)
+- Closed: purge could delete a never-acknowledged payment; EXCEEDS_BALANCE returned 400 and lost its detail; racing voids could overwrite the first reason; future/ancient payment dates accepted; unknown sync method failed real money forever; same-id push race mapped to Rejected; Order detail balance stale after a pulled void; unnamed method radios.
+- Open (decision): payments dated before the order are allowed (deposit taken before the order was entered).

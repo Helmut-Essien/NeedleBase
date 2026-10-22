@@ -101,3 +101,5 @@ dotnet run --project src/NeedleBase.Api --launch-profile https
 
 ## Payments (Slice 5)
 `GET api/payments`, `GET api/payments/{id}`, `GET|POST api/orders/{orderId}/payments`, `POST api/payments/{id}/void`. Owner/Manager only (403 `PAYMENT_FORBIDDEN`). Codes: `PAYMENT_NOT_FOUND` 404, `PAYMENT_CONFLICT` 409 (same id, different content), `PAYMENT_EXCEEDS_BALANCE` / `PAYMENT_ORDER_LOCKED` 409, `PAYMENT_INVALID` 400. Order DELETE with payments → 409 `ORDER_HAS_PAYMENTS`. Create is idempotent on the client id.
+
+Second audit: `PAYMENT_EXCEEDS_BALANCE` → 409 with the specific detail; `RecordedAtUtc` more than 5 minutes ahead or before 2020 → 400 `PAYMENT_INVALID` (sync push dates it at server time instead); void runs under the payment lock.

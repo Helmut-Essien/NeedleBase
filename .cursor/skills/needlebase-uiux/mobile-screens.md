@@ -124,3 +124,5 @@ Realistic sample row:
 > ORD-1042 · Efua Mensah · 2× dress · Sewing · Due Fri · GH₵200 of 800 paid
 
 **Slice 5 copy (code):** status "Recorded on this device" until synced, then none; "Voided" when voided; method line "{Method} payment recorded · date"; toast "{Method} payment recorded on this device"; balance "GH₵ 600.00 left" / "Paid in full" / "GH₵ X overpaid"; summary "GH₵ 200.00 of GH₵ 800.00 paid". Amounts always GH₵ with 2 decimals, en-GH.
+
+**Payment input (code):** accepts "300", "300.5", "10,50" (decimal comma), en-GH grouping "1,000"/"1,250.50" and a GH₵/GH¢/GHS prefix; refuses "1.000" (ambiguous), minus and more than 2 decimals (never rounds). Receipt share text never includes the internal note or the customer phone. Cancelled order balance: "Order cancelled · GH₵ X recorded". Payments tab footer: "Showing the latest 100 payments. Open an order to see all of its payments." Sync details: payment conflicts read "Restore order" / "Keep both" / "Use theirs".

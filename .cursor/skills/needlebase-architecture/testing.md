@@ -89,3 +89,7 @@ Code gaps: [code-gaps.md](../needlebase-phases/code-gaps.md).
 
 
 **Slice 5 tests:** `Api.Tests/PaymentApiTests` (journeys, tenancy, roles, idempotency, sync replay/mismatch/void), `Mobile.Tests/PaymentSyncTests`, `Domain.Tests/PaymentTests` (money: never rounds), `Application.Tests/PaymentRulesTests` (balance, codes, cursor phase 4).
+
+**Slice 5 edge tests:** concurrent REST records never overpay, same-id race stores once, delete-vs-record never 500s, Tailor pull gets no payments and a promoted cursor re-pulls; parser/receipt/purge/role-cache/Sync-details wording in `Mobile.Tests/PaymentSyncTests`; migrator v7→v8 with rows in `LocalSchemaMigratorTests`.
+
+Second audit tests: concurrent voids, same-id push race, future dates, unknown method, 409 detail, purge of unacknowledged rows, Order detail live balance. The API test retry helper retries only `SYNC_MAINTENANCE` 503s, at most 5 times.
