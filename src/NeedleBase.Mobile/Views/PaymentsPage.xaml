@@ -102,6 +102,15 @@
                         </Grid>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
+                <CollectionView.Footer>
+                    <Label x:DataType="vm:PaymentsViewModel"
+                           Text="{Binding LimitNote}"
+                           IsVisible="{Binding ShowLimitNote}"
+                           Padding="16,12"
+                           FontSize="14"
+                           TextColor="{StaticResource Charcoal}"
+                           SemanticProperties.Description="{Binding LimitNote}" />
+                </CollectionView.Footer>
             </CollectionView>
         </RefreshView>
     </Grid>

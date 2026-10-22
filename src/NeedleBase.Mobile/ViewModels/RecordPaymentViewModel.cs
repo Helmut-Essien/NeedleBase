@@ -18,7 +18,7 @@ namespace NeedleBase.Mobile.ViewModels;
 /// Record a deposit or instalment against one order (Owner/Manager). Saved on this device first; the sync queue
 /// sends it. One payment id per screen, so a double tap or retry never records twice.
 /// </summary>
-public partial class RecordPaymentViewModel : BaseViewModel, IQueryAttributable
+public partial class RecordPaymentViewModel : BaseViewModel, IQueryAttributable, IBackAware
 {
     private readonly IPaymentLocalService _payments;
     private readonly IAuthService _auth;
@@ -51,6 +51,11 @@ public partial class RecordPaymentViewModel : BaseViewModel, IQueryAttributable
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string? errorMessage;
+
+    /// <summary>Android Back is swallowed while the save runs (the payment is written once, then the page pops).</summary>
+    public bool CanGoBack => !IsBusy;
+
+    public bool TryHandleBack() => false;
 
     public bool HasAmountError => !string.IsNullOrWhiteSpace(AmountError);
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
@@ -139,7 +144,17 @@ public partial class RecordPaymentViewModel : BaseViewModel, IQueryAttributable
         }
     }
 
-    /// <summary>Accepts "300", "300.5", "1,200.00", "GH₵ 300"; never rounds (more than 2 decimals is an error).</summary>
+    private static readonly string[] CurrencyTokens = ["GH₵", "GH¢", "GHS", "GHC", "₵", "¢"];
+
+    private static readonly System.Text.RegularExpressions.Regex GhanaGrouped =
+        new(@"^\d{1,3}(,\d{3})+(\.\d{1,2})?$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// Typed cedi amount, never rounded and never guessed:
+    /// "300", "300.5", "GH₵ 75", "GH¢75" and the en-GH display form "1,200.00" / "1,000" are accepted;
+    /// "10,50" is a decimal comma (GH₵ 10.50), as in <see cref="DecimalInput"/>; "1.000" is ambiguous and refused;
+    /// a minus sign is refused. More than 2 decimals parses, then fails the amount rule (no silent rounding).
+    /// </summary>
     public static bool TryParseAmount(string? text, out decimal amount)
     {
         amount = 0;
@@ -148,10 +163,24 @@ public partial class RecordPaymentViewModel : BaseViewModel, IQueryAttributable
             return false;
         }
 
-        var cleaned = text.Replace("GH₵", string.Empty, StringComparison.OrdinalIgnoreCase)
-            .Replace("GHS", string.Empty, StringComparison.OrdinalIgnoreCase)
-            .Replace(",", string.Empty).Replace(" ", string.Empty).Trim();
-        return decimal.TryParse(cleaned, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out amount);
+        var cleaned = text;
+        foreach (var token in CurrencyTokens)
+        {
+            cleaned = cleaned.Replace(token, string.Empty, StringComparison.OrdinalIgnoreCase);
+        }
+
+        cleaned = cleaned.Replace(" ", string.Empty).Replace("\u00A0", string.Empty).Trim();
+        if (cleaned.Length == 0 || cleaned.Contains('-'))
+        {
+            return false;
+        }
+
+        if (GhanaGrouped.IsMatch(cleaned))
+        {
+            return decimal.TryParse(cleaned.Replace(",", string.Empty), NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out amount);
+        }
+
+        return DecimalInput.TryParse(cleaned, out amount);
     }
 
     [RelayCommand]
@@ -165,7 +194,7 @@ public partial class RecordPaymentViewModel : BaseViewModel, IQueryAttributable
         ErrorMessage = null;
         if (!TryParseAmount(AmountText, out var amount))
         {
-            AmountError = "Enter the amount received, e.g. 200.";
+            AmountError = "Enter the amount received, e.g. 200 or 1,250.50.";
             return;
         }
 

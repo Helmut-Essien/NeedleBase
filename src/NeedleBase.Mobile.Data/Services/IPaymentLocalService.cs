@@ -17,6 +17,12 @@ public interface IPaymentLocalService
     /// <summary>Entry rules = the server's (<see cref="NeedleBase.Application.Payments.PaymentRules"/>): no overpay, not on a cancelled order.</summary>
     Task<RecordResult<PaymentDto>> RecordAsync(string businessId, string orderId, RecordPaymentRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// This phone's user can't see payments any more (role is Tailor): delete synced payment copies that have no
+    /// queued change, and ask for a full resync so a later promotion pulls them again. Returns how many were removed.
+    /// </summary>
+    Task<int> PurgeHiddenAsync(string businessId, CancellationToken cancellationToken = default);
+
     Task<RecordResult<PaymentDto>> VoidAsync(string businessId, string paymentId, string? reason, CancellationToken cancellationToken = default);
 }
 
@@ -79,11 +85,7 @@ public sealed record LocalPaymentReceipt(
             $"Amount: {p.AmountDisplay}",
             $"Method: {p.MethodDisplay}",
         };
-        if (!string.IsNullOrWhiteSpace(p.Note))
-        {
-            lines.Add($"Note: {p.Note}");
-        }
-
+        // The note is an internal record (references, staff remarks): it never leaves the phone on a receipt.
         if (p.IsVoided)
         {
             lines.Add("This payment was voided.");

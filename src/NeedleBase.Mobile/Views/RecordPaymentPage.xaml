@@ -62,10 +62,10 @@
                 <FlexLayout Wrap="Wrap"
                             RadioButtonGroup.GroupName="paymentMethod"
                             RadioButtonGroup.SelectedValue="{Binding Method}">
-                    <RadioButton Content="Cash" Value="Cash" MinimumHeightRequest="48" Margin="0,0,12,0" TextColor="{StaticResource Charcoal}" />
-                    <RadioButton Content="MoMo" Value="MoMo" MinimumHeightRequest="48" Margin="0,0,12,0" TextColor="{StaticResource Charcoal}" />
-                    <RadioButton Content="Bank" Value="Bank" MinimumHeightRequest="48" Margin="0,0,12,0" TextColor="{StaticResource Charcoal}" />
-                    <RadioButton Content="Other" Value="Other" MinimumHeightRequest="48" TextColor="{StaticResource Charcoal}" />
+                    <RadioButton Content="Cash" Value="Cash" SemanticProperties.Description="Cash" MinimumHeightRequest="48" Margin="0,0,12,0" TextColor="{StaticResource Charcoal}" />
+                    <RadioButton Content="MoMo" Value="MoMo" SemanticProperties.Description="Mobile Money" MinimumHeightRequest="48" Margin="0,0,12,0" TextColor="{StaticResource Charcoal}" />
+                    <RadioButton Content="Bank" Value="Bank" SemanticProperties.Description="Bank transfer" MinimumHeightRequest="48" Margin="0,0,12,0" TextColor="{StaticResource Charcoal}" />
+                    <RadioButton Content="Other" Value="Other" SemanticProperties.Description="Other method" MinimumHeightRequest="48" TextColor="{StaticResource Charcoal}" />
                 </FlexLayout>
 
                 <Label Text="Note (optional)" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />

@@ -168,6 +168,33 @@ public sealed class PaymentLocalService : IPaymentLocalService
         }
     }
 
+    public async Task<int> PurgeHiddenAsync(string businessId, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(businessId);
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+        var queued = db.SyncQueue.Where(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Payment).Select(q => q.EntityId);
+        var removed = await db.Payments
+            // Only copies the server confirmed: a row it never acknowledged (no queue item after an older build or a
+            // lost queue) is still the only record of that money, so it stays until adoption queues it.
+            .Where(p => p.BusinessId == businessId && EF.Property<bool>(p, LocalDbContext.ServerKnownColumn) && !queued.Contains(p.Id))
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        if (removed > 0)
+        {
+            var device = await db.DeviceInfo.FirstOrDefaultAsync(d => d.BusinessId == businessId, cancellationToken).ConfigureAwait(false);
+            if (device is not null)
+            {
+                device.ResyncPending = true;
+                db.SuppressSyncQueue = true;
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            LocalDataVersion.NotifyChangedBySync(businessId);
+        }
+
+        return removed;
+    }
+
     private static async Task<LocalOrderPayments?> LoadOrderPaymentsAsync(LocalDbContext db, string businessId, string orderId, CancellationToken ct)
     {
         var order = await db.Orders.AsNoTracking()

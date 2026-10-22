@@ -31,6 +31,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     private readonly IAuthService _auth;
     private readonly IPaymentLocalService? _payments;
     private bool _loadedOnce;
+    private LiveListRefresh? _live;
 
     public OrderDetailViewModel(IOrderLocalService orders, IAuthService auth, IPaymentLocalService? payments = null)
     {
@@ -127,7 +128,15 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     }
 
     /// <summary>Page shown again (back from Record payment / receipt): refresh the money section only.</summary>
-    public Task AppearAsync() => _loadedOnce ? RefreshPaymentsAsync() : Task.CompletedTask;
+    public Task AppearAsync()
+    {
+        // A void or payment pulled from another phone while this order is open updates the balance (live refresh).
+        _live ??= new LiveListRefresh(RefreshPaymentsAsync);
+        _live.Attach();
+        return _loadedOnce ? RefreshPaymentsAsync() : Task.CompletedTask;
+    }
+
+    public void Disappear() => _live?.Detach();
 
     [ObservableProperty] private string displayRef = string.Empty;
     [ObservableProperty] private string customerName = string.Empty;

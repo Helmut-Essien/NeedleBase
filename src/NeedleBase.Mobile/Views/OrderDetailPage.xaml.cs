@@ -16,4 +16,10 @@ public partial class OrderDetailPage : ContentPage
         base.OnAppearing();
         await ((OrderDetailViewModel)BindingContext).AppearAsync();
     }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        ((OrderDetailViewModel)BindingContext).Disappear();
+    }
 }

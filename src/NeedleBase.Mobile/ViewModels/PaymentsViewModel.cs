@@ -21,6 +21,10 @@ public partial class PaymentsViewModel : BaseViewModel
     private int _loadGeneration;
     private string? _loadedBusinessId;
     private long _loadedVersion = -1;
+    private string? _loadedRole;
+
+    /// <summary>The tab shows the newest rows only; each order shows all of its payments.</summary>
+    public const int ListLimit = 100;
 
     public PaymentsViewModel(IPaymentLocalService payments, IAuthService auth)
     {
@@ -51,14 +55,20 @@ public partial class PaymentsViewModel : BaseViewModel
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool ShowEmpty => Loaded && CanManage && !HasError && Items.Count == 0;
 
+    public bool ShowLimitNote => Loaded && CanManage && Items.Count >= ListLimit;
+
+    public string LimitNote => $"Showing the latest {ListLimit} payments. Open an order to see all of its payments.";
+
     public string EmptyMessage => "No payments yet. Open an order and tap Record payment.";
 
     public async Task AppearAsync()
     {
         _live.Attach();
         var businessId = await _auth.GetBusinessIdAsync();
+        var role = (await _auth.GetCachedUserAsync())?.Role;
         if (_loadedVersion >= 0 && LocalDataVersion.Current == _loadedVersion &&
-            string.Equals(businessId, _loadedBusinessId, StringComparison.Ordinal) && !HasError)
+            string.Equals(businessId, _loadedBusinessId, StringComparison.Ordinal) &&
+            string.Equals(role, _loadedRole, StringComparison.Ordinal) && !HasError)
         {
             return; // nothing written since the last load
         }
@@ -81,6 +91,7 @@ public partial class PaymentsViewModel : BaseViewModel
         Interlocked.Increment(ref _loadGeneration);
         _loadedVersion = -1;
         _loadedBusinessId = null;
+        _loadedRole = null;
         Items.Clear();
         ErrorMessage = null;
         Loaded = false;
@@ -119,10 +130,14 @@ public partial class PaymentsViewModel : BaseViewModel
             {
                 Items.Clear();
                 ErrorMessage = "Payments are only shown to the owner and managers.";
+                _loadedRole = user?.Role;
+                OnPropertyChanged(nameof(ShowLimitNote));
+                // Role changed to Tailor on this phone: drop synced payment copies (queued ones stay; they're real money).
+                await _payments.PurgeHiddenAsync(businessId);
                 return;
             }
 
-            var rows = await _payments.ListAsync(businessId);
+            var rows = await _payments.ListAsync(businessId, ListLimit);
             if (generation != _loadGeneration)
             {
                 return; // superseded
@@ -131,8 +146,10 @@ public partial class PaymentsViewModel : BaseViewModel
             CollectionSync.Apply(Items, rows, (a, b) => a == b, r => r);
             _loadedBusinessId = businessId;
             _loadedVersion = version;
+            _loadedRole = user?.Role;
             Loaded = true;
             OnPropertyChanged(nameof(ShowEmpty));
+            OnPropertyChanged(nameof(ShowLimitNote));
         }
         catch (Exception)
         {

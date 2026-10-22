@@ -187,6 +187,7 @@ public sealed class SyncItemRow
             SyncEntityType.Customer => "Customer",
             SyncEntityType.Measurement => "Measurement",
             SyncEntityType.Order => "Order",
+            SyncEntityType.Payment => "Payment",
             _ => "Item"
         };
         IsConflict = e.State == SyncQueueState.Conflict;
@@ -194,10 +195,17 @@ public sealed class SyncItemRow
 
         (Subtitle, PrimaryText, SecondaryText) = (e.State, e.Code) switch
         {
+            (SyncQueueState.Conflict, SyncErrorCodes.ParentDeleted) when e.EntityType == SyncEntityType.Payment =>
+                ("Payment · its order was deleted on another device.", "Restore order", "Discard"),
             (SyncQueueState.Conflict, SyncErrorCodes.ParentDeleted) =>
                 ($"{kind} · its customer was deleted on another device.", "Restore customer", "Discard"),
+            (SyncQueueState.Conflict, SyncErrorCodes.DeleteRefused) when e.EntityType == SyncEntityType.Order =>
+                ("Order has payments recorded, so it wasn't deleted.", "Restore order", null),
             (SyncQueueState.Conflict, SyncErrorCodes.DeleteRefused) =>
                 ("Customer has orders on another device, so it wasn't deleted.", "Restore customer", null),
+            (SyncQueueState.Conflict, SyncErrorCodes.PaymentMismatch) =>
+                ("Payment · a different payment was saved under the same record. Keep both records them as two payments; Use theirs drops this phone's copy.",
+                    "Keep both", "Use theirs"),
             (SyncQueueState.Conflict, _) when e.ServerCopyDeleted =>
                 (e.EntityType == SyncEntityType.Customer && e.Problem is { Length: > 0 } p && p.Contains("still has", StringComparison.Ordinal)
                     ? "Customer deleted on another device, but it still has orders or changes here."
