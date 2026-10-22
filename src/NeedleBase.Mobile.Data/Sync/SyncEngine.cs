@@ -228,6 +228,7 @@ public sealed class SyncEngine
         while (true)
         {
             List<SyncQueueItem> batch;
+            string? deviceId;
             await using (var scope = _scopeFactory.CreateAsyncScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
@@ -239,6 +240,14 @@ public sealed class SyncEngine
                     .ThenBy(q => q.Id)
                     .Take(BatchSize)
                     .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+                // The phone's id labels its changes in the server's activity log; the first sync of a fresh
+                // install creates it here (same defaults the pull would give it).
+                deviceId = batch.Count == 0 ? null : (await GetOrAddDeviceInfoAsync(db, businessId, cancellationToken).ConfigureAwait(false)).DeviceId;
+                if (db.ChangeTracker.HasChanges())
+                {
+                    await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                }
             }
 
             if (batch.Count == 0)
@@ -246,7 +255,7 @@ public sealed class SyncEngine
                 return;
             }
 
-            var request = new SyncPushRequest { Operations = batch.Select(ToOperation).ToList() };
+            var request = new SyncPushRequest { Operations = batch.Select(ToOperation).ToList(), DeviceId = deviceId };
             var response = await WithRateLimitWaitAsync(ct => _api.PushAsync(request, ct), cancellationToken).ConfigureAwait(false);
             await ApplyPushResultsAsync(businessId, batch, response, cancellationToken).ConfigureAwait(false);
 
@@ -437,17 +446,22 @@ public sealed class SyncEngine
     private async Task PullCoreAsync(string businessId, SeenIds? seen, CancellationToken cancellationToken)
     {
         string? cursor = null;
-        if (seen is null)
+        string? deviceId;
+        await using (var scope = _scopeFactory.CreateAsyncScope())
         {
-            await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
-            cursor = (await db.DeviceInfo.AsNoTracking()
-                .FirstOrDefaultAsync(d => d.BusinessId == businessId, cancellationToken).ConfigureAwait(false))?.PullCursor;
+            var info = await db.DeviceInfo.AsNoTracking()
+                .FirstOrDefaultAsync(d => d.BusinessId == businessId, cancellationToken).ConfigureAwait(false);
+            deviceId = info?.DeviceId is { Length: > 0 } id ? id : null; // activity log label on the server
+            if (seen is null)
+            {
+                cursor = info?.PullCursor;
+            }
         }
 
         while (true)
         {
-            var request = new SyncPullRequest { Cursor = cursor, Limit = BatchSize };
+            var request = new SyncPullRequest { Cursor = cursor, Limit = BatchSize, DeviceId = deviceId };
             var page = await WithRateLimitWaitAsync(ct => _api.PullAsync(request, ct), cancellationToken).ConfigureAwait(false);
             seen?.Add(page);
             var last = !page.HasMore;

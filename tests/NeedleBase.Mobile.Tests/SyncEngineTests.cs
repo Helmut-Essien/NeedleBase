@@ -65,6 +65,20 @@ public class SyncEngineTests
     }
 
     [Fact]
+    public async Task PushAndPull_CarryThisPhonesDeviceId_ForTheActivityLog()
+    {
+        var server = new FakeSyncServer();
+        await using var phone = await DeviceAsync();
+        await AddCustomerAsync(phone, "Ama Owusu");
+        await Engine(phone, server).RunAsync(Biz);
+
+        var id = Assert.Single(server.PushDevices);
+        Assert.False(string.IsNullOrEmpty(id));
+        Assert.All(server.PullDevices, d => Assert.Equal(id, d));
+        Assert.NotEmpty(server.PullDevices);
+    }
+
+    [Fact]
     public async Task TransientFailure_KeepsQueue()
     {
         var server = new FakeSyncServer { FailWith = new SyncTransientException("offline") };
@@ -182,10 +196,13 @@ public class SyncEngineTests
         public Dictionary<string, SyncCustomerDto> Customers { get; } = new();
         public List<SyncDeletedItemDto> Deleted { get; } = new();
         public Exception? FailWith { get; set; }
+        public List<string?> PushDevices { get; } = new();
+        public List<string?> PullDevices { get; } = new();
 
         public Task<SyncPushResponse> PushAsync(SyncPushRequest request, CancellationToken cancellationToken)
         {
             if (FailWith is not null) throw FailWith;
+            PushDevices.Add(request.DeviceId);
             var results = new List<SyncPushResult>();
             foreach (var op in request.Operations)
             {
@@ -215,6 +232,7 @@ public class SyncEngineTests
         public Task<SyncPullResponse> PullAsync(SyncPullRequest request, CancellationToken cancellationToken)
         {
             if (FailWith is not null) throw FailWith;
+            PullDevices.Add(request.DeviceId);
             return Task.FromResult(new SyncPullResponse(
                 Customers.Values.ToList(), [], [], Deleted.ToList(), "c", false, DateTimeOffset.UtcNow));
         }
