@@ -13,7 +13,8 @@ public sealed record OrderListItemDto(
     DateOnly? DueDate,
     decimal TotalAmount,
     DateTimeOffset DateModifiedUtc,
-    bool IsOverdue)
+    bool IsOverdue,
+    string? AssignedToUserId = null)
 {
     public string StatusDisplay => OrderStatus.DisplayName(Status);
 
@@ -153,6 +154,19 @@ public sealed class UpdateOrderRequest
 
     [MaxLength(FieldLimits.Notes)]
     public string? Notes { get; set; }
+}
+
+/// <summary>Order list sort keys (query <c>sort</c>).</summary>
+public static class OrderListSort
+{
+    /// <summary>Newest first (default).</summary>
+    public const string Newest = "new";
+
+    /// <summary>Earliest due date first, undated last (production board).</summary>
+    public const string Due = "due";
+
+    /// <summary>Status filter value meaning "not Collected or Cancelled".</summary>
+    public const string OpenFilter = "open";
 }
 
 public sealed class UpdateOrderStatusRequest

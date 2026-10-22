@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NeedleBase.Api.Http;
@@ -27,9 +28,11 @@ public sealed class OrdersController : ControllerBase
         [FromQuery] int pageSize = PaginationDefaults.DefaultPageSize,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
+        [FromQuery, StringLength(16)] string? sort = null,
+        [FromQuery, StringLength(64)] string? assignedTo = null,
         CancellationToken cancellationToken = default)
     {
-        var result = await _orders.ListAsync(page, pageSize, search, status, cancellationToken);
+        var result = await _orders.ListAsync(page, pageSize, search, status, sort, assignedTo, cancellationToken);
         return Ok(result);
     }
 

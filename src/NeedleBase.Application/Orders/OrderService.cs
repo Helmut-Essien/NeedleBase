@@ -20,11 +20,21 @@ public sealed class OrderService : IOrderService
         _clock = clock;
     }
 
+    public Task<PaginatedResponse<OrderListItemDto>> ListAsync(
+        int page,
+        int pageSize,
+        string? search,
+        string? status,
+        CancellationToken cancellationToken = default) =>
+        ListAsync(page, pageSize, search, status, null, null, cancellationToken);
+
     public async Task<PaginatedResponse<OrderListItemDto>> ListAsync(
         int page,
         int pageSize,
         string? search,
         string? status,
+        string? sort,
+        string? assignedTo,
         CancellationToken cancellationToken = default)
     {
         EnsureBusiness();
@@ -36,7 +46,11 @@ public sealed class OrderService : IOrderService
             join c in _db.Customers.AsNoTracking() on o.CustomerId equals c.Id
             select new { Order = o, CustomerName = c.Name, CustomerPhone = c.Phone };
 
-        if (!string.IsNullOrWhiteSpace(status))
+        if (string.Equals(status?.Trim(), OrderListSort.OpenFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(x => x.Order.Status != OrderStatus.Collected && x.Order.Status != OrderStatus.Cancelled);
+        }
+        else if (!string.IsNullOrWhiteSpace(status))
         {
             var statusFilter = status.Trim();
             query = query.Where(x => x.Order.Status == statusFilter);
@@ -52,10 +66,22 @@ public sealed class OrderService : IOrderService
                 matching.Contains(x.Order.CustomerId));
         }
 
+        if (!string.IsNullOrWhiteSpace(assignedTo))
+        {
+            var assignee = assignedTo.Trim().Equals("me", StringComparison.OrdinalIgnoreCase)
+                ? _currentUser.UserId
+                : assignedTo.Trim();
+            // No caller id ("me" without a user) must match nothing, not orders stored with an empty assignee.
+            query = string.IsNullOrEmpty(assignee)
+                ? query.Where(_ => false)
+                : query.Where(x => x.Order.AssignedToUserId == assignee);
+        }
+
         var total = await query.CountAsync(cancellationToken).ConfigureAwait(false);
-        var rows = await query
-            .OrderByDescending(x => x.Order.CreatedAtUtc)
-            .ThenByDescending(x => x.Order.Id)
+        var ordered = string.Equals(sort?.Trim(), OrderListSort.Due, StringComparison.OrdinalIgnoreCase)
+            ? query.OrderBy(x => x.Order.DueDate == null).ThenBy(x => x.Order.DueDate).ThenBy(x => x.Order.Id)
+            : query.OrderByDescending(x => x.Order.CreatedAtUtc).ThenByDescending(x => x.Order.Id);
+        var rows = await ordered
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(x => new
@@ -67,7 +93,8 @@ public sealed class OrderService : IOrderService
                 x.Order.Status,
                 x.Order.DueDate,
                 x.Order.TotalAmount,
-                x.Order.DateModifiedUtc
+                x.Order.DateModifiedUtc,
+                x.Order.AssignedToUserId
             })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
@@ -81,7 +108,8 @@ public sealed class OrderService : IOrderService
             x.DueDate,
             x.TotalAmount,
             x.DateModifiedUtc,
-            OrderStatus.IsOverdue(x.Status, x.DueDate, today))).ToList();
+            OrderStatus.IsOverdue(x.Status, x.DueDate, today),
+            x.AssignedToUserId)).ToList();
 
         return PaginatedResponse<OrderListItemDto>.Create(items, total, page, pageSize);
     }
@@ -275,6 +303,23 @@ public sealed class OrderService : IOrderService
         CancellationToken cancellationToken = default)
     {
         EnsureBusiness();
+        // Row lock first: without it two PATCHes carrying the same baseModifiedUtc (a double submit, or web + another
+        // device) both passed the stale check and the later silently overwrote the earlier.
+        if (_db.HasActiveTransaction)
+        {
+            return await UpdateStatusLockedAsync(id, request, cancellationToken).ConfigureAwait(false);
+        }
+
+        return await _db.InTransactionAsync(async ct =>
+        {
+            var r = await UpdateStatusLockedAsync(id, request, ct).ConfigureAwait(false);
+            return (r, r.Error == OrderError.None);
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<OrderResult> UpdateStatusLockedAsync(string id, UpdateOrderStatusRequest request, CancellationToken cancellationToken)
+    {
+        await _db.LockOrderAsync(id, cancellationToken).ConfigureAwait(false);
         var entity = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id, cancellationToken)
             .ConfigureAwait(false);
         if (entity is null)

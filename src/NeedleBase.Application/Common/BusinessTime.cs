@@ -16,6 +16,13 @@ public static class BusinessTime
     /// <summary>The instant in Accra time (for display: receipts, payment dates).</summary>
     public static DateTimeOffset ToLocal(DateTimeOffset utc) => TimeZoneInfo.ConvertTime(utc, Zone);
 
+    /// <summary>The UTC instant an Accra calendar day starts (for "received today" style ranges).</summary>
+    public static DateTimeOffset StartOfDayUtc(DateOnly day)
+    {
+        var local = day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified);
+        return new DateTimeOffset(local, Zone.GetUtcOffset(local)).ToUniversalTime();
+    }
+
     private static TimeZoneInfo Resolve()
     {
         try
