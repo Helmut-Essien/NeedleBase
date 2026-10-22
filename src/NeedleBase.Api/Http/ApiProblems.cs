@@ -67,6 +67,7 @@ public static class ApiProblems
             OrderError.AssigneeInvalid => (StatusCodes.Status400BadRequest, OrderErrorMessages.AssigneeInvalid, "Assignee not on this team"),
             OrderError.TotalMismatch => (StatusCodes.Status400BadRequest, OrderErrorMessages.TotalMismatch, "Total doesn't match"),
             OrderError.Stale => (StatusCodes.Status409Conflict, NeedleBase.Application.Common.StaleUpdate.Code, "Changed by someone else"),
+            OrderError.HasPayments => (StatusCodes.Status409Conflict, OrderErrorMessages.HasPayments, "Order has payments"),
             _ => (StatusCodes.Status400BadRequest, OrderErrorMessages.Validation, "Check the order details")
         };
 
@@ -89,6 +90,21 @@ public static class ApiProblems
         NeedleBase.Application.Common.RecordError.Stale => StaleUpdate(ctx),
         _ => SaveFailed(ctx, saveFailedCode, what)
     };
+
+    /// <summary>Payment errors: status + stable code + the shared friendly copy.</summary>
+    public static ObjectResult ForPayment(HttpContext ctx, NeedleBase.Application.Common.RecordError error)
+    {
+        var status = error switch
+        {
+            NeedleBase.Application.Common.RecordError.PaymentNotFound or NeedleBase.Application.Common.RecordError.OrderNotFound => StatusCodes.Status404NotFound,
+            NeedleBase.Application.Common.RecordError.PaymentConflict or NeedleBase.Application.Common.RecordError.PaymentOrderLocked
+                or NeedleBase.Application.Common.RecordError.Stale => StatusCodes.Status409Conflict,
+            NeedleBase.Application.Common.RecordError.PaymentForbidden => StatusCodes.Status403Forbidden,
+            _ => StatusCodes.Status400BadRequest
+        };
+        var code = RecordErrorMessages.Code(error);
+        return Create(ctx, status, code, "Couldn't save the payment", RecordErrorMessages.For(error));
+    }
 
     public static ObjectResult StaleUpdate(HttpContext ctx) =>
         Create(ctx, StatusCodes.Status409Conflict, NeedleBase.Application.Common.StaleUpdate.Code, "Changed by someone else",
