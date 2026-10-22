@@ -91,6 +91,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<MeasurementProfile> MeasurementProfiles => Set<MeasurementProfile>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
+    public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<DeletedItem> DeletedItems => Set<DeletedItem>();
     public DbSet<SyncState> SyncStates => Set<SyncState>();
 
@@ -170,6 +171,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
                 await Database.ExecuteSqlRawAsync($"UPDATE \"Customers\" SET \"SyncTxId\" = {stamp}", ct).ConfigureAwait(false);
                 await Database.ExecuteSqlRawAsync($"UPDATE \"MeasurementProfiles\" SET \"SyncTxId\" = {stamp}", ct).ConfigureAwait(false);
                 await Database.ExecuteSqlRawAsync($"UPDATE \"Orders\" SET \"SyncTxId\" = {stamp}", ct).ConfigureAwait(false);
+                await Database.ExecuteSqlRawAsync($"UPDATE \"Payments\" SET \"SyncTxId\" = {stamp}", ct).ConfigureAwait(false);
                 await Database.ExecuteSqlRawAsync($"UPDATE \"DeletedItems\" SET \"SyncTxId\" = {stamp}", ct).ConfigureAwait(false);
                 await Database.ExecuteSqlRawAsync(
                     "UPDATE \"SyncState\" SET \"Epoch\" = \"Epoch\" + 1, \"HighWaterTx\" = pg_snapshot_xmin(pg_current_snapshot())::text::bigint WHERE \"Id\" = 1",
@@ -231,6 +233,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
                 MeasurementProfile => SyncEntityType.Measurement,
                 Order => SyncEntityType.Order,
                 OrderLine => SyncEntityType.OrderLine,
+                Payment => SyncEntityType.Payment,
                 _ => null
             };
             if (type is null)
@@ -436,8 +439,39 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
         });
 
+        builder.Entity<Payment>(e =>
+        {
+            e.ToTable("Payments");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.OrderId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.CustomerId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.Method).HasMaxLength(Domain.Common.FieldLimits.PaymentMethod).IsRequired();
+            e.Property(x => x.Note).HasMaxLength(Domain.Common.FieldLimits.Notes);
+            e.Property(x => x.VoidReason).HasMaxLength(Domain.Common.FieldLimits.Notes);
+            e.HasIndex(x => new { x.BusinessId, x.OrderId });
+            e.HasIndex(x => new { x.BusinessId, x.RecordedAtUtc });
+            e.HasOne<Business>()
+                .WithMany()
+                .HasForeignKey(x => x.BusinessId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // Money records are never removed with their order/customer: the services refuse those deletes,
+            // and the database backs that up (NO ACTION, checked at statement end so a business delete still cascades).
+            e.HasOne<Order>()
+                .WithMany()
+                .HasForeignKey(x => x.OrderId)
+                .OnDelete(DeleteBehavior.NoAction);
+            e.HasOne<Customer>()
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.NoAction);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
+
         // Sync change stamp (shadow; server clock, µs precision). Existing rows get now() on migration.
-        foreach (var synced in new[] { typeof(Customer), typeof(MeasurementProfile), typeof(Order) })
+        foreach (var synced in new[] { typeof(Customer), typeof(MeasurementProfile), typeof(Order), typeof(Payment) })
         {
             builder.Entity(synced).Property<DateTimeOffset>(SyncTime.ModifiedColumn).HasDefaultValueSql("now()");
             builder.Entity(synced).HasIndex("BusinessId", SyncTime.ModifiedColumn, "Id");
