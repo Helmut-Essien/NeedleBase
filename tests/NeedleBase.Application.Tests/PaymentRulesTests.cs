@@ -50,6 +50,8 @@ public class PaymentRulesTests
         Assert.Equal("GH₵ 1,050.00 left", dto.BalanceDisplay);
         Assert.Equal("Paid in full", (dto with { PaidAmount = 1250m }).BalanceDisplay);
         Assert.Equal("GH₵ 50.00 overpaid", (dto with { PaidAmount = 1300m }).BalanceDisplay);
+        Assert.Equal("Order cancelled", (dto with { OrderStatus = OrderStatus.Cancelled, PaidAmount = 0m }).BalanceDisplay);
+        Assert.Equal("Order cancelled · GH₵ 200.00 recorded", (dto with { OrderStatus = OrderStatus.Cancelled }).BalanceDisplay);
     }
 
     [Theory]
@@ -76,5 +78,25 @@ public class PaymentRulesTests
 
         var beyond = new SyncCursor { Phase = SyncCursor.PhaseLast + 1, Cap = 10, IssuedTicks = 1 };
         Assert.False(SyncCursor.TryDecode(beyond.Encode(), out _));
+    }
+
+    [Theory]
+    [InlineData("Cash", null, "Cash", null)]
+    [InlineData(" MoMo ", "  ", "MoMo", null)]
+    [InlineData("Card", null, "Other", "[Card]")]
+    [InlineData("Card", "ref 9", "Other", "ref 9 [Card]")]
+    [InlineData("", null, "Other", "[unknown]")]
+    public void NormalizeSyncMethod_KeepsMoneyWithItsLabel(string method, string? note, string expectedMethod, string? expectedNote)
+    {
+        var (m, n) = PaymentRules.NormalizeSyncMethod(method, note);
+        Assert.Equal(expectedMethod, m);
+        Assert.Equal(expectedNote, n);
+    }
+
+    [Fact]
+    public void NormalizeSyncMethod_NeverExceedsTheNoteLimit()
+    {
+        var (_, n) = PaymentRules.NormalizeSyncMethod("Crypto", new string('x', 2000));
+        Assert.Equal(NeedleBase.Domain.Common.FieldLimits.Notes, n!.Length);
     }
 }

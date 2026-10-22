@@ -74,8 +74,13 @@ public class PaymentApiTests : IClassFixture<NeedleBaseApiFactory>
         var orderId = await CreateOrderAsync(token, 100m);
 
         var over = await RecordAsync(token, orderId, 100.01m, PaymentMethod.Cash);
-        Assert.Equal(HttpStatusCode.BadRequest, over.Status);
+        Assert.Equal(HttpStatusCode.Conflict, over.Status); // state conflict, like PAYMENT_ORDER_LOCKED
         Assert.Equal("PAYMENT_EXCEEDS_BALANCE", over.Code);
+        using (var raw = await SendAsync(HttpMethod.Post, $"/api/orders/{orderId}/payments", token,
+                   new RecordPaymentRequest { Amount = 100.01m, Method = PaymentMethod.Cash }))
+        {
+            Assert.Contains("Only GH₵ 100.00 is left", await raw.Content.ReadAsStringAsync()); // the useful detail survives
+        }
 
         var cents = await RecordAsync(token, orderId, 10.005m, PaymentMethod.Cash);
         Assert.Equal(HttpStatusCode.BadRequest, cents.Status);
@@ -196,6 +201,149 @@ public class PaymentApiTests : IClassFixture<NeedleBaseApiFactory>
 
         var managerToken = await TokenWithRoleAsync(ownerToken, businessId, BusinessRole.Manager);
         Assert.Equal(HttpStatusCode.Created, (await RecordAsync(managerToken, orderId, 10m, PaymentMethod.Cash)).Status);
+    }
+
+    [Fact]
+    public async Task ConcurrentRecords_NeverOverpay_AndSameIdRace_StoresOnce()
+    {
+        var (token, _) = await RegisterAsync("Race");
+        var orderId = await CreateOrderAsync(token, 300m);
+
+        // Eight taps/devices at once, each for GH₵ 100 on a GH₵ 300 order: exactly three fit.
+        var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => RecordAsync(token, orderId, 100m, PaymentMethod.Cash)));
+        Assert.Equal(3, results.Count(r => r.Status == HttpStatusCode.Created));
+        Assert.All(results.Where(r => r.Status != HttpStatusCode.Created), r => Assert.Equal("PAYMENT_EXCEEDS_BALANCE", r.Code));
+        Assert.Equal(0m, (await GetOrderPaymentsAsync(token, orderId)).Balance);
+
+        // The same payment id sent five times at once (double tap + retries): one payment.
+        var other = await CreateOrderAsync(token, 300m);
+        var id = IdGenerator.NewId();
+        var same = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => RecordAsync(token, other, 50m, PaymentMethod.MoMo, id)));
+        Assert.All(same, r => Assert.Equal(id, r.Payment?.Id));
+        var money = await GetOrderPaymentsAsync(token, other);
+        Assert.Single(money.Payments);
+        Assert.Equal(250m, money.Balance);
+    }
+
+    [Fact]
+    public async Task DeleteRacingRecord_NeverFailsWith500_AndNeverOrphansMoney()
+    {
+        var (token, _) = await RegisterAsync("DelRace");
+        for (var i = 0; i < 5; i++)
+        {
+            var orderId = await CreateOrderAsync(token, 100m);
+            var record = RecordAsync(token, orderId, 50m, PaymentMethod.Cash);
+            var delete = SendAsync(HttpMethod.Delete, $"/api/orders/{orderId}", token);
+            await Task.WhenAll(record, delete);
+            using var deleted = await delete;
+            var recorded = await record;
+            Assert.NotEqual(HttpStatusCode.InternalServerError, deleted.StatusCode);
+            Assert.NotEqual(HttpStatusCode.InternalServerError, recorded.Status);
+            // Exactly one wins: a payment and a kept order, or a deleted order and no payment.
+            Assert.True(recorded.Status == HttpStatusCode.Created ^ deleted.IsSuccessStatusCode,
+                $"record {recorded.Status}, delete {deleted.StatusCode}");
+        }
+    }
+
+    [Fact]
+    public async Task FutureDate_IsRefusedOnRest_AndDatedNowOnSync()
+    {
+        var (token, _) = await RegisterAsync("Dates");
+        var orderId = await CreateOrderAsync(token, 500m);
+        using (var future = await SendAsync(HttpMethod.Post, $"/api/orders/{orderId}/payments", token,
+                   new RecordPaymentRequest { Amount = 10m, Method = PaymentMethod.Cash, RecordedAtUtc = DateTimeOffset.UtcNow.AddDays(3) }))
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, future.StatusCode);
+            Assert.Equal("PAYMENT_INVALID", await CodeAsync(future));
+        }
+
+        var detail = await GetOrderAsync(token, orderId);
+        var skewed = Payment(IdGenerator.NewId(), orderId, detail.CustomerId, 20m) with { RecordedAtUtc = DateTimeOffset.UtcNow.AddYears(1) };
+        var applied = await PushAsync(token, PaymentOp(skewed));
+        Assert.Equal(SyncOpStatus.Applied, applied.Status);
+        Assert.True(applied.Payment!.RecordedAtUtc <= DateTimeOffset.UtcNow.AddMinutes(1));
+        Assert.Equal(SyncOpStatus.Applied, (await PushAsync(token, PaymentOp(skewed))).Status); // replay still matches
+    }
+
+    [Fact]
+    public async Task SyncPush_UnknownMethodFromNewerApp_IsKeptAsOther_AndReplayMatches()
+    {
+        var (token, _) = await RegisterAsync("NewMethod");
+        var orderId = await CreateOrderAsync(token, 500m);
+        var detail = await GetOrderAsync(token, orderId);
+        var card = Payment(IdGenerator.NewId(), orderId, detail.CustomerId, 30m) with { Method = "Card", Note = "terminal 4" };
+        var applied = await PushAsync(token, PaymentOp(card));
+        Assert.Equal(SyncOpStatus.Applied, applied.Status);
+        Assert.Equal(PaymentMethod.Other, applied.Payment!.Method);
+        Assert.Equal("terminal 4 [Card]", applied.Payment.Note);
+        Assert.Equal(SyncOpStatus.Applied, (await PushAsync(token, PaymentOp(card))).Status);
+    }
+
+    [Fact]
+    public async Task ConcurrentSyncPush_SameIdDifferentAmount_OneApplied_OtherIsMismatchNotRejected()
+    {
+        var (token, _) = await RegisterAsync("PushRace");
+        var orderId = await CreateOrderAsync(token, 500m);
+        var detail = await GetOrderAsync(token, orderId);
+        var id = IdGenerator.NewId();
+        var results = await Task.WhenAll(
+            PushAsync(token, PaymentOp(Payment(id, orderId, detail.CustomerId, 10m))),
+            PushAsync(token, PaymentOp(Payment(id, orderId, detail.CustomerId, 20m))));
+        Assert.Single(results, r => r.Status == SyncOpStatus.Applied);
+        var other = Assert.Single(results, r => r.Status != SyncOpStatus.Applied);
+        Assert.Equal(SyncOpStatus.Conflict, other.Status);
+        Assert.Equal(SyncErrorCodes.PaymentMismatch, other.Code);
+    }
+
+    [Fact]
+    public async Task ConcurrentVoids_FirstReasonWins_AndStaysOne()
+    {
+        var (token, _) = await RegisterAsync("VoidRace");
+        var orderId = await CreateOrderAsync(token, 500m);
+        var paymentId = (await RecordAsync(token, orderId, 100m, PaymentMethod.Cash)).Payment!.Id;
+        var voids = await Task.WhenAll(Enumerable.Range(0, 6).Select(i => VoidAsync(token, paymentId, $"reason {i}")));
+        Assert.Single(voids.Select(v => v.VoidReason).Distinct());
+        Assert.Single(voids.Select(v => v.VoidedAtUtc).Distinct());
+        Assert.Equal(500m, (await GetOrderPaymentsAsync(token, orderId)).Balance);
+    }
+
+    [Fact]
+    public async Task CancelledOrder_WithPayments_ShowsRecordedNotLeft()
+    {
+        var (token, _) = await RegisterAsync("CancelCopy");
+        var orderId = await CreateOrderAsync(token, 800m);
+        Assert.Equal(HttpStatusCode.Created, (await RecordAsync(token, orderId, 200m, PaymentMethod.Cash)).Status);
+        await SetStatusAsync(token, orderId, OrderStatus.Cancelled);
+        var money = await GetOrderPaymentsAsync(token, orderId);
+        Assert.Equal("Order cancelled · GH₵ 200.00 recorded", money.BalanceDisplay);
+        Assert.Equal(600m, money.Balance); // the number stays honest; refunds are out of scope
+    }
+
+    [Fact]
+    public async Task SyncPull_Tailor_GetsNoPayments_AndAPromotedCursorPullsThemAll()
+    {
+        var (ownerToken, businessId) = await RegisterAsync("PullRole");
+        var orderId = await CreateOrderAsync(ownerToken, 500m);
+        Assert.Equal(HttpStatusCode.Created, (await RecordAsync(ownerToken, orderId, 120m, PaymentMethod.Cash)).Status);
+        var tailorToken = await TokenWithRoleAsync(ownerToken, businessId, BusinessRole.Tailor);
+
+        string? cursor = null;
+        SyncPullResponse page;
+        var tailorSaw = 0;
+        do
+        {
+            page = await PullAsync(tailorToken, cursor, 200);
+            tailorSaw += page.Payments?.Count ?? 0;
+            Assert.Contains(page.Orders, o => o.Id == orderId);
+            cursor = page.Cursor;
+        }
+        while (page.HasMore);
+        Assert.Equal(0, tailorSaw);
+
+        // Same phone, now a manager: continuing from the tailor's cursor still delivers the older payment.
+        var managerToken = await TokenWithRoleAsync(ownerToken, businessId, BusinessRole.Manager);
+        var next = await PullAsync(managerToken, cursor, 200);
+        Assert.Single(next.Payments ?? [], p => p.OrderId == orderId);
     }
 
     // ------------------------------------------------------------------ sync
@@ -352,11 +500,22 @@ public class PaymentApiTests : IClassFixture<NeedleBaseApiFactory>
 
     private async Task<SyncPushResult> PushAsync(string token, SyncPushOperation op)
     {
-        using var request = Authorized(HttpMethod.Post, "/api/sync/push", token, new SyncPushRequest { Operations = [op] });
-        using var response = await _client.SendAsync(request);
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<SyncPushResponse>(JsonOptions);
-        return Assert.Single(body!.Results);
+        for (var attempt = 0; ; attempt++)
+        {
+            using var request = Authorized(HttpMethod.Post, "/api/sync/push", token, new SyncPushRequest { Operations = [op] });
+            using var response = await _client.SendAsync(request);
+            if (response.StatusCode == HttpStatusCode.ServiceUnavailable && attempt < 5 && await CodeAsync(response) == SyncErrorCodes.Maintenance)
+            {
+                // Another test bumped the sync epoch (SYNC_MAINTENANCE): the real client retries too.
+                await NeedleBase.Infrastructure.Persistence.ApplicationDbContext.WaitForEpochBumpAsync().WaitAsync(TimeSpan.FromSeconds(60));
+                await Task.Delay(50);
+                continue;
+            }
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var body = await response.Content.ReadFromJsonAsync<SyncPushResponse>(JsonOptions);
+            return Assert.Single(body!.Results);
+        }
     }
 
     private async Task<SyncPullResponse> PullAsync(string token, string? cursor, int limit)
@@ -365,7 +524,7 @@ public class PaymentApiTests : IClassFixture<NeedleBaseApiFactory>
         {
             using var request = Authorized(HttpMethod.Post, "/api/sync/pull", token, new SyncPullRequest { Cursor = cursor, Limit = limit });
             using var response = await _client.SendAsync(request);
-            if (response.StatusCode == HttpStatusCode.ServiceUnavailable && attempt < 50)
+            if (response.StatusCode == HttpStatusCode.ServiceUnavailable && attempt < 5 && await CodeAsync(response) == SyncErrorCodes.Maintenance)
             {
                 await NeedleBase.Infrastructure.Persistence.ApplicationDbContext.WaitForEpochBumpAsync().WaitAsync(TimeSpan.FromSeconds(60));
                 await Task.Delay(50);

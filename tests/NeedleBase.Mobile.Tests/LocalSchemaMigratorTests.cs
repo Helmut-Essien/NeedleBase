@@ -108,6 +108,39 @@ public class LocalSchemaMigratorTests
     }
 
     [Fact]
+    public async Task V7DatabaseWithRows_UpgradesToV8_AddsPayments_KeepsData()
+    {
+        var path = TempDb();
+        await using (var db = Create(path))
+        {
+            await LocalSchemaMigrator.MigrateAsync(db);
+        }
+
+        // A v7 install (before Slice 5) that already holds a customer.
+        using (var connection = new SqliteConnection($"Data Source={path};Pooling=False"))
+        {
+            connection.Open();
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = """
+                DROP TABLE "Payments";
+                INSERT INTO "Customers" ("Id","BusinessId","Name","Phone","Notes","PhotoRef","CreatedAtUtc","DateModifiedUtc","SearchName","PhoneDigits")
+                VALUES ('01V7ROW0000000000000000001','biz','Efua Mensah','+233245550123',NULL,NULL,'2026-01-01 00:00:00+00:00','2026-01-01 00:00:00+00:00',' efua mensah','245550123');
+                PRAGMA user_version = 7;
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        await using (var db = Create(path))
+        {
+            Assert.Equal(8, await LocalSchemaMigrator.MigrateAsync(db));
+            Assert.Equal("Efua Mensah", (await db.Customers.SingleAsync()).Name);
+            Assert.Equal(0, await db.Payments.CountAsync());
+        }
+
+        Assert.Equal(Normalize(DescribeSchema(FreshPath())), Normalize(DescribeSchema(path)));
+    }
+
+    [Fact]
     public async Task KeyRecompute_LargeBook_IsQuick()
     {
         const int rows = 20_000;

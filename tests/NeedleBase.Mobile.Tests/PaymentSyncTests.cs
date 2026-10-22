@@ -288,6 +288,13 @@ public class PaymentSyncTests
     [InlineData("1,200.00", 1200)]
     [InlineData("GH₵ 75", 75)]
     [InlineData(" 0.01 ", 0.01)]
+    [InlineData("10,50", 10.5)]
+    [InlineData("1,000", 1000)]
+    [InlineData("12,500.75", 12500.75)]
+    [InlineData("GH¢75", 75)]
+    [InlineData("₵ 20.5", 20.5)]
+    [InlineData("ghs 40", 40)]
+    [InlineData("50000000", 50000000)]
     public void TryParseAmount_AcceptsCediInput(string text, double expected) =>
         Assert.True(RecordPaymentViewModel.TryParseAmount(text, out var amount) && amount == (decimal)expected);
 
@@ -295,6 +302,11 @@ public class PaymentSyncTests
     [InlineData("")]
     [InlineData("abc")]
     [InlineData("-5")]
+    [InlineData("1.000")]
+    [InlineData("1,00,000")]
+    [InlineData("10.5.5")]
+    [InlineData("12.")]
+    [InlineData("GH₵")]
     public void TryParseAmount_RejectsJunk(string text) => Assert.False(RecordPaymentViewModel.TryParseAmount(text, out _));
 
     [Fact]
@@ -314,6 +326,132 @@ public class PaymentSyncTests
         Assert.Contains("Balance: GH₵ 500.00", text);
         Assert.Contains("Recorded on this device; not yet synced.", text);
         Assert.DoesNotContain("confirmed", text, StringComparison.OrdinalIgnoreCase); // never looks provider-confirmed
+    }
+
+    [Theory]
+    [InlineData("10.005")]
+    [InlineData("50000000.01")]
+    public void TryParseAmount_NeverRounds_TheAmountRuleRejects(string text) =>
+        Assert.True(!RecordPaymentViewModel.TryParseAmount(text, out var amount) || NeedleBase.Domain.Entities.Payment.CheckAmount(amount) is not null);
+
+    [Fact]
+    public async Task Receipt_NeverIncludesTheInternalNote()
+    {
+        await using var device = await DeviceAsync();
+        var orderId = await AddOrderAsync(device, 800m);
+        var payments = device.GetRequiredService<IPaymentLocalService>();
+        var request = Request(100m, PaymentMethod.MoMo);
+        request.Note = "MoMo ref 0245550123 - staff check";
+        var id = (await payments.RecordAsync(Biz, orderId, request)).Value!.Id;
+        var text = (await payments.GetReceiptAsync(Biz, id))!.ToShareText("Ama Stitches");
+        Assert.DoesNotContain("0245550123", text);
+        Assert.DoesNotContain("Note", text);
+    }
+
+    [Fact]
+    public async Task PurgeHidden_DropsSyncedCopies_KeepsQueuedMoney_AndAsksForResync()
+    {
+        await using var device = await DeviceAsync();
+        var orderId = await AddOrderAsync(device, 800m);
+        var payments = device.GetRequiredService<IPaymentLocalService>();
+        var synced = (await payments.RecordAsync(Biz, orderId, Request(100m, PaymentMethod.Cash))).Value!.Id;
+        var queued = (await payments.RecordAsync(Biz, orderId, Request(50m, PaymentMethod.Cash))).Value!.Id;
+        await using (var scope = device.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+            await db.SyncQueue.Where(q => q.EntityType == SyncEntityType.Payment && q.EntityId == synced).ExecuteDeleteAsync();
+            await db.Payments.Where(p => p.Id == synced)
+                .ExecuteUpdateAsync(u => u.SetProperty(p => EF.Property<bool>(p, LocalDbContext.ServerKnownColumn), true));
+            if (!await db.DeviceInfo.AnyAsync(d => d.BusinessId == Biz))
+            {
+                db.SuppressSyncQueue = true;
+                db.DeviceInfo.Add(new NeedleBase.Mobile.Data.Data.DeviceInfo { BusinessId = Biz, DeviceId = "device-1" });
+                await db.SaveChangesAsync();
+            }
+        }
+
+        Assert.Equal(1, await payments.PurgeHiddenAsync(Biz));
+        await using (var scope = device.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+            Assert.Equal([queued], await db.Payments.Select(p => p.Id).ToListAsync());
+            Assert.True((await db.DeviceInfo.SingleAsync(d => d.BusinessId == Biz)).ResyncPending);
+        }
+
+        Assert.Equal(0, await payments.PurgeHiddenAsync(Biz)); // nothing left to hide: no second resync
+    }
+
+    [Fact]
+    public async Task PurgeHidden_NeverDeletesAPaymentTheServerHasNotConfirmed()
+    {
+        await using var device = await DeviceAsync();
+        var orderId = await AddOrderAsync(device, 800m);
+        var payments = device.GetRequiredService<IPaymentLocalService>();
+        var id = (await payments.RecordAsync(Biz, orderId, Request(100m, PaymentMethod.Cash))).Value!.Id;
+        await using (var scope = device.CreateAsyncScope())
+        {
+            // Queue item lost (older build): the row is the only record of the money.
+            await scope.ServiceProvider.GetRequiredService<LocalDbContext>().SyncQueue.ExecuteDeleteAsync();
+        }
+
+        Assert.Equal(0, await payments.PurgeHiddenAsync(Biz));
+        Assert.NotNull(await payments.GetReceiptAsync(Biz, id));
+    }
+
+    [Fact]
+    public async Task PaymentsTab_RoleChange_IsNotServedFromCache()
+    {
+        await using var device = await DeviceAsync();
+        var orderId = await AddOrderAsync(device, 800m);
+        var payments = device.GetRequiredService<IPaymentLocalService>();
+        await payments.RecordAsync(Biz, orderId, Request(100m, PaymentMethod.Cash));
+        var auth = new RoleAuth(BusinessRole.Manager);
+        var vm = new PaymentsViewModel(payments, auth);
+        await vm.AppearAsync();
+        Assert.Single(vm.Items);
+
+        auth.Role = BusinessRole.Tailor; // role refreshed mid-session
+        await vm.AppearAsync();
+        Assert.Empty(vm.Items);
+        Assert.False(vm.CanManage);
+        Assert.True(vm.HasError);
+        vm.Disappear();
+    }
+
+    [Theory]
+    [InlineData(SyncEntityType.Payment, SyncErrorCodes.ParentDeleted, "Restore order", "its order was deleted")]
+    [InlineData(SyncEntityType.Order, SyncErrorCodes.DeleteRefused, "Restore order", "has payments recorded")]
+    [InlineData(SyncEntityType.Customer, SyncErrorCodes.DeleteRefused, "Restore customer", "has orders")]
+    [InlineData(SyncEntityType.Payment, SyncErrorCodes.PaymentMismatch, "Keep both", "Use theirs")]
+    public void SyncDetails_PaymentConflicts_HaveTheirOwnWords(string entity, string code, string primary, string expected)
+    {
+        var row = new SyncItemRow(new SyncQueueEntry("q1", entity, "x", "New", SyncQueueState.Conflict, null, code, false));
+        Assert.Equal(primary, row.PrimaryText);
+        Assert.Contains(expected, row.Subtitle + " " + row.SecondaryText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task OrderDetail_Balance_FollowsAVoidPulledWhileOpen()
+    {
+        await using var device = await DeviceAsync();
+        var orderId = await AddOrderAsync(device, 800m);
+        var payments = device.GetRequiredService<IPaymentLocalService>();
+        var id = (await payments.RecordAsync(Biz, orderId, Request(300m, PaymentMethod.Cash))).Value!.Id;
+        var vm = new OrderDetailViewModel(device.GetRequiredService<IOrderLocalService>(), new RoleAuth(BusinessRole.Owner), payments);
+        vm.ApplyQueryAttributesForTest(orderId);
+        await vm.RefreshPaymentsAsync();
+        await vm.AppearAsync();
+        Assert.Equal("GH₵ 500.00 left", vm.BalanceText);
+
+        await payments.VoidAsync(Biz, id, "entered twice"); // stands in for a pulled void
+        NeedleBase.Mobile.Data.Data.LocalDataVersion.NotifyChangedBySync(Biz);
+        for (var i = 0; i < 50 && vm.BalanceText != "GH₵ 800.00 left"; i++)
+        {
+            await Task.Delay(50);
+        }
+
+        Assert.Equal("GH₵ 800.00 left", vm.BalanceText);
+        vm.Disappear();
     }
 
     [Fact]
@@ -404,6 +542,8 @@ public class PaymentSyncTests
 
     private sealed class RoleAuth(string role) : NeedleBase.Mobile.Services.IAuthService
     {
+        public string Role { get; set; } = role;
+
         public Task<NeedleBase.Application.Contracts.Auth.AuthUserDto?> RegisterBusinessAsync(NeedleBase.Application.Contracts.Auth.RegisterBusinessRequest request, CancellationToken cancellationToken = default) => Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(null);
         public Task<NeedleBase.Application.Contracts.Auth.AuthUserDto?> LoginAsync(NeedleBase.Application.Contracts.Auth.LoginRequest request, CancellationToken cancellationToken = default) => Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(null);
         public Task<NeedleBase.Mobile.Services.TokenRefreshResult> RefreshAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -415,7 +555,7 @@ public class PaymentSyncTests
         public Task StoreSessionAsync(NeedleBase.Application.Contracts.Auth.AuthUserDto user) => Task.CompletedTask;
         public Task<string?> GetBusinessIdAsync() => Task.FromResult<string?>(Biz);
         public Task<NeedleBase.Application.Contracts.Auth.AuthUserDto?> GetCachedUserAsync() =>
-            Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(new("u1", "owner@ama-stitches.test", "Ama", "Owusu", Biz, "Ama Stitches", role));
+            Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(new("u1", "owner@ama-stitches.test", "Ama", "Owusu", Biz, "Ama Stitches", Role));
     }
 
     private sealed class Pages(params SyncPullResponse[] pages) : ISyncApi
