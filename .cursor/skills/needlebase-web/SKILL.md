@@ -33,8 +33,8 @@ Either way: page/components call typed HTTP services; business rules stay on Api
 
 ## Shell (from UI skill)
 
-**Planned (Slice 6):** persistent left sidebar: Dashboard, Customers, Measurements, Orders, Production, Payments, Staff, Reports, Settings. Top bar: search, SyncChip, profile.  
-**Today:** `_Layout` Bootstrap top navbar `navbar-expand-md` (Home, user name, Sign out) + footer Terms/Privacy links. Collapse breakpoint for all nav = `md` (768) + `_AuthLayout` for auth/legal. Shared partials: `_PasswordToggleButton`, `_ValidationScriptsPartial`.  
+**Built (Slice 6):** persistent left sidebar (Dashboard, Production, Orders, Customers, Payments, Activity). Still planned: Measurements, Staff, Reports, Settings, search, SyncChip.  
+**Today:** `_Layout` sidebar from md up, top bar + collapsible menu below md, user name + Sign out, footer Terms/Privacy links. Collapse breakpoint for all nav = `md` (768) + `_AuthLayout` for auth/legal. Shared partials: `_PasswordToggleButton`, `_ValidationScriptsPartial`.  
 Responsive, tables→cards, states, copy: [web-screens](../needlebase-uiux/web-screens.md), [content-and-states](../needlebase-uiux/content-and-states.md).
 
 Breakpoints: see [handoff](../needlebase-uiux/handoff.md).
@@ -91,3 +91,7 @@ Run **both** processes for local dev.
 - `/Activity` (Owner/Manager; nav link via `User.CanSeeActivity()`): filters person/kind/from/to/words + hidden `order`/`customer`, `p` paging, 50 per page, `_ActivityItem` partial with a no-JS `<details>` for field changes.
 - Order detail loads the last 20 entries in parallel (History panel, “See all” → `/Activity?order=`); a failed history call only hides the panel. Customers list has a History link (`/Activity?customer=`).
 - Both HttpClients send `X-NeedleBase-Client: web`; the Api client also forwards the browser IP (`ForwardClientIpHandler`).
+
+
+## Front-end performance and security rules
+See `needlebase-uiux/web-screens.md` § "Web front-end rules": same-origin assets only, CSP-safe (no inline script/style), `asp-append-version` + `defer` on every asset, double-submit guard via `site.js` `data-pending-text`, AA contrast tokens. Note: in Development `MapStaticAssets` sends `no-cache` and uncompressed files, so measure page weight on a publish build.

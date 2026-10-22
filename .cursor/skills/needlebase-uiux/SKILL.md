@@ -58,7 +58,7 @@ Customer registration → Measurements → Sewing order → Production tracking 
 |---|---------------|-----|
 | Job | Everyday tailor work | Business oversight |
 | Nav | Bottom 5 + New Order FAB | Left sidebar |
-| Built today | Auth, Home, Customers, Measurements, Orders (list/create/detail); Terms/Privacy; Payments placeholder | Auth, Index, Terms/Privacy (top navbar) |
+| Built today | Auth, Home, Customers, Measurements, Orders (list/create/detail); Terms/Privacy; Payments placeholder | Auth, Dashboard, Production, Orders (list/detail + status), Payments, Customers, Activity, Terms/Privacy (sidebar ≥768, top bar below) |
 | Offline | Full MVP offline required | Clear local-save/sync; do not claim full offline parity unless implemented |
 | Density | Touch-first, large tap targets | Tables, filters, drawers, keyboard |
 

@@ -77,7 +77,7 @@ Never invent keys (`Ink`, `Slate`, `Brand` do **not** exist). Add a token in Col
 | White on `#247A2B` (filled button) | 5.39:1 | **Primary button fill** ✅ |
 | White on `#1D6B23` (pressed/hover) | 6.6:1 | Pressed/hover fill ✅ |
 | `#2E9E36` on white / white on `#2E9E36` | 3.47:1 | Icons, selected tab, checkbox, accents, borders only — **not** text, links or button fills |
-| `#8A949A` (Gray500) on white | 3.1:1 | Non-text UI only (unselected tab icon, meta ≥18px); never body text or placeholder |
+| `#8A949A` (Gray500) on white | 3.1:1 | Non-text UI only (unselected tab icon, meta ≥18px); never body text or placeholder. Web uses `#69737A` (4.7:1) for `--nb-text-tertiary` because it carries meta/footer text |
 | `#DDE3DF` on white | 1.3:1 | Decorative borders only — never text, never sole state signal |
 
 Decision (resolved): filled primary buttons use `PrimaryDark`, with pressed/hover `PrimaryPressed`. Mobile: global `Button` style in Styles.xaml (Pressed VisualState); buttons must **not** set `BackgroundColor="{StaticResource Primary}"`. Web: `.nb-btn-primary` / `.btn-primary` in site.css.
@@ -88,7 +88,7 @@ Decision (resolved): filled primary buttons use `PrimaryDark`, with pressed/hove
 
 ## Typography
 
-**Family:** Inter (or equivalent highly legible modern sans). Fallback: system UI sans.
+**Family:** system UI sans on web (no web-font download: patchy networks, CSP same-origin). Mobile: Inter/OpenSans as bundled.
 
 | Token | Size / line | Weight | Use |
 |-------|-------------|--------|-----|

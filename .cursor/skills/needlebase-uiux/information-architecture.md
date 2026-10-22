@@ -116,7 +116,7 @@ Sidebar (planned S6): Dashboard · Customers · Measurements · Orders · Produc
 | 768–1199px | Collapsible icon sidebar or overlay drawer |
 | <768px | Hamburger drawer + stacked cards instead of wide tables (no bottom nav on web; bottom nav is the mobile app's) |
 
-**Current code:** web `_Layout` is a Bootstrap top navbar (`navbar-expand-md`, collapses below 768; links: Home + user + Sign out; footer links Terms/Privacy). The sidebar above is **[planned Slice 6]** and must also collapse at `md` (768), matching [handoff.md](handoff.md).
+**Current code:** web `_Layout` has the left sidebar from `md` (768) up (Dashboard, Production, Orders, Customers, Payments, Activity) and a top bar with a collapsible menu below 768; footer links Terms/Privacy. Remaining sidebar items are planned.
 
 ### Role-filtered web nav
 

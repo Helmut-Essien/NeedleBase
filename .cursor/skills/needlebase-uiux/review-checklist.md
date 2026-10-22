@@ -52,3 +52,10 @@ Run on every UI PR before asking for review. Evidence = a build with 0 errors/0 
 - [ ] Edit/wizard VMs with a save implement `IBackAware` (Android Back can't pop mid-save)
 - [ ] Money shown via en-GH formatted properties, not XAML `StringFormat`
 - [ ] Phone fields: `PhoneNumbers.Check` on new/changed numbers; duplicate number warns, never blocks
+
+
+## Web extras
+- [ ] No inline script/style (CSP); assets have `asp-append-version` and `defer`.
+- [ ] POST buttons have `data-pending-text`; double-click submits once.
+- [ ] Text colours meet 4.5:1 (no Primary `#2E9E36` or old `#8A949A` as text on white).
+- [ ] Empty pages show one message, no empty scaffolding; counts pluralised.
