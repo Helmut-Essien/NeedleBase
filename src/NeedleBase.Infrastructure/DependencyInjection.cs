@@ -108,8 +108,6 @@ public static class DependencyInjection
                 {
                     OnTokenValidated = async context =>
                     {
-                        var userManager = context.HttpContext.RequestServices
-                            .GetRequiredService<UserManager<ApplicationUser>>();
                         var userId = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
                             ?? context.Principal?.FindFirst("sub")?.Value;
                         if (string.IsNullOrEmpty(userId))
@@ -118,38 +116,50 @@ public static class DependencyInjection
                             return;
                         }
 
-                        var user = await userManager.FindByIdAsync(userId);
-                        if (user is null || !user.IsActive)
+                        var businessId = context.Principal?.FindFirst(ClaimNames.BusinessId)?.Value;
+                        var db = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+                        db.CurrentBusinessId = null;
+
+                        // Every request re-checks the account (deactivated, signed out everywhere, removed from the
+                        // business) against the database: one round trip instead of two (user row + membership).
+                        var aborted = context.HttpContext.RequestAborted;
+                        if (aborted.IsCancellationRequested)
+                        {
+                            context.NoResult(); // caller already gone (navigated away): nothing to check or log
+                            return;
+                        }
+
+                        var check = await db.Users.AsNoTracking()
+                            .Where(u => u.Id == userId)
+                            .Select(u => new
+                            {
+                                u.IsActive,
+                                u.SecurityStamp,
+                                Member = businessId != null && db.StaffMemberships.IgnoreQueryFilters()
+                                    .Any(m => m.UserId == userId && m.BusinessId == businessId && m.IsActive)
+                            })
+                            .FirstOrDefaultAsync(CancellationToken.None); // ~1 ms; a cancelled lookup only produced auth-failure noise
+                        if (check is null || !check.IsActive)
                         {
                             context.Fail("User inactive or missing.");
                             return;
                         }
 
                         var stamp = context.Principal?.FindFirst("security_stamp")?.Value;
-                        if (!string.IsNullOrEmpty(user.SecurityStamp) &&
-                            !string.Equals(stamp, user.SecurityStamp, StringComparison.Ordinal))
+                        if (!string.IsNullOrEmpty(check.SecurityStamp) &&
+                            !string.Equals(stamp, check.SecurityStamp, StringComparison.Ordinal))
                         {
                             context.Fail("Security stamp mismatch.");
                             return;
                         }
 
-                        var businessId = context.Principal?.FindFirst(ClaimNames.BusinessId)?.Value;
                         if (string.IsNullOrEmpty(businessId))
                         {
                             context.Fail("Missing business membership.");
                             return;
                         }
 
-                        var db = context.HttpContext.RequestServices
-                            .GetRequiredService<ApplicationDbContext>();
-                        db.CurrentBusinessId = null;
-                        var hasMembership = await db.StaffMemberships
-                            .IgnoreQueryFilters()
-                            .AsNoTracking()
-                            .AnyAsync(
-                                m => m.UserId == userId && m.BusinessId == businessId && m.IsActive,
-                                context.HttpContext.RequestAborted);
-                        if (!hasMembership)
+                        if (!check.Member)
                         {
                             context.Fail("Business membership inactive.");
                         }

@@ -119,7 +119,10 @@ public sealed class NeedleBaseApi : INeedleBaseApi
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            throw;
+            // The browser left (new click, Back, tab closed): normal, not an outage. Handled here, quietly, so it
+            // doesn't surface as an unhandled TaskCanceledException; the page renders for nobody and is dropped.
+            _logger.LogDebug("Api call {Method} {Url} cancelled: the browser closed the request", method, url);
+            return ApiResult<T>.Offline();
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {

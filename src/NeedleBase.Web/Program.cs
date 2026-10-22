@@ -140,6 +140,24 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
 
+// The browser/web app hung up (navigated away, clicked again, closed the tab): the request's own token cancels the
+// work and an OperationCanceledException unwinds. That is normal, not an error: answer 499 quietly (nobody reads it)
+// instead of an error log + debugger break. Real timeouts are not caught here (the caller is still waiting).
+app.Use(async (context, next) =>
+{
+    try
+    {
+        await next();
+    }
+    catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+    {
+        if (!context.Response.HasStarted)
+        {
+            context.Response.StatusCode = 499; // "client closed request"
+        }
+    }
+});
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");

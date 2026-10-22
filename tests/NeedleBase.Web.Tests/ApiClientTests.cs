@@ -128,12 +128,13 @@ public class ApiClientTests
     }
 
     [Fact]
-    public async Task Caller_cancellation_propagates()
+    public async Task Browser_hanging_up_is_handled_quietly_not_thrown()
     {
         using var cts = new CancellationTokenSource();
         cts.Cancel();
-        var (api, _, _) = Make(_ => throw new TaskCanceledException());
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => api.GetDashboardAsync(cts.Token));
+        var (api, _, _) = Make(_ => throw new TaskCanceledException("Operation canceled", new System.Net.Sockets.SocketException(125)));
+        var result = await api.GetDashboardAsync(cts.Token); // no unhandled TaskCanceledException
+        Assert.False(result.IsSuccess);
     }
 
     [Fact]
