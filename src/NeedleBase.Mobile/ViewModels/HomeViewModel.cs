@@ -51,6 +51,7 @@ public partial class HomeViewModel : BaseViewModel
         _customers = customers;
         _orders = orders;
         Title = "Home";
+        _live = new LiveListRefresh(() => LoadCommand.ExecuteAsync(null));
 
         foreach (var status in HomeStageStatuses)
         {
@@ -81,9 +82,23 @@ public partial class HomeViewModel : BaseViewModel
     public bool HasAttentionItems => AttentionItems.Count > 0;
     public bool ShowNoAttention => AttentionItems.Count == 0;
 
+    private readonly LiveListRefresh _live;
+    private int _loadGeneration;
+
+    /// <summary>Home shown: load, and refresh counts live while visible when a background sync changes rows.</summary>
+    public Task AppearAsync()
+    {
+        _live.Attach();
+        return LoadCommand.ExecuteAsync(null);
+    }
+
+    public void Disappear() => _live.Detach();
+
     [RelayCommand]
     private async Task LoadAsync()
     {
+        // Overlapping loads (appear + live refresh): only the newest applies its results.
+        var generation = Interlocked.Increment(ref _loadGeneration);
         try
         {
             var user = await _auth.GetCachedUserAsync();
@@ -100,6 +115,11 @@ public partial class HomeViewModel : BaseViewModel
             if (!string.IsNullOrWhiteSpace(businessId))
             {
                 var customers = await _customers.SearchAsync(businessId, string.Empty);
+                if (generation != _loadGeneration)
+                {
+                    return;
+                }
+
                 CustomersSavedText = customers.Count switch
                 {
                     0 => string.Empty,
@@ -109,6 +129,14 @@ public partial class HomeViewModel : BaseViewModel
                 };
 
                 var counts = await _orders.GetCountsAsync(businessId);
+                WarmOrdersListOnce(businessId);
+                // Fetch before touching the bound lists: no empty gap on screen while awaiting.
+                var attention = await _orders.ListAttentionAsync(businessId, take: 5);
+                if (generation != _loadGeneration)
+                {
+                    return;
+                }
+
                 ActiveOrdersCount = counts.ActiveCount;
                 ReadyToCollectCount = counts.ReadyToCollectCount;
                 var active = Math.Max(counts.ActiveCount, 1);
@@ -119,7 +147,6 @@ public partial class HomeViewModel : BaseViewModel
                 }
 
                 AttentionItems.Clear();
-                var attention = await _orders.ListAttentionAsync(businessId, take: 5);
                 foreach (var order in attention)
                 {
                     var fg = order.IsOverdue
@@ -224,4 +251,30 @@ public partial class HomeViewModel : BaseViewModel
 
     [RelayCommand]
     private async Task GoCustomersAsync() => await Shell.Current.GoToAsync("//main/CustomersPage");
+
+    private static int _ordersListWarmed;
+
+    /// <summary>
+    /// Compile the Orders tab list query in the background once per process (after sign-in and migration,
+    /// since Home only loads then), so the first Orders visit doesn't pay EF's query translation.
+    /// </summary>
+    private void WarmOrdersListOnce(string businessId)
+    {
+        if (Interlocked.Exchange(ref _ordersListWarmed, 1) != 0)
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _orders.SearchAsync(businessId, null, null, take: 1);
+            }
+            catch (Exception)
+            {
+                Interlocked.Exchange(ref _ordersListWarmed, 0); // try again on the next Home load
+            }
+        });
+    }
 }

@@ -47,9 +47,26 @@ public sealed class LocalDatabaseService : ILocalDatabaseService
     {
         try
         {
+            return await WipeCoreAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            NeedleBase.Mobile.Data.Data.LocalDataVersion.Bump(); // cached lists must not show wiped rows
+        }
+    }
+
+    private async Task<bool> WipeCoreAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
             await using var scope = _scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+            var path = FilePath(db);
             await db.Database.EnsureDeletedAsync(cancellationToken).ConfigureAwait(false);
+            // EF deletes only the main file. Close pooled handles, then remove -wal/-shm so no prior tenant's
+            // pages survive on disk and a stale WAL can never be replayed into the new database.
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            DeleteSideFiles(path);
             await LocalSchemaMigrator.MigrateAsync(db, cancellationToken).ConfigureAwait(false);
             return true;
         }
@@ -58,10 +75,13 @@ public sealed class LocalDatabaseService : ILocalDatabaseService
             // Last resort: delete the file if EF cannot open a corrupted store.
             try
             {
+                Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
                 if (File.Exists(_options.DbPath))
                 {
                     File.Delete(_options.DbPath);
                 }
+
+                DeleteSideFiles(_options.DbPath);
 
                 await MigrateAsync(cancellationToken).ConfigureAwait(false);
                 return true;
@@ -69,6 +89,28 @@ public sealed class LocalDatabaseService : ILocalDatabaseService
             catch
             {
                 return false;
+            }
+        }
+    }
+
+    private static string? FilePath(LocalDbContext db)
+    {
+        var source = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder(db.Database.GetConnectionString()).DataSource;
+        return string.IsNullOrWhiteSpace(source) || source == ":memory:" ? null : Path.GetFullPath(source);
+    }
+
+    private static void DeleteSideFiles(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        foreach (var file in LocalDbConnection.SideFiles(path))
+        {
+            if (File.Exists(file))
+            {
+                File.Delete(file);
             }
         }
     }

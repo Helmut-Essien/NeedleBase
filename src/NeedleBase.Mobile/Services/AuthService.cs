@@ -253,6 +253,7 @@ public sealed class AuthService : IAuthService
 
     public Task ClearTokensAsync()
     {
+        SetBusinessIdCache(null);
         _secureStorage.Remove(AccessTokenKey);
         _secureStorage.Remove(RefreshTokenKey);
         _secureStorage.Remove(BusinessIdKey);
@@ -363,6 +364,7 @@ public sealed class AuthService : IAuthService
         await _secureStorage.SetAsync(LocalDataOwnerKey, owner);
         _secureStorage.Remove(AccessRevokedKey);
         await _secureStorage.SetAsync(BusinessIdKey, user.BusinessId);
+        SetBusinessIdCache(user.BusinessId);
         await _secureStorage.SetAsync(BusinessNameKey, user.BusinessName);
         await _secureStorage.SetAsync(UserIdKey, user.UserId);
         await _secureStorage.SetAsync(EmailKey, user.Email);
@@ -371,8 +373,48 @@ public sealed class AuthService : IAuthService
         await _secureStorage.SetAsync(RoleKey, user.Role);
     }
 
-    public Task<string?> GetBusinessIdAsync() =>
-        _secureStorage.GetAsync(BusinessIdKey);
+    // In-memory copy of the business id (SecureStorage decrypts through the Keystore on every read).
+    // _businessIdGeneration guards against a slow read re-caching a value that was cleared meanwhile.
+    private readonly object _businessIdLock = new();
+    private string? _businessIdCache;
+    private bool _businessIdCached;
+    private int _businessIdGeneration;
+
+    public async Task<string?> GetBusinessIdAsync()
+    {
+        int generation;
+        lock (_businessIdLock)
+        {
+            if (_businessIdCached)
+            {
+                return _businessIdCache;
+            }
+
+            generation = _businessIdGeneration;
+        }
+
+        var value = await _secureStorage.GetAsync(BusinessIdKey);
+        lock (_businessIdLock)
+        {
+            if (generation == _businessIdGeneration && !string.IsNullOrWhiteSpace(value))
+            {
+                _businessIdCache = value;
+                _businessIdCached = true;
+            }
+        }
+
+        return value;
+    }
+
+    private void SetBusinessIdCache(string? value)
+    {
+        lock (_businessIdLock)
+        {
+            _businessIdGeneration++;
+            _businessIdCache = value;
+            _businessIdCached = !string.IsNullOrWhiteSpace(value);
+        }
+    }
 
     public async Task<AuthUserDto?> GetCachedUserAsync()
     {

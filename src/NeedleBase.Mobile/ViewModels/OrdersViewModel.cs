@@ -1,3 +1,5 @@
+using NeedleBase.Mobile.Data.Data;
+using NeedleBase.Application.Common;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -42,6 +44,30 @@ public partial class OrdersViewModel : BaseViewModel
 
         SelectedStatusFilter = StatusFilters[0];
         _suppressFilterReload = false;
+        _live = new LiveListRefresh(LiveReloadAsync);
+    }
+
+    private readonly LiveListRefresh _live;
+    private bool _silentLoad;
+
+    /// <summary>Page hidden: stop live refresh (no reloads for an invisible list).</summary>
+    public void Disappear() => _live.Detach();
+
+    /// <summary>
+    /// A background sync changed rows while the list is visible: reload quietly with the current search/filter,
+    /// superseding any older load, rows kept on screen and updated in place. Typing wins: a pending search
+    /// load reads the fresh rows anyway.
+    /// </summary>
+    public async Task LiveReloadAsync()
+    {
+        if (!HasSession || _searchDebounce.IsPending)
+        {
+            return;
+        }
+
+        Interlocked.Increment(ref _loadGeneration);
+        IsBusy = false;
+        await LoadCoreAsync(CancellationToken.None, silent: true);
     }
 
     public ObservableCollection<OrderListRow> Items { get; } = new();
@@ -58,7 +84,45 @@ public partial class OrdersViewModel : BaseViewModel
     [NotifyPropertyChangedFor(nameof(ShowBusyIndicator))]
     private bool isRefreshing;
 
-    public bool ShowBusyIndicator => IsBusy && !IsRefreshing;
+    /// <summary>Spinner only when there is nothing to show yet; cached rows stay visible during a refresh.</summary>
+    public bool ShowBusyIndicator => IsBusy && !IsRefreshing && !_silentLoad && Items.Count == 0;
+
+    // What the current Items were loaded for; AppearAsync skips the reload when all still match.
+    private string? _loadedBusinessId;
+    private long _loadedVersion = -1;
+    private DateOnly _loadedDay;
+    private string? _loadedSearch;
+    private string? _loadedStatus;
+
+    /// <summary>
+    /// Tab shown: keep cached rows when nothing changed since the last load (no local write, same business,
+    /// filter and day — overdue depends on the day); otherwise reload in place without clearing first.
+    /// </summary>
+    public async Task AppearAsync()
+    {
+        _live.Attach();
+        var businessId = await _auth.GetBusinessIdAsync();
+        if (_loadedVersion >= 0 &&
+            !string.IsNullOrWhiteSpace(businessId) &&
+            string.Equals(businessId, _loadedBusinessId, StringComparison.Ordinal) &&
+            LocalDataVersion.Current == _loadedVersion &&
+            BusinessTime.Today(DateTimeOffset.UtcNow) == _loadedDay &&
+            string.Equals(SearchText, _loadedSearch, StringComparison.Ordinal) &&
+            string.Equals(SelectedStatusFilter?.Status, _loadedStatus, StringComparison.Ordinal) &&
+            !HasError)
+        {
+            Perf.Log("orders.cacheHit", 0);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private void ForgetLoaded()
+    {
+        _loadedBusinessId = null;
+        _loadedVersion = -1;
+    }
 
     [ObservableProperty]
     private string emptyMessage = "Create your first order to track sewing work.";
@@ -78,7 +142,7 @@ public partial class OrdersViewModel : BaseViewModel
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
     public bool ShowEmptyAdd =>
-        !IsBusy && HasSession && !HasError && string.IsNullOrWhiteSpace(SearchText) &&
+        (!IsBusy || _silentLoad) && HasSession && !HasError && string.IsNullOrWhiteSpace(SearchText) &&
         SelectedStatusFilter?.Status is null;
 
     protected override void OnBusyChanged()
@@ -108,12 +172,34 @@ public partial class OrdersViewModel : BaseViewModel
             return;
         }
 
-        MainThread.BeginInvokeOnMainThread(async () => await LoadAsync());
+        if (value is null)
+        {
+            // The Picker briefly reports null while its ItemsSource binds: treat as "All", don't reload twice.
+            _suppressFilterReload = true;
+            SelectedStatusFilter = StatusFilters[0];
+            _suppressFilterReload = false;
+            return;
+        }
+
+        MainThread.BeginInvokeOnMainThread(async () => await ReloadForFilterAsync());
+    }
+
+    /// <summary>
+    /// Filter changed: supersede any in-flight load (it was for the old filter) instead of being dropped by the
+    /// IsBusy guard, which would leave the old filter's rows on screen.
+    /// </summary>
+    public Task ReloadForFilterAsync()
+    {
+        Interlocked.Increment(ref _loadGeneration);
+        IsBusy = false;
+        return LoadAsync();
     }
 
     public void ClearSessionState()
     {
+        _live.Detach();
         Interlocked.Increment(ref _loadGeneration);
+        ForgetLoaded();
         Items.Clear();
         SearchText = string.Empty;
         _searchDebounce.Cancel();
@@ -149,20 +235,29 @@ public partial class OrdersViewModel : BaseViewModel
     [RelayCommand]
     private Task LoadAsync() => LoadCoreAsync(CancellationToken.None);
 
-    private async Task LoadCoreAsync(CancellationToken cancellationToken)
+    private async Task LoadCoreAsync(CancellationToken cancellationToken, bool silent = false)
     {
         if (IsBusy)
         {
             return;
         }
 
+        _silentLoad = silent; // set before IsBusy so the spinner/empty CTA never flash for a quiet reload
+
         var generation = _loadGeneration;
+        var versionAtStart = LocalDataVersion.Current; // read before the query: a write during it forces the next reload
+        var perf = System.Diagnostics.Stopwatch.StartNew();
         IsBusy = true;
         OnPropertyChanged(nameof(ShowEmptyAdd));
-        ErrorMessage = null;
+        if (!silent)
+        {
+            ErrorMessage = null;
+        }
+
         try
         {
             var businessId = await _auth.GetBusinessIdAsync();
+            Perf.Log("orders.businessId", perf.ElapsedMilliseconds);
             if (generation != _loadGeneration)
             {
                 return;
@@ -182,6 +277,7 @@ public partial class OrdersViewModel : BaseViewModel
             var list = await Task.Run(
                 () => _orders.SearchAsync(businessId!, search, status, cancellationToken: cancellationToken),
                 cancellationToken);
+            Perf.Log("orders.search", perf.ElapsedMilliseconds);
             if (generation != _loadGeneration)
             {
                 return;
@@ -194,12 +290,15 @@ public partial class OrdersViewModel : BaseViewModel
                 return;
             }
 
-            Items.Clear();
-            foreach (var item in list)
-            {
-                Items.Add(new OrderListRow(item));
-            }
+            CollectionSync.Apply(Items, list, (row, dto) => row.Item == dto, dto => new OrderListRow(dto));
+            OnPropertyChanged(nameof(ShowBusyIndicator));
 
+            Perf.Log("orders.itemsFilled", perf.ElapsedMilliseconds);
+            _loadedBusinessId = businessId;
+            _loadedVersion = versionAtStart;
+            _loadedDay = BusinessTime.Today(DateTimeOffset.UtcNow);
+            _loadedSearch = search;
+            _loadedStatus = status;
             EmptyMessage = string.IsNullOrWhiteSpace(search) && status is null
                 ? "Create your first order to track sewing work."
                 : "No orders match that filter.";
@@ -215,13 +314,20 @@ public partial class OrdersViewModel : BaseViewModel
                 return;
             }
 
-            // Keep cached rows if any; show inline error with pull-to-retry.
+            // Keep cached rows if any; show inline error with pull-to-retry (a quiet reload stays quiet).
+            ForgetLoaded();
+            if (silent)
+            {
+                return;
+            }
+
             ErrorMessage = "Couldn't load orders. Pull to try again.";
         }
         finally
         {
             if (generation == _loadGeneration)
             {
+                _silentLoad = false;
                 IsBusy = false;
                 IsRefreshing = false;
                 OnPropertyChanged(nameof(ShowEmptyAdd));

@@ -1,3 +1,4 @@
+using NeedleBase.Mobile.Data.Data;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -21,6 +22,30 @@ public partial class CustomersViewModel : BaseViewModel
         _customers = customers;
         _auth = auth;
         Title = "Customers";
+        _live = new LiveListRefresh(LiveReloadAsync);
+    }
+
+    private readonly LiveListRefresh _live;
+    private bool _silentLoad;
+
+    /// <summary>Page hidden: stop live refresh (no reloads for an invisible list).</summary>
+    public void Disappear() => _live.Detach();
+
+    /// <summary>
+    /// A background sync changed rows while the list is visible: reload quietly with the current search/filter,
+    /// superseding any older load, rows kept on screen and updated in place. Typing wins: a pending search
+    /// load reads the fresh rows anyway.
+    /// </summary>
+    public async Task LiveReloadAsync()
+    {
+        if (!HasSession || _searchDebounce.IsPending)
+        {
+            return;
+        }
+
+        Interlocked.Increment(ref _loadGeneration);
+        IsBusy = false;
+        await LoadCoreAsync(CancellationToken.None, silent: true);
     }
 
     public ObservableCollection<CustomerListItemDto> Items { get; } = new();
@@ -33,7 +58,41 @@ public partial class CustomersViewModel : BaseViewModel
     [NotifyPropertyChangedFor(nameof(ShowBusyIndicator))]
     private bool isRefreshing;
 
-    public bool ShowBusyIndicator => IsBusy && !IsRefreshing;
+    /// <summary>Spinner only when there is nothing to show yet; cached rows stay visible during a refresh.</summary>
+    public bool ShowBusyIndicator => IsBusy && !IsRefreshing && !_silentLoad && Items.Count == 0;
+
+    // What the current Items were loaded for; AppearAsync skips the reload when all still match.
+    private string? _loadedBusinessId;
+    private long _loadedVersion = -1;
+    private string? _loadedSearch;
+
+    /// <summary>
+    /// Tab shown: keep cached rows when nothing changed since the last load (no local write — saves, sync
+    /// applies, bulk deletes, wipe all bump <see cref="LocalDataVersion"/> — same business and search).
+    /// </summary>
+    public async Task AppearAsync()
+    {
+        _live.Attach();
+        var businessId = await _auth.GetBusinessIdAsync();
+        if (_loadedVersion >= 0 &&
+            !string.IsNullOrWhiteSpace(businessId) &&
+            string.Equals(businessId, _loadedBusinessId, StringComparison.Ordinal) &&
+            LocalDataVersion.Current == _loadedVersion &&
+            string.Equals(SearchText, _loadedSearch, StringComparison.Ordinal) &&
+            !HasError)
+        {
+            Perf.Log("customers.cacheHit", 0);
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private void ForgetLoaded()
+    {
+        _loadedBusinessId = null;
+        _loadedVersion = -1;
+    }
 
     [ObservableProperty]
     private string emptyMessage = "Add your first customer to get started.";
@@ -62,7 +121,7 @@ public partial class CustomersViewModel : BaseViewModel
     }
 
     public bool ShowEmptyAdd =>
-        !IsBusy && HasSession && string.IsNullOrWhiteSpace(SearchText);
+        (!IsBusy || _silentLoad) && HasSession && string.IsNullOrWhiteSpace(SearchText);
 
     partial void OnSelectedItemChanged(CustomerListItemDto? value)
     {
@@ -81,7 +140,9 @@ public partial class CustomersViewModel : BaseViewModel
     /// <summary>Clear in-memory list/search so the next session cannot flash prior tenant PII.</summary>
     public void ClearSessionState()
     {
+        _live.Detach();
         Interlocked.Increment(ref _loadGeneration);
+        ForgetLoaded();
         Items.Clear();
         SearchText = string.Empty;
         _searchDebounce.Cancel();
@@ -115,17 +176,25 @@ public partial class CustomersViewModel : BaseViewModel
     [RelayCommand]
     private Task LoadAsync() => LoadCoreAsync(CancellationToken.None);
 
-    private async Task LoadCoreAsync(CancellationToken cancellationToken)
+    private async Task LoadCoreAsync(CancellationToken cancellationToken, bool silent = false)
     {
         if (IsBusy)
         {
             return;
         }
 
+        _silentLoad = silent; // set before IsBusy so the spinner/empty CTA never flash for a quiet reload
+
         var generation = _loadGeneration;
+        var versionAtStart = LocalDataVersion.Current; // read before the query: a write during it forces the next reload
+        var perf = System.Diagnostics.Stopwatch.StartNew();
         IsBusy = true;
         OnPropertyChanged(nameof(ShowEmptyAdd));
-        ErrorMessage = null;
+        if (!silent)
+        {
+            ErrorMessage = null;
+        }
+
         try
         {
             var businessId = await _auth.GetBusinessIdAsync();
@@ -144,7 +213,11 @@ public partial class CustomersViewModel : BaseViewModel
             }
 
             var search = SearchText;
-            var list = await _customers.SearchAsync(businessId!, search, cancellationToken: cancellationToken);
+            Perf.Log("customers.businessId", perf.ElapsedMilliseconds);
+            var list = await Task.Run( // query translation off the UI thread
+                () => _customers.SearchAsync(businessId!, search, cancellationToken: cancellationToken),
+                cancellationToken);
+            Perf.Log("customers.search", perf.ElapsedMilliseconds);
             if (generation != _loadGeneration)
             {
                 return;
@@ -158,16 +231,17 @@ public partial class CustomersViewModel : BaseViewModel
                 return;
             }
 
-            Items.Clear();
-            foreach (var item in list)
-            {
-                Items.Add(item);
-            }
+            CollectionSync.Apply(Items, list, (row, dto) => row == dto, dto => dto);
+            OnPropertyChanged(nameof(ShowBusyIndicator));
 
             EmptyMessage = string.IsNullOrWhiteSpace(search)
                 ? "Add your first customer to get started."
                 : $"No customers match \"{search.Trim()}\".";
             OnPropertyChanged(nameof(HasItems));
+            _loadedBusinessId = businessId;
+            _loadedVersion = versionAtStart;
+            _loadedSearch = search;
+            Perf.Log("customers.itemsFilled", perf.ElapsedMilliseconds);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -180,6 +254,12 @@ public partial class CustomersViewModel : BaseViewModel
                 return;
             }
 
+            ForgetLoaded();
+            if (silent)
+            {
+                return; // a quiet reload keeps the rows on screen
+            }
+
             Items.Clear();
             OnPropertyChanged(nameof(HasItems));
             ErrorMessage = "Couldn't load customers. Pull to try again.";
@@ -188,6 +268,7 @@ public partial class CustomersViewModel : BaseViewModel
         {
             if (generation == _loadGeneration)
             {
+                _silentLoad = false;
                 IsBusy = false;
                 IsRefreshing = false;
                 OnPropertyChanged(nameof(ShowEmptyAdd));
