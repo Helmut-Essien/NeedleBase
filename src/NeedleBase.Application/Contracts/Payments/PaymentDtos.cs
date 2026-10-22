@@ -112,4 +112,8 @@ public static class Money
 
     public static string Date(DateTimeOffset utc) =>
         Common.BusinessTime.ToLocal(utc).ToString("dd MMM yyyy", GhanaCulture);
+
+    /// <summary>"22 Oct 2026, 14:05" (Accra, 24-hour).</summary>
+    public static string DateTime(DateTimeOffset utc) =>
+        Common.BusinessTime.ToLocal(utc).ToString("dd MMM yyyy, HH:mm", GhanaCulture);
 }

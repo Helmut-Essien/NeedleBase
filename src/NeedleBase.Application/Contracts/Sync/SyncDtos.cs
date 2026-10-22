@@ -115,6 +115,10 @@ public sealed class SyncPushRequest
 {
     [Required, MaxLength(FieldLimits.SyncPushBatchMax)]
     public List<SyncPushOperation> Operations { get; set; } = [];
+
+    /// <summary>The phone's install id (activity log only; never trusted for access). Older apps omit it.</summary>
+    [MaxLength(FieldLimits.Id)]
+    public string? DeviceId { get; set; }
 }
 
 public sealed record SyncPushResult(
@@ -137,6 +141,10 @@ public sealed class SyncPullRequest
 
     [Range(1, FieldLimits.SyncPullLimitMax)]
     public int Limit { get; set; } = 200;
+
+    /// <summary>The phone's install id (activity log only). Older apps omit it.</summary>
+    [MaxLength(FieldLimits.Id)]
+    public string? DeviceId { get; set; }
 }
 
 /// <summary>

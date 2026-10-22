@@ -36,6 +36,12 @@ public static class DependencyInjection
         services.AddScoped<NeedleBase.Application.Payments.IPaymentService, NeedleBase.Application.Payments.PaymentService>();
         services.AddScoped<ISyncService, NeedleBase.Application.Sync.SyncService>();
         services.AddHostedService<Sync.TombstoneCleanupService>();
+        // Audit trail: request context (scoped), security/activity writer, read side, throttle, retention purge.
+        services.AddScoped<NeedleBase.Application.Audit.AuditContext>();
+        services.AddScoped<NeedleBase.Application.Audit.IAuditLog, Audit.AuditLog>();
+        services.AddScoped<NeedleBase.Application.Audit.IAuditQueryService, Audit.AuditQueryService>();
+        services.AddSingleton<Audit.AuditThrottle>();
+        services.AddHostedService<Audit.AuditRetentionService>();
         services.AddHostedService<CustomerKeyBackfillService>();
         services.AddSingleton<DatabaseHealthCheck>();
 

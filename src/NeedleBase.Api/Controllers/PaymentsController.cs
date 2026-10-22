@@ -4,6 +4,8 @@ using NeedleBase.Api.Http;
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Payments;
+using NeedleBase.Application.Abstractions;
+using NeedleBase.Application.Audit;
 
 namespace NeedleBase.Api.Controllers;
 
@@ -16,11 +18,20 @@ namespace NeedleBase.Api.Controllers;
 public sealed class PaymentsController : ControllerBase
 {
     private readonly IPaymentService _payments;
+    private readonly IAuditLog _audit;
+    private readonly ICurrentUser _currentUser;
 
-    public PaymentsController(IPaymentService payments)
+    public PaymentsController(IPaymentService payments, IAuditLog audit, ICurrentUser currentUser)
     {
         _payments = payments;
+        _audit = audit;
+        _currentUser = currentUser;
     }
+
+    /// <summary>Money views are sensitive: one activity row per person per hour (not per page load).</summary>
+    private Task LogViewAsync(string what) =>
+        _audit.WriteAsync(new AuditEntry(AuditActions.PaymentsViewed, $"Viewed {what}"),
+            throttleKey: $"{AuditActions.PaymentsViewed}:{_currentUser.BusinessId}:{_currentUser.UserId}", window: TimeSpan.FromHours(1));
 
     [HttpGet("api/payments")]
     [ProducesResponseType(typeof(PaginatedResponse<PaymentListItemDto>), StatusCodes.Status200OK)]
@@ -31,6 +42,11 @@ public sealed class PaymentsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await _payments.ListAsync(page, pageSize, cancellationToken);
+        if (result.IsSuccess)
+        {
+            await LogViewAsync("the payments list");
+        }
+
         return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error, result.Message);
     }
 
@@ -49,6 +65,11 @@ public sealed class PaymentsController : ControllerBase
     public async Task<IActionResult> ForOrder(string orderId, CancellationToken cancellationToken)
     {
         var result = await _payments.GetForOrderAsync(orderId, cancellationToken);
+        if (result.IsSuccess)
+        {
+            await LogViewAsync("order payments");
+        }
+
         return result.IsSuccess ? Ok(result.Value) : ApiProblems.ForPayment(HttpContext, result.Error, result.Message);
     }
 

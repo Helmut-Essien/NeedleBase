@@ -6,6 +6,8 @@ using NeedleBase.Application.Sync;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Domain.Entities;
 using NeedleBase.Infrastructure.Identity;
+using NeedleBase.Application.Audit;
+using NeedleBase.Infrastructure.Audit;
 
 namespace NeedleBase.Infrastructure.Persistence;
 
@@ -95,16 +97,54 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<DeletedItem> DeletedItems => Set<DeletedItem>();
     public DbSet<SyncState> SyncStates => Set<SyncState>();
 
+    /// <summary>Append-only audit trail (tenant-filtered; never synced; written by <see cref="CaptureAudit"/>).</summary>
+    public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+
+    /// <summary>Who/where for audit rows written by this context (set per request by the Api middleware).</summary>
+    public AuditContext? AuditContext { get; set; }
+
+    /// <summary>False only for maintenance writers that must not audit (none today; kept for tests/tools).</summary>
+    public bool AuditEnabled { get; set; } = true;
+
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
-        StampSyncChangesAsync(CancellationToken.None).GetAwaiter().GetResult();
+        var restored = StampSyncChangesAsync(CancellationToken.None).GetAwaiter().GetResult();
+        CaptureAudit(restored);
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
-        await StampSyncChangesAsync(cancellationToken).ConfigureAwait(false);
+        var restored = await StampSyncChangesAsync(cancellationToken).ConfigureAwait(false);
+        CaptureAudit(restored);
         return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Adds audit rows for this save's changes to the same SaveChanges, so they commit or roll back with the change
+    /// (no audit row without a committed change, no committed change without its audit row). Rows already added
+    /// (a retried SaveChanges) are not duplicated: capture only looks at audited entity types.
+    /// </summary>
+    private void CaptureAudit(ISet<string> restored)
+    {
+        if (!AuditEnabled)
+        {
+            return;
+        }
+
+        // Rows still "Added" here were captured for an earlier SaveChanges that failed (a caller caught the
+        // DbUpdateException and retried, e.g. an order-ref race). Drop them: this capture describes the current
+        // state again, so keeping them would log the change twice (or log one that never happened).
+        foreach (var stale in ChangeTracker.Entries<AuditEvent>().Where(e => e.State == EntityState.Added).ToList())
+        {
+            stale.State = EntityState.Detached;
+        }
+
+        var events = AuditCapture.Capture(ChangeTracker.Entries(), AuditContext, restored, SyncTime.Normalize(DateTimeOffset.UtcNow));
+        if (events.Count > 0)
+        {
+            AuditEvents.AddRange(events);
+        }
     }
 
     private const string CapSql = "SELECT pg_snapshot_xmin(pg_current_snapshot())::text::bigint AS \"Value\"";
@@ -235,7 +275,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     /// on added/changed synced rows, and write a <see cref="DeletedItem"/> tombstone for each deleted
     /// synced row, including rows the database cascades (a customer's measurements, an order's lines).
     /// </summary>
-    private async Task StampSyncChangesAsync(CancellationToken cancellationToken)
+    private async Task<ISet<string>> StampSyncChangesAsync(CancellationToken cancellationToken)
     {
         foreach (var entry in ChangeTracker.Entries<Customer>())
         {
@@ -250,6 +290,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         var tombstones = new List<(string BusinessId, string Type, string Id)>();
         var recreated = new List<(string BusinessId, string Type, string Id)>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        var restoredKeys = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var entry in ChangeTracker.Entries().ToList())
         {
@@ -317,13 +358,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             var stale = await DeletedItems.IgnoreQueryFilters()
                 .Where(d => ids.Contains(d.EntityId))
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
-            DeletedItems.RemoveRange(stale.Where(d => recreated.Contains((d.BusinessId, d.EntityType, d.EntityId))));
+            foreach (var d in stale.Where(d => recreated.Contains((d.BusinessId, d.EntityType, d.EntityId))))
+            {
+                DeletedItems.Remove(d);
+                restoredKeys.Add(d.EntityType + ":" + d.EntityId);
+            }
         }
 
         foreach (var (businessId, type, id) in tombstones)
         {
             DeletedItems.Add(DeletedItem.Create(IdGenerator.NewId(), businessId, type, id, now));
         }
+
+        return restoredKeys;
     }
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -505,6 +552,36 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             builder.Entity(synced).Property<long>(SyncTime.TxColumn).ValueGeneratedOnAddOrUpdate();
             builder.Entity(synced).HasIndex("BusinessId", SyncTime.TxColumn, "Id");
         }
+
+        builder.Entity<AuditEvent>(e =>
+        {
+            e.ToTable("AuditEvents");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.ActorUserId).HasMaxLength(64);
+            e.Property(x => x.ActorRole).HasMaxLength(32);
+            e.Property(x => x.Action).HasMaxLength(AuditEvent.ActionMax).IsRequired();
+            e.Property(x => x.EntityType).HasMaxLength(32);
+            e.Property(x => x.EntityId).HasMaxLength(64);
+            e.Property(x => x.OrderId).HasMaxLength(64);
+            e.Property(x => x.CustomerId).HasMaxLength(64);
+            e.Property(x => x.Summary).HasMaxLength(AuditEvent.SummaryMax).IsRequired();
+            e.Property(x => x.ChangesJson).HasColumnType("jsonb");
+            e.Property(x => x.Source).HasMaxLength(16).IsRequired();
+            e.Property(x => x.DeviceId).HasMaxLength(64);
+            e.Property(x => x.IpAddress).HasMaxLength(64);
+            e.Property(x => x.UserAgent).HasMaxLength(AuditEvent.UserAgentMax);
+            e.Property(x => x.CorrelationId).HasMaxLength(64);
+            // No foreign keys: history outlives the rows it describes (and a cascade would hit the append-only guard).
+            e.HasIndex(x => new { x.BusinessId, x.OccurredAtUtc, x.Id });
+            e.HasIndex(x => new { x.BusinessId, x.EntityType, x.EntityId, x.OccurredAtUtc });
+            e.HasIndex(x => new { x.BusinessId, x.OrderId, x.OccurredAtUtc }).HasFilter("\"OrderId\" IS NOT NULL");
+            e.HasIndex(x => new { x.BusinessId, x.CustomerId, x.OccurredAtUtc }).HasFilter("\"CustomerId\" IS NOT NULL");
+            e.HasIndex(x => new { x.BusinessId, x.ActorUserId, x.OccurredAtUtc });
+            e.HasIndex(x => x.OccurredAtUtc); // retention purge
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
 
         builder.Entity<DeletedItem>(e =>
         {

@@ -7,6 +7,7 @@ using NeedleBase.Application.Contracts.Auth;
 using NeedleBase.Domain.Entities;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Infrastructure.Persistence;
+using NeedleBase.Application.Audit;
 
 namespace NeedleBase.Infrastructure.Identity;
 
@@ -17,15 +18,21 @@ public sealed class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly IClock _clock;
     private readonly LoginThrottle _throttle;
+    private readonly IAuditLog _audit;
+
+    /// <summary>Failed sign-ins for one email+IP: one audit row per window, with a count of the rest.</summary>
+    public static readonly TimeSpan FailedLoginAuditWindow = TimeSpan.FromMinutes(15);
 
     public AuthService(
         UserManager<ApplicationUser> userManager,
         ApplicationDbContext db,
         ITokenService tokenService,
         IClock clock,
-        LoginThrottle throttle)
+        LoginThrottle throttle,
+        IAuditLog audit)
     {
         _throttle = throttle;
+        _audit = audit;
         _userManager = userManager;
         _db = db;
         _tokenService = tokenService;
@@ -102,6 +109,8 @@ public sealed class AuthService : IAuthService
             return identityFailure;
         }
 
+        await _audit.WriteAsync(new AuditEntry(AuditActions.Registered, "Registered the business owner account", businessId, user.Id, BusinessRole.Owner),
+            cancellationToken: cancellationToken);
         return await IssueTokensAsync(user, business, BusinessRole.Owner, ipAddress, cancellationToken);
     }
 
@@ -111,8 +120,14 @@ public sealed class AuthService : IAuthService
         CancellationToken cancellationToken = default)
     {
         var email = request.Email.Trim();
+        var failKey = $"auth.fail:{email.ToLowerInvariant()}:{ipAddress}";
         if (_throttle.RetryAfter(email, ipAddress) is { } wait)
         {
+            var throttledUser = await _userManager.FindByEmailAsync(email);
+            await _audit.WriteAsync(
+                new AuditEntry(AuditActions.LoginThrottled, "Sign-in slowed down after repeated failures",
+                    throttledUser is null ? null : await BusinessOfAsync(throttledUser.Id, cancellationToken), throttledUser?.Id),
+                "auth.throttled:" + failKey, FailedLoginAuditWindow, cancellationToken); // own count, not folded into failures
             return AuthResult.Throttled(wait);
         }
 
@@ -122,12 +137,19 @@ public sealed class AuthService : IAuthService
         if (user is null || !await _userManager.CheckPasswordAsync(user, request.Password))
         {
             _throttle.RecordFailure(email, ipAddress);
+            // The client answer is the same either way (no enumeration); the owner's log says which it was.
+            await _audit.WriteAsync(user is null
+                    ? new AuditEntry(AuditActions.LoginFailed, $"Sign-in failed for an unknown account ({AuditMask.Email(email)})")
+                    : new AuditEntry(AuditActions.LoginFailed, "Sign-in failed: wrong password", await BusinessOfAsync(user.Id, cancellationToken), user.Id),
+                failKey, FailedLoginAuditWindow, cancellationToken);
             return AuthResult.Fail("Invalid email or password.", "INVALID_CREDENTIALS");
         }
 
         _throttle.RecordSuccess(email, ipAddress);
         if (!user.IsActive)
         {
+            await _audit.WriteAsync(new AuditEntry(AuditActions.LoginBlocked, "Sign-in refused: account deactivated",
+                await BusinessOfAsync(user.Id, cancellationToken, includeInactive: true), user.Id), cancellationToken: cancellationToken);
             return AuthResult.Fail("Account deactivated. Contact your business owner.", "ACCOUNT_DEACTIVATED");
         }
 
@@ -141,6 +163,8 @@ public sealed class AuthService : IAuthService
 
         if (membership is null)
         {
+            await _audit.WriteAsync(new AuditEntry(AuditActions.LoginBlocked, "Sign-in refused: no active business membership",
+                await BusinessOfAsync(user.Id, cancellationToken, includeInactive: true), user.Id), cancellationToken: cancellationToken);
             return AuthResult.Fail("No business membership found for this account.", "NO_MEMBERSHIP");
         }
 
@@ -151,7 +175,20 @@ public sealed class AuthService : IAuthService
             return AuthResult.Fail("Business not found.", "BUSINESS_MISSING");
         }
 
+        await _audit.WriteAsync(new AuditEntry(AuditActions.LoginSucceeded, "Signed in", business.Id, user.Id, membership.Role),
+            cancellationToken: cancellationToken);
         return await IssueTokensAsync(user, business, membership.Role, ipAddress, cancellationToken);
+    }
+
+    /// <summary>The business a user's security events belong to (earliest membership), or null.</summary>
+    private async Task<string?> BusinessOfAsync(string userId, CancellationToken cancellationToken, bool includeInactive = false)
+    {
+        _db.CurrentBusinessId = null;
+        return await _db.StaffMemberships.IgnoreQueryFilters().AsNoTracking() // cross-business by design: this user only
+            .Where(m => m.UserId == userId && (includeInactive || m.IsActive))
+            .OrderByDescending(m => m.IsActive).ThenBy(m => m.JoinedAtUtc)
+            .Select(m => m.BusinessId)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<AuthResult> RefreshAsync(
@@ -195,6 +232,10 @@ public sealed class AuthService : IAuthService
                     {
                         await RevokeAllRefreshTokensForUserAsync(existing.ApplicationUserId, ipAddress, cancellationToken);
                         await tx.CommitAsync(cancellationToken);
+                        await _audit.WriteAsync(new AuditEntry(AuditActions.TokenReuse,
+                                "An old sign-in token was used again; all of this person's sessions were signed out",
+                                await BusinessOfAsync(existing.ApplicationUserId, cancellationToken, includeInactive: true), existing.ApplicationUserId),
+                            cancellationToken: cancellationToken);
                         return AuthResult.Fail("Invalid or expired refresh token.", "REFRESH_REUSE");
                     }
 
@@ -301,6 +342,7 @@ public sealed class AuthService : IAuthService
                 token.RevokedUtc = DateTime.UtcNow;
                 token.RevokedByIp = ipAddress;
                 await _db.SaveChangesAsync(cancellationToken);
+                await LogLogoutAsync(token.ApplicationUserId, cancellationToken);
                 return;
             }
         }
@@ -308,8 +350,13 @@ public sealed class AuthService : IAuthService
         if (!string.IsNullOrWhiteSpace(userId))
         {
             await RevokeAllRefreshTokensForUserAsync(userId, ipAddress, cancellationToken);
+            await LogLogoutAsync(userId, cancellationToken);
         }
     }
+
+    private async Task LogLogoutAsync(string userId, CancellationToken cancellationToken) =>
+        await _audit.WriteAsync(new AuditEntry(AuditActions.Logout, "Signed out",
+            await BusinessOfAsync(userId, cancellationToken, includeInactive: true), userId), cancellationToken: cancellationToken);
 
     /// <summary>How long after a rotation the previous refresh token may be presented once more (lost response).</summary>
     public static readonly TimeSpan RefreshReuseGrace = TimeSpan.FromSeconds(30);
