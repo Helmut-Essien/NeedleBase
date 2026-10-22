@@ -33,6 +33,7 @@ builder.Services.AddScoped<IApiAuthService, ApiAuthService>();
 builder.Services.AddTransient<ForwardClientIpHandler>();
 builder.Services.AddTransient<TokenRefreshHandler>();
 builder.Services.AddTransient<UnauthorizedRedirectHandler>();
+builder.Services.AddScoped<INeedleBaseApi, NeedleBaseApi>();
 
 // Api:BaseUrl is required — never hardcode production hosts.
 // CreateBuilder already loads env vars / user secrets; do not re-read after this check.
@@ -66,6 +67,7 @@ builder.Services.AddHttpClient("AuthApi", client =>
     client.DefaultRequestHeaders.Accept.Clear();
     client.DefaultRequestHeaders.Accept.Add(
         new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+    client.DefaultRequestHeaders.Add("X-NeedleBase-Client", "web"); // activity log label only
     client.Timeout = TimeSpan.FromSeconds(30);
 })
     .AddHttpMessageHandler<ForwardClientIpHandler>();
@@ -76,10 +78,12 @@ builder.Services.AddHttpClient("NeedleBaseApi", client =>
     client.DefaultRequestHeaders.Accept.Clear();
     client.DefaultRequestHeaders.Accept.Add(
         new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+    client.DefaultRequestHeaders.Add("X-NeedleBase-Client", "web"); // activity log label only
     client.Timeout = TimeSpan.FromSeconds(30);
 })
     .AddHttpMessageHandler<TokenRefreshHandler>()
-    .AddHttpMessageHandler<UnauthorizedRedirectHandler>();
+    .AddHttpMessageHandler<UnauthorizedRedirectHandler>()
+    .AddHttpMessageHandler<ForwardClientIpHandler>(); // the browser's IP for the activity log (Api trusts loopback/known proxies only)
 
 if (builder.Environment.IsProduction())
 {
@@ -129,22 +133,49 @@ builder.Services.AddRazorPages(options =>
 
 var app = builder.Build();
 
+// First: behind a TLS-terminating proxy (loopback by default) the scheme/IP must be known before HSTS,
+// HTTPS redirection and cookie Secure flags run — otherwise the app sees http and redirect-loops.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
 
+// Friendly page for antiforgery 400s, unknown pages (404) etc. — never a blank status page.
+app.UseStatusCodePagesWithReExecute("/Error", "?code={0}");
+
 app.UseHttpsRedirection();
 app.UseSession();
 app.UseRouting();
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Signed-in pages carry business data: never store them (shared PCs, Back after sign-out, proxies).
+// Pages only: CSS/JS keep their long-lived cache (low-end phones, mobile data).
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        if (context.User.Identity?.IsAuthenticated == true &&
+            context.GetEndpoint()?.Metadata.GetMetadata<Microsoft.AspNetCore.Mvc.RazorPages.PageActionDescriptor>() is not null)
+        {
+            context.Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+            context.Response.Headers.Pragma = "no-cache";
+        }
+
+        return Task.CompletedTask;
+    });
+    await next();
+});
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
 
 app.Run();
+
+/// <summary>Visible to WebApplicationFactory in NeedleBase.Web.Tests (page rendering tests).</summary>
+public partial class Program;

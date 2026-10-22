@@ -1,0 +1,15 @@
+@model NeedleBase.Web.Pages.PagerModel
+@if (Model.TotalPages > 1)
+{
+    <nav aria-label="Pages" class="d-flex align-items-center gap-2 mt-3">
+        @if (Model.Page > 1)
+        {
+            <a class="btn btn-sm nb-btn-outline" href="@Model.Url(Model.Page - 1)" rel="prev">Previous</a>
+        }
+        <span class="nb-meta">Page @Model.Page of @Model.TotalPages · @Model.TotalCount.ToString("N0") total</span>
+        @if (Model.Page < Model.TotalPages)
+        {
+            <a class="btn btn-sm nb-btn-outline" href="@Model.Url(Model.Page + 1)" rel="next">Next</a>
+        }
+    </nav>
+}

@@ -1,36 +1,93 @@
-﻿@page
+@page
 @model IndexModel
+@using NeedleBase.Web.Services
 @{
-    ViewData["Title"] = "Home";
+    ViewData["Title"] = "Dashboard";
 }
+<h1 class="nb-page-title">Dashboard</h1>
+<p class="nb-meta">@User.BusinessName()@(Model.Summary is null ? "" : " · " + Model.Summary.Today.ToString("dddd d MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GH")))</p>
+<partial name="_PageState" model="Model" />
 
-<div class="nb-hero text-center">
-    <h1 class="display-5">NeedleBase</h1>
-    <p class="lead">Tailoring business management — web oversight.</p>
-
-    @if (Model.Profile is not null)
-    {
-        <div class="nb-profile-card mx-auto text-start">
-            <p class="mb-1"><strong>@Model.Profile.BusinessName</strong></p>
-            <p class="nb-meta mb-1">Signed in as @User.Identity?.Name · @Model.Profile.Role</p>
-            <p class="nb-meta mb-0">User ID: <code>@Model.Profile.UserId</code></p>
+@if (Model.Summary is { } s)
+{
+    <section aria-labelledby="work-heading" class="mb-4">
+        <h2 id="work-heading" class="visually-hidden">Workload</h2>
+        <div class="nb-stats">
+            <a class="nb-stat" asp-page="/Orders/Index" asp-route-status="open">
+                <span class="nb-stat__value">@s.ActiveOrders</span><span class="nb-stat__label">Active orders</span>
+            </a>
+            <a class="nb-stat @(s.Overdue > 0 ? "nb-stat--warn" : "")" asp-page="/Production/Index">
+                <span class="nb-stat__value">@s.Overdue</span><span class="nb-stat__label">Overdue</span>
+            </a>
+            <div class="nb-stat"><span class="nb-stat__value">@s.DueNext7Days</span><span class="nb-stat__label">Due in 7 days</span></div>
+            <div class="nb-stat"><span class="nb-stat__value">@s.FittingsNext7Days</span><span class="nb-stat__label">Fittings in 7 days</span></div>
         </div>
-    }
-    else if (User.Identity?.IsAuthenticated == true && !Model.MeLoaded)
+    </section>
+
+    @if (s.Money is { } m)
     {
-        <p class="nb-status nb-status--warn" role="status">Could not load profile from API.</p>
+        <section aria-labelledby="money-heading" class="mb-4">
+            <h2 id="money-heading" class="nb-section-title">Money</h2>
+            <div class="nb-stats">
+                <a class="nb-stat" asp-page="/Payments/Index"><span class="nb-stat__value nb-money">@m.OutstandingDisplay</span><span class="nb-stat__label">Left to collect · @m.OrdersWithBalance orders</span></a>
+                <div class="nb-stat"><span class="nb-stat__value nb-money">@m.ReceivedTodayDisplay</span><span class="nb-stat__label">Recorded today</span></div>
+                <div class="nb-stat"><span class="nb-stat__value nb-money">@m.ReceivedLast7DaysDisplay</span><span class="nb-stat__label">Recorded in the last 7 days</span></div>
+            </div>
+        </section>
     }
 
-    <p class="nb-meta mb-2 mt-4">API base: <code>@Model.ApiBaseUrl</code></p>
-    <p class="mb-0" role="status" aria-live="polite">
-        <span class="visually-hidden">API health: </span>
-        @if (Model.ApiReachable)
-        {
-            <span class="nb-status nb-status--ok">● Reachable (@Model.ApiHealthStatus)</span>
-        }
-        else
-        {
-            <span class="nb-status nb-status--warn">● Unreachable — start the Api process</span>
-        }
-    </p>
-</div>
+    <div class="row g-4">
+        <section class="col-lg-7" aria-labelledby="due-heading">
+            <h2 id="due-heading" class="nb-section-title">Due next</h2>
+            @if (Model.DueNext.Count == 0)
+            {
+                <p class="nb-empty">No open orders. New orders from the app show here.</p>
+            }
+            else
+            {
+                <ul class="nb-list">
+                    @foreach (var o in Model.DueNext)
+                    {
+                        <li>
+                            <a class="nb-list__row" asp-page="/Orders/Details" asp-route-id="@o.Id">
+                                <span><strong>#@o.DisplayRef</strong> · @o.CustomerName<br /><span class="nb-meta">@o.DueDateDisplay</span></span>
+                                <span class="text-end"><partial name="_StatusChip" model="(o.Status, o.IsOverdue)" /></span>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+        <section class="col-lg-5" aria-labelledby="status-heading">
+            <h2 id="status-heading" class="nb-section-title">By status</h2>
+            <ul class="nb-list">
+                @foreach (var c in s.ByStatus)
+                {
+                    <li><a class="nb-list__row" asp-page="/Orders/Index" asp-route-status="@c.Status"><span>@c.StatusDisplay</span><span class="nb-num">@c.Count</span></a></li>
+                }
+            </ul>
+            @if (Model.ShowMoney)
+            {
+                <h2 class="nb-section-title mt-4">Recent payments</h2>
+                @if (Model.RecentPayments.Count == 0)
+                {
+                    <p class="nb-empty">No payments recorded yet.</p>
+                }
+                else
+                {
+                    <ul class="nb-list">
+                        @foreach (var p in Model.RecentPayments)
+                        {
+                            <li>
+                                <a class="nb-list__row" asp-page="/Orders/Details" asp-route-id="@p.OrderId">
+                                    <span>@p.CustomerName · #@p.OrderDisplayRef<br /><span class="nb-meta">@p.Method payment recorded · @p.RecordedDisplay</span></span>
+                                    <span class="nb-money @(p.IsVoided ? "nb-voided" : "")">@p.AmountDisplay@(p.IsVoided ? " (voided)" : "")</span>
+                                </a>
+                            </li>
+                        }
+                    </ul>
+                }
+            }
+        </section>
+    </div>
+}

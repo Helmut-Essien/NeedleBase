@@ -1,0 +1,71 @@
+@page
+@model NeedleBase.Web.Pages.Orders.IndexModel
+@{
+    ViewData["Title"] = "Orders";
+}
+<h1 class="nb-page-title">Orders</h1>
+<form method="get" class="nb-filters" role="search">
+    <div>
+        <label for="search" class="form-label">Search</label>
+        <input id="search" name="search" value="@Model.Search" class="form-control" maxlength="100" placeholder="Name, phone or order number" />
+    </div>
+    <div>
+        <label for="status" class="form-label">Status</label>
+        <select id="status" name="status" class="form-select">
+            @foreach (var (value, label) in NeedleBase.Web.Pages.Orders.IndexModel.StatusOptions)
+            {
+                <option value="@value" selected="@(value == (Model.Status ?? string.Empty))">@label</option>
+            }
+        </select>
+    </div>
+    @if (Model.MineOnly)
+    {
+        <input type="hidden" name="assigned" value="me" />
+    }
+    <div class="nb-filters__actions">
+        <button type="submit" class="btn nb-btn-primary">Search</button>
+        @if (Model.Filtered)
+        {
+            <a class="btn nb-btn-outline" asp-page="/Orders/Index">Clear</a>
+        }
+    </div>
+</form>
+<partial name="_PageState" model="Model" />
+
+@if (Model.Result is { } r)
+{
+    @if (Model.MineOnly)
+    {
+        <p class="nb-meta">Showing orders assigned to you.</p>
+    }
+    @if (Model.PastEnd)
+    {
+        <p class="nb-empty">This page is past the end of the list. <a asp-page="/Orders/Index" asp-route-search="@Model.Search" asp-route-status="@Model.Status" asp-route-assigned="@Model.Assigned">Go to the first page</a>.</p>
+    }
+    else if (r.Data.Count == 0)
+    {
+        <p class="nb-empty">@(Model.Filtered ? "No orders match. Try another name, phone or order number." : "No orders yet. Orders created in the NeedleBase app show here.")</p>
+    }
+    else
+    {
+        <table class="table nb-table nb-table--cards">
+            <caption class="visually-hidden">Orders, newest first</caption>
+            <thead>
+                <tr><th scope="col">Order</th><th scope="col">Customer</th><th scope="col">Status</th><th scope="col" class="d-none d-lg-table-cell">Due</th><th scope="col" class="text-end">Total</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var o in r.Data)
+                {
+                    <tr>
+                        <td data-label="Order"><a asp-page="/Orders/Details" asp-route-id="@o.Id"><strong>#@o.DisplayRef</strong></a></td>
+                        <td data-label="Customer">@o.CustomerName</td>
+                        <td data-label="Status"><partial name="_StatusChip" model="(o.Status, o.IsOverdue)" /></td>
+                        <td data-label="Due" class="d-none d-lg-table-cell">@o.DueDateDisplay</td>
+                        <td data-label="Total" class="text-end nb-money">@o.TotalDisplay</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <partial name="_Pager" model="Model.Pager" />
+    }
+}

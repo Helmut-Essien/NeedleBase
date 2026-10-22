@@ -4,8 +4,9 @@
     ViewData["Title"] = "Error";
 }
 
-<h1 class="text-danger">Something went wrong</h1>
-<p class="lead">We couldn’t process that request. Try again in a moment.</p>
+<h1 class="nb-page-title">@Model.Heading</h1>
+<p class="lead">@Model.Body</p>
+<p><a class="btn nb-btn-primary" href="/">Go to the dashboard</a></p>
 
 @if (Model.ShowRequestId)
 {

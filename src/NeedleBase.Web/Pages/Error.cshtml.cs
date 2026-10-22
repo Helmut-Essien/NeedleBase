@@ -21,8 +21,30 @@ public class ErrorModel : PageModel
 
     public bool ShowDevelopmentHints => _environment.IsDevelopment();
 
-    public void OnGet()
+    /// <summary>Set by UseStatusCodePagesWithReExecute ("?code=400"); null for an unhandled exception.</summary>
+    [BindProperty(SupportsGet = true)] public int? Code { get; set; }
+
+    public string Heading => Code switch
     {
-        RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+        400 => "That form has expired",
+        404 => "Page not found",
+        _ => "Something went wrong"
+    };
+
+    public string Body => Code switch
+    {
+        // Antiforgery failures land here: the page was open across a sign-in/out or the cookie expired.
+        400 => "The page was open too long or you signed in again in another tab. Go back, refresh the page, then try again.",
+        404 => "The link may be old or mistyped.",
+        _ => "We couldn’t process that request. Try again in a moment."
+    };
+
+    public void OnGet() => OnAny();
+
+    public void OnPost() => OnAny();
+
+    private void OnAny()
+    {
+        RequestId = System.Diagnostics.Activity.Current?.Id ?? HttpContext.TraceIdentifier;
     }
 }

@@ -1,0 +1,45 @@
+@model NeedleBase.Application.Contracts.Audit.AuditEventDto
+@* One activity entry: what happened, who/when/where, and (expandable) the field changes. No JS. *@
+<div class="nb-activity__row">
+    <div class="nb-activity__main">
+        <span class="nb-chip nb-chip--@(Model.Action.Split('.')[0])">@Model.ActionDisplay</span>
+        <span class="nb-activity__summary">@Model.Summary</span>
+        <div class="nb-meta">
+            <time datetime="@Model.OccurredAtUtc.ToString("o")">@Model.WhenDisplay</time>
+            · @Model.ActorName@(string.IsNullOrEmpty(Model.ActorRole) ? "" : $" ({Model.ActorRole})")
+            · @Model.SourceDisplay
+            @if (!string.IsNullOrEmpty(Model.OrderId) && Model.EntityType != "order")
+            {
+                <text>· </text><a asp-page="/Orders/Details" asp-route-id="@Model.OrderId">Order</a>
+            }
+            else if (Model.EntityType == "order" && !string.IsNullOrEmpty(Model.EntityId) && !Model.Action.EndsWith(".deleted"))
+            {
+                <text>· </text><a asp-page="/Orders/Details" asp-route-id="@Model.EntityId">Open order</a>
+            }
+        </div>
+    </div>
+    @if (Model.Changes.Count > 0 || Model.DeviceId is not null || Model.IpAddress is not null)
+    {
+        <details class="nb-activity__details">
+            <summary>Details</summary>
+            @if (Model.Changes.Count > 0)
+            {
+                <table class="table table-sm nb-changes">
+                    <caption class="visually-hidden">Changed fields</caption>
+                    <thead><tr><th scope="col">Field</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in Model.Changes)
+                        {
+                            <tr><th scope="row">@c.FieldDisplay</th><td>@(c.Old ?? "—")</td><td>@(c.New ?? "—")</td></tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            <dl class="nb-dl small mb-0">
+                @if (Model.DeviceId is not null) { <dt>Phone</dt><dd>…@Model.DeviceId[^Math.Min(6, Model.DeviceId.Length)..]</dd> }
+                @if (Model.IpAddress is not null) { <dt>IP address</dt><dd>@Model.IpAddress</dd> }
+                @if (Model.UserAgent is not null) { <dt>Browser/app</dt><dd class="text-break">@Model.UserAgent</dd> }
+            </dl>
+        </details>
+    }
+</div>

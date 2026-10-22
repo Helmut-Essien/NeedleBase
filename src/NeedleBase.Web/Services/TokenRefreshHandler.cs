@@ -52,14 +52,10 @@ public sealed class TokenRefreshHandler : DelegatingHandler
             return await base.SendAsync(request, cancellationToken);
         }
 
-        var authenticateResult = await ctx.AuthenticateAsync(AuthCookieSignIn.CookieScheme);
-        string? accessToken = null;
-
-        if (authenticateResult.Succeeded && authenticateResult.Principal is not null)
-        {
-            accessToken = authenticateResult.Principal.FindFirst("AccessToken")?.Value;
-            ctx.User = authenticateResult.Principal;
-        }
+        // ctx.User was set by the cookie middleware (and replaced after a refresh in this request). Pages fetch in
+        // parallel, so never re-run AuthenticateAsync here: HttpContext/auth handlers aren't thread-safe, and re-reading
+        // the request cookie would put the pre-refresh token back.
+        var accessToken = ctx.User.FindFirst("AccessToken")?.Value;
 
         if (string.IsNullOrWhiteSpace(accessToken))
         {
@@ -103,8 +99,7 @@ public sealed class TokenRefreshHandler : DelegatingHandler
 
         if (outcome != RefreshOutcome.Success)
         {
-            await SignOutAsync(ctx);
-            return response;
+            return response; // signed out inside the refresh lock (one writer to the response cookies)
         }
 
         var newAccessToken = ctx.User.FindFirst("AccessToken")?.Value;
@@ -166,12 +161,6 @@ public sealed class TokenRefreshHandler : DelegatingHandler
                 return RefreshOutcome.Success;
             }
 
-            var authenticateResult = await ctx.AuthenticateAsync(AuthCookieSignIn.CookieScheme);
-            if (authenticateResult.Succeeded && authenticateResult.Principal is not null)
-            {
-                ctx.User = authenticateResult.Principal;
-            }
-
             var latestAccessToken = ctx.User.FindFirst("AccessToken")?.Value;
             if (!string.IsNullOrWhiteSpace(latestAccessToken) && latestAccessToken != currentAccessToken)
             {
@@ -181,6 +170,7 @@ public sealed class TokenRefreshHandler : DelegatingHandler
             var refreshToken = ctx.User.FindFirst("RefreshToken")?.Value;
             if (string.IsNullOrWhiteSpace(refreshToken))
             {
+                await SignOutAsync(ctx);
                 return RefreshOutcome.InvalidSession;
             }
 
@@ -214,6 +204,7 @@ public sealed class TokenRefreshHandler : DelegatingHandler
 
             if (!refreshResponse.IsSuccessStatusCode)
             {
+                await SignOutAsync(ctx);
                 return RefreshOutcome.InvalidSession;
             }
 
@@ -243,10 +234,13 @@ public sealed class TokenRefreshHandler : DelegatingHandler
             return;
         }
 
-        if (authenticateResult.Principal.Identity is not ClaimsIdentity identity)
+        if (authenticateResult.Principal.Identity is not ClaimsIdentity original)
         {
             return;
         }
+
+        // Work on a copy: the cached cookie identity may be read by a sibling request on another thread.
+        var identity = original.Clone();
 
         ReplaceClaim(identity, "AccessToken", accessToken);
         ReplaceClaim(identity, "RefreshToken", refreshToken);
@@ -338,13 +332,12 @@ public sealed class TokenRefreshHandler : DelegatingHandler
             {
                 return await base.SendAsync(attemptRequest, cancellationToken);
             }
-            catch (HttpRequestException ex) when (attempt < MaxRetries && IsTransient(ex))
+            // Retry only when the request never reached the Api (connection refused). A timeout may mean the Api
+            // already applied it: replaying a PATCH/POST would double-apply or report a false STALE_UPDATE, and
+            // retrying GET timeouts tripled the wait (3 × 30 s) before the offline state showed.
+            catch (HttpRequestException ex) when (attempt < MaxRetries && IsConnectRefused(ex))
             {
-                await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken);
-            }
-            catch (TaskCanceledException) when (attempt < MaxRetries && !cancellationToken.IsCancellationRequested)
-            {
-                await Task.Delay(TimeSpan.FromSeconds(attempt), cancellationToken);
+                await Task.Delay(TimeSpan.FromMilliseconds(250 * attempt), cancellationToken);
             }
         }
     }
@@ -401,15 +394,9 @@ public sealed class TokenRefreshHandler : DelegatingHandler
         return clone;
     }
 
-    private static bool IsTransient(HttpRequestException ex)
-    {
-        if (ex.InnerException is SocketException se)
-        {
-            return se.SocketErrorCode is SocketError.ConnectionRefused or SocketError.TimedOut;
-        }
-
-        return ex.StatusCode is null;
-    }
+    internal static bool IsConnectRefused(HttpRequestException ex) =>
+        ex.HttpRequestError == HttpRequestError.ConnectionError ||
+        ex.InnerException is SocketException { SocketErrorCode: SocketError.ConnectionRefused };
 
     private async Task SignOutAsync(HttpContext ctx)
     {

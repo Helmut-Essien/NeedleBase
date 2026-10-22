@@ -1,0 +1,20 @@
+@using NeedleBase.Web.Services
+@{
+    var path = Context.Request.Path.Value ?? "/";
+    string Current(string prefix) => (prefix == "/" ? path == "/" || path.Equals("/Index", StringComparison.OrdinalIgnoreCase) : path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ? "page" : null!;
+}
+@* Staff, Reports, Settings and Measurements aren't built yet (Slices 7–8): not shown rather than faked. *@
+<ul class="nav flex-column nb-nav">
+    <li class="nav-item"><a class="nav-link" asp-page="/Index" aria-current="@Current("/")">Dashboard</a></li>
+    <li class="nav-item"><a class="nav-link" asp-page="/Production/Index" aria-current="@Current("/Production")">Production</a></li>
+    <li class="nav-item"><a class="nav-link" asp-page="/Orders/Index" aria-current="@Current("/Orders")">Orders</a></li>
+    <li class="nav-item"><a class="nav-link" asp-page="/Customers/Index" aria-current="@Current("/Customers")">Customers</a></li>
+    @if (User.CanSeePayments())
+    {
+        <li class="nav-item"><a class="nav-link" asp-page="/Payments/Index" aria-current="@Current("/Payments")">Payments</a></li>
+    }
+    @if (User.CanSeeActivity())
+    {
+        <li class="nav-item"><a class="nav-link" asp-page="/Activity/Index" aria-current="@Current("/Activity")">Activity</a></li>
+    }
+</ul>

@@ -2,41 +2,25 @@ using System.Net;
 
 namespace NeedleBase.Web.Handlers;
 
+/// <summary>
+/// Logs Api 401s. The redirect to login is done by the page (<c>AppPageModel.Fail</c> → LocalRedirect): writing the
+/// response from here raced when a page's parallel calls all got 401. A 403 is a role answer the page shows.
+/// </summary>
 public sealed class UnauthorizedRedirectHandler : DelegatingHandler
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<UnauthorizedRedirectHandler> _logger;
 
-    public UnauthorizedRedirectHandler(
-        IHttpContextAccessor httpContextAccessor,
-        ILogger<UnauthorizedRedirectHandler> logger)
+    public UnauthorizedRedirectHandler(ILogger<UnauthorizedRedirectHandler> logger)
     {
-        _httpContextAccessor = httpContextAccessor;
         _logger = logger;
     }
 
-    protected override async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var response = await base.SendAsync(request, cancellationToken);
-
-        if (response.StatusCode is not (HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden))
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            return response;
-        }
-
-        _logger.LogWarning(
-            "API returned {StatusCode} for {RequestUri}",
-            response.StatusCode,
-            request.RequestUri);
-
-        var httpContext = _httpContextAccessor.HttpContext;
-        if (httpContext is not null && !httpContext.Response.HasStarted)
-        {
-            var returnUrl = httpContext.Request.Path + httpContext.Request.QueryString;
-            var loginUrl = $"/Account/Login?returnUrl={Uri.EscapeDataString(returnUrl)}";
-            httpContext.Response.Redirect(loginUrl);
+            _logger.LogWarning("API returned 401 for {RequestUri}", request.RequestUri);
         }
 
         return response;

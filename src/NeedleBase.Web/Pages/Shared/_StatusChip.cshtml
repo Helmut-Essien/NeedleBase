@@ -1,0 +1,9 @@
+@model (string Status, bool Overdue)
+@{
+    var css = "nb-chip nb-chip--" + Model.Status.ToLowerInvariant();
+}
+<span class="@css">@NeedleBase.Domain.Enums.OrderStatus.DisplayName(Model.Status)</span>
+@if (Model.Overdue)
+{
+    <span class="nb-chip nb-chip--overdue"><span aria-hidden="true">!</span> Overdue</span>
+}

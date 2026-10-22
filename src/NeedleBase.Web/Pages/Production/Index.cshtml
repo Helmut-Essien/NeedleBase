@@ -1,0 +1,53 @@
+@page
+@model NeedleBase.Web.Pages.Production.IndexModel
+@{
+    ViewData["Title"] = "Production";
+}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h1 class="nb-page-title mb-0 me-auto">Production</h1>
+    <nav aria-label="Whose work" class="btn-group" role="group">
+        <a class="btn btn-sm @(Model.MineOnly ? "nb-btn-outline" : "nb-btn-primary")" asp-page="/Production/Index" asp-route-show="all" aria-current="@(Model.MineOnly ? null : "page")">Everyone</a>
+        <a class="btn btn-sm @(Model.MineOnly ? "nb-btn-primary" : "nb-btn-outline")" asp-page="/Production/Index" asp-route-show="me" aria-current="@(Model.MineOnly ? "page" : null)">Assigned to me</a>
+    </nav>
+</div>
+<partial name="_PageState" model="Model" />
+
+@if (Model.Loaded)
+{
+    @if (Model.Board.All(c => c.Total == 0))
+    {
+        <p class="nb-empty">@(Model.MineOnly ? "Nothing assigned to you right now." : "No active orders. New orders from the app show here.")</p>
+    }
+    <div class="nb-board">
+        @foreach (var col in Model.Board)
+        {
+            <section class="nb-board__col" aria-labelledby="col-@col.Status">
+                <h2 id="col-@col.Status" class="nb-board__title">@col.Title <span class="nb-num">@col.Total</span></h2>
+                @if (col.Cards.Count == 0)
+                {
+                    <p class="nb-meta">None</p>
+                }
+                <ul class="nb-board__cards">
+                    @foreach (var card in col.Cards)
+                    {
+                        var o = card.Order;
+                        <li>
+                            <a class="nb-board__card @(o.IsOverdue ? "nb-board__card--overdue" : "")" asp-page="/Orders/Details" asp-route-id="@o.Id">
+                                <strong>#@o.DisplayRef</strong> · @o.CustomerName
+                                <span class="nb-meta d-block">@o.DueDateDisplay@(o.IsOverdue ? " · Overdue" : "")</span>
+                                @if (card.AssigneeName is not null)
+                                {
+                                    <span class="nb-meta d-block">Assigned: @card.AssigneeName</span>
+                                }
+                            </a>
+                        </li>
+                    }
+                </ul>
+                @if (col.Hidden > 0)
+                {
+                    <a class="small" asp-page="/Orders/Index" asp-route-status="@col.Status" asp-route-assigned="@(Model.MineOnly ? "me" : null)">See all @col.Total</a>
+                }
+            </section>
+        }
+    </div>
+}

@@ -1,85 +1,60 @@
-using System.Text.Json;
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc;
+using NeedleBase.Application.Common;
+using NeedleBase.Application.Contracts.Dashboard;
+using NeedleBase.Application.Contracts.Orders;
+using NeedleBase.Application.Contracts.Payments;
+using NeedleBase.Web.Services;
 
 namespace NeedleBase.Web.Pages;
 
-public class IndexModel : PageModel
+/// <summary>Dashboard: workload by status, overdue/due soon, and (owner/manager) money. Independent calls run in parallel.</summary>
+public class IndexModel : AppPageModel
 {
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IConfiguration _configuration;
+    private readonly INeedleBaseApi _api;
 
-    public IndexModel(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+    public IndexModel(INeedleBaseApi api)
     {
-        _httpClientFactory = httpClientFactory;
-        _configuration = configuration;
+        _api = api;
     }
 
-    public string ApiBaseUrl { get; private set; } = string.Empty;
-    public bool ApiReachable { get; private set; }
-    public string? ApiHealthStatus { get; private set; }
-    public MeProfile? Profile { get; private set; }
-    public bool MeLoaded { get; private set; }
+    public DashboardSummaryDto? Summary { get; private set; }
+    public IReadOnlyList<OrderListItemDto> DueNext { get; private set; } = [];
+    public IReadOnlyList<PaymentListItemDto> RecentPayments { get; private set; } = [];
+    public bool ShowMoney { get; private set; }
 
-    public async Task OnGetAsync(CancellationToken cancellationToken)
+    public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
-        ApiBaseUrl = _configuration["Api:BaseUrl"] ?? string.Empty;
+        ShowMoney = User.CanSeePayments();
+        var summaryTask = _api.GetDashboardAsync(cancellationToken);
+        var dueTask = _api.ListOrdersAsync(new OrderQuery(PageSize: 8, Status: OrderListSort.OpenFilter, Sort: OrderListSort.Due), cancellationToken);
+        var paymentsTask = ShowMoney
+            ? Nullable(_api.ListPaymentsAsync(1, 5, cancellationToken))
+            : Task.FromResult<ApiResult<PaginatedResponse<PaymentListItemDto>>?>(null);
+        await Task.WhenAll(summaryTask, dueTask, paymentsTask);
 
-        try
+        var summary = await summaryTask;
+        if (!summary.IsSuccess)
         {
-            var client = _httpClientFactory.CreateClient("NeedleBaseApi");
-            using var response = await client.GetAsync("health/live", cancellationToken);
-            ApiReachable = response.IsSuccessStatusCode;
-            if (ApiReachable)
-            {
-                var payload = await response.Content.ReadFromJsonAsync<HealthPayload>(cancellationToken);
-                ApiHealthStatus = payload?.Status;
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (HttpRequestException)
-        {
-            ApiReachable = false;
-        }
-        catch (TaskCanceledException)
-        {
-            ApiReachable = false;
-        }
-        catch (JsonException)
-        {
-            ApiReachable = false;
+            return Fail(summary) ?? Page();
         }
 
-        if (User.Identity?.IsAuthenticated == true)
+        Summary = summary.Value;
+        ShowMoney = ShowMoney && Summary!.Money is not null; // both must agree: the Api decides, the cookie role never widens it
+        var due = await dueTask;
+        if (due.IsSuccess)
         {
-            try
-            {
-                var api = _httpClientFactory.CreateClient("NeedleBaseApi");
-                Profile = await api.GetFromJsonAsync<MeProfile>("api/me", cancellationToken);
-                MeLoaded = Profile is not null;
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                throw;
-            }
-            catch (HttpRequestException)
-            {
-                MeLoaded = false;
-            }
-            catch (JsonException)
-            {
-                MeLoaded = false;
-            }
+            DueNext = due.Value!.Data;
         }
+
+        var payments = await paymentsTask;
+        if (payments is { IsSuccess: true })
+        {
+            RecentPayments = payments.Value!.Data;
+        }
+
+        Loaded = true;
+        return Page();
     }
 
-    public sealed record MeProfile(
-        string UserId,
-        string BusinessId,
-        string Role,
-        string BusinessName);
-
-    private sealed record HealthPayload(string Status);
+    private static async Task<T?> Nullable<T>(Task<T> task) where T : class => await task;
 }

@@ -1,0 +1,133 @@
+@page "{id}"
+@model NeedleBase.Web.Pages.Orders.DetailsModel
+@using NeedleBase.Application.Contracts.Payments
+@{
+    ViewData["Title"] = Model.Order is null ? "Order" : "Order #" + Model.Order.DisplayRef;
+    var gh = System.Globalization.CultureInfo.GetCultureInfo("en-GH");
+}
+<p><a asp-page="/Orders/Index">← Orders</a></p>
+<partial name="_PageState" model="Model" />
+
+@if (Model.Order is { } o)
+{
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+        <h1 class="nb-page-title mb-0">Order #@o.DisplayRef</h1>
+        <partial name="_StatusChip" model="(o.Status, o.IsOverdue)" />
+    </div>
+    <p class="nb-meta">@o.CustomerName · @o.CustomerPhone</p>
+
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="alert alert-success" role="status">@Model.StatusMessage</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <section class="nb-card" aria-labelledby="details-heading">
+                <h2 id="details-heading" class="nb-section-title">Details</h2>
+                <dl class="nb-dl">
+                    <dt>Due</dt><dd>@(o.DueDate?.ToString("dd MMM yyyy", gh) ?? "No due date")</dd>
+                    <dt>Fitting</dt><dd>@(o.FittingDate?.ToString("dd MMM yyyy", gh) ?? "Not set")</dd>
+                    <dt>Assigned to</dt><dd>@(Model.AssigneeName ?? "Not assigned")</dd>
+                    <dt>Total</dt><dd class="nb-money">@Money.Format(o.TotalAmount)</dd>
+                    <dt>Created</dt><dd>@Money.Date(o.CreatedAtUtc)</dd>
+                </dl>
+                @if (!string.IsNullOrWhiteSpace(o.Notes))
+                {
+                    <p class="mb-0"><strong>Notes:</strong> @o.Notes</p>
+                }
+            </section>
+
+            <section class="nb-card mt-4" aria-labelledby="lines-heading">
+                <h2 id="lines-heading" class="nb-section-title">Garments</h2>
+                <ul class="nb-list">
+                    @foreach (var line in o.Lines)
+                    {
+                        <li class="nb-list__row">
+                            <span>@line.Quantity× @line.GarmentDisplay<br /><span class="nb-meta">@line.SnapshotLabel@(string.IsNullOrWhiteSpace(line.Notes) ? "" : " · " + line.Notes)</span></span>
+                            <span class="nb-money">@Money.Format(line.LineTotal)</span>
+                        </li>
+                    }
+                </ul>
+            </section>
+        </div>
+
+        <div class="col-lg-5">
+            <section class="nb-card" aria-labelledby="status-heading">
+                <h2 id="status-heading" class="nb-section-title">Status</h2>
+                @if (Model.CanChangeStatus)
+                {
+                    <form method="post" asp-page-handler="Status" asp-route-id="@o.Id" novalidate>
+                        <input type="hidden" asp-for="BaseModified" />
+                        @if (!string.IsNullOrWhiteSpace(Model.StatusError))
+                        {
+                            <div class="alert alert-danger" role="alert" id="status-error">@Model.StatusError</div>
+                        }
+                        <label for="NewStatus" class="form-label">Change status</label>
+                        <select id="NewStatus" name="NewStatus" class="form-select mb-3" required aria-describedby="@(string.IsNullOrWhiteSpace(Model.StatusError) ? null : "status-error")">
+                            <option value="">Choose…</option>
+                            @foreach (var s in Model.StatusChoices)
+                            {
+                                <option value="@s">@NeedleBase.Domain.Enums.OrderStatus.DisplayName(s)</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn nb-btn-primary w-100">Save status</button>
+                    </form>
+                }
+                else
+                {
+                    <p class="mb-0">This order is @NeedleBase.Domain.Enums.OrderStatus.DisplayName(o.Status).ToLowerInvariant(), so its status can't change.</p>
+                }
+            </section>
+
+            @if (Model.Payments is { } m)
+            {
+                <section class="nb-card mt-4" aria-labelledby="pay-heading">
+                    <h2 id="pay-heading" class="nb-section-title">Payments</h2>
+                    <p class="mb-1">@m.PaidSummary</p>
+                    <p class="nb-balance">@m.BalanceDisplay</p>
+                    @if (m.Payments.Count == 0)
+                    {
+                        <p class="nb-empty mb-0">No payments recorded yet. Record payments in the NeedleBase app.</p>
+                    }
+                    else
+                    {
+                        <ul class="nb-list">
+                            @foreach (var p in m.Payments)
+                            {
+                                <li class="nb-list__row">
+                                    <span>@p.Method payment recorded<br /><span class="nb-meta">@Money.Date(p.RecordedAtUtc)@(p.IsVoided ? " · Voided" + (string.IsNullOrWhiteSpace(p.VoidReason) ? "" : ": " + p.VoidReason) : "")</span></span>
+                                    <span class="nb-money @(p.IsVoided ? "nb-voided" : "")">@p.AmountDisplay</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </section>
+            }
+
+            @if (Model.History is { } h)
+            {
+                <section class="nb-card mt-4" aria-labelledby="history-heading">
+                    <h2 id="history-heading" class="nb-section-title">History</h2>
+                    @if (h.Data.Count == 0)
+                    {
+                        <p class="nb-empty mb-0">No changes recorded yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="nb-list nb-activity">
+                            @foreach (var e in h.Data)
+                            {
+                                <li><partial name="_ActivityItem" model="e" /></li>
+                            }
+                        </ul>
+                        @if (h.TotalCount > h.Data.Count)
+                        {
+                            <p class="mt-2 mb-0"><a asp-page="/Activity/Index" asp-route-order="@Model.Order!.Id">See all @h.TotalCount.ToString("N0") entries</a></p>
+                        }
+                    }
+                </section>
+            }
+        </div>
+    </div>
+}

@@ -1,0 +1,50 @@
+@page
+@using NeedleBase.Web.Services
+@model NeedleBase.Web.Pages.Customers.IndexModel
+@{
+    ViewData["Title"] = "Customers";
+}
+<h1 class="nb-page-title">Customers</h1>
+<form method="get" class="nb-filters" role="search">
+    <div>
+        <label for="search" class="form-label">Search</label>
+        <input id="search" name="search" value="@Model.Search" class="form-control" maxlength="100" placeholder="Name or phone, e.g. 024 555 0123" />
+    </div>
+    <div class="nb-filters__actions">
+        <button type="submit" class="btn nb-btn-primary">Search</button>
+        @if (!string.IsNullOrWhiteSpace(Model.Search))
+        {
+            <a class="btn nb-btn-outline" asp-page="/Customers/Index">Clear</a>
+        }
+    </div>
+</form>
+<partial name="_PageState" model="Model" />
+@if (Model.Result is { } r)
+{
+    @if (r.Data.Count == 0 && r.TotalCount > 0)
+    {
+        <p class="nb-empty">This page is past the end of the list. <a asp-page="/Customers/Index" asp-route-search="@Model.Search">Go to the first page</a>.</p>
+    }
+    else if (r.Data.Count == 0)
+    {
+        <p class="nb-empty">@(string.IsNullOrWhiteSpace(Model.Search) ? "No customers yet. Customers added in the NeedleBase app show here." : "No customers match. Try part of the name or the phone number.")</p>
+    }
+    else
+    {
+        <table class="table nb-table nb-table--cards">
+            <caption class="visually-hidden">Customers</caption>
+            <thead><tr><th scope="col">Name</th><th scope="col">Phone</th><th scope="col" class="text-end">Orders</th></tr></thead>
+            <tbody>
+                @foreach (var c in r.Data)
+                {
+                    <tr>
+                        <td data-label="Name"><strong>@c.Name</strong></td>
+                        <td data-label="Phone"><a href="tel:@c.Phone">@c.Phone</a></td>
+                        <td data-label="Orders" class="text-end"><a asp-page="/Orders/Index" asp-route-search="@c.Phone">View orders</a>@if (User.CanSeeActivity()) {<text> · </text><a asp-page="/Activity/Index" asp-route-customer="@c.Id" aria-label="History for @c.Name">History</a>}</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <partial name="_Pager" model="Model.Pager" />
+    }
+}
