@@ -34,7 +34,9 @@ Sync details: [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md).
 14. **Shell nav bar hidden app-wide:** Set `Shell.NavBarIsVisible="False"` on `AppShell` **and** on every `ContentPage` (plus `NavigationPage.HasNavigationBar="False"`). Titles live **in-page** only — never a Shell title strip. Auth `ShellContent` also keeps `Shell.TabBarIsVisible="False"`. **Pushed** detail/edit pages must provide an in-page **Back** control (`GoBackCommand` → `GoToAsync("..")`) with MauiIcons `ArrowBack` — do not rely on the Shell back button. **Android Back** is handled centrally in `AppShell.OnBackButtonPressed` (page overrides are not reached): it asks the current page's view model first via `IBackAware` (`CanGoBack == false` while saving swallows Back; `TryHandleBack` lets the New order wizard step back), and ignores a second press while a pop is running. New edit/wizard view models with a save must implement `IBackAware`.
 15. **No exception text in UI:** local services return friendly copy (`OrderErrorMessages.For(code)`), log technical detail with `Debug.WriteLine`. Never return `ex.Message`.
 16. **Local guards mirror the API:** e.g. `ICustomerLocalService.DeleteAsync` returns `CustomerDeleteResult.HasOrders` when orders exist; order totals/refs use the shared `OrderLineFactory` rules.
-17. **Secondary buttons:** use `Style="{StaticResource SecondaryButton}"` (white, `Gray300` border, Charcoal text); don't hand-colour buttons with `PrimaryLight`.
+17. **Lists & local data:** tab lists use the cached-list pattern (`AppearAsync`, `LocalDataVersion`, spinner only when empty); every local write path bumps `LocalDataVersion`; SQLite runs in WAL without `Cache=Shared`; session caches clear in `ClearTokensAsync`. Rules: [lists-and-local-data.md](lists-and-local-data.md).
+18. **Typed errors:** local services return `RecordResult<T>`/`RecordError`; VMs branch on `.Error` (code), never on message text. Code list: [needlebase-api](../needlebase-api/SKILL.md) rule 4.
+19. **Secondary buttons:** use `Style="{StaticResource SecondaryButton}"` (white, `Gray300` border, Charcoal text); don't hand-colour buttons with `PrimaryLight`.
 
 ## MVVM
 
@@ -61,7 +63,7 @@ MauiIcons.Material only, always sized (tabs `IconSize=22`). Single source: [tab-
 
 ## Where things are
 
-Folders, registrations, routes and planned additions: [di-navigation.md](di-navigation.md). BaseViewModel, commands, validation, lifetimes: [mvvm-patterns.md](mvvm-patterns.md). Layout: [solution-layout.md](../needlebase-architecture/solution-layout.md).
+List cache, WAL, warm-up, row speed, NB_PERF, Release AOT: [lists-and-local-data.md](lists-and-local-data.md). Folders, registrations, routes and planned additions: [di-navigation.md](di-navigation.md). BaseViewModel, commands, validation, lifetimes: [mvvm-patterns.md](mvvm-patterns.md). Layout: [solution-layout.md](../needlebase-architecture/solution-layout.md).
 
 ViewModels never touch `LocalDbContext`; they go through `I*LocalService` in Mobile.Data.
 

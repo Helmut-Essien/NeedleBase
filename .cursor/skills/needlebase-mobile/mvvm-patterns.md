@@ -31,7 +31,7 @@ Implement `IQueryAttributable.ApplyQueryAttributes` (as `CustomerDetailViewModel
 
 ## Lifetimes & loading
 
-- Tab VMs (`HomeViewModel`, `CustomersViewModel`) are Singletons: load in the page's `OnAppearing` via `LoadCommand`; cancel or ignore stale loads.
+- Tab VMs (`HomeViewModel`, `CustomersViewModel`, `OrdersViewModel`) are Singletons. List tabs call `AppearAsync()` from `OnAppearing` (cached rows, reload only on change); see [lists-and-local-data.md](lists-and-local-data.md). Cancel or ignore stale loads.
 - Form VMs are Transient: initialise once per instance from query attributes; don't wipe user input on every `OnAppearing`.
 - Logout clears singleton state via `ClearAuthSensitiveStateMessage` (WeakReferenceMessenger, `Messaging/`). That's the chosen messaging approach; don't add a second one.
 

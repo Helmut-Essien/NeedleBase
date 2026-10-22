@@ -65,6 +65,19 @@ Code gaps: [code-gaps.md](../needlebase-phases/code-gaps.md).
 - `Api.Tests/TypedRecordErrorApiTests` (customer/measurement 404/409/400 statuses + codes unchanged, `MEASUREMENT_SAVE_FAILED`, measurement `STALE_UPDATE`).
 - `Mobile.Tests/Audit3Tests` (phone error by `RecordError.PhoneInvalid`), `OrderLocalServiceTests` (order `RecordError` + codes, copy unchanged).
 
+## Device-speed regression tests (22 Oct 2026)
+
+- `Mobile.Tests/OrdersListCacheTests` (cache hit until write/status/session clear, wipe bump, picker null, business-id cache cleared on sign-out), `CustomersListCacheTests` (save/edit/ExecuteDelete/wipe/session clear, spinner only when empty), `ListCacheRaceTests` (bump on commit and on migrate, filter change supersedes an in-flight load).
+- `LocalWalTests` (no shared cache, busy timeout, WAL on, reads don't wait for a write transaction, wipe removes side files), `StatusIconGlyphTests` (verified codepoint per status, glyph in bundled font, font alias).
+- `LiveRefreshTests` (sync raises the event only for real row changes; burst merge; detach cancels; quiet in-place reload with no spinner/reset; skipped while typing; failed quiet reload keeps rows), `CollectionSyncTests`. The event is static: filter by a unique business id or tolerate another test's event.
+
+## Device testing (connected phone)
+
+- Back up the phone DB first (`adb exec-out run-as com.helmutcode.needlebase cat files/needlebase.db3` plus `-wal`/`-shm`) to a timestamped `/tmp` folder.
+- Install with `-r` only (`dotnet build -t:Install` or `adb install -r`). Never uninstall or clear app data. Before installing a differently built APK (Release), compare signing certs with `apksigner verify --print-certs`; if they differ, skip the device test.
+- Never create real orders/customers or change statuses without the user's OK. Read-only taps; screenshots to `/tmp`.
+- Speed: NB_PERF timings ([lists-and-local-data.md](../needlebase-mobile/lists-and-local-data.md#perf-timings-nb_perf)), first and repeat visits.
+
 - Epoch tests bump the shared dev database's epoch: dev devices do one full resync afterwards.
 
 ## Rules
@@ -73,3 +86,6 @@ Code gaps: [code-gaps.md](../needlebase-phases/code-gaps.md).
 - Don't assert on UI copy in Api tests; assert `status` + `code`.
 - Mobile ViewModel tests construct VMs with real/fake services (see `HomeViewModelTests`); no MAUI runtime required.
 - If tests can't run (no Postgres), say so explicitly in the report. Never claim they passed.
+
+
+**Slice 5 tests:** `Api.Tests/PaymentApiTests` (journeys, tenancy, roles, idempotency, sync replay/mismatch/void), `Mobile.Tests/PaymentSyncTests`, `Domain.Tests/PaymentTests` (money: never rounds), `Application.Tests/PaymentRulesTests` (balance, codes, cursor phase 4).

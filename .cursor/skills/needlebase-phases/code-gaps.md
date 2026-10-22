@@ -55,3 +55,20 @@ These are not to be implemented now (there is deliberately no ops/deployment ski
 - **Files:** `src/NeedleBase.Api/Program.cs` (ForwardedHeaders), `Infrastructure/Identity/LoginThrottle.cs` (in memory), `ApplicationDbContext` epoch bump guard (per process).
 - **Later:** set `ForwardedHeaders:KnownProxies`/`KnownNetworks` for the real proxy and the Web host; if the Api runs on more than one instance, move the login throttle to a shared store and the epoch-bump guard to a DB advisory lock.
 - **Acceptance:** behind the proxy, two clients on different IPs get separate auth limits; with 2 instances a throttled email+IP stays throttled on both.
+
+Device speed (22 Oct 2026): Orders and Customers tabs cache rows and reload only on change (`LocalDataVersion`, bumped by SaveChanges, non-query and commit interceptors, the migrator and wipe); business id cached in memory; Home warms the Orders query; lighter rows; picker null guard; status icon glyphs/font alias fixed; SQLite WAL without `Cache=Shared`, startup checkpoint, wipe removes side files; Release profiled AOT (device-checked). Rules: [lists-and-local-data.md](../needlebase-mobile/lists-and-local-data.md).
+
+### G12: Device speed follow-ups
+- **EF compiled model (deferred; trigger: the next EF Core upgrade):** `dbcontext optimize` + `UseModel` froze the app at the first migrate on the phone. Re-try with that upgrade only, adding a model drift test and a device start-up check.
+- ~~List refresh after a background sync while the tab stays open~~ **Closed 22 Oct 2026:** visible Orders/Customers/Home refresh live (`LocalDataVersion.ChangedBySync` + `LiveListRefresh`).
+- **Wipe while a sync holds a connection:** the deactivation path stops sync first; a direct wipe during a running sync is not guarded beyond pool clearing.
+- **Acceptance:** compiled model starts on the phone with migrate time ≤ today.
+
+
+## Slice 5 — Payments (22 Oct 2026)
+
+- Open: deposit step in the order wizard (deferred; record from Order detail).
+- Open: receipt is text share only (no image/PDF/print).
+- Open: Payments tab shows the latest 100 rows, no search.
+- Open: payment role check trusts the token role claim (same as other endpoints; Slice 7 revisits).
+- Open: device verification of Journey 1 steps 6–7 and Journey 4 (phone signed out on 22 Oct).

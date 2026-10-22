@@ -18,6 +18,8 @@ Before writing or modifying any code:
 
 7. Verify the result. Run the relevant tests and checks. If you cannot run them, state what remains unverified.
 
+8. Mobile data/list changes: a new write path bumps `LocalDataVersion`; lists keep the cache rules; nothing heavy on the UI thread; session caches clear in `ClearTokensAsync` ([lists-and-local-data.md](../needlebase-mobile/lists-and-local-data.md)). Errors are typed codes, not strings ([needlebase-api](../needlebase-api/SKILL.md) rule 4).
+
 Before finishing, report:
 - The root cause of the problem.
 - What you changed and why.

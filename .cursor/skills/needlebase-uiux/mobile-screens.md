@@ -87,7 +87,7 @@ Statuses: New → Cutting → Sewing → Fitting → Ready → Collected (+ Canc
 
 ## Payments & receipts
 
-**[planned Slice 5]**: methods from domain (Cash, MoMo, Bank, Other). NeedleBase *records* payments; it doesn't process MoMo (Terms §5.1), so copy must never say "paid via MoMo" as if confirmed by the network. Use "MoMo payment recorded".
+**[code] Slice 5**: methods from domain (Cash, MoMo, Bank, Other). NeedleBase *records* payments; it doesn't process MoMo (Terms §5.1), so copy must never say "paid via MoMo" as if confirmed by the network. Use "MoMo payment recorded".
 
 - Customer / order balances  
 - Record payment: amount, method (Cash, MoMo, Bank, Other), order link, note  
@@ -122,3 +122,5 @@ Hide staff complexity until needed.
 Realistic sample row:
 
 > ORD-1042 · Efua Mensah · 2× dress · Sewing · Due Fri · GH₵200 of 800 paid
+
+**Slice 5 copy (code):** status "Recorded on this device" until synced, then none; "Voided" when voided; method line "{Method} payment recorded · date"; toast "{Method} payment recorded on this device"; balance "GH₵ 600.00 left" / "Paid in full" / "GH₵ X overpaid"; summary "GH₵ 200.00 of GH₵ 800.00 paid". Amounts always GH₵ with 2 decimals, en-GH.

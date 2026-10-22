@@ -113,3 +113,7 @@ Business: Ama Stitches, Accra. Customer: Efua Mensah, +233…. Currency: GH₵. 
 
 ## Phones (third audit)
 - `Domain/Common/PhoneNumbers`: `Normalize` is applied by `Customer` on every create/update (Ghana numbers stored as `+233XXXXXXXXX`); `Check` is the strict format rule (9–15 digits; Ghana exactly 9 national digits) used by REST/UI for new or changed numbers only; `Same` compares numbers regardless of formatting. Changing `Normalize` needs a server backfill and a device schema step.
+
+
+## Payment (Slice 5)
+`Payment` is immutable: Amount (>0, ≤ 50,000,000, max 2 decimals, never rounded), Method (`PaymentMethod` Cash/MoMo/Bank/Other), Note, RecordedAtUtc, OrderId, CustomerId. Only change: `Void(reason, now)` — one-way, idempotent, first reason wins. Balance = order total − sum of non-voided payments (`PaymentRules.Paid`). Entry rules in `PaymentRules.CheckEntry` (strict for REST/device, lenient for sync push).

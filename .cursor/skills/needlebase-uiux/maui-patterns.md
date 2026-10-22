@@ -12,7 +12,7 @@ Source: `Views/LoginPage.xaml`, `Views/RegisterPage.xaml`. Two pre-sized Images 
 <Grid WidthRequest="44" HeightRequest="44">
     <Image WidthRequest="21" HeightRequest="21" IsVisible="{Binding IsPasswordHidden}">
         <Image.Source>
-            <FontImageSource FontFamily="MaterialIcons-Regular"
+            <FontImageSource FontFamily="MaterialIcons"
                              Glyph="{mi:Material Icon=VisibilityOff}"
                              Size="21" Color="{StaticResource Gray600}" />
         </Image.Source>

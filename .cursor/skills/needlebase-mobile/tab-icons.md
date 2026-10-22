@@ -10,7 +10,7 @@ Every UI icon (Shell tabs, buttons, in-field toggles, list glyphs, empty states)
 ```csharp
 builder.UseMauiApp<App>().UseMauiCommunityToolkit().UseMaterialMauiIcons();
 ```
-The package registers the `MaterialIcons-Regular` font; don't add another.
+The package registers the Material font under the alias `MaterialIcons`; don't add another.
 
 XAML namespaces (both are needed for the attached property; XamlC doesn't resolve `MauiIcon` via `mi` alone):
 ```xml
@@ -38,7 +38,7 @@ Tab colours live on the TabBar (`TabBarBackgroundColor="White"`, Foreground/Titl
 <!-- A. Image via FontImageSource (preferred for sized glyphs) -->
 <Image WidthRequest="24" HeightRequest="24">
     <Image.Source>
-        <FontImageSource FontFamily="MaterialIcons-Regular" Glyph="{mi:Material Icon=Settings}"
+        <FontImageSource FontFamily="MaterialIcons" Glyph="{mi:Material Icon=Settings}"
                          Color="{StaticResource Charcoal}" Size="24" />
     </Image.Source>
 </Image>
@@ -61,6 +61,10 @@ Data-driven glyphs: expose `MauiIcons.Material.MaterialIcons` from the VM (enum,
 3. **Don't swap glyphs by DataTrigger on `ImageButton.Source`.** It didn't re-render on Android. Use two Images toggled by `IsVisible` ([password toggle](../needlebase-uiux/maui-patterns.md#password-visibility-toggle)).
 4. Icon-only controls: 44×44 target + `SemanticProperties.Description` + `AutomationId`.
 5. Check the enum exists in `MaterialIcons` before using a name.
+6. **Font alias is `MaterialIcons`** (registered by `UseMaterialMauiIcons()`); `MaterialIcons-Regular` doesn't resolve in code. Use `OrderStatusPresentation.MaterialFontFamily`.
+7. **Glyph in code:** `OrderStatusPresentation.Glyph(icon)` (reads the enum's `[Description]`). Never `(int)icon`/`char.ConvertFromUtf32` — the enum value is an index, not a codepoint.
+8. Data-driven icons in list rows: one shared cached `ImageSource` per icon ([lists-and-local-data.md](lists-and-local-data.md#rows-on-low-end-phones)).
+9. Tests: `StatusIconGlyphTests` (every status → verified codepoint, present in the bundled font, no `MaterialIcons-Regular` in XAML/code). Adding a status or icon: add its codepoint there after checking it renders.
 
 ## Acceptance
 

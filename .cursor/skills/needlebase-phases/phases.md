@@ -9,7 +9,7 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 | 2 | Customers + measurements | Done (its code gaps G1, G4, G5 closed 20 Oct 2026: [code-gaps.md](code-gaps.md)) |
 | 3 | Orders + production status (mobile primary) | Done (mobile data syncs via Slice 4) |
 | 4 | Offline sync push/pull + DeletedItem + SyncChip | In progress: code + automated tests done 20 Oct 2026; Journey 2 not yet verified on devices (two-device sync, airplane mode) |
-| 5 | Payments + balances + receipts (conflict-safe) | Planned |
+| 5 | Payments + balances + receipts (conflict-safe) | In progress: code + automated tests done 22 Oct 2026; Journey 1 steps 6–7 and Journey 4 not yet verified on a device |
 | 6 | Web dashboard + production board | Planned |
 | 7 | Staff invites + role-limited UI | Planned |
 | 8 | Subscription/trial + polish | Planned |
@@ -72,6 +72,7 @@ Edge-case audit fixes (20 Oct 2026): commit-ordered pull (txid + snapshot cap), 
 Second audit fixes (20 Oct 2026): adoption of pre-sync rows (ServerKnown, migrator v6), discard impact prompt, other-account sign-in prompt, shared decimal parser + amount rules, sync epoch (`SyncState`, recover resync), refresh grace window, per-user sync rate limit, StopAsync before wipe, accent-folded search (makes commit 97b1d85's "accent-insensitive" claim true), SQLite busy timeout + storage-full copy, order-line snapshots; migration `20261020153002_SyncEpochRefreshGrace`.
 
 Third audit fixes (21 Oct 2026): lenient sync push, Android Back guard (`IBackAware`), foreground/periodic/pull-to-refresh sync, wipe on deactivation (`AccessRevokedService`), +233 phone normalisation + duplicate warning, server search keys, optional `baseModifiedUtc` → 409 `STALE_UPDATE`, refresh rate-limit policy + forwarded headers, 118 in cap, page cap, en-GH line totals, background epoch bump (503 `SYNC_MAINTENANCE`), per email+IP login throttle (no lockout), changed-only measurement checks; migration `20261021094529_CustomerSearchKeysPhone`, migrator v7. Device checks still open: Back during save, resume sync, duplicate prompt, deactivation wipe, v7 upgrade.
+Device speed (22 Oct 2026): cached Orders/Customers lists, WAL, icon fix, Release profiled AOT — see [code-gaps](code-gaps.md) "Device speed" and G12. Slice 4 device checks added: Orders/Customers tabs during a real (reachable-API) sync and after a pull that changes rows; wipe on a WAL database leaves no `-wal`/`-shm`.
 Deviations (conservative): pull is by opaque cursor (not a raw `LastSync` time); no per-business distributed lock (the skill marks it optional; push is idempotent instead). Mark Done after Journey 2 passes on two devices.
 
 ## Slice 5 acceptance — Payments (Journey 1 deposit + Journey 4)
@@ -81,6 +82,14 @@ Deviations (conservative): pull is by opaque cursor (not a raw `LastSync` time);
 - **No silent overwrite** on payment conflicts — conflict payload + UI resolution
 - Api + mobile sync rules aligned; payments never look provider-confirmed when only local
 - Journey 1 step 6–7 and Journey 4 pass
+
+**Slice 5 status (22 Oct 2026):** built [code] except the device run of the journeys (the phone was signed out).
+Server: `Domain/Entities/Payment.cs`, `Domain/Enums/PaymentMethod.cs`, `Application/Payments/*` (`PaymentRules`, `PaymentService`), `Contracts/Payments/PaymentDtos.cs`, `Api/Controllers/PaymentsController.cs`, sync pull phase 4 (`SyncCursor.PhasePayments`, cursor stays v2), migration `20261022084825_Payments` (+ `trg_payments_sync_tx`).
+Mobile: migrator v8 (`Payments`, FK cascade to Orders), `PaymentLocalService`, `PaymentsPage` (tab), `RecordPaymentPage`, `PaymentReceiptPage` (text share), Order detail payments section; SyncEngine payment push/pull/defer/prune/conflicts.
+Tests: `Api.Tests/PaymentApiTests`, `Mobile.Tests/PaymentSyncTests`, `Domain.Tests/PaymentTests`, `Application.Tests/PaymentRulesTests`.
+Decisions (defaults): payments are immutable — fix by **void** (one-way, first reason wins), no edit/delete/refunds; balance = total − non-voided payments; REST/device entry refuses overpay (`PAYMENT_EXCEEDS_BALANCE`) and Cancelled orders (`PAYMENT_ORDER_LOCKED`), Collected orders still take payments while a balance remains; sync push is lenient (offline money is real: overpay/cancelled stored, shown as "overpaid"); Owner + Manager only (reads too) — Tailor gets 403 `PAYMENT_FORBIDDEN` and the UI hides payments; order delete refused while payments exist (409 `ORDER_HAS_PAYMENTS` / sync DeleteRefused); same payment id with different content → `SYNC_PAYMENT_MISMATCH` conflict (Keep mine = keep both under a new id, Keep theirs = server copy); recording starts from Order detail.
+Deferred: deposit step inside the order wizard (record from Order detail right after create); image/PDF receipt and print; Payments tab search/paging beyond 100 rows; per-row pending badges in lists (Slice 8).
+Device checks still open: record deposit offline → sync → second device sees balance; void on device A while B records; receipt share sheet; Tailor hides payments; v8 upgrade on an existing DB.
 
 ## Slice 6 acceptance — Web oversight (Journey 3)
 

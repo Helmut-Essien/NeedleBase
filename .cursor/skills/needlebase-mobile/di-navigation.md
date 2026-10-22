@@ -17,7 +17,7 @@ HomeViewModel, CustomersViewModel, HomePage, CustomersPage
 // Transients: auth + forms + pushed pages
 LoginViewModel, RegisterViewModel, CustomerEditViewModel, CustomerDetailViewModel, MeasurementEditViewModel,
 LoginPage, RegisterPage, TermsPage, PrivacyPage, CustomerEditPage, CustomerDetailPage, MeasurementEditPage,
-OrdersPlaceholderPage, PaymentsPlaceholderPage, MorePlaceholderPage
+OrdersPlaceholderPage, MorePlaceholderPage
 ```
 
 Debug Android uses `adb reverse tcp:5036 tcp:5036`. Release reads the MSBuild property `NeedleBaseReleaseApiBaseUrl` (https only; stamped as assembly metadata, read by `Configuration/ApiEndpoint.cs`). Default is the placeholder `https://api.needlebase-placeholder.invalid/`; pass the real host: `dotnet publish -f net9.0-android -c Release -p:NeedleBaseReleaseApiBaseUrl=https://<api-host>/`.
@@ -30,7 +30,7 @@ Pages resolve their VM with `ServiceHelper.GetRequiredService<TViewModel>()` in 
 ## Shell & routes (`AppShell.xaml` / `.xaml.cs`)
 
 - Auth `ShellContent`s: `LoginPage`, `RegisterPage` (tab bar hidden).
-- `<TabBar Route="main">` tabs: `HomePage`, `CustomersPage`, `OrdersPage` (→ `OrdersPlaceholderPage`), `PaymentsPage` (→ `PaymentsPlaceholderPage`), `MorePage` (→ `MorePlaceholderPage`, with About → Terms/Privacy). Icons: [tab-icons.md](tab-icons.md).
+- `<TabBar Route="main">` tabs: `HomePage`, `CustomersPage`, `OrdersPage` (→ `OrdersPlaceholderPage`), `PaymentsPage` (`PaymentsViewModel` singleton, cached + LiveListRefresh; routes `RecordPaymentPage`, `PaymentReceiptPage`), `MorePage` (→ `MorePlaceholderPage`, with About → Terms/Privacy). Icons: [tab-icons.md](tab-icons.md).
 - Registered push routes: `CustomerEditPage`, `CustomerDetailPage`, `MeasurementEditPage`, `TermsPage`, `PrivacyPage`.
 - Parameters: query string + `IQueryAttributable` on the VM, e.g. `GoToAsync($"CustomerDetailPage?customerId={Uri.EscapeDataString(id)}")`. Always escape ids.
 - Back: in-page Back → `Shell.Current.GoToAsync("..")`. Android hardware Back + double-back-to-exit is central in `AppShell.OnBackButtonPressed` ([maui-patterns.md](../needlebase-uiux/maui-patterns.md#android-back-double-press-to-exit)).

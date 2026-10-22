@@ -97,3 +97,7 @@ dotnet run --project src/NeedleBase.Api --launch-profile https
 - [needlebase-architecture](../needlebase-architecture/SKILL.md)  
 - [needlebase-domain](../needlebase-domain/SKILL.md)  
 - [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md)  
+
+
+## Payments (Slice 5)
+`GET api/payments`, `GET api/payments/{id}`, `GET|POST api/orders/{orderId}/payments`, `POST api/payments/{id}/void`. Owner/Manager only (403 `PAYMENT_FORBIDDEN`). Codes: `PAYMENT_NOT_FOUND` 404, `PAYMENT_CONFLICT` 409 (same id, different content), `PAYMENT_EXCEEDS_BALANCE` / `PAYMENT_ORDER_LOCKED` 409, `PAYMENT_INVALID` 400. Order DELETE with payments → 409 `ORDER_HAS_PAYMENTS`. Create is idempotent on the client id.

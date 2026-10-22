@@ -48,6 +48,7 @@ All generated NeedleBase code must follow these standards. Prefer measurable spe
 - Offload heavy work off UI thread; marshal property updates to main thread once.
 - Images: cache, downsample; do not decode full-res for thumbnails.
 - Tab VMs: load incrementally / visible-first; cancel prior loads on re-appear when stale.
+- Mobile list cache, local change counter, WAL, row rules, warm-up and NB_PERF measuring: [lists-and-local-data.md](../needlebase-mobile/lists-and-local-data.md). Measure on the phone before and after a speed change.
 
 ## HTTP clients
 

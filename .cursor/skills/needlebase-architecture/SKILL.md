@@ -39,7 +39,7 @@ Web ──HTTP──► Api                Mobile → Mobile.Data → Applicatio
 3. **ULID string ids** via `IdGenerator.NewId()` (NUlid) for all entity PKs/FKs. Never `int`/`Guid`.
 4. **Offline honesty.** Local save ≠ synced. Pending payments never look provider-confirmed ([needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md)).
 5. **Web has no SQL; Mobile has no Api/Infrastructure project reference.**
-6. **Errors** are ProblemDetails with a stable `code` ([needlebase-api](../needlebase-api/SKILL.md#user-facing-errors-problemdetails)).
+6. **Errors** are ProblemDetails with a stable `code` ([needlebase-api](../needlebase-api/SKILL.md#user-facing-errors-problemdetails)). Services (server and device) return typed results (`RecordResult<T>`/`RecordError`, `OrderResult`), never English strings; callers branch on the code. The shared code list lives only in needlebase-api rule 4.
 7. **UI** follows [needlebase-uiux](../needlebase-uiux/SKILL.md).
 8. **Quality & speed by default:** [code-quality-performance.md](code-quality-performance.md).
 9. **Inspect before coding:** [engineering-review.md](engineering-review.md). Inspect first, fix the root cause, remove obsolete code, verify with evidence, report root cause / changes / removals / risks. Never claim a fix works without evidence (tests run, build output).

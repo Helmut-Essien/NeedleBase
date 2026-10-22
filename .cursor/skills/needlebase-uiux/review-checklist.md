@@ -40,6 +40,13 @@ Run on every UI PR before asking for review. Evidence = a build with 0 errors/0 
 - [ ] Matches Figma file `8qquGru92p56agRvfSRBie` (pages *Auth — Login & Register*, *Mobile — Home*) where a frame exists; deviations noted in the PR
 - [ ] Where Figma conflicts with [mobile-screens.md](mobile-screens.md) (e.g. Home KPI cards vs "avoid vanity KPIs"), flag it — don't silently pick one
 
+## Speed & local data (mobile)
+- [ ] Lists follow [lists-and-local-data.md](../needlebase-mobile/lists-and-local-data.md): cached rows, spinner only when empty, new write paths bump `LocalDataVersion`
+- [ ] Visible lists refresh live via `LiveListRefresh` (attach on appear, detach on disappear and session clear); quiet reload, rows updated with `CollectionSync`
+- [ ] Rows: shared icon images, precomputed strings, no `MultiBinding`; queries off the UI thread
+- [ ] Icons via `MaterialIcons` alias and `Glyph()`; new status/icon added to `StatusIconGlyphTests`
+- [ ] Speed change measured on the phone (NB_PERF before/after)
+
 ## Safety
 - [ ] `.vscode` launch/tasks untouched
 - [ ] Edit/wizard VMs with a save implement `IBackAware` (Android Back can't pop mid-save)

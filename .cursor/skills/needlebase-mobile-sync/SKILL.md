@@ -31,6 +31,7 @@ UX copy/states: [needlebase-uiux offline-sync](../needlebase-uiux/offline-sync.m
 9. **User messaging** — Pending = “Waiting to sync”; success toast after local save = “Saved on this device”.
 10. **Speed** — Single orchestrator + semaphores (no concurrent SQLite thrash); batch push/pull (e.g. 200); one `SaveChanges` per batch when safe; skip no-op patches; index queue for pending counts; short scopes via `CreateScope()`; propagate cancellation. Full rules: [code-quality-performance](../needlebase-architecture/code-quality-performance.md).
 11. **Inspect before coding** — Follow [engineering-review](../needlebase-architecture/engineering-review.md): inspect first, fix root cause (no parallel workarounds), remove obsolete code, prefer event-driven over unnecessary polling when it fits the architecture, verify with evidence.
+12. **Applies invalidate lists** — every pull/push apply, conflict resolution (Keep mine/theirs, Restore, Discard), tombstone delete and wipe must bump `LocalDataVersion` (automatic through EF `SaveChanges`, non-query and commit interceptors; manual `Bump()` for anything outside EF). The local DB is WAL; wipe also deletes `-wal`/`-shm`/`-journal`. After a committed pull page that changed rows, raise `LocalDataVersion.NotifyChangedBySync(businessId)` (never for no-op pages; never before commit) so visible lists refresh live. Rules: [lists-and-local-data.md](../needlebase-mobile/lists-and-local-data.md#live-refresh-after-a-background-sync).
 
 ## Mobile-only tables (`Mobile.Data`)
 
@@ -115,3 +116,7 @@ Use step 6 of the single checklist in [needlebase-domain](../needlebase-domain/S
 - **Server leniency**: pushes skip input limits (see api skill), so old queued data never fails permanently; the device stays strict.
 - **503 `SYNC_MAINTENANCE`** (server epoch re-stamp) is transient with Retry-After.
 - **Migrator v7**: resets `SearchName`; the backfill also rewrites `Phone` with `PhoneNumbers.Normalize` (not queued; the server normalises its rows the same way and devices pull them).
+
+
+## Payments (Slice 5)
+Pull phase 4 (after deletes; cursor stays v2). Push sorts payments last; create is lenient; unknown order → ParentDeleted; same id + same content → Applied (void merged); different content → Conflict `SYNC_PAYMENT_MISMATCH` (Keep mine = keep both under a new id; Keep theirs = server copy); payment delete op → Failed. Payments for a missing order are deferred. A pulled order delete keeps the order when it has queued payments and raises a Deleted conflict. Order delete with server payments → DeleteRefused (device applies the server order). Prune keeps orders that still have kept payments.

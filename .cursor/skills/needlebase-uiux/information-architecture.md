@@ -40,7 +40,7 @@ Business (workspace)
 | **Home** | “What do I need to do today?” | Due/overdue, ready for collection, balances, recent activity, quick actions | `Home` | ✓ (Slice 2) |
 | **Customers** | Find & manage people | List → Profile (Overview, Measurements, Orders, Images/Notes) → Add/Edit | `People` | ✓ |
 | **Orders** | Daily production work | List/filter → Detail → Status update; Create multi-step | `ReceiptLong` | ✓ (Slice 3) |
-| **Payments** | Money in | Balances, record payment, history, receipt share | `Payments` | Planned Slice 5 |
+| **Payments** | Money in | Balances, record payment, history, receipt share | `Payments` | [code] Slice 5 (Owner/Manager only) |
 | **More** | Secondary | Measurements hub (optional shortcut), Staff*, Settings, Sync details, Subscription, Help | `Menu` | Placeholder + About (Terms/Privacy) built; rest planned |
 
 Tab icons: MauiIcons.Material on Shell tabs — [tab-icons.md](../needlebase-mobile/tab-icons.md).
