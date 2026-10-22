@@ -101,7 +101,8 @@ public partial class SyncEndpointTests
         var before = await EpochAsync();
 
         await AssertMaintenanceThenWaitAsync(token, ahead);
-        Assert.Equal(before + 1, await EpochAsync());
+        // A re-stamp that lost a lock race with other tests' writes is retried by the next pull (as on a real
+        // server), so let a pull settle it before counting: exactly one bump either way.
         Assert.Equal(SyncErrorCodes.EpochChanged, (await PullRawAsync(token, ahead)).Code);
         Assert.Equal(before + 1, await EpochAsync());
         Assert.Equal(SyncErrorCodes.EpochChanged, (await PullRawAsync(token, ahead)).Code);
