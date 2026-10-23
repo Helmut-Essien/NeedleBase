@@ -4,66 +4,65 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - NeedleBase</title>
+    <link rel="icon" href="~/favicon.ico" asp-append-version="true" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="~/images/apple-touch-icon.png" asp-append-version="true" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/NeedleBase.Web.styles.css" asp-append-version="true" />
 </head>
 <body>
     @using NeedleBase.Web.Services
+    @{
+        var signedIn = User.Identity?.IsAuthenticated == true;
+        var name = User.DisplayName() ?? "";
+        var initials = string.Concat(name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(p => char.ToUpperInvariant(p[0])));
+    }
     <a class="skip-link" href="#main-content">Skip to main content</a>
-    @* Below md (768px): top bar with a collapsible menu. From md up: persistent left sidebar. *@
-    <header class="d-md-none">
-        <nav class="navbar nb-navbar" aria-label="Primary">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-page="/Index">NeedleBase</a>
-                @if (User.Identity?.IsAuthenticated == true)
-                {
-                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nb-mobile-nav"
-                            aria-controls="nb-mobile-nav" aria-expanded="false" aria-label="Open menu">
-                        <span class="navbar-toggler-icon"></span>
-                    </button>
-                    <div class="collapse navbar-collapse" id="nb-mobile-nav">
-                        <partial name="_NavLinks" />
-                        <div class="nb-nav-foot">
-                            <span class="nb-nav-user">@User.DisplayName() · @User.BusinessName()</span>
-                            <form asp-page="/Account/Logout" method="post"><button type="submit" class="btn btn-sm nb-btn-outline">Sign out</button></form>
-                        </div>
-                    </div>
-                }
-            </div>
-        </nav>
+    @* Below md (768px): top app bar + off-canvas drawer (site.js; :target fallback without JS). From md up: the same aside is a persistent sidebar. *@
+    <header class="nb-appbar" data-nb-drawer-outside>
+        @if (signedIn)
+        {
+            <a class="nb-iconbtn" href="#nb-drawer" role="button" data-nb-drawer-open aria-controls="nb-drawer" aria-expanded="false" aria-label="Open menu">
+                <svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+            </a>
+        }
+        <a class="nb-appbar__brand" asp-page="/Index"><img src="~/images/needlebase-logo-clear.png" asp-append-version="true" alt="NeedleBase home" width="68" height="48" /></a>
     </header>
     <div class="nb-shell">
-        @if (User.Identity?.IsAuthenticated == true)
+        @if (signedIn)
         {
-            <aside class="nb-sidebar d-none d-md-flex" aria-label="Primary">
-                <a class="nb-sidebar__brand" asp-page="/Index">NeedleBase</a>
-                <span class="nb-sidebar__business">@User.BusinessName()</span>
-                <partial name="_NavLinks" />
-                <div class="nb-nav-foot mt-auto">
-                    <span class="nb-nav-user">@User.DisplayName()</span>
-                    <form asp-page="/Account/Logout" method="post"><button type="submit" class="btn btn-sm nb-btn-outline">Sign out</button></form>
+            <aside id="nb-drawer" class="nb-sidebar" aria-label="Primary">
+                <a class="nb-iconbtn nb-drawer-close" href="#" role="button" data-nb-drawer-close aria-label="Close menu">
+                    <svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </a>
+                <a class="nb-sidebar__brand" asp-page="/Index"><img src="~/images/needlebase-logo-clear.png" asp-append-version="true" alt="NeedleBase home" width="104" height="73" /></a>
+                <span class="nb-sidebar__business">Business<b>@User.BusinessName()</b></span>
+                <nav aria-label="Main"><partial name="_NavLinks" /></nav>
+                <div class="nb-nav-foot">
+                    <div class="nb-user">
+                        <span class="nb-avatar" aria-hidden="true">@initials</span>
+                        <span class="nb-user__name" title="@name">@name</span>
+                        <form asp-page="/Account/Logout" method="post"><button type="submit" class="nb-signout">Sign out</button></form>
+                    </div>
                 </div>
             </aside>
+            <a class="nb-scrim" href="#" tabindex="-1" aria-hidden="true" data-nb-drawer-close></a>
         }
-        <div class="nb-content">
+        <div class="nb-content" data-nb-drawer-outside>
             <main id="main-content" role="main" class="nb-main" tabindex="-1">
                 @RenderBody()
             </main>
             <footer class="nb-footer">
-                <div class="py-3">
-                    &copy; 2026 - NeedleBase (HelmutCode)
-                    <nav class="nb-footer-links" aria-label="Legal">
-                        <a asp-page="/Terms">Terms and Conditions</a>
-                        <span aria-hidden="true">·</span>
-                        <a asp-page="/Privacy">Privacy Policy</a>
-                    </nav>
-                </div>
+                &copy; 2026 NeedleBase (HelmutCode)
+                <nav class="nb-footer-links" aria-label="Legal">
+                    <a asp-page="/Terms">Terms and Conditions</a>
+                    <span aria-hidden="true">·</span>
+                    <a asp-page="/Privacy">Privacy Policy</a>
+                </nav>
             </footer>
         </div>
     </div>
 
-    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js" asp-append-version="true" defer></script>
     <script src="~/js/site.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>

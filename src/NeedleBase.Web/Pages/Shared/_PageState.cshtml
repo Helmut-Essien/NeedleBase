@@ -3,6 +3,9 @@
 {
     <div class="alert @(Model.IsOffline ? "alert-warning" : "alert-danger") d-flex flex-wrap align-items-center gap-2" role="alert">
         <span>@Model.PageError</span>
-        <a class="btn btn-sm nb-btn-outline ms-auto" href="@(Context.Request.Path + Context.Request.QueryString)">Try again</a>
+        @if (Model.CanRetry)
+        {
+            <a class="btn btn-sm nb-btn-outline ms-auto" href="@(Context.Request.Path + Context.Request.QueryString)">Try again</a>
+        }
     </div>
 }

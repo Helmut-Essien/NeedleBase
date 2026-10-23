@@ -126,6 +126,7 @@ public class DetailsModel : AppPageModel
             if (order.Status == System.Net.HttpStatusCode.NotFound)
             {
                 PageError = "This order wasn't found. It may have been deleted, or it belongs to another business.";
+                CanRetry = false;
                 return null;
             }
 

@@ -1,7 +1,7 @@
 @model NeedleBase.Web.Pages.PagerModel
 @if (Model.TotalPages > 1)
 {
-    <nav aria-label="Pages" class="d-flex align-items-center gap-2 mt-3">
+    <nav aria-label="Pages" class="nb-pager">
         @if (Model.Page > 1)
         {
             <a class="btn btn-sm nb-btn-outline" href="@Model.Url(Model.Page - 1)" rel="prev">Previous</a>

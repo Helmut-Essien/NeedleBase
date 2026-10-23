@@ -118,6 +118,9 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
         Assert.DoesNotContain("Received", html);
         Assert.DoesNotContain("Balance", html);
         Assert.DoesNotContain("Outstanding", html);
+        Assert.DoesNotContain("Left to collect", html);
+        Assert.DoesNotContain("Recent payments", html);
+        Assert.DoesNotContain("nb-hero", html);
     }
 
     [Fact]
@@ -222,5 +225,32 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
         var (_, html) = await GetAsync("/Activity", BusinessRole.Tailor);
         Assert.Contains("only shown to the owner and managers", html);
         Assert.DoesNotContain(">Activity</a>", html); // no nav link
+    }
+
+    [Fact]
+    public async Task Access_denied_has_no_pointless_try_again()
+    {
+        var (_, html) = await GetAsync("/Payments", BusinessRole.Tailor);
+        Assert.Contains("only shown to the owner and managers", html);
+        Assert.DoesNotContain("Try again", html);
+    }
+
+    [Theory]
+    [InlineData("/")]
+    [InlineData("/Orders")]
+    [InlineData("/Orders/Details/o1")]
+    public async Task Shell_has_accessible_drawer_and_no_inline_styles_or_bootstrap_js(string url)
+    {
+        var (_, html) = await GetAsync(url, BusinessRole.Owner);
+        Assert.Contains("id=\"nb-drawer\"", html);
+        Assert.Contains("aria-controls=\"nb-drawer\"", html);
+        Assert.Contains("aria-expanded=\"false\"", html);
+        Assert.Contains("href=\"#nb-drawer\"", html); // works without JS (:target)
+        Assert.DoesNotContain("style=\"", html);       // CSP: style-src 'self'
+        Assert.DoesNotContain("<script>", html);
+        Assert.DoesNotContain("bootstrap.bundle", html);
+        Assert.DoesNotContain("data-bs-", html);
+        Assert.Contains("rel=\"apple-touch-icon\"", html);
+        Assert.DoesNotContain("needlebase-logo.png", html);
     }
 }

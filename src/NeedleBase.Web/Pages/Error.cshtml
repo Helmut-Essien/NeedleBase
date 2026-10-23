@@ -4,9 +4,12 @@
     ViewData["Title"] = "Error";
 }
 
+<div class="nb-card nb-error">
+<span class="nb-empty__icon" aria-hidden="true"><svg class="nb-icon" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg></span>
 <h1 class="nb-page-title">@Model.Heading</h1>
 <p class="lead">@Model.Body</p>
 <p><a class="btn nb-btn-primary" href="/">Go to the dashboard</a></p>
+</div>
 
 @if (Model.ShowRequestId)
 {

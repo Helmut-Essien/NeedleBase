@@ -17,6 +17,9 @@ public abstract class AppPageModel : PageModel
     /// <summary>True after the main data loaded (so "empty" is shown only for a real empty answer).</summary>
     public bool Loaded { get; protected set; }
 
+    /// <summary>False when retrying can't help (no access, not found), so the error hides "Try again".</summary>
+    public bool CanRetry { get; protected set; } = true;
+
     /// <summary>
     /// Records a failed call on the page. Returns a redirect for 401 (session ended), otherwise null so the page
     /// renders its error/offline state.
@@ -30,6 +33,7 @@ public abstract class AppPageModel : PageModel
         }
 
         IsOffline = result.Unreachable;
+        CanRetry = result.Status is not (HttpStatusCode.Forbidden or HttpStatusCode.NotFound);
         PageError = result.Status == HttpStatusCode.Forbidden && string.IsNullOrWhiteSpace(result.Problem?.Detail)
             ? "You don't have access to this."
             : result.Message;

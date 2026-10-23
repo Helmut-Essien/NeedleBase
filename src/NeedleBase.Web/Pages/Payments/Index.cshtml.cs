@@ -27,6 +27,7 @@ public class IndexModel : AppPageModel
         if (!User.CanSeePayments())
         {
             PageError = "Payments are only shown to the owner and managers.";
+            CanRetry = false;
             return Page();
         }
 

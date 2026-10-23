@@ -55,6 +55,7 @@ public class IndexModel : AppPageModel
         if (!User.CanSeeActivity())
         {
             PageError = "The activity log is only shown to the owner and managers.";
+            CanRetry = false;
             return Page();
         }
 

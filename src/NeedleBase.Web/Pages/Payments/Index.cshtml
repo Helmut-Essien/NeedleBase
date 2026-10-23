@@ -18,18 +18,18 @@
     }
     else
     {
-        <table class="table nb-table nb-table--cards">
+        <table class="table nb-table nb-table--cards" role="table">
             <caption class="visually-hidden">Payments, newest first</caption>
-            <thead><tr><th scope="col">Date</th><th scope="col">Customer</th><th scope="col">Order</th><th scope="col" class="d-none d-md-table-cell">Method</th><th scope="col" class="text-end">Amount</th></tr></thead>
-            <tbody>
+            <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Date</th><th role="columnheader" scope="col">Customer</th><th role="columnheader" scope="col">Order</th><th role="columnheader" scope="col" class="d-none d-lg-table-cell">Method</th><th role="columnheader" scope="col" class="text-end">Amount</th></tr></thead>
+            <tbody role="rowgroup">
                 @foreach (var p in r.Data)
                 {
-                    <tr>
-                        <td data-label="Date">@p.RecordedDisplay</td>
-                        <td data-label="Customer">@p.CustomerName</td>
-                        <td data-label="Order"><a asp-page="/Orders/Details" asp-route-id="@p.OrderId">#@p.OrderDisplayRef</a></td>
-                        <td data-label="Method" class="d-none d-md-table-cell">@p.Method payment recorded</td>
-                        <td data-label="Amount" class="text-end nb-money @(p.IsVoided ? "nb-voided" : "")">@p.AmountDisplay@(p.IsVoided ? " · Voided" : "")</td>
+                    <tr role="row">
+                        <td role="cell" data-label="Date">@p.RecordedDisplay</td>
+                        <td role="cell" data-label="Customer">@p.CustomerName</td>
+                        <td role="cell" data-label="Order"><a asp-page="/Orders/Details" asp-route-id="@p.OrderId">#@p.OrderDisplayRef</a></td>
+                        <td role="cell" data-label="Method" class="d-none d-lg-table-cell">@p.Method payment recorded</td>
+                        <td role="cell" data-label="Amount" class="text-end nb-money @(p.IsVoided ? "nb-voided" : "")">@p.AmountDisplay@(p.IsVoided ? " · Voided" : "")</td>
                     </tr>
                 }
             </tbody>

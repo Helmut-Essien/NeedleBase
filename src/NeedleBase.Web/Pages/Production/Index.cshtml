@@ -3,11 +3,11 @@
 @{
     ViewData["Title"] = "Production";
 }
-<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+<div class="nb-title-row mb-4">
     <h1 class="nb-page-title mb-0 me-auto">Production</h1>
-    <nav aria-label="Whose work" class="btn-group" role="group">
-        <a class="btn btn-sm @(Model.MineOnly ? "nb-btn-outline" : "nb-btn-primary")" asp-page="/Production/Index" asp-route-show="all" aria-current="@(Model.MineOnly ? null : "page")">Everyone</a>
-        <a class="btn btn-sm @(Model.MineOnly ? "nb-btn-primary" : "nb-btn-outline")" asp-page="/Production/Index" asp-route-show="me" aria-current="@(Model.MineOnly ? "page" : null)">Assigned to me</a>
+    <nav aria-label="Whose work" class="nb-segmented">
+        <a class="btn btn-sm" asp-page="/Production/Index" asp-route-show="all" aria-current="@(Model.MineOnly ? null : "page")">Everyone</a>
+        <a class="btn btn-sm" asp-page="/Production/Index" asp-route-show="me" aria-current="@(Model.MineOnly ? "page" : null)">Assigned to me</a>
     </nav>
 </div>
 <partial name="_PageState" model="Model" />
@@ -27,7 +27,7 @@
                 <h2 id="col-@col.Status" class="nb-board__title">@col.Title <span class="nb-num">@col.Total</span></h2>
                 @if (col.Cards.Count == 0)
                 {
-                    <p class="nb-meta">None</p>
+                    <p class="nb-meta nb-board__none">None</p>
                 }
                 <ul class="nb-board__cards">
                     @foreach (var card in col.Cards)

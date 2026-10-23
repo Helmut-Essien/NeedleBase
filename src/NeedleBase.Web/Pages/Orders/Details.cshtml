@@ -5,12 +5,12 @@
     ViewData["Title"] = Model.Order is null ? "Order" : "Order #" + Model.Order.DisplayRef;
     var gh = System.Globalization.CultureInfo.GetCultureInfo("en-GH");
 }
-<p><a asp-page="/Orders/Index">← Orders</a></p>
+<a class="nb-back" asp-page="/Orders/Index"><span aria-hidden="true">←</span> Orders</a>
 <partial name="_PageState" model="Model" />
 
 @if (Model.Order is { } o)
 {
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+    <div class="nb-title-row">
         <h1 class="nb-page-title mb-0">Order #@o.DisplayRef</h1>
         <partial name="_StatusChip" model="(o.Status, o.IsOverdue)" />
     </div>
@@ -21,8 +21,8 @@
         <div class="alert alert-success" role="status">@Model.StatusMessage</div>
     }
 
-    <div class="row g-4">
-        <div class="col-lg-7">
+    <div class="nb-detail-grid">
+        <div>
             <section class="nb-card" aria-labelledby="details-heading">
                 <h2 id="details-heading" class="nb-section-title">Details</h2>
                 <dl class="nb-dl">
@@ -38,7 +38,7 @@
                 }
             </section>
 
-            <section class="nb-card mt-4" aria-labelledby="lines-heading">
+            <section class="nb-card" aria-labelledby="lines-heading">
                 <h2 id="lines-heading" class="nb-section-title">Garments</h2>
                 <ul class="nb-list">
                     @foreach (var line in o.Lines)
@@ -52,7 +52,7 @@
             </section>
         </div>
 
-        <div class="col-lg-5">
+        <div>
             <section class="nb-card" aria-labelledby="status-heading">
                 <h2 id="status-heading" class="nb-section-title">Status</h2>
                 @if (Model.CanChangeStatus)
@@ -82,7 +82,7 @@
 
             @if (Model.Payments is { } m)
             {
-                <section class="nb-card mt-4" aria-labelledby="pay-heading">
+                <section class="nb-card" aria-labelledby="pay-heading">
                     <h2 id="pay-heading" class="nb-section-title">Payments</h2>
                     <p class="mb-1">@m.PaidSummary</p>
                     <p class="nb-balance">@m.BalanceDisplay</p>
@@ -107,7 +107,7 @@
 
             @if (Model.History is { } h)
             {
-                <section class="nb-card mt-4" aria-labelledby="history-heading">
+                <section class="nb-card" aria-labelledby="history-heading">
                     <h2 id="history-heading" class="nb-section-title">History</h2>
                     @if (h.Data.Count == 0)
                     {

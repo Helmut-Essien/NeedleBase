@@ -4,6 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - NeedleBase</title>
+    <link rel="icon" href="~/favicon.ico" asp-append-version="true" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="~/images/apple-touch-icon.png" asp-append-version="true" />
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 </head>
@@ -12,12 +14,12 @@
     <main id="auth-main" class="nb-auth-shell">
         <div class="nb-auth-card">
             <div class="nb-auth-brand">
-                <img src="~/images/needlebase-logo.png"
+                <img src="~/images/needlebase-logo-clear.png"
                      asp-append-version="true"
                      alt="NeedleBase"
                      class="nb-auth-logo"
-                     width="340"
-                     height="188" />
+                     width="200"
+                     height="141" />
             </div>
             @RenderBody()
         </div>
