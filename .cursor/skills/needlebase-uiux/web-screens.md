@@ -8,8 +8,8 @@ Oversight and management tool. Persistent sidebar, denser data, keyboard-friendl
 
 | Width | Layout |
 |-------|--------|
-| <768 | Drawer nav; **tables become cards** (one card per row: primary line, secondary line, trailing status/amount, tap → detail); filters in an offcanvas; sticky primary action at the bottom |
-| 768–1199 | Icon sidebar; tables keep 4–5 key columns (hide secondary columns with `d-none d-lg-table-cell`) |
+| <768 | Top app bar + collapsible off-canvas drawer nav; **tables become cards** (one card per row: primary line, secondary line, trailing status/amount, tap → detail); filters in an offcanvas; sticky primary action at the bottom |
+| 768–1199 | Persistent 240px sidebar (labels kept); tables keep 4–5 key columns (hide secondary columns with `d-none d-lg-table-cell`) |
 | ≥1200 | Full sidebar + full tables; optional split detail |
 
 Many owners will open the web app **on a phone**, so the <768 layout is a first-class case. Money columns right-aligned, tabular figures. Page `max-width` 1200–1440.
@@ -26,7 +26,9 @@ Sample business: **Ama Stitches**, Accra. Currency **GH₵**.
 
 \*Staff hidden for solo until invite.
 
-Narrow: collapse sidebar; tables → stacked cards.
+Narrow (<768): sidebar becomes a collapsible drawer; tables → stacked cards.
+
+**Mobile web drawer (<768) [code, v4]:** 64px top app bar (Material shadow `0 2px 6px rgba(32,42,50,.1)`, round 48px menu button, logo). The **same `<aside id="nb-drawer">`** is the desktop sidebar and the mobile off-canvas drawer: slides in from the left over a scrim; closes on the × button, scrim tap, Escape or choosing a link; focus moves into it, is trapped while open and returns to the hamburger; `aria-controls`/`aria-expanded` on the toggle, `role="dialog" aria-modal` while open; `<html>` scroll locked (`nb-drawer-open`). No JS: the toggle is a real `href="#nb-drawer"` link and CSS `:target` opens it (close = `href="#"`). Closed drawer is `visibility:hidden` (out of tab order). While open, the app bar and content are `inert`, the body is pinned (`position:fixed` + saved scroll, so iOS Safari can't scroll behind) and Space activates the link-buttons; crossing to ≥768, `pagehide` and bfcache restore all close it; zero/one focusable keeps focus on the drawer. JS lives in `site.js` (CSP-safe); reduced motion disables the slide.
 
 ---
 
@@ -135,3 +137,19 @@ Do not claim full offline parity with mobile; show local-save and sync protectio
 - **Contrast:** web `--nb-text-tertiary` is `#69737A` (4.7:1) and `--nb-warning` text `#B45309` (5:1); links use PrimaryDark `#247A2B`, never Primary `#2E9E36` on white for text (3.4:1).
 - **Images:** ship at ≤2× display size (logo 680×376, ~24 KB palette PNG).
 - `prefers-reduced-motion` disables transitions.
+
+## v4 visual design (Material + soft UI) [code, approved 22 Oct 2026]
+
+Reference: box mockup `/workspace/mockup/dashboard.html` (v4) and `/workspace/web-v4-shots/`. Tokens/components: [design-system.md § Web v4](design-system.md#web-v4-soft-ui--material). Applies to **every** page via `site.css` (no per-page styles, no inline styles).
+
+| Page | v4 treatment |
+|------|--------------|
+| Layout | Soft sidebar: logo, inset business tile, inset nav tray with 24px outlined icons, raised user card (initials avatar + Sign out); mobile drawer as above |
+| Login/Register | `_AuthLayout`: raised soft card on the same surface, inset inputs, filled green submit |
+| Dashboard | 4 raised metric cards with inset icon chips (Active, Overdue → warning colour, Due 7d, Fittings 7d); Money grid 1.4fr/1fr/1fr with the **Left to collect** hero (green left bar, 40px green figure, "View payments →"); Due next list or inset empty state; By status card with inset segmented bar (SVG, CSP-safe) + dot rows (non-zero rows inset, bold green count); Recent payments with inset icon chips (owner/manager only) |
+| Production | Segmented control (Everyone / Assigned to me); raised columns with inset wells holding raised cards; overdue = warning left border |
+| Orders / Customers / Payments | Raised filter panel with inset inputs; raised table; <768 each row is a raised card with `data-label` captions |
+| Order details | Back link, title + status chip; 1.4fr/1fr grid of raised cards (Details, Garments · Status form, Payments incl. voided struck-through, History) |
+| Activity | Filter panel; raised list; `<details>` opens as an inset well |
+| Terms/Privacy | Raised reading card, 52rem max |
+| Error/404/403 | Centred raised card with icon chip and one primary action |

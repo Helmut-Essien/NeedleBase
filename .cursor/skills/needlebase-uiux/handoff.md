@@ -15,7 +15,7 @@ Breakpoints & responsive rules: [web-screens.md](web-screens.md#responsive-rules
 | Primary create | FAB New Order | Page header button |
 | Quick edit | Bottom sheet | Right drawer or modal |
 | Filters | Sheet | Filter bar / dropdowns |
-| Navigation | Bottom tabs | Sidebar routes |
+| Navigation | Bottom tabs | Sidebar routes (≥768); collapsible off-canvas drawer <768 |
 | Mobile chrome | **No Shell nav title bar on any screen** — in-page titles + Back on pushed pages | Dedicated `_AuthLayout` (no app sidebar) |
 | Destructive | Confirm dialog | Confirm modal |
 | Save offline | Toast + pending badge | Banner/badge if local draft supported |

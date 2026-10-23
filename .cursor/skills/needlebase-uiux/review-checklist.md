@@ -59,3 +59,14 @@ Run on every UI PR before asking for review. Evidence = a build with 0 errors/0 
 - [ ] POST buttons have `data-pending-text`; double-click submits once.
 - [ ] Text colours meet 4.5:1 (no Primary `#2E9E36` or old `#8A949A` as text on white).
 - [ ] Empty pages show one message, no empty scaffolding; counts pluralised.
+
+## Web v4 (soft UI + drawer)
+
+- [ ] Uses v4 tokens/components from `site.css`; no inline styles/scripts; raised elements carry the `edge` hairline
+- [ ] Text contrast ≥4.5:1 on `#EEF2EF` (warning `#9A4406`, never `#B45309`; white only on `#247A2B`+)
+- [ ] <768: hamburger opens drawer; × / scrim / Escape / link close it; focus trapped and returned; `aria-expanded` toggles; works without JS (`#nb-drawer` :target)
+- [ ] No horizontal scroll at 390, 768, 1440; tables become cards <768
+- [ ] No CSP console violations (check DevTools console on every page)
+
+- [ ] Forced-colours (DevTools ▸ Rendering ▸ forced-colors) shows borders on every card/well; print preview is clean
+- [ ] Long names and GH₵ 12,345,678.90 don't overflow at 320

@@ -144,3 +144,9 @@ Second-audit copy: past due date is allowed with the inline warning "Due date is
 ## 13. Legal pages
 
 Terms and Privacy exist on both platforms (mobile `TermsPage`/`PrivacyPage`, web `/Terms`, `/Privacy`). They are linked from the Register terms row, mobile **More → About** (`MoreTermsLink`/`MorePrivacyLink` in `MorePlaceholderPage`, plus the real app version), and the web `_Layout` footer [code]. Keep wording in sync with `docs/legal`. Use `.nb-legal` (max-width 760px) on web and page padding 16 on mobile.
+
+## Web v4 empty/error states
+
+Web empty states are an inset well (`.nb-empty`) with optional raised icon chip (`.nb-empty__icon`), a bold one-line title and one plain sentence (e.g. "No open orders — New orders from the app show here."). Page errors keep `_PageState` (alert + Try again). Error/404/403 use the centred `.nb-error` card with one primary action.
+
+Errors where retrying can't help (no access, order not found) hide "Try again" (`AppPageModel.CanRetry`); offline and server errors keep it.

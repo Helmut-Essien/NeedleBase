@@ -112,11 +112,11 @@ Sidebar (planned S6): Dashboard · Customers · Measurements · Orders · Produc
 
 | Breakpoint | Behaviour |
 |------------|-----------|
-| ≥1200px | Persistent left sidebar expanded |
-| 768–1199px | Collapsible icon sidebar or overlay drawer |
-| <768px | Hamburger drawer + stacked cards instead of wide tables (no bottom nav on web; bottom nav is the mobile app's) |
+| ≥1200px | Persistent left sidebar (272px), full tables |
+| 768–1199px | Persistent sidebar (240px), tighter padding, 2-column metric grid |
+| <768px | Top app bar + collapsible off-canvas drawer (hamburger) + stacked cards instead of wide tables (no bottom nav on web; bottom nav is the mobile app's) |
 
-**Current code:** web `_Layout` has the left sidebar from `md` (768) up (Dashboard, Production, Orders, Customers, Payments, Activity) and a top bar with a collapsible menu below 768; footer links Terms/Privacy. Remaining sidebar items are planned.
+**Current code:** web `_Layout` has the left sidebar from `md` (768) up (Dashboard, Production, Orders, Customers, Payments, Activity) and below 768 a top app bar whose hamburger opens the same sidebar as an off-canvas drawer (see web-screens.md § App shell); footer links Terms/Privacy. Remaining sidebar items are planned.
 
 ### Role-filtered web nav
 

@@ -55,3 +55,7 @@ XAML: error label directly under the field; field Border turns red.
 - [ ] Error clears on edit
 - [ ] Primary button guarded by `IsBusy`; shows progress
 - [ ] Offline save ≠ validation success copy — see [offline-sync.md](offline-sync.md)
+
+## Web v4 styling of validation
+
+Inputs are inset; invalid inputs keep the red border (`--nb-error`) and message below; focus adds a 2px green ring outside the inset. Don't signal errors by shadow alone.

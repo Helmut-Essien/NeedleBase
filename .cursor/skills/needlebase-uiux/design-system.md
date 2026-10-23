@@ -219,7 +219,7 @@ No cards in marketing-style heroes if any; product UI cards only when they group
 
 - Mobile bottom nav: 5 items; active = green-tinted icon + label; inactive = tertiary text + untinted/grey icon. Each tab must have its **own** glyph (see Iconography → Mobile icons (implementation)).
 - FAB: `PrimaryDark` circle, + or “Order”. **[planned]** (not in code yet).
-- Web sidebar: charcoal text; active = green light bg + green accent bar or bold green label.
+- Web sidebar (v4): items 44px in an inset tray; active = filled `#247A2B` pill with white text (5.4:1) + soft green glow; inactive = `t2` text. Below 768 the sidebar is an off-canvas drawer (see web-screens.md).
 
 ### Dialogs & sheets
 
@@ -259,3 +259,32 @@ Minimal. 150–200ms ease for sheets/toasts. No decorative looping animation. Sy
 - [ ] Large-font setting doesn't clip primary actions (WordWrap, no fixed-height text rows)
 
 Pre-merge gate: [review-checklist.md](review-checklist.md).
+
+## Web v4: soft UI + Material
+
+Approved 22 Oct 2026 (mockup v4). Web only; the MAUI app keeps the flat tokens above. Implemented in `src/NeedleBase.Web/wwwroot/css/site.css` (v4 block) on top of Bootstrap 5 CSS (grid/utilities/forms only; **Bootstrap JS is no longer loaded**).
+
+| Token (`--nb-*`) | Value | Use |
+|---|---|---|
+| `base` | `#EEF2EF` | Page **and** card surface (soft UI = one surface) |
+| `hi` / `lo` | `#FFFFFF` / `#C9D1CC` | Light / dark shadow |
+| `edge` | `rgba(32,42,50,.08)` | Hairline on every raised element (shapes stay visible without relying on shadow) |
+| `raise` | `-6px -6px 14px hi, 6px 6px 14px lo` (mobile 4/10) | Cards, tables, filter panel |
+| `raise-sm` | 3px/8px | Buttons, user card, board cards |
+| `inset` | `inset 3px 3px 6px lo, inset -3px -3px 6px hi` | Nav tray, inputs, empty states, icon chips, bar tracks, open `<details>` |
+| `radius` | 18 (cards), 12–14 (controls), 99 (chips) | |
+| text | ink `#202A32` 12.9:1 · t2 `#4F5A61` 6.3:1 · t3 `#5F6A71` 4.9:1 · link `#247A2B` 4.8:1 · warning `#9A4406` 5.8:1 · error `#B42318` 5.8:1 · focus ring `#247A2B` (all on base; the flat-token `#DC2626`/`#B45309`/`#2E9E36` fail on the soft surface) | |
+
+Type: Roboto/system 14/20; h1 32/40 w400; section titles 14 w500 `t2`; figures tabular. Icons: 24px outlined SVG, stroke 1.5, `aria-hidden`.
+
+Material behaviours: state layer `::after` currentColor .08 hover / .12 focus / .16 active; `:active` scale .98; focus ring `2px solid #247A2B`, offset 3. Primary button = filled `#247A2B` (never `#2E9E36` behind white text: 3.4:1). Outline button = raised; pressed = inset. Chips: tinted bg + dark text ≥5.8:1 with a dot. `prefers-reduced-motion` removes transitions.
+
+Rules: never put text on shadows alone; keep blurs small (≤14px) for paint cost; no inline `style` (CSP) — use classes or SVG attributes (status bar); no gradients beyond the flat surface.
+
+### Web v4 hardening (audit 23 Oct 2026)
+
+- **Logo:** `images/needlebase-logo-clear.png` (transparent, trimmed, 480px) in the sidebar (104px), app bar (68px) and auth card (200px) — the only web logo file (the old boxed `needlebase-logo.png` was removed; it's in git history). Favicon (`favicon.ico`, 16/32/48) and `images/apple-touch-icon.png` (180px, white padding) are cut from its NB mark and linked from both layouts. No web manifest. No `mix-blend-mode` tricks.
+- **Forced colours (Windows high contrast):** shadows disappear, so every raised element and inset well gets a `CanvasText` border; active nav/segment = `Highlight` border; status dots/bar keep their colours (`forced-color-adjust: none`).
+- **Print:** sidebar/app bar/filters/pager/buttons hidden, shadows removed, cards get a grey border.
+- **Long content:** money figures and names wrap (`overflow-wrap:anywhere`), hero figure uses `clamp()`, list rows wrap on phones, money cards stack below 420px.
+- **Tables as cards:** cards keep table semantics with explicit `role="table|rowgroup|row|columnheader|cell"` (CSS `display:block` would otherwise drop them).

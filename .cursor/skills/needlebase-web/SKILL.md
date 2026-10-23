@@ -95,3 +95,12 @@ Run **both** processes for local dev.
 
 ## Front-end performance and security rules
 See `needlebase-uiux/web-screens.md` § "Web front-end rules": same-origin assets only, CSP-safe (no inline script/style), `asp-append-version` + `defer` on every asset, double-submit guard via `site.js` `data-pending-text`, AA contrast tokens. Note: in Development `MapStaticAssets` sends `no-cache` and uncompressed files, so measure page weight on a publish build.
+
+## Web UI v4 (22 Oct 2026)
+
+- Design: Material structure + soft UI, tokens/components in `site.css` (v4 block); spec in `needlebase-uiux/design-system.md` § Web v4 and `web-screens.md` § v4.
+- `_Layout`: one `<aside id="nb-drawer" class="nb-sidebar">` = desktop sidebar (≥768) and mobile off-canvas drawer (<768) opened by the app-bar hamburger (`data-nb-drawer-open`, `href="#nb-drawer"` no-JS fallback). Drawer JS (focus trap, Escape, scrim, scroll lock, focus return) is in `site.js`. **Bootstrap JS removed**; don't add `data-bs-*` components back.
+- Dashboard status bar is an SVG (`viewBox="0 0 total 1"`, `<rect width=count>`) because inline `style` is blocked by CSP.
+- Keep: read-only except order status, tailors don't see payments, no notifications bell, antiforgery, double-submit guard, Terms/Privacy in footer.
+
+- Audit 23 Oct 2026: transparent logo `needlebase-logo-clear.png` is the only web logo (favicon + apple-touch icon derived from its NB mark); error `#B42318`/warning `#9A4406`/focus `#247A2B` tokens for the soft surface; forced-colours + print CSS; drawer makes the page `inert` and pins the body; `AppPageModel.CanRetry` hides "Try again" on 403/404; card tables carry explicit ARIA table roles; dead pre-v4 CSS and `_Layout.cshtml.css` rules removed. Render tests cover drawer markup, no inline `style`, no Bootstrap JS, tailor sees no money copy.

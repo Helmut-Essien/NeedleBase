@@ -34,7 +34,7 @@ File key `8qquGru92p56agRvfSRBie` — pages **Auth — Login & Register**, **Mob
 
 Professional, trustworthy, modern but approachable, practical, efficient, clean, organised, dependable.
 
-**Not:** generic admin CRUD, vanity dashboards, neon/gradient decoration, heavy shadows, overly rounded pills, purple AI-default themes.
+**Not:** generic admin CRUD, vanity dashboards, neon/gradient decoration, heavy dark shadows (web v4 soft UI uses small light/dark pairs only — see design-system.md § Web v4), overly rounded pills, purple AI-default themes.
 
 ## Core workflow (must stay first-class)
 
@@ -57,7 +57,7 @@ Customer registration → Measurements → Sewing order → Production tracking 
 | | Mobile (MAUI) | Web |
 |---|---------------|-----|
 | Job | Everyday tailor work | Business oversight |
-| Nav | Bottom 5 + New Order FAB | Left sidebar |
+| Nav | Bottom 5 + New Order FAB | Left sidebar; <768 top app bar + collapsible drawer |
 | Built today | Auth, Home, Customers, Measurements, Orders (list/create/detail); Terms/Privacy; Payments placeholder | Auth, Dashboard, Production, Orders (list/detail + status), Payments, Customers, Activity, Terms/Privacy (sidebar ≥768, top bar below) |
 | Offline | Full MVP offline required | Clear local-save/sync; do not claim full offline parity unless implemented |
 | Density | Touch-first, large tap targets | Tables, filters, drawers, keyboard |
