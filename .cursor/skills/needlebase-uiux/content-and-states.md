@@ -46,7 +46,7 @@ Never use a toast for errors the user must act on. Never stack dialogs. A destru
 
 | Screen type | Loading | Empty | Error | Offline |
 |-------------|---------|-------|-------|---------|
-| List (Customers, Orders, Payments) | Skeleton rows [rec]; today `ActivityIndicator` [code] | `CollectionView.EmptyView` icon + 1 line + 1 CTA ("Add your first customer") [code on Customers/CustomerDetail] | Inline "Couldn't load" + Try again; keep showing cached rows if any | Local list still works; unsynced work shows in the sync chip + Sync details (pending / needs-attention counts) [code: `SyncStatusViewModel`, `SyncDetailsPage`]. Per-row pending badge not built yet [planned Slice 8 polish, `needlebase-phases/phases.md`] |
+| List (Customers, Orders, Payments) | Skeleton rows [rec]; today `ActivityIndicator` [code] | `CollectionView.EmptyView` icon + 1 line + 1 CTA ("Add your first customer") [code on Customers/CustomerDetail] | Inline "Couldn't load" + Try again; keep showing cached rows if any | Local list still works; unsynced work shows in the sync chip + Sync details (pending / needs-attention counts) [code: `SyncStatusViewModel`, `SyncDetailsPage`]. Per-row pending badge on Orders/Customers rows; tap opens Sync details [code, Slice 8] |
 | Detail | Skeleton header [rec] | n/a | "This record isn't available" + Back | Read local copy |
 | Form | Disable primary button + spinner (`IsBusy`) [code] | n/a | Inline field + page error | Save locally, toast "Saved on this device" |
 | Dashboard/Home | Skeleton cards | Honest zeros + "Nothing needs attention right now" [code] | Card-level error; other cards still render | Works from local data |

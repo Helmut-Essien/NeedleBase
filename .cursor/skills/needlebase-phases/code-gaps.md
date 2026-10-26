@@ -25,7 +25,7 @@ Fixed from the post-Slice-3 review: customer delete with orders → 409 `CUSTOME
 
 Fixed 21 Oct 2026: customer and measurement services (server + device) no longer return English strings; typed `RecordResult<T>`/`RecordError` with stable codes, mapped by `ApiProblems.ForRecord`, `SyncService` and the mobile VMs by code. HTTP statuses and codes unchanged. Tests: `Api.Tests/TypedRecordErrorApiTests`, `Application.Tests/RecordResultTests`, `Mobile.Tests/Audit3Tests` (phone by code). Follow-up 21 Oct 2026: device `OrderLocalService` (`SaveAsync`, `UpdateStatusAsync`) also returns `RecordResult<OrderDetailDto>`; `OrderError` → `RecordError` via `Application/Orders/OrderErrorMapping` (`ORDER_NOT_FOUND`, `ORDER_CONFLICT`, `ORDER_LOCKED`, `ORDER_STATUS_INVALID`, `ASSIGNEE_INVALID`, `ORDER_TOTAL_MISMATCH`, same codes as `ApiProblems.ForOrder`); UI copy unchanged (`OrderErrorMessages`). Tests: `Application.Tests/OrderErrorMappingTests`, `Mobile.Tests/OrderLocalServiceTests`.
 
-Open (backlog, Slice 8): per-row pending-sync badges on lists; today only the sync chip + Sync details show pending counts.
+Closed (Slice 8): per-row pending-sync badges on the phone's Orders/Customers lists; tapping the badge opens Sync details.
 
 ## Deferred (ops, later)
 
@@ -166,3 +166,27 @@ Open:
 - The API test run takes about 24 s, up from about 12 s, because of the serial sync collection.
 - A turned-off account gets no reset email at all; the owner has to turn it back on first.
 - The IP cap is per process and is lost on restart.
+
+## Slice 8 — WhatsApp + polish (26 Oct 2026)
+
+- Built: WhatsApp tap-to-send (phone + web), automatic template messages (outbox + sender + webhook), settings/log page, per-customer consent, per-row pending-sync badge on phone lists. Tests: `Api.Tests/StaffApiTests.WhatsApp.cs`, `Api.Tests/WhatsAppLinksTests.cs`, `Web.Tests/WhatsAppPageTests.cs`, `Mobile.Tests/SyncBadgeTests.cs`.
+- Added (26 Oct): phone consent (offline, schema v10 `WhatsAppConsents`, pushed after sync via `SyncService.AfterRun` → `WhatsAppConsentSync.PushAsync`; Api `PUT .../consent` takes `ChangedAtUtc`, newer server change wins, future times clamped), phone WhatsApp settings + log (`WhatsAppSettingsPage`/`ViewModel`), badge tap → Sync details, Sync details attention-first + load error, Home load error. Tests: `Mobile.Tests/WhatsAppMobileTests.cs` (9), `Mobile.Tests/SyncDetailsOrderTests.cs` (3), Api STOP-vs-late-opt-in + clock clamp in `StaffApiTests.WhatsApp.cs`.
+- Gaps: trial/subscription **on hold (user decision)**; webhook host **on hold** (placeholder in `docs/whatsapp-setup.md`); an offline consent change is audited when it reaches the server (actor = the person who made it, time = the device time it was chosen, which is trusted unless in the future, so a phone clock far behind loses to newer changes); consent for a customer that was never synced waits until the customer syncs; the phone shows consent from its cache until the background refresh (one GET per customer open, online only); phone WhatsApp settings are hidden from Tailors (the Api refuses them anyway); no diagnostics screen behind Sync details; tap-to-send "opened" isn't recorded when the phone is offline; one platform WhatsApp number for all shops (a STOP applies to every shop with that number); the sender runs inside the Api process (a restart delays, never loses, pending rows); the web order page loads consent after the order (one extra round trip for Owner/Manager); no real Meta call has been made (needs credentials).
+
+### Slice 8 review (2026-10-26)
+
+Fixed:
+- Old STOP replays undoing a newer opt-in: STOP now uses Meta's message time.
+- A slow phone clock rejecting a fresh change: corrected with `DeviceNowUtc`.
+- Hourly limit counting delivery receipts: now counts the new `SentAtUtc` column (migration `WhatsAppSentAt`, filtered index).
+- A message sent at shutdown but not saved, so sent twice: the save after sending can't be cancelled.
+- Emoji split by text cuts: `TextCut`.
+- Ghana 03X landlines treated as WhatsApp numbers.
+- On the phone:
+  - a choice made during a push was lost;
+  - opt-in changes waiting to send weren't counted in the sync badge;
+  - a quick double tap asked twice.
+
+Open:
+- Meta has no idempotency key, so a send that crashes after Meta accepts it may be sent again after 10 minutes.
+- The audit row's own time is the server's receive time; the phone time appears in the summary text.

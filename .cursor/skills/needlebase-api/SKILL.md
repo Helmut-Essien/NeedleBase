@@ -135,3 +135,11 @@ dotnet user-secrets set "Email:AppBaseUrl" "https://your-web-address"   # links 
 ```
 
 Production: environment variables `Email__Host`, `Email__Port`, `Email__Username`, `Email__Password`, … . Restart the Api; the log says "Email sending is on (…)" or warns that it's off. Off = invite codes shared by hand and no Forgot password link. Gmail allows about 500 messages a day; a restart drops unsent queued mail.
+
+## WhatsApp (Slice 8, 26 Oct 2026)
+
+Full Meta setup: `docs/whatsapp-setup.md`. Section `WhatsApp` (`Infrastructure/WhatsApp/WhatsAppOptions.cs`); secrets (AccessToken, AppSecret, VerifyToken) only via user-secrets / env `WhatsApp__*`. Unconfigured = automatic messages off (`Configured=false`, enabling returns 409 `WHATSAPP_NOT_CONFIGURED`), tap-to-send unaffected.
+Endpoints `api/whatsapp`: `GET/PUT settings` (Manager/Owner; status without template → 400 `WHATSAPP_NO_TEMPLATE`), `GET customers/{id}/consent` (Staff), `PUT …/consent` (Manager/Owner), `GET messages?orderId=&page=` (Manager/Owner, 50/page, masked phones), `POST orders/{id}/opened` (Staff, 204/404), `GET|POST webhook` (anonymous; verify token / HMAC SHA-256 with AppSecret; 404 when not configured).
+Flow: `ApplicationDbContext.SaveChanges` → `WhatsAppOutbox.AddAsync` adds a Pending row when an order's status changes to an enabled status for an opted-in customer (dedupe per order+status while pending/sent); `WhatsAppSender` (every 15 s) sends rows older than `DelaySeconds`, re-checking status/consent/settings first (else Skipped with a reason), claims rows with a conditional update, backoff 1m/5m/30m/2h, 5 tries, per-business hourly cap; webhook moves states forward only (failed wins) and turns STOP replies into opt-out. Tests fake `IWhatsAppClient`; no test calls Meta.
+
+Consent `PUT /api/whatsapp/customers/{id}/consent` (Owner/Manager) takes optional `ChangedAtUtc` (phone, maybe offline; null = now; future clamped to now). If the stored consent changed later (another device, or a STOP reply), the request is ignored and the current state returned (200) — the phone adopts it.
