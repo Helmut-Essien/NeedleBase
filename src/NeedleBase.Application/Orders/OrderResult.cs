@@ -22,7 +22,9 @@ public enum OrderError
     /// <summary>Edit would make the total less than what's already paid. API: 409 ORDER_TOTAL_BELOW_PAID.</summary>
     BelowPaid,
     /// <summary>Only Owners and Managers edit orders (tailors change status only). API: 403 ORDER_EDIT_FORBIDDEN.</summary>
-    Forbidden
+    Forbidden,
+    /// <summary>A tailor changing the status of an order assigned to someone else. API: 403 ORDER_NOT_ASSIGNED.</summary>
+    NotAssigned
 }
 
 public sealed record OrderResult(OrderDetailDto? Order, OrderError Error, string? Detail = null)

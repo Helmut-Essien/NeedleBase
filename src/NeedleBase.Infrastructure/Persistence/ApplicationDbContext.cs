@@ -88,7 +88,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
 
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<StaffMembership> StaffMemberships => Set<StaffMembership>();
+    public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<PasswordResetCode> PasswordResetCodes => Set<PasswordResetCode>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<MeasurementProfile> MeasurementProfiles => Set<MeasurementProfile>();
     public DbSet<Order> Orders => Set<Order>();
@@ -406,6 +408,27 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
         });
 
+        builder.Entity<Invitation>(e =>
+        {
+            e.ToTable("Invitations");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(26);
+            e.Property(x => x.BusinessId).HasMaxLength(26).IsRequired();
+            e.Property(x => x.Email).HasMaxLength(Invitation.EmailMax).IsRequired();
+            e.Property(x => x.Name).HasMaxLength(Invitation.NameMax);
+            e.Property(x => x.Role).HasMaxLength(32).IsRequired();
+            e.Property(x => x.CodeHash).HasMaxLength(Invitation.CodeHashMax).IsRequired();
+            e.Property(x => x.CreatedByUserId).HasMaxLength(450).IsRequired();
+            e.Property(x => x.AcceptedUserId).HasMaxLength(450);
+            e.HasIndex(x => x.CodeHash).IsUnique();
+            e.HasIndex(x => new { x.BusinessId, x.CreatedAtUtc });
+            e.HasOne<Business>()
+                .WithMany()
+                .HasForeignKey(x => x.BusinessId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
+
         builder.Entity<Customer>(e =>
         {
             e.ToTable("Customers");
@@ -474,6 +497,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.HasIndex(x => new { x.BusinessId, x.DisplayRef }).IsUnique();
             e.HasIndex(x => new { x.BusinessId, x.CustomerId });
             e.HasIndex(x => new { x.BusinessId, x.CreatedAtUtc });
+            e.HasIndex(x => new { x.BusinessId, x.AssignedToUserId }); // staff open-work counts + reassignment
             e.HasOne<Business>()
                 .WithMany()
                 .HasForeignKey(x => x.BusinessId)
@@ -621,6 +645,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.HasIndex(x => x.Token).IsUnique();
             e.HasOne(x => x.ApplicationUser)
                 .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(x => x.ApplicationUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<PasswordResetCode>(e =>
+        {
+            e.ToTable("PasswordResetCodes");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(26);
+            e.Property(x => x.CodeHash).HasMaxLength(64).IsRequired();
+            e.HasIndex(x => new { x.ApplicationUserId, x.CreatedAtUtc });
+            e.HasOne(x => x.ApplicationUser)
+                .WithMany()
                 .HasForeignKey(x => x.ApplicationUserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });

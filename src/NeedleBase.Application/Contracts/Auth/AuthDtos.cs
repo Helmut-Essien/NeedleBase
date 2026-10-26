@@ -102,3 +102,54 @@ public sealed record AuthUserDto(
     string BusinessId,
     string BusinessName,
     string Role);
+
+public sealed class InviteCodeRequest
+{
+    [Required, MaxLength(40)]
+    public string Code { get; set; } = string.Empty;
+}
+
+public sealed class AcceptInviteRequest
+{
+    [Required, MaxLength(40)]
+    public string Code { get; set; } = string.Empty;
+
+    [Required, MaxLength(100)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required, MaxLength(100)]
+    public string Surname { get; set; } = string.Empty;
+
+    [Required, MinLength(6), MaxLength(100)]
+    public string Password { get; set; } = string.Empty;
+}
+
+public sealed class ChangePasswordRequest
+{
+    [Required, MaxLength(100)]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required, MinLength(6), MaxLength(100)]
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public sealed class ForgotPasswordRequest
+{
+    [Required, EmailAddress, MaxLength(256)]
+    public string Email { get; set; } = string.Empty;
+}
+
+public sealed class ResetPasswordRequest
+{
+    [Required, EmailAddress, MaxLength(256)]
+    public string Email { get; set; } = string.Empty;
+
+    [Required, MaxLength(20)]
+    public string Code { get; set; } = string.Empty;
+
+    [Required, MinLength(6), MaxLength(100)]
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+/// <summary>What the sign-in screens may offer: Forgot password only when the server can send email.</summary>
+public sealed record AuthOptionsDto(bool EmailEnabled);

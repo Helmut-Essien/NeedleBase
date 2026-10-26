@@ -24,12 +24,36 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(PaymentReceiptPage), typeof(PaymentReceiptPage));
         Routing.RegisterRoute(nameof(TermsPage), typeof(TermsPage));
         Routing.RegisterRoute(nameof(PrivacyPage), typeof(PrivacyPage));
+        Routing.RegisterRoute(nameof(StaffPage), typeof(StaffPage));
+        Routing.RegisterRoute(nameof(ChangePasswordPage), typeof(ChangePasswordPage));
 
         // A stray first press must not survive a navigation and exit later.
-        Navigated += (_, _) => _lastRootBackPressUtc = DateTimeOffset.MinValue;
+        Navigated += (_, _) =>
+        {
+            _lastRootBackPressUtc = DateTimeOffset.MinValue;
+            _ = ApplyRoleTabsAsync();
+        };
 
         // Native MauiSplashScreen is the only splash; run auth gate once Shell is ready.
         Loaded += OnShellLoaded;
+    }
+
+    /// <summary>Tailors never see payments: hide the tab (role from the cached session; refreshed on every navigation).</summary>
+    private async Task ApplyRoleTabsAsync()
+    {
+        try
+        {
+            var role = (await ServiceHelper.GetRequiredService<IAuthService>().GetCachedUserAsync())?.Role;
+            var show = role is null || NeedleBase.Application.Payments.PaymentRules.CanManage(role);
+            if (PaymentsTab.IsVisible != show)
+            {
+                PaymentsTab.IsVisible = show;
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Role tabs failed: {ex.Message}");
+        }
     }
 
     private async void OnShellLoaded(object? sender, EventArgs e)

@@ -80,10 +80,18 @@ public sealed class NavigationService : INavigationService
 
             foreach (var route in MainTabRoutes)
             {
-                await shell.GoToAsync(route, animate: false);
-                while (shell.Navigation.NavigationStack.Count > 1)
+                try
                 {
-                    await shell.Navigation.PopAsync(animated: false);
+                    await shell.GoToAsync(route, animate: false);
+                    while (shell.Navigation.NavigationStack.Count > 1)
+                    {
+                        await shell.Navigation.PopAsync(animated: false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // e.g. the Payments tab is hidden for a Tailor: skip it, still clear the other tabs.
+                    System.Diagnostics.Debug.WriteLine($"Stack clear skipped {route}: {ex.Message}");
                 }
             }
 

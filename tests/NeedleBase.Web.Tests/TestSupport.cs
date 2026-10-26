@@ -35,6 +35,17 @@ public sealed class FakeApi : INeedleBaseApi
     public Func<ApiResult<IReadOnlyList<StaffNameDto>>> Staff { get; set; } = () => ApiResult<IReadOnlyList<StaffNameDto>>.Ok([]);
     public UpdateOrderStatusRequest? LastUpdate { get; private set; }
 
+    public Func<ApiResult<StaffOverviewDto>> StaffOverview { get; set; } = () => ApiResult<StaffOverviewDto>.Ok(new StaffOverviewDto([], [], true));
+    public Func<CreateInvitationRequest, ApiResult<CreatedInvitationDto>>? Invite { get; set; }
+    public Func<NeedleBase.Application.Contracts.Auth.ChangePasswordRequest, ApiResult<AuthSessionPayload>>? ChangePassword { get; set; }
+    public Task<ApiResult<StaffOverviewDto>> GetStaffAsync(CancellationToken c = default) { Calls.Enqueue("staff"); return Task.FromResult(StaffOverview()); }
+    public Task<ApiResult<CreatedInvitationDto>> InviteAsync(CreateInvitationRequest r, CancellationToken c = default) { Calls.Enqueue("invite"); return Task.FromResult(Invite?.Invoke(r) ?? throw new InvalidOperationException("Invite not stubbed")); }
+    public Task<ApiResult<bool>> RevokeInviteAsync(string id, CancellationToken c = default) { Calls.Enqueue("revoke:" + id); return Task.FromResult(ApiResult<bool>.Ok(true)); }
+    public Task<ApiResult<StaffMemberDto>> ChangeStaffRoleAsync(string userId, string role, CancellationToken c = default) { Calls.Enqueue($"role:{userId}:{role}"); throw new InvalidOperationException("Role not stubbed"); }
+    public Task<ApiResult<StaffMemberDto>> SetStaffActiveAsync(string userId, bool active, CancellationToken c = default) { Calls.Enqueue($"active:{userId}:{active}"); throw new InvalidOperationException("Active not stubbed"); }
+    public Func<string, string?, ApiResult<ReassignOrdersResultDto>>? Reassign { get; set; }
+    public Task<ApiResult<ReassignOrdersResultDto>> ReassignOrdersAsync(string userId, string? toUserId, CancellationToken c = default) { Calls.Enqueue($"reassign:{userId}:{toUserId}"); return Task.FromResult(Reassign?.Invoke(userId, toUserId) ?? throw new InvalidOperationException("Reassign not stubbed")); }
+    public Task<ApiResult<AuthSessionPayload>> ChangePasswordAsync(NeedleBase.Application.Contracts.Auth.ChangePasswordRequest r, CancellationToken c = default) { Calls.Enqueue("change-password"); return Task.FromResult(ChangePassword?.Invoke(r) ?? throw new InvalidOperationException("ChangePassword not stubbed")); }
     public Task<ApiResult<DashboardSummaryDto>> GetDashboardAsync(CancellationToken c = default) { Calls.Enqueue("dashboard"); return Task.FromResult(Dashboard()); }
     public Task<ApiResult<PaginatedResponse<OrderListItemDto>>> ListOrdersAsync(OrderQuery q, CancellationToken c = default) { Calls.Enqueue("orders"); OrderQueries.Enqueue(q); return Task.FromResult(Orders(q)); }
     public Task<ApiResult<OrderDetailDto>> GetOrderAsync(string id, CancellationToken c = default) { Calls.Enqueue("order"); return Task.FromResult(Order(id)); }

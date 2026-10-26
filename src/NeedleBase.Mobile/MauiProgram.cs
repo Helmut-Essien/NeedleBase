@@ -106,7 +106,16 @@ public static class MauiProgram
         builder.Services.AddTransient<RecordPaymentPage>();
         builder.Services.AddTransient<EditOrderPage>();
         builder.Services.AddTransient<PaymentReceiptPage>();
-        builder.Services.AddTransient<MorePlaceholderPage>();
+        builder.Services.AddSingleton<MorePage>();
+        builder.Services.AddSingleton<IStaffApi, StaffApi>();
+        builder.Services.AddTransient<StaffViewModel>();
+        builder.Services.AddTransient<StaffPage>();
+        builder.Services.AddTransient<ChangePasswordViewModel>();
+        builder.Services.AddTransient<ChangePasswordPage>();
+        builder.Services.AddTransient<AcceptInviteViewModel>();
+        builder.Services.AddTransient<AcceptInvitePage>();
+        builder.Services.AddTransient<ForgotPasswordViewModel>();
+        builder.Services.AddTransient<ForgotPasswordPage>();
 
 #if DEBUG
         builder.Logging.AddDebug();

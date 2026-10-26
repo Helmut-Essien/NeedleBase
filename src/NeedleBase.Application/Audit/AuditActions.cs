@@ -33,6 +33,9 @@ public static class AuditActions
     public const string StaffDeactivated = "staff.deactivated";
     public const string StaffReactivated = "staff.reactivated";
     public const string StaffRemoved = "staff.removed";
+    public const string StaffInvited = "staff.invited";
+    public const string StaffInviteRevoked = "staff.invite_revoked";
+    public const string StaffOrdersReassigned = "staff.orders_reassigned";
 
     public const string LoginSucceeded = "auth.login";
     public const string LoginFailed = "auth.login_failed";
@@ -41,6 +44,8 @@ public static class AuditActions
     public const string Logout = "auth.logout";
     public const string TokenReuse = "auth.token_reuse";
     public const string PasswordChanged = "auth.password_changed";
+    public const string PasswordResetRequested = "auth.password_reset_requested";
+    public const string PasswordReset = "auth.password_reset";
     public const string Registered = "auth.registered";
 
     public const string SyncPush = "sync.push";
@@ -82,6 +87,9 @@ public static class AuditActions
         StaffDeactivated => "Team member deactivated",
         StaffReactivated => "Team member reactivated",
         StaffRemoved => "Team member removed",
+        StaffInvited => "Invite sent",
+        StaffInviteRevoked => "Invite cancelled",
+        StaffOrdersReassigned => "Orders reassigned",
         LoginSucceeded => "Signed in",
         LoginFailed => "Sign-in failed",
         LoginThrottled => "Sign-in slowed down",
@@ -89,6 +97,8 @@ public static class AuditActions
         Logout => "Signed out",
         TokenReuse => "Session revoked (token reuse)",
         PasswordChanged => "Password changed",
+        PasswordResetRequested => "Password reset requested",
+        PasswordReset => "Password reset",
         Registered => "Account registered",
         SyncPush => "Phone sent changes",
         SyncPull => "Phone synced",

@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="MailKit" Version="4.18.2" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.9">
@@ -25,6 +26,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NeedleBase.Application\NeedleBase.Application.csproj" />
+    <InternalsVisibleTo Include="NeedleBase.Api.Tests" />
   </ItemGroup>
 
 </Project>

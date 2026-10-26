@@ -30,9 +30,9 @@ public class RegisterModel : PageModel
         public string Email { get; set; } = string.Empty;
 
         [Required]
-        [MinLength(6)]
-        [MaxLength(100)]
-        [RegularExpression(@"^(?=.*\d).+$", ErrorMessage = "At least 6 characters, including a number")]
+        [MinLength(NeedleBase.Application.Common.PasswordPolicy.MinLength, ErrorMessage = NeedleBase.Application.Common.PasswordPolicy.Hint)]
+        [MaxLength(NeedleBase.Application.Common.PasswordPolicy.MaxLength)]
+        [RegularExpression(NeedleBase.Application.Common.PasswordPolicy.Pattern, ErrorMessage = NeedleBase.Application.Common.PasswordPolicy.Hint)]
         [DataType(DataType.Password)]
         public string Password { get; set; } = string.Empty;
 

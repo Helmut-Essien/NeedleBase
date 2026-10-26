@@ -114,6 +114,13 @@ public class Order : Entity, IBusinessScoped
         DateModifiedUtc = utcNow;
     }
 
+    /// <summary>Changes only the assignee (staff reassignment). Locked when Collected/Cancelled.</summary>
+    public void Reassign(string? assignedToUserId, DateTimeOffset utcNow)
+    {
+        EnsureEditable();
+        ApplyHeader(DueDate, FittingDate, assignedToUserId, Notes, utcNow);
+    }
+
     public void SetStatus(string status, DateTimeOffset utcNow)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(status);

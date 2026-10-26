@@ -1,0 +1,171 @@
+@page
+@model NeedleBase.Web.Pages.Staff.IndexModel
+@using NeedleBase.Application.Staff
+@using NeedleBase.Application.Contracts.Payments
+@using NeedleBase.Domain.Enums
+@{
+    ViewData["Title"] = "Staff";
+}
+<h1 class="nb-page-title">Staff</h1>
+<p class="nb-meta">Manager runs the shop day to day. Tailors see work assigned to them.</p>
+<partial name="_PageState" model="Model" />
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-success" role="status">@Model.StatusMessage</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.ActionError))
+{
+    <div class="alert alert-danger" role="alert">@Model.ActionError</div>
+}
+
+@if (Model.NewInvite is { } ni)
+{
+    <section class="nb-card nb-invite-code" aria-labelledby="code-heading">
+        <h2 id="code-heading" class="nb-section-title">Invite ready for @ni.Invitation.Email</h2>
+        @if (ni.Emailed)
+        {
+            <p>We're emailing this code to them now. If it doesn't arrive in a few minutes (check spam), send it by WhatsApp, SMS or in person.</p>
+        }
+        else
+        {
+            <p>Send this code to them by WhatsApp, SMS or in person. They open the NeedleBase app or website, choose <strong>Join with an invite code</strong> and enter it.</p>
+        }
+        <p class="nb-invite-code__value" aria-label="Invite code">@ni.Code</p>
+        <p class="nb-meta mb-0">Joins as @ni.Invitation.Role. Works once, until @Money.Date(ni.Invitation.ExpiresAtUtc). This code isn't shown again; if it's lost, invite the same email again for a new one.</p>
+    </section>
+}
+
+@if (Model.Overview is { } o)
+{
+    <div class="nb-detail-grid">
+        <div>
+            <section class="nb-card" aria-labelledby="team-heading">
+                <h2 id="team-heading" class="nb-section-title">Team</h2>
+                @if (o.Members.Count <= 1)
+                {
+                    <p class="nb-empty">It's just you for now. Invite someone to help and they'll appear here.</p>
+                }
+                <ul class="nb-list">
+                    @foreach (var m in o.Members)
+                    {
+                        <li class="nb-list__row nb-staff">
+                            <div class="nb-list__body">
+                                <strong>@m.Name@(m.IsYou ? " (you)" : "")</strong>
+                                <span class="nb-meta">@m.Email</span>
+                                <span class="nb-meta">@m.Role · @(m.IsActive ? "" : "Access off · ")@IndexModel.Orders(m.OpenAssignedOrders) assigned</span>
+                                <span class="nb-meta">@StaffRoles.Summary(m.Role)</span>
+                            </div>
+                            @if (Model.CanManage && !m.IsYou && m.Role != BusinessRole.Owner)
+                            {
+                                <div class="nb-staff__actions">
+                                    @if (m.IsActive)
+                                    {
+                                        <form method="post" asp-page-handler="Role" class="nb-staff__role">
+                                            <input type="hidden" name="userId" value="@m.UserId" />
+                                            <label class="visually-hidden" for="role-@m.UserId">Role for @m.Name</label>
+                                            <select id="role-@m.UserId" name="role" class="form-select form-select-sm">
+                                                @foreach (var r in StaffRoles.Assignable)
+                                                {
+                                                    <option value="@r" selected="@(r == m.Role)">@r</option>
+                                                }
+                                            </select>
+                                            <button type="submit" class="btn btn-sm nb-btn-outline">Change role</button>
+                                        </form>
+                                        <form method="post" asp-page-handler="Deactivate">
+                                            <input type="hidden" name="userId" value="@m.UserId" />
+                                            <button type="submit" class="btn btn-sm nb-btn-outline">Turn off access</button>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <form method="post" asp-page-handler="Reactivate">
+                                            <input type="hidden" name="userId" value="@m.UserId" />
+                                            <button type="submit" class="btn btn-sm nb-btn-outline">Turn access back on</button>
+                                        </form>
+                                    }
+                                    @if (m.OpenAssignedOrders > 0)
+                                    {
+                                        <form method="post" asp-page-handler="Reassign" class="nb-staff__role">
+                                            <input type="hidden" name="userId" value="@m.UserId" />
+                                            <label class="visually-hidden" for="move-@m.UserId">Move @m.Name's open orders to</label>
+                                            <select id="move-@m.UserId" name="toUserId" class="form-select form-select-sm">
+                                                <option value="">Leave unassigned</option>
+                                                @foreach (var t in Model.ReassignTargets(m))
+                                                {
+                                                    <option value="@t.UserId">@t.Name (@t.Role)</option>
+                                                }
+                                            </select>
+                                            <button type="submit" class="btn btn-sm nb-btn-outline">Move @IndexModel.Orders(m.OpenAssignedOrders)</button>
+                                        </form>
+                                    }
+                                </div>
+                            }
+                        </li>
+                    }
+                </ul>
+            </section>
+        </div>
+        <div>
+            @if (Model.CanManage)
+            {
+                <section class="nb-card" aria-labelledby="invite-heading">
+                    <h2 id="invite-heading" class="nb-section-title">Invite someone</h2>
+                    <form method="post" asp-page-handler="Invite" novalidate>
+                        <div class="mb-3">
+                            <label asp-for="Invite.Email" class="form-label">Their email</label>
+                            <input asp-for="Invite.Email" class="form-control" autocomplete="off" placeholder="kofi@example.com" />
+                            <span asp-validation-for="Invite.Email" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Invite.Name" class="form-label">Name (optional)</label>
+                            <input asp-for="Invite.Name" class="form-control" autocomplete="off" />
+                        </div>
+                        <fieldset class="mb-3">
+                            <legend class="form-label">Role</legend>
+                            @foreach (var r in StaffRoles.Assignable)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="Invite.Role" id="invite-role-@r" value="@r" checked="@(Model.Invite.Role == r)" />
+                                    <label class="form-check-label" for="invite-role-@r"><strong>@r</strong> <span class="nb-meta">@StaffRoles.Summary(r)</span></label>
+                                </div>
+                            }
+                        </fieldset>
+                        <button type="submit" class="btn nb-btn-primary">Create invite</button>
+                    </form>
+                </section>
+            }
+
+            <section class="nb-card" aria-labelledby="invites-heading">
+                <h2 id="invites-heading" class="nb-section-title">Invites</h2>
+                @if (o.Invitations.Count == 0)
+                {
+                    <p class="nb-empty mb-0">No invites yet.</p>
+                }
+                else
+                {
+                    <ul class="nb-list">
+                        @foreach (var i in o.Invitations)
+                        {
+                            <li class="nb-list__row nb-staff">
+                                <div class="nb-list__body">
+                                    <strong>@(i.Name ?? i.Email)</strong>
+                                    @if (i.Name is not null) { <span class="nb-meta">@i.Email</span> }
+                                    <span class="nb-meta">@i.Role · <span class="nb-chip nb-chip--@(i.Status == InvitationStatus.Accepted ? "ready" : i.Status == InvitationStatus.Pending ? "new" : "cancelled")">@i.Status</span>
+                                        @(i.Status == InvitationStatus.Pending ? $" · until {Money.Date(i.ExpiresAtUtc)}" : i.AcceptedAtUtc is { } at ? $" · {Money.Date(at)}" : "")</span>
+                                </div>
+                                @if (Model.CanManage && i.Status == InvitationStatus.Pending)
+                                {
+                                    <form method="post" asp-page-handler="Revoke">
+                                        <input type="hidden" name="id" value="@i.Id" />
+                                        <button type="submit" class="btn btn-sm nb-btn-outline">Cancel invite</button>
+                                    </form>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
+    </div>
+}

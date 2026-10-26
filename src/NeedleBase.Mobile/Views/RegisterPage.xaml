@@ -111,7 +111,7 @@
                            Text="{Binding Password}"
                            IsPassword="{Binding IsPasswordHidden}"
                            IsEnabled="{Binding CanSubmit}"
-                           SemanticProperties.Description="Password minimum six characters including a number"
+                           SemanticProperties.Description="Password: at least six characters, with a number and a small letter"
                            AutomationId="RegisterPassword" />
                     <Grid Grid.Column="1" WidthRequest="44" HeightRequest="44" VerticalOptions="Center">
                         <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"
@@ -140,7 +140,7 @@
                    FontSize="13"
                    Margin="0,6,0,0"
                    SemanticProperties.Description="Password error" LineBreakMode="WordWrap" />
-            <Label Text="At least 6 characters, including a number"
+            <Label Text="{x:Static vm:PasswordRules.Hint}"
                    TextColor="{StaticResource Gray600}"
                    FontSize="13"
                    Margin="0,6,0,14">

@@ -432,6 +432,10 @@ public sealed class SyncEngine
         SyncErrorCodes.ParentDeleted => "Its customer was deleted on another device.",
         SyncErrorCodes.DeleteRefused => "Still in use on the server, so it wasn't deleted.",
         SyncErrorCodes.PaymentMismatch => "A different payment was saved elsewhere. NeedleBase will not discard a payment without your choice.",
+        NeedleBase.Application.Contracts.Errors.OrderErrorMessages.NotAssigned =>
+            "Saved, but the status wasn't changed: this order is assigned to someone else. Use the shop's copy.",
+        not null when code.StartsWith("ORDER_", StringComparison.Ordinal) =>
+            "Saved, but the status change wasn't allowed. Use the shop's copy.",
         _ => "Changed on another device."
     };
 

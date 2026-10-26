@@ -30,6 +30,22 @@ public interface INeedleBaseApi
     Task<ApiResult<IReadOnlyList<StaffNameDto>>> GetStaffNamesAsync(CancellationToken cancellationToken = default);
 
     Task<ApiResult<PaginatedResponse<AuditEventDto>>> ListActivityAsync(AuditQuery query, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<StaffOverviewDto>> GetStaffAsync(CancellationToken cancellationToken = default);
+
+    Task<ApiResult<CreatedInvitationDto>> InviteAsync(CreateInvitationRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<bool>> RevokeInviteAsync(string invitationId, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<StaffMemberDto>> ChangeStaffRoleAsync(string userId, string role, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<StaffMemberDto>> SetStaffActiveAsync(string userId, bool active, CancellationToken cancellationToken = default);
+
+    /// <summary>Owner: move a member's open orders to another active member, or unassign them (toUserId null).</summary>
+    Task<ApiResult<ReassignOrdersResultDto>> ReassignOrdersAsync(string userId, string? toUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>New tokens for this browser (every other session is signed out).</summary>
+    Task<ApiResult<AuthSessionPayload>> ChangePasswordAsync(NeedleBase.Application.Contracts.Auth.ChangePasswordRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Order list filters (server-side paging/filtering).</summary>

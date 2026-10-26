@@ -111,7 +111,9 @@ public class DetailsModel : AppPageModel
     /// <summary>Owner/Manager on an order that isn't collected/cancelled (the Api enforces the same).</summary>
     public bool CanEdit => Order is not null && User.CanEditOrders() && !OrderStatus.IsTerminal(Order.Status);
 
-    public bool CanChangeStatus => Order is not null && !OrderStatus.IsTerminal(Order.Status);
+    /// <summary>Open order, and a Tailor only on their own or unassigned orders (the Api enforces the same).</summary>
+    public bool CanChangeStatus => Order is not null && !OrderStatus.IsTerminal(Order.Status) &&
+        NeedleBase.Application.Orders.OrderEditor.CanChangeStatus(User.Role(), User.UserId(), Order.AssignedToUserId);
 
     private async Task<IActionResult?> LoadAsync(CancellationToken cancellationToken)
     {

@@ -23,6 +23,15 @@ public static class OrderEditor
 {
     public static bool CanEdit(string? role) => PaymentRules.CanManage(role);
 
+    /// <summary>
+    /// Tailors move work they are assigned to, or unassigned work (a solo helper picks it up); Owners and Managers
+    /// move anything.
+    /// </summary>
+    public static bool CanChangeStatus(string? role, string? userId, string? assignedToUserId) =>
+        role != NeedleBase.Domain.Enums.BusinessRole.Tailor ||
+        string.IsNullOrEmpty(assignedToUserId) ||
+        string.Equals(assignedToUserId, userId, StringComparison.Ordinal);
+
     /// <param name="order">Tracked order with its <see cref="Order.Lines"/> loaded.</param>
     /// <param name="customerProfiles">The order customer's measurement profiles (for new lines).</param>
     /// <param name="paid">Sum of non-voided payments on the order.</param>

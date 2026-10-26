@@ -1,6 +1,7 @@
 @page
 @model NeedleBase.Web.Pages.Account.LoginModel
 @using NeedleBase.Web.Pages.Shared
+@inject NeedleBase.Web.Services.IApiAuthService AuthApi
 @{
     Layout = "_AuthLayout";
     ViewData["Title"] = "Sign in";
@@ -8,6 +9,10 @@
 
 <h1 class="nb-auth-title">Sign in to your business</h1>
 
+@if (!string.IsNullOrEmpty(Model.Notice))
+{
+    <div class="alert alert-success nb-auth-alert" role="status">@Model.Notice</div>
+}
 @if (!string.IsNullOrEmpty(Model.ErrorMessage))
 {
     <div class="alert alert-danger nb-auth-alert" role="alert" aria-live="assertive">@Model.ErrorMessage</div>
@@ -31,6 +36,10 @@
             <partial name="_PasswordToggleButton" model="@(new PasswordToggleModel { InputId = "Input_Password" })" />
         </div>
         <span asp-validation-for="Input.Password" class="text-danger small nb-auth-error"></span>
+        @if (await AuthApi.EmailEnabledAsync())
+        {
+            <a asp-page="/Account/ForgotPassword" class="nb-auth-link">Forgot password?</a>
+        }
     </div>
     <div class="form-check nb-auth-remember text-start">
         <input asp-for="Input.RememberMe" class="form-check-input" />
@@ -40,6 +49,11 @@
         <button type="submit" class="btn nb-btn-primary nb-auth-submit" data-pending-text="Signing in…">Sign in</button>
     </div>
 </form>
+
+<p class="nb-auth-footer">
+    Got an invite code?
+    <a asp-page="/Account/AcceptInvite">Join your team</a>
+</p>
 
 <p class="nb-auth-footer">
     New business?

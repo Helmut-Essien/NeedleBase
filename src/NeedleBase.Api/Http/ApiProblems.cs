@@ -70,6 +70,7 @@ public static class ApiProblems
             OrderError.HasPayments => (StatusCodes.Status409Conflict, OrderErrorMessages.HasPayments, "Order has payments"),
             OrderError.BelowPaid => (StatusCodes.Status409Conflict, OrderErrorMessages.TotalBelowPaid, "Total below amount paid"),
             OrderError.Forbidden => (StatusCodes.Status403Forbidden, OrderErrorMessages.EditForbidden, "Not allowed to edit orders"),
+            OrderError.NotAssigned => (StatusCodes.Status403Forbidden, OrderErrorMessages.NotAssigned, "Assigned to someone else"),
             _ => (StatusCodes.Status400BadRequest, OrderErrorMessages.Validation, "Check the order details")
         };
 
@@ -108,6 +109,23 @@ public static class ApiProblems
         var code = RecordErrorMessages.Code(error);
         return Create(ctx, status, code, "Couldn't save the payment",
             string.IsNullOrWhiteSpace(detail) ? RecordErrorMessages.For(error) : detail);
+    }
+
+    /// <summary>Staff, invite and password-change errors: status + stable code + shared friendly copy.</summary>
+    public static ObjectResult ForStaff(HttpContext ctx, string? code)
+    {
+        var c = code ?? StaffErrorMessages.Validation;
+        var (status, title) = c switch
+        {
+            StaffErrorMessages.InviteNotFound or StaffErrorMessages.StaffNotFound => (StatusCodes.Status404NotFound, "Not found"),
+            StaffErrorMessages.InviteExpired or StaffErrorMessages.InviteRevoked => (StatusCodes.Status410Gone, "Invite no longer valid"),
+            StaffErrorMessages.InviteUsed or StaffErrorMessages.InviteEmailInUse or StaffErrorMessages.InviteLimit
+                => (StatusCodes.Status409Conflict, "Can't do that"),
+            StaffErrorMessages.StaffSelf or StaffErrorMessages.StaffOwner => (StatusCodes.Status403Forbidden, "Not allowed"),
+            StaffErrorMessages.ResetUnavailable => (StatusCodes.Status503ServiceUnavailable, "Email not set up"),
+            _ => (StatusCodes.Status400BadRequest, "Check the details")
+        };
+        return Create(ctx, status, c, title, StaffErrorMessages.For(c));
     }
 
     public static ObjectResult StaleUpdate(HttpContext ctx) =>

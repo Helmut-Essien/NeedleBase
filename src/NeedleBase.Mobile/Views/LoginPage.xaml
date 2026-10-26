@@ -129,6 +129,30 @@
                     Clicked="OnRegisterClicked"
                     SemanticProperties.Description="Register a new business" />
 
+            <Button Text="Forgot password?"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource PrimaryDark}"
+                    FontAttributes="Bold"
+                    FontSize="15"
+                    HeightRequest="48"
+                    IsVisible="{Binding CanResetPassword}"
+                    IsEnabled="{Binding CanSubmit}"
+                    Clicked="OnForgotClicked"
+                    SemanticProperties.Description="Forgot password? Reset it with a code by email"
+                    AutomationId="LoginForgotPassword" />
+
+            <Button Text="Join with an invite code"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource PrimaryDark}"
+                    FontAttributes="Bold"
+                    FontSize="15"
+                    HeightRequest="48"
+                    Margin="0,8,0,0"
+                    IsEnabled="{Binding CanSubmit}"
+                    Clicked="OnJoinClicked"
+                    SemanticProperties.Description="Join a business with an invite code"
+                    AutomationId="LoginJoinInvite" />
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

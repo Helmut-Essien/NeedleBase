@@ -71,7 +71,27 @@ public partial class LoginViewModel : BaseViewModel
     }
 
     /// <summary>Remask on appear/resume. Secrets clear via logout message.</summary>
-    public void PrepareForDisplay() => RemaskPassword();
+    /// <summary>"Forgot password?" shows only when the server can email reset codes.</summary>
+    [ObservableProperty] private bool canResetPassword;
+
+    public void PrepareForDisplay()
+    {
+        RemaskPassword();
+        _ = RefreshResetAvailabilityAsync();
+    }
+
+    public async Task RefreshResetAvailabilityAsync()
+    {
+        try
+        {
+            CanResetPassword = await _authService.EmailEnabledAsync() == true;
+        }
+        catch (Exception ex)
+        {
+            CanResetPassword = false;
+            System.Diagnostics.Debug.WriteLine(ex);
+        }
+    }
 
     /// <summary>Hide plaintext if the page leaves the foreground (nav, app switcher).</summary>
     public void RemaskPassword() => IsPasswordVisible = false;

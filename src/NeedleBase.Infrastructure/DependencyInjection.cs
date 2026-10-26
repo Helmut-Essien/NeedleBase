@@ -27,7 +27,9 @@ public static class DependencyInjection
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IStaffService, NeedleBase.Infrastructure.Staff.StaffService>();
         services.AddSingleton<LoginThrottle>();
+        services.AddSingleton<ResetRequestIpCap>();
         services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<ICustomerService, CustomerService>();
         services.AddScoped<IMeasurementService, MeasurementService>();
@@ -44,6 +46,19 @@ public static class DependencyInjection
         services.AddHostedService<Audit.AuditRetentionService>();
         services.AddHostedService<CustomerKeyBackfillService>();
         services.AddSingleton<DatabaseHealthCheck>();
+        // Email (SMTP, e.g. Gmail + App Password). Off when unset: codes are shared by hand, Forgot password hidden.
+        services.Configure<Email.EmailOptions>(configuration.GetSection(Email.EmailOptions.Section));
+        services.PostConfigure<Email.EmailOptions>(o =>
+        {
+            if (string.IsNullOrWhiteSpace(o.AppBaseUrl))
+            {
+                o.AppBaseUrl = configuration["FrontendBaseUrl"];
+            }
+        });
+        services.AddSingleton<Email.EmailQueue>();
+        services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<Email.EmailQueue>());
+        services.AddSingleton<Email.IEmailTransport, Email.SmtpTransport>();
+        services.AddHostedService<Email.EmailSendingService>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -62,7 +77,8 @@ public static class DependencyInjection
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.Password.RequireDigit = true;
-                options.Password.RequiredLength = 6;
+                options.Password.RequiredLength = NeedleBase.Application.Common.PasswordPolicy.MinLength;
+                options.Password.RequireLowercase = true; // PasswordPolicy: digit + small letter
                 options.Password.RequireNonAlphanumeric = false;
                 options.Password.RequireUppercase = false;
                 options.User.RequireUniqueEmail = true;

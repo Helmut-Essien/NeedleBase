@@ -395,6 +395,67 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.ToTable("DeletedItems", (string)null);
                 });
 
+            modelBuilder.Entity("NeedleBase.Domain.Entities.Invitation", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<DateTimeOffset?>("AcceptedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("AcceptedUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("BusinessId")
+                        .IsRequired()
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodeHash")
+                        .IsUnique();
+
+                    b.HasIndex("BusinessId", "CreatedAtUtc");
+
+                    b.ToTable("Invitations", (string)null);
+                });
+
             modelBuilder.Entity("NeedleBase.Domain.Entities.MeasurementProfile", b =>
                 {
                     b.Property<string>("Id")
@@ -524,6 +585,8 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.HasIndex("BusinessId");
 
                     b.HasIndex("CustomerId");
+
+                    b.HasIndex("BusinessId", "AssignedToUserId");
 
                     b.HasIndex("BusinessId", "CreatedAtUtc");
 
@@ -802,6 +865,40 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("NeedleBase.Infrastructure.Identity.PasswordResetCode", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<string>("ApplicationUserId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("UsedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId", "CreatedAtUtc");
+
+                    b.ToTable("PasswordResetCodes", (string)null);
+                });
+
             modelBuilder.Entity("NeedleBase.Infrastructure.Identity.RefreshToken", b =>
                 {
                     b.Property<string>("Id")
@@ -941,6 +1038,15 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("NeedleBase.Domain.Entities.Invitation", b =>
+                {
+                    b.HasOne("NeedleBase.Domain.Entities.Business", null)
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("NeedleBase.Domain.Entities.MeasurementProfile", b =>
                 {
                     b.HasOne("NeedleBase.Domain.Entities.Business", null)
@@ -1014,6 +1120,17 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasForeignKey("BusinessId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("NeedleBase.Infrastructure.Identity.PasswordResetCode", b =>
+                {
+                    b.HasOne("NeedleBase.Infrastructure.Identity.ApplicationUser", "ApplicationUser")
+                        .WithMany()
+                        .HasForeignKey("ApplicationUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ApplicationUser");
                 });
 
             modelBuilder.Entity("NeedleBase.Infrastructure.Identity.RefreshToken", b =>

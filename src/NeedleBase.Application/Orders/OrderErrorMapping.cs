@@ -29,6 +29,7 @@ public static class OrderErrorMapping
             OrderError.HasPayments => OrderErrorMessages.HasPayments,
             OrderError.BelowPaid => OrderErrorMessages.TotalBelowPaid,
             OrderError.Forbidden => OrderErrorMessages.EditForbidden,
+            OrderError.NotAssigned => OrderErrorMessages.NotAssigned,
             _ => RecordErrorMessages.Code(ToRecord(error))
         };
 }

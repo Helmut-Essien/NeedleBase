@@ -166,9 +166,9 @@ public partial class RegisterViewModel : BaseViewModel
             return;
         }
 
-        if (Password.Length < 6 || !Password.Any(char.IsDigit))
+        if (!PasswordRules.IsStrongEnough(Password))
         {
-            PasswordError = "At least 6 characters, including a number";
+            PasswordError = PasswordRules.Hint;
             return;
         }
 

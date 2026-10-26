@@ -69,3 +69,32 @@ public class OrderEditTests
         Assert.Throws<DomainRuleException>(() => order.UpdateHeader(null, null, null, "x", Now));
     }
 }
+
+public class OrderReassignTests
+{
+    private static readonly DateTimeOffset Now = new(2026, 10, 26, 9, 0, 0, TimeSpan.Zero);
+
+    private static Order NewOrder() =>
+        Order.Create("ord", "biz", "cust", null, null, "u1", "keep me",
+            [OrderLine.Create("l1", "biz", "ord", GarmentTemplate.Dress, 1, 100m, null, MeasurementUnit.Centimetres, """{"bust":92}""", null, 0, null)], Now);
+
+    [Fact]
+    public void Reassign_changes_only_the_assignee_and_bumps_modified()
+    {
+        var order = NewOrder();
+        order.Reassign("u2", Now.AddHours(1));
+        Assert.Equal("u2", order.AssignedToUserId);
+        Assert.Equal("keep me", order.Notes);
+        Assert.Equal(Now.AddHours(1), order.DateModifiedUtc);
+        order.Reassign(null, Now.AddHours(2));
+        Assert.Null(order.AssignedToUserId);
+    }
+
+    [Fact]
+    public void Closed_order_cannot_be_reassigned()
+    {
+        var order = NewOrder();
+        order.SetStatus(OrderStatus.Cancelled, Now);
+        Assert.Throws<DomainRuleException>(() => order.Reassign("u2", Now));
+    }
+}

@@ -8,6 +8,12 @@ using NeedleBase.Domain.Entities;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Infrastructure.Persistence;
 using NeedleBase.Application.Audit;
+using NeedleBase.Application.Contracts.Errors;
+using NeedleBase.Application.Contracts.Staff;
+using NeedleBase.Application.Staff;
+using NeedleBase.Application.Email;
+using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
 
 namespace NeedleBase.Infrastructure.Identity;
 
@@ -18,7 +24,10 @@ public sealed class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly IClock _clock;
     private readonly LoginThrottle _throttle;
+    private readonly ResetRequestIpCap _resetIpCap;
     private readonly IAuditLog _audit;
+    private readonly IEmailSender _email;
+    private readonly IOptionsMonitor<Email.EmailOptions> _emailOptions;
 
     /// <summary>Failed sign-ins for one email+IP: one audit row per window, with a count of the rest.</summary>
     public static readonly TimeSpan FailedLoginAuditWindow = TimeSpan.FromMinutes(15);
@@ -29,9 +38,15 @@ public sealed class AuthService : IAuthService
         ITokenService tokenService,
         IClock clock,
         LoginThrottle throttle,
-        IAuditLog audit)
+        ResetRequestIpCap resetIpCap,
+        IAuditLog audit,
+        IEmailSender email,
+        IOptionsMonitor<Email.EmailOptions> emailOptions)
     {
+        _email = email;
+        _emailOptions = emailOptions;
         _throttle = throttle;
+        _resetIpCap = resetIpCap;
         _audit = audit;
         _userManager = userManager;
         _db = db;
@@ -163,9 +178,14 @@ public sealed class AuthService : IAuthService
 
         if (membership is null)
         {
-            await _audit.WriteAsync(new AuditEntry(AuditActions.LoginBlocked, "Sign-in refused: no active business membership",
+            var turnedOff = await _db.StaffMemberships.IgnoreQueryFilters().AnyAsync(m => m.UserId == user.Id && !m.IsActive, cancellationToken);
+            await _audit.WriteAsync(new AuditEntry(AuditActions.LoginBlocked,
+                turnedOff ? "Sign-in refused: staff access turned off" : "Sign-in refused: no active business membership",
                 await BusinessOfAsync(user.Id, cancellationToken, includeInactive: true), user.Id), cancellationToken: cancellationToken);
-            return AuthResult.Fail("No business membership found for this account.", "NO_MEMBERSHIP");
+            // Staff whose access the owner turned off hear that plainly (same wipe on the phone as NO_MEMBERSHIP).
+            return turnedOff
+                ? AuthResult.Fail("Account deactivated. Contact your business owner.", "ACCOUNT_DEACTIVATED")
+                : AuthResult.Fail("No business membership found for this account.", "NO_MEMBERSHIP");
         }
 
         var business = await _db.Businesses.AsNoTracking()
@@ -439,5 +459,355 @@ public sealed class AuthService : IAuthService
             role);
 
         return AuthResult.Ok(tokens, dto);
+    }
+
+    // ---- Slice 7: invites + password change ----
+
+    /// <summary>Throttle key for invite-code guesses: per IP (the code is the secret, not an email).</summary>
+    private static string InviteThrottleKey => "invite-code";
+
+    public async Task<(InvitePreviewDto? Preview, string? ErrorCode, TimeSpan? RetryAfter)> PreviewInviteAsync(
+        string code, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        if (_throttle.RetryAfter(InviteThrottleKey, ipAddress) is { } wait)
+        {
+            return (null, AuthResult.LoginThrottledCode, wait);
+        }
+
+        var (invite, error) = await FindUsableInviteAsync(code, ipAddress, cancellationToken);
+        if (invite is null)
+        {
+            return (null, error, null);
+        }
+
+        var businessName = await _db.Businesses.AsNoTracking().Where(b => b.Id == invite.BusinessId)
+            .Select(b => b.Name).FirstOrDefaultAsync(cancellationToken);
+        return businessName is null
+            ? (null, StaffErrorMessages.InviteNotFound, null)
+            : (new InvitePreviewDto(businessName, invite.Role, invite.Email, invite.Name, invite.ExpiresAtUtc), null, null);
+    }
+
+    /// <summary>Invite by code, or the stable error code. Unknown codes count towards the per-IP throttle.</summary>
+    private async Task<(Invitation? Invite, string? Error)> FindUsableInviteAsync(string? code, string? ipAddress, CancellationToken cancellationToken)
+    {
+        var hash = InviteCodes.Hash(code);
+        _db.CurrentBusinessId = null;
+        var invite = hash is null
+            ? null
+            : await _db.Invitations.IgnoreQueryFilters() // by secret code, before any business is known
+                .AsNoTracking().FirstOrDefaultAsync(i => i.CodeHash == hash, cancellationToken);
+        if (invite is null)
+        {
+            _throttle.RecordFailure(InviteThrottleKey, ipAddress);
+            return (null, StaffErrorMessages.InviteNotFound);
+        }
+
+        return invite.StatusAt(_clock.UtcNow) switch
+        {
+            InvitationStatus.Pending => (invite, null),
+            InvitationStatus.Accepted => (null, StaffErrorMessages.InviteUsed),
+            InvitationStatus.Revoked => (null, StaffErrorMessages.InviteRevoked),
+            _ => (null, StaffErrorMessages.InviteExpired)
+        };
+    }
+
+    public async Task<AuthResult> AcceptInviteAsync(AcceptInviteRequest request, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        if (_throttle.RetryAfter(InviteThrottleKey, ipAddress) is { } wait)
+        {
+            return AuthResult.Throttled(wait);
+        }
+
+        var (found, error) = await FindUsableInviteAsync(request.Code, ipAddress, cancellationToken);
+        if (found is null)
+        {
+            return AuthResult.Fail(StaffErrorMessages.For(error), error);
+        }
+
+        if (await _userManager.FindByEmailAsync(found.Email) is not null)
+        {
+            return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.InviteEmailInUse), StaffErrorMessages.InviteEmailInUse);
+        }
+
+        var business = await _db.Businesses.AsNoTracking().FirstOrDefaultAsync(b => b.Id == found.BusinessId, cancellationToken);
+        if (business is null)
+        {
+            return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.InviteNotFound), StaffErrorMessages.InviteNotFound);
+        }
+
+        var now = _clock.UtcNow;
+        var user = new ApplicationUser
+        {
+            Id = IdGenerator.NewId(),
+            UserName = found.Email,
+            Email = found.Email,
+            // The invite code reached them, but nothing proved they own the address; there is no email flow yet.
+            EmailConfirmed = false,
+            FirstName = request.FirstName.Trim(),
+            Surname = request.Surname.Trim(),
+            IsActive = true,
+            CreatedAtUtc = now
+        };
+
+        AuthResult? failure = null;
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            failure = null;
+            await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                // Row lock: two taps (or two phones) with the same code must create one account, not two.
+                await _db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT 1 FROM \"Invitations\" WHERE \"Id\" = {found.Id} FOR UPDATE", cancellationToken);
+                _db.CurrentBusinessId = null;
+                var invite = await _db.Invitations.IgnoreQueryFilters().FirstAsync(i => i.Id == found.Id, cancellationToken);
+                if (!invite.IsPendingAt(now))
+                {
+                    failure = AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.InviteUsed), StaffErrorMessages.InviteUsed);
+                    await tx.RollbackAsync(cancellationToken);
+                    return;
+                }
+
+                var created = await _userManager.CreateAsync(user, request.Password);
+                if (!created.Succeeded)
+                {
+                    var inUse = created.Errors.Any(e => e.Code is "DuplicateEmail" or "DuplicateUserName");
+                    var code = inUse ? StaffErrorMessages.InviteEmailInUse : StaffErrorMessages.PasswordWeak;
+                    failure = AuthResult.Fail(StaffErrorMessages.For(code), code);
+                    await tx.RollbackAsync(cancellationToken);
+                    return;
+                }
+
+                invite.Accept(user.Id, now);
+                _db.StaffMemberships.Add(StaffMembership.Create(IdGenerator.NewId(), invite.BusinessId, user.Id, invite.Role, now));
+                await _db.SaveChangesAsync(cancellationToken);
+                await tx.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await tx.RollbackAsync(cancellationToken);
+                throw;
+            }
+        });
+
+        if (failure is not null)
+        {
+            return failure;
+        }
+
+        _throttle.RecordSuccess(InviteThrottleKey, ipAddress);
+        return await IssueTokensAsync(user, business, found.Role, ipAddress, cancellationToken);
+    }
+
+    public async Task<AuthResult> ChangePasswordAsync(
+        string userId, ChangePasswordRequest request, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user is null || !user.IsActive)
+        {
+            return AuthResult.Fail("Account deactivated.", "ACCOUNT_DEACTIVATED");
+        }
+
+        var email = user.Email ?? user.Id;
+        if (_throttle.RetryAfter(email, ipAddress) is { } wait)
+        {
+            return AuthResult.Throttled(wait);
+        }
+
+        if (!await _userManager.CheckPasswordAsync(user, request.CurrentPassword))
+        {
+            // Same counter as sign-in: a stolen session can't be used to guess the password faster.
+            _throttle.RecordFailure(email, ipAddress);
+            return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.PasswordIncorrect), StaffErrorMessages.PasswordIncorrect);
+        }
+
+        _throttle.RecordSuccess(email, ipAddress);
+        _db.CurrentBusinessId = null;
+        var membership = await _db.StaffMemberships.IgnoreQueryFilters().AsNoTracking() // this user's own membership
+            .Where(m => m.UserId == user.Id && m.IsActive)
+            .OrderBy(m => m.JoinedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        var business = membership is null
+            ? null
+            : await _db.Businesses.AsNoTracking().FirstOrDefaultAsync(b => b.Id == membership.BusinessId, cancellationToken);
+        if (membership is null || business is null)
+        {
+            return AuthResult.Fail("No business membership found.", "NO_MEMBERSHIP");
+        }
+
+        // ChangePasswordAsync rotates the security stamp: every access token (this one included) stops working.
+        var changed = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!changed.Succeeded)
+        {
+            return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.PasswordWeak), StaffErrorMessages.PasswordWeak);
+        }
+
+        // Deleted, not revoked: another device presenting a revoked token would look like token theft (REFRESH_REUSE).
+        await _db.RefreshTokens.Where(t => t.ApplicationUserId == user.Id).ExecuteDeleteAsync(cancellationToken);
+        await _audit.WriteAsync(new AuditEntry(AuditActions.PasswordChanged, "Password changed; other devices were signed out",
+            business.Id, user.Id, membership.Role), cancellationToken: cancellationToken);
+        return await IssueTokensAsync(user, business, membership.Role, ipAddress, cancellationToken);
+    }
+
+    /// <summary>
+    /// Throttle keys per (address, IP): many Ghana phones share one carrier IP (CGNAT), so an IP-wide key would lock
+    /// out strangers. Per-account caps (3 codes an hour, 5 tries a code) still bound mail and guessing.
+    /// </summary>
+    private static string ResetRequestThrottleKey(string? email) => "password-reset-request:" + ThrottleEmail(email);
+
+    private static string ResetThrottleKey(string? email) => "password-reset:" + ThrottleEmail(email);
+
+    private static string ThrottleEmail(string? email) => (email ?? string.Empty).Trim().Normalize().ToUpperInvariant();
+
+    public async Task<AuthResult> RequestPasswordResetAsync(ForgotPasswordRequest request, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        if (!_email.IsConfigured)
+        {
+            return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.ResetUnavailable), StaffErrorMessages.ResetUnavailable);
+        }
+
+        if (_throttle.RetryAfter(ResetRequestThrottleKey(request.Email), ipAddress) is { } wait)
+        {
+            return AuthResult.Throttled(wait);
+        }
+
+        if (_resetIpCap.TryTake(ipAddress) is { } ipWait)
+        {
+            return AuthResult.Throttled(ipWait);
+        }
+
+        // Every request counts (5 free per address+IP an hour, then slowed); the account cap below limits mail too.
+        _throttle.RecordFailure(ResetRequestThrottleKey(request.Email), ipAddress);
+        var user = await _userManager.FindByEmailAsync((request.Email ?? string.Empty).Trim());
+        if (user is null || !user.IsActive || string.IsNullOrEmpty(user.Email))
+        {
+            return AuthResult.Done(); // same reply as a real account
+        }
+
+        // Turned off everywhere: a new password couldn't sign them in, so no email (same neutral reply).
+        // One query, also used for the audit row below.
+        var membership = await _db.StaffMemberships.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.UserId == user.Id)
+            .OrderByDescending(x => x.IsActive).ThenBy(x => x.JoinedAtUtc)
+            .Select(x => new { x.BusinessId, x.Role, x.IsActive })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (membership is not { IsActive: true })
+        {
+            return AuthResult.Done(); // no audit row: it would be an unthrottled write per request
+        }
+
+        var now = _clock.UtcNow;
+        var hourAgo = now.AddHours(-1);
+        var recent = await _db.PasswordResetCodes.CountAsync(c => c.ApplicationUserId == user.Id && c.CreatedAtUtc > hourAgo, cancellationToken);
+        if (recent >= PasswordResetCode.MaxPerHour)
+        {
+            return AuthResult.Done(); // per-account cap: silently ignored
+        }
+
+        // Only the newest code works; rows older than a day are dropped.
+        var dayAgo = now.AddDays(-1);
+        await _db.PasswordResetCodes.Where(c => c.ApplicationUserId == user.Id && c.CreatedAtUtc < dayAgo).ExecuteDeleteAsync(cancellationToken);
+        await _db.PasswordResetCodes.Where(c => c.ApplicationUserId == user.Id && c.UsedAtUtc == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.UsedAtUtc, now), cancellationToken);
+
+        var code = PasswordResetCode.NewCode();
+        _db.PasswordResetCodes.Add(new PasswordResetCode
+        {
+            Id = IdGenerator.NewId(),
+            ApplicationUserId = user.Id,
+            CodeHash = PasswordResetCode.Hash(user.Id, PasswordResetCode.Normalize(code)!),
+            CreatedAtUtc = now,
+            ExpiresAtUtc = now + PasswordResetCode.Lifetime
+        });
+        await _db.SaveChangesAsync(cancellationToken);
+
+        var queued = _email.TryQueue(EmailTemplates.PasswordReset(user.Email, user.FirstName, code, PasswordResetCode.Lifetime,
+            _emailOptions.CurrentValue.AppBaseUrl));
+        await _audit.WriteAsync(new AuditEntry(AuditActions.PasswordResetRequested,
+                queued ? "Password reset code emailed" : "Password reset code not emailed (send queue full)", membership.BusinessId, user.Id, membership.Role),
+            cancellationToken: cancellationToken);
+        return AuthResult.Done();
+    }
+
+    public async Task<AuthResult> ResetPasswordAsync(ResetPasswordRequest request, string? ipAddress, CancellationToken cancellationToken = default)
+    {
+        if (!_email.IsConfigured)
+        {
+            return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.ResetUnavailable), StaffErrorMessages.ResetUnavailable);
+        }
+
+        if (_throttle.RetryAfter(ResetThrottleKey(request.Email), ipAddress) is { } wait)
+        {
+            return AuthResult.Throttled(wait);
+        }
+
+        var now = _clock.UtcNow;
+        var normalized = PasswordResetCode.Normalize(request.Code);
+        var user = normalized is null ? null : await _userManager.FindByEmailAsync((request.Email ?? string.Empty).Trim());
+        var row = user is null || !user.IsActive
+            ? null
+            : await _db.PasswordResetCodes.AsNoTracking()
+                .Where(c => c.ApplicationUserId == user.Id && c.UsedAtUtc == null && c.ExpiresAtUtc > now &&
+                            c.FailedAttempts < PasswordResetCode.MaxAttempts)
+                .OrderByDescending(c => c.CreatedAtUtc)
+                .FirstOrDefaultAsync(cancellationToken);
+        if (row is null || user is null || !SameHash(row.CodeHash, PasswordResetCode.Hash(user.Id, normalized!)))
+        {
+            _throttle.RecordFailure(ResetThrottleKey(request.Email), ipAddress);
+            if (row is not null)
+            {
+                await _db.PasswordResetCodes.Where(c => c.Id == row.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(c => c.FailedAttempts, c => c.FailedAttempts + 1), cancellationToken);
+            }
+
+            return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.ResetCodeInvalid), StaffErrorMessages.ResetCodeInvalid);
+        }
+
+        // Check the new password before using up the code, so a weak one can be retried with the same email.
+        foreach (var validator in _userManager.PasswordValidators)
+        {
+            if (!(await validator.ValidateAsync(_userManager, user, request.NewPassword)).Succeeded)
+            {
+                return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.PasswordWeak), StaffErrorMessages.PasswordWeak);
+            }
+        }
+
+        // Single use even with two taps at once: only one request can flip UsedAtUtc.
+        var claimed = await _db.PasswordResetCodes.Where(c => c.Id == row.Id && c.UsedAtUtc == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(c => c.UsedAtUtc, now), cancellationToken);
+        if (claimed == 0)
+        {
+            return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.ResetCodeInvalid), StaffErrorMessages.ResetCodeInvalid);
+        }
+
+        user.PasswordHash = _userManager.PasswordHasher.HashPassword(user, request.NewPassword);
+        user.EmailConfirmed = true; // the code reached this inbox
+        var updated = await _userManager.UpdateSecurityStampAsync(user); // saves the hash; every access token stops working
+        if (!updated.Succeeded)
+        {
+            throw new InvalidOperationException("Couldn't save the new password.");
+        }
+
+        await _db.RefreshTokens.Where(t => t.ApplicationUserId == user.Id).ExecuteDeleteAsync(cancellationToken);
+        _throttle.RecordSuccess(ResetThrottleKey(request.Email), ipAddress);
+        _throttle.RecordSuccess(user.Email ?? user.Id, ipAddress); // sign-in slow-down for this email + phone is cleared
+        var (businessId, role) = await AuditMembershipAsync(user.Id, cancellationToken);
+        await _audit.WriteAsync(new AuditEntry(AuditActions.PasswordReset, "Password reset with an emailed code; all devices were signed out",
+            businessId, user.Id, role), cancellationToken: cancellationToken);
+        return AuthResult.Done();
+    }
+
+    private static bool SameHash(string a, string b) =>
+        CryptographicOperations.FixedTimeEquals(System.Text.Encoding.ASCII.GetBytes(a), System.Text.Encoding.ASCII.GetBytes(b));
+
+    private async Task<(string? BusinessId, string? Role)> AuditMembershipAsync(string userId, CancellationToken cancellationToken)
+    {
+        var m = await _db.StaffMemberships.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .OrderByDescending(x => x.IsActive).ThenBy(x => x.JoinedAtUtc)
+            .Select(x => new { x.BusinessId, x.Role })
+            .FirstOrDefaultAsync(cancellationToken);
+        return (m?.BusinessId, m?.Role);
     }
 }

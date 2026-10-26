@@ -103,7 +103,39 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
         Assert.Contains(">Payments</a>", html);
         Assert.Contains("Privacy Policy", html);
         Assert.DoesNotContain("notification", html, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain(">Staff<", html);
+        Assert.Contains(">Staff</a>", html);
+    }
+
+    [Fact]
+    public async Task Tailor_has_no_staff_link()
+    {
+        var (_, html) = await GetAsync("/", BusinessRole.Tailor);
+        Assert.DoesNotContain(">Staff</a>", html);
+    }
+
+    [Theory]
+    [InlineData("/Account/Login")]
+    [InlineData("/Account/ForgotPassword")]
+    [InlineData("/Account/ResetPassword?email=ama%40shop.gh&sent=true")]
+    public async Task Password_reset_pages_render_without_inline_styles_and_no_forgot_link_when_email_is_off(string url)
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var response = await client.GetAsync(url);
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain("style=\"", html);
+        Assert.DoesNotContain("Forgot password?", html); // the test Api is unreachable, so email counts as off
+    }
+
+    [Theory]
+    [InlineData("/Staff")]
+    [InlineData("/Profile/Password")]
+    public async Task Staff_and_password_pages_render(string url)
+    {
+        var (status, html) = await GetAsync(url, BusinessRole.Owner);
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.Contains("nb-sidebar", html);
+        Assert.DoesNotContain("style=\"", html);
     }
 
     [Theory]

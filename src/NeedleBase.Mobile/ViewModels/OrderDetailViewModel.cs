@@ -198,7 +198,13 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasLines => Lines.Count > 0;
     public bool HasNoLines => !IsBusy && Lines.Count == 0 && !HasError && !string.IsNullOrEmpty(DisplayRef);
+    /// <summary>A Tailor may only move orders assigned to them (or unassigned); the server enforces it too.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanUpdateStatus))]
+    private bool mayChangeStatus = true;
+
     public bool CanUpdateStatus =>
+        MayChangeStatus &&
         !string.IsNullOrWhiteSpace(OrderId) &&
         !string.IsNullOrWhiteSpace(Status) &&
         !OrderStatus.IsTerminal(Status);
@@ -254,6 +260,12 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
             ApplyDetail(detail);
             var user = await _auth.GetCachedUserAsync();
             CanEdit = NeedleBase.Application.Orders.OrderEditor.CanEdit(user?.Role) && !OrderStatus.IsTerminal(detail.Status);
+            MayChangeStatus = NeedleBase.Application.Orders.OrderEditor.CanChangeStatus(user?.Role, user?.UserId, detail.AssignedToUserId);
+            if (!MayChangeStatus)
+            {
+                ShowStatusPicker = false;
+            }
+
             await RefreshPaymentsAsync();
         }
         catch (Exception)

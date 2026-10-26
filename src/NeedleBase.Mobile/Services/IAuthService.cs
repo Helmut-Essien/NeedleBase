@@ -46,6 +46,27 @@ public interface IAuthService
     /// <summary>Access revoked: wipe local data and the session. False if the wipe failed (flag kept for retry).</summary>
     Task<bool> WipeRevokedAccessAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
 
+    /// <summary>Checks an invite code (shop, role, email). Null + <see cref="LastErrorMessage"/> on failure.</summary>
+    Task<NeedleBase.Application.Contracts.Staff.InvitePreviewDto?> PreviewInviteAsync(string code, CancellationToken cancellationToken = default) =>
+        Task.FromResult<NeedleBase.Application.Contracts.Staff.InvitePreviewDto?>(null);
+
+    /// <summary>Creates the account from an invite and signs in (same device-data rules as sign-in).</summary>
+    Task<AuthUserDto?> AcceptInviteAsync(AcceptInviteRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult<AuthUserDto?>(null);
+
+    /// <summary>Changes the password; other devices are signed out, this one stores the new tokens.</summary>
+    Task<bool> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
+    /// <summary>Whether the server can email password-reset codes. Null when the server can't be reached.</summary>
+    Task<bool?> EmailEnabledAsync(CancellationToken cancellationToken = default) => Task.FromResult<bool?>(false);
+
+    /// <summary>Ask for a reset code by email. True when accepted (same answer whether or not the account exists).</summary>
+    Task<bool> RequestPasswordResetAsync(string email, CancellationToken cancellationToken = default) => Task.FromResult(false);
+
+    /// <summary>Set a new password with the emailed code. Signs out every device.</summary>
+    Task<bool> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default) => Task.FromResult(false);
+
     Task<string?> GetBusinessIdAsync();
     Task<AuthUserDto?> GetCachedUserAsync();
 }

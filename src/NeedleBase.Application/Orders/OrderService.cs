@@ -376,6 +376,12 @@ public sealed class OrderService : IOrderService
             return OrderResult.Fail(OrderError.NotFound);
         }
 
+        if (!OrderEditor.CanChangeStatus(_currentUser.Role, _currentUser.UserId, entity.AssignedToUserId) &&
+            !string.Equals(entity.Status, request.Status, StringComparison.Ordinal))
+        {
+            return OrderResult.Fail(OrderError.NotAssigned);
+        }
+
         if (StaleUpdate.IsStale(request.BaseModifiedUtc, entity.DateModifiedUtc))
         {
             return OrderResult.Fail(OrderError.Stale);

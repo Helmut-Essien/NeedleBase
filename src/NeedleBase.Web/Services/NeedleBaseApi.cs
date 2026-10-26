@@ -84,6 +84,28 @@ public sealed class NeedleBaseApi : INeedleBaseApi
         return SendAsync<PaginatedResponse<AuditEventDto>>(HttpMethod.Get, url.ToString(), null, cancellationToken);
     }
 
+    public Task<ApiResult<StaffOverviewDto>> GetStaffAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<StaffOverviewDto>(HttpMethod.Get, "api/staff", null, cancellationToken);
+
+    public Task<ApiResult<CreatedInvitationDto>> InviteAsync(CreateInvitationRequest request, CancellationToken cancellationToken = default) =>
+        SendAsync<CreatedInvitationDto>(HttpMethod.Post, "api/staff/invitations", request, cancellationToken);
+
+    public Task<ApiResult<bool>> RevokeInviteAsync(string invitationId, CancellationToken cancellationToken = default) =>
+        SendAsync<bool>(HttpMethod.Delete, $"api/staff/invitations/{Uri.EscapeDataString(invitationId)}", null, cancellationToken);
+
+    public Task<ApiResult<StaffMemberDto>> ChangeStaffRoleAsync(string userId, string role, CancellationToken cancellationToken = default) =>
+        SendAsync<StaffMemberDto>(HttpMethod.Put, $"api/staff/{Uri.EscapeDataString(userId)}/role", new ChangeStaffRoleRequest { Role = role }, cancellationToken);
+
+    public Task<ApiResult<StaffMemberDto>> SetStaffActiveAsync(string userId, bool active, CancellationToken cancellationToken = default) =>
+        SendAsync<StaffMemberDto>(HttpMethod.Post, $"api/staff/{Uri.EscapeDataString(userId)}/{(active ? "reactivate" : "deactivate")}", null, cancellationToken);
+
+    public Task<ApiResult<ReassignOrdersResultDto>> ReassignOrdersAsync(string userId, string? toUserId, CancellationToken cancellationToken = default) =>
+        SendAsync<ReassignOrdersResultDto>(HttpMethod.Post, $"api/staff/{Uri.EscapeDataString(userId)}/reassign-orders",
+            new ReassignOrdersRequest { ToUserId = string.IsNullOrWhiteSpace(toUserId) ? null : toUserId }, cancellationToken);
+
+    public Task<ApiResult<AuthSessionPayload>> ChangePasswordAsync(NeedleBase.Application.Contracts.Auth.ChangePasswordRequest request, CancellationToken cancellationToken = default) =>
+        SendAsync<AuthSessionPayload>(HttpMethod.Post, "api/auth/change-password", request, cancellationToken);
+
     internal static bool IsUnreachable(ApiProblem problem) =>
         problem.Status is 502 or 503 or 504 && problem.Code is null && problem.Detail is null;
 
@@ -113,6 +135,11 @@ public sealed class NeedleBaseApi : INeedleBaseApi
                 // TokenRefreshHandler turns "unreachable"/"timed out" into a bare 503/504, and a proxy in front of a
                 // stopped Api answers 502: all mean "can't reach NeedleBase", not an Api error. A typed code wins.
                 return IsUnreachable(problem) ? ApiResult<T>.Offline() : ApiResult<T>.Fail(problem);
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NoContent && typeof(T) == typeof(bool))
+            {
+                return ApiResult<T>.Ok((T)(object)true);
             }
 
             var value = await response.Content.ReadFromJsonAsync<T>(Json, cancellationToken).ConfigureAwait(false);

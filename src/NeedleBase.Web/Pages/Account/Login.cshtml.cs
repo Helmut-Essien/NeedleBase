@@ -36,6 +36,9 @@ public class LoginModel : PageModel
         public bool RememberMe { get; set; }
     }
 
+    /// <summary>One-time note after a password reset.</summary>
+    [TempData] public string? Notice { get; set; }
+
     public void OnGet(string? returnUrl = null)
     {
         ReturnUrl = returnUrl;

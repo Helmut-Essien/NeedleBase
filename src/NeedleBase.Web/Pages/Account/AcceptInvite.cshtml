@@ -1,0 +1,75 @@
+@page
+@model NeedleBase.Web.Pages.Account.AcceptInviteModel
+@using NeedleBase.Application.Staff
+@using NeedleBase.Web.Pages.Shared
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Join your team";
+}
+
+<h1 class="nb-auth-title">Join your team</h1>
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger nb-auth-alert" role="alert" aria-live="assertive">@Model.ErrorMessage</div>
+}
+
+@if (Model.Preview is not { } p)
+{
+    <p class="nb-auth-subtitle">Enter the code the shop owner sent you.</p>
+    <form method="post" asp-page-handler="Check" novalidate class="nb-auth-form">
+        <div class="nb-auth-field text-start">
+            <label asp-for="Code" class="form-label">Invite code</label>
+            <input asp-for="Code" class="form-control nb-auth-input" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH-JKMN" />
+        </div>
+        <div class="d-grid">
+            <button type="submit" class="btn nb-btn-primary nb-auth-submit" data-pending-text="Checking…">Continue</button>
+        </div>
+    </form>
+}
+else
+{
+    <p class="nb-auth-subtitle"><strong>@p.BusinessName</strong> invited you as <strong>@p.Role</strong>.</p>
+    <p class="nb-auth-helper">@StaffRoles.Summary(p.Role)</p>
+    <form method="post" asp-page-handler="Join" novalidate class="nb-auth-form">
+        <input type="hidden" asp-for="Code" />
+        <div class="nb-auth-field text-start">
+            <label class="form-label" for="invite-email">Email</label>
+            <input id="invite-email" class="form-control nb-auth-input" value="@p.Email" readonly autocomplete="username" />
+        </div>
+        <div class="nb-auth-name-row">
+            <div class="nb-auth-field text-start">
+                <label asp-for="Join.FirstName" class="form-label">First name</label>
+                <input asp-for="Join.FirstName" class="form-control nb-auth-input" autocomplete="given-name" />
+                <span asp-validation-for="Join.FirstName" class="text-danger small nb-auth-error"></span>
+            </div>
+            <div class="nb-auth-field text-start">
+                <label asp-for="Join.Surname" class="form-label">Surname</label>
+                <input asp-for="Join.Surname" class="form-control nb-auth-input" autocomplete="family-name" />
+                <span asp-validation-for="Join.Surname" class="text-danger small nb-auth-error"></span>
+            </div>
+        </div>
+        <div class="nb-auth-field text-start">
+            <label asp-for="Join.Password" class="form-label">Choose a password</label>
+            <div class="nb-password-field">
+                <input asp-for="Join.Password" id="Join_Password" aria-describedby="password-hint" class="form-control nb-auth-input nb-password-input" autocomplete="new-password" />
+                <partial name="_PasswordToggleButton" model="@(new PasswordToggleModel { InputId = "Join_Password" })" />
+            </div>
+            <span id="password-hint" class="nb-auth-helper">@NeedleBase.Application.Common.PasswordPolicy.Hint</span>
+            <span asp-validation-for="Join.Password" class="text-danger small nb-auth-error"></span>
+        </div>
+        <div class="d-grid">
+            <button type="submit" class="btn nb-btn-primary nb-auth-submit" data-pending-text="Joining…">Join @p.BusinessName</button>
+        </div>
+    </form>
+}
+
+<p class="nb-auth-footer">
+    Already have an account?
+    <a asp-page="/Account/Login">Sign in</a>
+</p>
+
+@section Scripts {
+    <script src="~/js/password-toggle.js" asp-append-version="true" defer></script>
+    <partial name="_ValidationScriptsPartial" />
+}

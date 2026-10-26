@@ -38,4 +38,24 @@ public partial class LoginPage : ContentPage
 
         await Shell.Current.GoToAsync("//RegisterPage");
     }
+
+    private async void OnJoinClicked(object? sender, EventArgs e)
+    {
+        if (BindingContext is LoginViewModel vm && !vm.CanSubmit)
+        {
+            return;
+        }
+
+        await Shell.Current.GoToAsync("//AcceptInvitePage");
+    }
+
+    private async void OnForgotClicked(object? sender, EventArgs e)
+    {
+        if (BindingContext is LoginViewModel vm && !vm.CanSubmit)
+        {
+            return;
+        }
+
+        await Shell.Current.GoToAsync("//ForgotPasswordPage");
+    }
 }

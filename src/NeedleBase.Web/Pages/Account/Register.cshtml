@@ -53,7 +53,7 @@
                    aria-describedby="password-hint" />
             <partial name="_PasswordToggleButton" model="@(new PasswordToggleModel { InputId = "Input_Password" })" />
         </div>
-        <p id="password-hint" class="nb-auth-helper mb-0">At least 6 characters, including a number</p>
+        <p id="password-hint" class="nb-auth-helper mb-0">@NeedleBase.Application.Common.PasswordPolicy.Hint</p>
         <span asp-validation-for="Input.Password" class="text-danger small nb-auth-error"></span>
     </div>
     <div class="nb-auth-field text-start">

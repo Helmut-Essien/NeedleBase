@@ -40,4 +40,32 @@ public class StaffMembership : Entity, IBusinessScoped
             IsActive = true
         };
     }
+
+    /// <summary>Owner-only change of a team member's role. The single Owner role is not handed out or taken away here.</summary>
+    public void ChangeRole(string role)
+    {
+        if (role is not (BusinessRole.Manager or BusinessRole.Tailor))
+        {
+            throw new ArgumentException($"Role must be {BusinessRole.Manager} or {BusinessRole.Tailor}.", nameof(role));
+        }
+
+        if (Role == BusinessRole.Owner)
+        {
+            throw new InvalidOperationException("The owner's role can't be changed.");
+        }
+
+        Role = role;
+    }
+
+    public void Deactivate()
+    {
+        if (Role == BusinessRole.Owner)
+        {
+            throw new InvalidOperationException("The owner can't be deactivated.");
+        }
+
+        IsActive = false;
+    }
+
+    public void Reactivate() => IsActive = true;
 }

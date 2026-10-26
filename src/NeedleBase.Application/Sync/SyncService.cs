@@ -50,6 +50,9 @@ public sealed class SyncService : ISyncService
 
     // ---------------------------------------------------------------- push
 
+    /// <summary>Set by an op whose conflict result still saved something (the op's transaction commits).</summary>
+    private bool _commitConflict;
+
     public async Task<SyncPushResponse> PushAsync(SyncPushRequest request, CancellationToken cancellationToken = default)
     {
         EnsureBusiness();
@@ -63,8 +66,9 @@ public sealed class SyncService : ISyncService
                 // and a rejected op leaves nothing behind.
                 result = await _db.InTransactionAsync(async ct =>
                 {
+                    _commitConflict = false;
                     var r = await ApplyAsync(op, ct).ConfigureAwait(false);
-                    return (r, r.Status == SyncOpStatus.Applied);
+                    return (r, r.Status == SyncOpStatus.Applied || (_commitConflict && r.Status == SyncOpStatus.Conflict));
                 }, cancellationToken).ConfigureAwait(false);
             }
             catch (ArgumentException ex)
@@ -353,7 +357,16 @@ public sealed class SyncService : ISyncService
                     .ConfigureAwait(false);
                 if (!status.IsSuccess)
                 {
-                    return Failed(op, OrderCode(status.Error), OrderErrorMessages.For(OrderCode(status.Error)));
+                    // A tailor's offline order (e.g. assigned to someone else, moved past New): keep the order the
+                    // customer is waiting on and report why its status didn't stick. The create commits (see PushAsync);
+                    // the phone gets a conflict with the shop's copy, so it isn't a stuck failed item.
+                    _commitConflict = status.Error == OrderError.NotAssigned; // a bad status value still rolls back
+                    if (!_commitConflict)
+                    {
+                        return Failed(op, OrderCode(status.Error), OrderErrorMessages.For(OrderCode(status.Error)));
+                    }
+
+                    return Conflict(op, order: await LoadOrderAsync(dto.Id, ct).ConfigureAwait(false), code: OrderCode(status.Error));
                 }
             }
 
@@ -416,6 +429,7 @@ public sealed class SyncService : ISyncService
                 .ConfigureAwait(false);
             if (!status.IsSuccess)
             {
+                // The op's transaction rolls back: header/lines and status land together or not at all.
                 return Failed(op, OrderCode(status.Error), OrderErrorMessages.For(OrderCode(status.Error)));
             }
         }
@@ -562,6 +576,7 @@ public sealed class SyncService : ISyncService
         OrderError.HasPayments => OrderErrorMessages.HasPayments,
         OrderError.BelowPaid => OrderErrorMessages.TotalBelowPaid,
         OrderError.Forbidden => OrderErrorMessages.EditForbidden,
+        OrderError.NotAssigned => OrderErrorMessages.NotAssigned,
         _ => OrderErrorMessages.Validation
     };
 

@@ -18,6 +18,13 @@ public static class WebUser
     public static bool CanSeeActivity(this ClaimsPrincipal user) =>
         user.Role() is "Owner" or "Manager";
 
+    /// <summary>Owner/Manager see the Staff page; only the Owner changes it (the Api enforces both).</summary>
+    public static bool CanSeeStaff(this ClaimsPrincipal user) => NeedleBase.Application.Staff.StaffRoles.CanView(user.Role());
+
+    public static bool CanManageStaff(this ClaimsPrincipal user) => NeedleBase.Application.Staff.StaffRoles.CanManage(user.Role());
+
+    public static string? UserId(this ClaimsPrincipal user) => user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
     public static string BusinessName(this ClaimsPrincipal user) => user.FindFirst("BusinessName")?.Value ?? "NeedleBase";
 
     public static string DisplayName(this ClaimsPrincipal user)

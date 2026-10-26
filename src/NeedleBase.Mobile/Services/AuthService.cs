@@ -91,6 +91,174 @@ public sealed class AuthService : IAuthService
         return payload.User;
     }
 
+    public async Task<NeedleBase.Application.Contracts.Staff.InvitePreviewDto?> PreviewInviteAsync(string code, CancellationToken cancellationToken = default)
+    {
+        LastErrorMessage = null;
+        using var response = await CreateAuthClient().PostAsJsonAsync(
+            "api/auth/invite-preview", new InviteCodeRequest { Code = code }, JsonOptions, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            LastErrorMessage = StaffErrorMessages.ForProblem(await ApiProblem.ReadAsync(response, cancellationToken));
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<NeedleBase.Application.Contracts.Staff.InvitePreviewDto>(JsonOptions, cancellationToken);
+    }
+
+    public async Task<AuthUserDto?> AcceptInviteAsync(AcceptInviteRequest request, CancellationToken cancellationToken = default)
+    {
+        LastErrorMessage = null;
+        using var response = await CreateAuthClient().PostAsJsonAsync("api/auth/accept-invite", request, JsonOptions, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            LastErrorMessage = StaffErrorMessages.ForProblem(await ApiProblem.ReadAsync(response, cancellationToken));
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<AuthResponsePayload>(JsonOptions, cancellationToken);
+        if (payload?.AccessToken is null || payload.RefreshToken is null || payload.User is null)
+        {
+            LastErrorMessage = AuthErrorMessages.ServerError;
+            return null;
+        }
+
+        if (!await AcceptOwnerChangeAsync(payload.User, payload.RefreshToken, cancellationToken))
+        {
+            return null;
+        }
+
+        await StoreTokensAsync(new TokenResponse(payload.AccessToken, payload.RefreshToken));
+        await StoreSessionAsync(payload.User);
+        return payload.User;
+    }
+
+    private static bool? _emailEnabled;
+    private static DateTimeOffset _emailEnabledAt;
+
+    public async Task<bool?> EmailEnabledAsync(CancellationToken cancellationToken = default)
+    {
+        if (_emailEnabled is { } known && DateTimeOffset.UtcNow - _emailEnabledAt < TimeSpan.FromMinutes(5))
+        {
+            return known;
+        }
+
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(4));
+            var options = await CreateAuthClient().GetFromJsonAsync<AuthOptionsDto>("api/auth/options", JsonOptions, timeout.Token);
+            _emailEnabled = options?.EmailEnabled == true;
+            _emailEnabledAt = DateTimeOffset.UtcNow;
+            return _emailEnabled;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or System.Text.Json.JsonException)
+        {
+            return _emailEnabled; // offline: keep the last answer (null if never known)
+        }
+    }
+
+    public async Task<bool> RequestPasswordResetAsync(string email, CancellationToken cancellationToken = default)
+    {
+        LastErrorMessage = null;
+        using var response = await CreateAuthClient().PostAsJsonAsync(
+            "api/auth/forgot-password", new ForgotPasswordRequest { Email = email }, JsonOptions, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return true;
+        }
+
+        LastErrorMessage = response.StatusCode == HttpStatusCode.TooManyRequests
+            ? "Too many tries. Wait a few minutes and try again."
+            : StaffErrorMessages.ForProblem(await ApiProblem.ReadAsync(response, cancellationToken));
+        return false;
+    }
+
+    public async Task<bool> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        LastErrorMessage = null;
+        using var response = await CreateAuthClient().PostAsJsonAsync("api/auth/reset-password", request, JsonOptions, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return true;
+        }
+
+        LastErrorMessage = response.StatusCode == HttpStatusCode.TooManyRequests
+            ? "Too many tries. Wait a few minutes and try again."
+            : StaffErrorMessages.ForProblem(await ApiProblem.ReadAsync(response, cancellationToken));
+        return false;
+    }
+
+    public async Task<bool> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            var outcome = await TryChangePasswordAsync(request, cancellationToken);
+            if (outcome != HttpStatusCode.Unauthorized || attempt > 0)
+            {
+                return outcome == HttpStatusCode.OK;
+            }
+
+            // Access token expired while the screen was open: refresh once, then try again.
+            var refreshed = await RefreshAsync(cancellationToken);
+            if (!refreshed.Succeeded)
+            {
+                LastErrorMessage = refreshed.IsTransientFailure
+                    ? "Can't reach NeedleBase. Check your connection and try again."
+                    : "Your session has ended. Sign in again.";
+                return false;
+            }
+        }
+    }
+
+    private async Task<HttpStatusCode> TryChangePasswordAsync(ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        LastErrorMessage = null;
+        // Under the refresh lock: the server deletes every refresh token, so a refresh racing this must not run.
+        await RefreshLock.WaitAsync(cancellationToken);
+        try
+        {
+            var access = await GetAccessTokenAsync();
+            if (string.IsNullOrWhiteSpace(access))
+            {
+                LastErrorMessage = "Your session has ended. Sign in again.";
+                return HttpStatusCode.Forbidden;
+            }
+
+            using var message = new HttpRequestMessage(HttpMethod.Post, "api/auth/change-password")
+            {
+                Content = JsonContent.Create(request, options: JsonOptions)
+            };
+            message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", access);
+            using var response = await CreateAuthClient().SendAsync(message, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                LastErrorMessage = response.StatusCode == HttpStatusCode.Unauthorized
+                    ? "Your session has ended. Sign in again."
+                    : StaffErrorMessages.ForProblem(await ApiProblem.ReadAsync(response, cancellationToken));
+                return response.StatusCode;
+            }
+
+            var payload = await response.Content.ReadFromJsonAsync<AuthResponsePayload>(JsonOptions, cancellationToken);
+            if (payload?.AccessToken is null || payload.RefreshToken is null)
+            {
+                LastErrorMessage = AuthErrorMessages.ServerError;
+                return HttpStatusCode.InternalServerError;
+            }
+
+            await StoreTokensAsync(new TokenResponse(payload.AccessToken, payload.RefreshToken));
+            if (payload.User is not null)
+            {
+                await StoreSessionAsync(payload.User);
+            }
+
+            return HttpStatusCode.OK;
+        }
+        finally
+        {
+            RefreshLock.Release();
+        }
+    }
+
     public async Task<AuthUserDto?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var client = CreateAuthClient();
@@ -254,6 +422,7 @@ public sealed class AuthService : IAuthService
     public Task ClearTokensAsync()
     {
         SetBusinessIdCache(null);
+        InvalidateUserCache();
         _secureStorage.Remove(AccessTokenKey);
         _secureStorage.Remove(RefreshTokenKey);
         _secureStorage.Remove(BusinessIdKey);
@@ -371,6 +540,7 @@ public sealed class AuthService : IAuthService
         await _secureStorage.SetAsync(FirstNameKey, user.FirstName);
         await _secureStorage.SetAsync(SurnameKey, user.Surname);
         await _secureStorage.SetAsync(RoleKey, user.Role);
+        InvalidateUserCache();
     }
 
     // In-memory copy of the business id (SecureStorage decrypts through the Keystore on every read).
@@ -416,7 +586,36 @@ public sealed class AuthService : IAuthService
         }
     }
 
+    // In-memory copy of the signed-in user: every screen and each Shell navigation asks for it, and each
+    // SecureStorage read is a Keystore decrypt (7 reads = tens of ms on a low-end phone). Generation guards a
+    // slow read from re-caching a session that was cleared or replaced meanwhile.
+    private AuthUserDto? _userCache;
+    private int _userCacheGeneration;
+
+    private void InvalidateUserCache()
+    {
+        Interlocked.Increment(ref _userCacheGeneration);
+        _userCache = null;
+    }
+
     public async Task<AuthUserDto?> GetCachedUserAsync()
+    {
+        if (_userCache is { } hit)
+        {
+            return hit;
+        }
+
+        var generation = Volatile.Read(ref _userCacheGeneration);
+        var user = await ReadUserAsync();
+        if (user is not null && generation == Volatile.Read(ref _userCacheGeneration))
+        {
+            _userCache = user;
+        }
+
+        return user;
+    }
+
+    private async Task<AuthUserDto?> ReadUserAsync()
     {
         var userId = await _secureStorage.GetAsync(UserIdKey);
         var businessId = await _secureStorage.GetAsync(BusinessIdKey);

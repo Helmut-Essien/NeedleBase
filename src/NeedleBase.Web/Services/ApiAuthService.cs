@@ -91,6 +91,122 @@ public sealed class ApiAuthService : IApiAuthService
         }
     }
 
+    public async Task<NeedleBase.Application.Contracts.Staff.InvitePreviewDto?> PreviewInviteAsync(string code, CancellationToken cancellationToken = default)
+    {
+        LastErrorMessage = null;
+        using var response = await _httpClient.PostAsJsonAsync("api/auth/invite-preview", new InviteCodeRequest { Code = code }, JsonOptions, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            LastErrorMessage = InviteError(await ApiProblem.ReadAsync(response, cancellationToken));
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<NeedleBase.Application.Contracts.Staff.InvitePreviewDto>(JsonOptions, cancellationToken);
+    }
+
+    public async Task<AuthSessionResult?> AcceptInviteAsync(AcceptInviteRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.PostAsJsonAsync("api/auth/accept-invite", request, JsonOptions, cancellationToken);
+        return await ReadSessionAsync(response, InviteError, cancellationToken);
+    }
+
+    private static string InviteError(ApiProblem problem) => StaffErrorMessages.ForProblem(problem);
+
+    private static (bool Enabled, DateTimeOffset Until, bool Known) _emailEnabled;
+    private static int _emailRefreshing;
+
+    /// <summary>
+    /// Whether the Api can send email (shows "Forgot password?"). Cached 5 min. Once a value is known, an expired cache
+    /// answers at once and refreshes in the background (one refresh at a time), so a slow or down Api never adds
+    /// seconds to the sign-in page and a brief blip doesn't hide the link.
+    /// </summary>
+    public async Task<bool> EmailEnabledAsync(CancellationToken cancellationToken = default)
+    {
+        var cached = _emailEnabled;
+        if (cached.Until > DateTimeOffset.UtcNow)
+        {
+            return cached.Enabled;
+        }
+
+        if (cached.Known)
+        {
+            if (Interlocked.CompareExchange(ref _emailRefreshing, 1, 0) == 0)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await RefreshEmailEnabledAsync(CancellationToken.None);
+                    }
+                    finally
+                    {
+                        Volatile.Write(ref _emailRefreshing, 0);
+                    }
+                }, CancellationToken.None);
+            }
+
+            return cached.Enabled;
+        }
+
+        return await RefreshEmailEnabledAsync(cancellationToken);
+    }
+
+    private async Task<bool> RefreshEmailEnabledAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(2)); // first ever call only; later ones never wait
+            var dto = await _httpClient.GetFromJsonAsync<AuthOptionsDto>("api/auth/options", JsonOptions, timeout.Token);
+            var enabled = dto?.EmailEnabled == true;
+            _emailEnabled = (enabled, DateTimeOffset.UtcNow.AddMinutes(5), true);
+            return enabled;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException or NotSupportedException)
+        {
+            _logger.LogInformation("Couldn't read Api auth options ({Type}); keeping the last answer for a minute", ex.GetType().Name);
+            var last = _emailEnabled;
+            _emailEnabled = (last.Known && last.Enabled, DateTimeOffset.UtcNow.AddMinutes(1), last.Known);
+            return _emailEnabled.Enabled;
+        }
+    }
+
+    /// <summary>Tests: make the cached answer stale (kept as the last known value).</summary>
+    internal static void ExpireEmailEnabledCache() => _emailEnabled = _emailEnabled with { Until = DateTimeOffset.MinValue };
+
+    /// <summary>Tests: forget the cached answer.</summary>
+    internal static void ResetEmailEnabledCache()
+    {
+        _emailEnabled = default;
+        Volatile.Write(ref _emailRefreshing, 0);
+    }
+
+    public async Task<bool> RequestPasswordResetAsync(string email, CancellationToken cancellationToken = default)
+    {
+        LastErrorMessage = null;
+        using var response = await _httpClient.PostAsJsonAsync("api/auth/forgot-password", new ForgotPasswordRequest { Email = email }, JsonOptions, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return true;
+        }
+
+        LastErrorMessage = StaffErrorMessages.ForProblem(await ApiProblem.ReadAsync(response, cancellationToken));
+        return false;
+    }
+
+    public async Task<bool> ResetPasswordAsync(ResetPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        LastErrorMessage = null;
+        using var response = await _httpClient.PostAsJsonAsync("api/auth/reset-password", request, JsonOptions, cancellationToken);
+        if (response.IsSuccessStatusCode)
+        {
+            return true;
+        }
+
+        LastErrorMessage = StaffErrorMessages.ForProblem(await ApiProblem.ReadAsync(response, cancellationToken));
+        return false;
+    }
+
     private async Task<AuthSessionResult?> ReadSessionAsync(
         HttpResponseMessage response,
         Func<ApiProblem, string> describe,

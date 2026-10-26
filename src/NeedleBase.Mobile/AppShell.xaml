@@ -26,6 +26,22 @@
         Shell.TabBarIsVisible="False"
         Shell.NavBarIsVisible="False" />
 
+    <ShellContent
+        Title="Reset password"
+        Route="ForgotPasswordPage"
+        ContentTemplate="{DataTemplate views:ForgotPasswordPage}"
+        FlyoutItemIsVisible="False"
+        Shell.TabBarIsVisible="False"
+        Shell.NavBarIsVisible="False" />
+
+    <ShellContent
+        Title="Join your team"
+        Route="AcceptInvitePage"
+        ContentTemplate="{DataTemplate views:AcceptInvitePage}"
+        FlyoutItemIsVisible="False"
+        Shell.TabBarIsVisible="False"
+        Shell.NavBarIsVisible="False" />
+
     <TabBar Route="main"
             Shell.TabBarBackgroundColor="White"
             Shell.TabBarForegroundColor="{StaticResource Primary}"
@@ -46,7 +62,8 @@
              mci:MauiIcon.Value="{mi:Material Icon=ReceiptLong, IconSize=22, TargetName='.'}">
             <ShellContent ContentTemplate="{DataTemplate views:OrdersPage}" />
         </Tab>
-        <Tab Title="Payments"
+        <Tab x:Name="PaymentsTab"
+             Title="Payments"
              Route="PaymentsPage"
              mci:MauiIcon.Value="{mi:Material Icon=Payments, IconSize=22, TargetName='.'}">
             <ShellContent ContentTemplate="{DataTemplate views:PaymentsPage}" />
@@ -54,7 +71,7 @@
         <Tab Title="More"
              Route="MorePage"
              mci:MauiIcon.Value="{mi:Material Icon=Menu, IconSize=22, TargetName='.'}">
-            <ShellContent ContentTemplate="{DataTemplate views:MorePlaceholderPage}" />
+            <ShellContent ContentTemplate="{DataTemplate views:MorePage}" />
         </Tab>
     </TabBar>
 </Shell>

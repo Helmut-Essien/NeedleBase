@@ -739,3 +739,34 @@ a.nb-list__row:hover { color: var(--nb-brand-primary-dark); }
   width: auto;
   margin-bottom: 0.25rem;
 }
+
+/* Staff (Slice 7) */
+.nb-signout { text-decoration: none; display: inline-block; }
+.nb-narrow { max-width: 32rem; }
+.nb-invite-code { border: 1px solid var(--nb-edge); background: var(--nb-base); border-radius: 16px; padding: 1rem 1.25rem; box-shadow: var(--nb-inset); margin-bottom: 1.5rem; }
+.nb-invite-code__value { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.5rem; font-weight: 700; letter-spacing: .08em; color: var(--nb-brand-primary-dark); user-select: all; word-break: break-all; margin: .5rem 0; }
+.nb-staff { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; }
+.nb-staff__actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-left: auto; }
+.nb-staff__actions form { display: inline-flex; gap: .5rem; align-items: center; margin: 0; }
+.nb-staff__role { max-width: 10rem; }
+
+/* "Forgot password?" under the sign-in password (only when the Api can send email). 44px tall tap target. */
+.nb-auth-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--nb-brand-primary-dark);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.nb-auth-link:hover {
+  color: var(--nb-brand-primary-dark);
+  text-decoration: underline;
+}
+
+.nb-auth-link:focus-visible {
+  outline: 2px solid var(--nb-focus);
+  outline-offset: 2px;
+}

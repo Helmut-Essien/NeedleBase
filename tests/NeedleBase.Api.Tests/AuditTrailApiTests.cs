@@ -23,6 +23,7 @@ using NeedleBase.Infrastructure.Persistence;
 namespace NeedleBase.Api.Tests;
 
 /// <summary>Audit trail: every write path records who/what/when, masked; tenancy, roles, throttling, integrity, purge.</summary>
+[Collection(SyncEpochCollection.Name)]
 public class AuditTrailApiTests : IClassFixture<NeedleBaseApiFactory>
 {
     private const string Phone = "+233245550123";

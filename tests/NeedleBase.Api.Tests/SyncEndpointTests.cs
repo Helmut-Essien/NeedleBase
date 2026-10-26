@@ -10,6 +10,7 @@ using NeedleBase.Domain.Enums;
 namespace NeedleBase.Api.Tests;
 
 /// <summary>Slice 4: push idempotency, conflicts, tenancy, tombstones, cursor paging.</summary>
+[Collection(SyncEpochCollection.Name)]
 public partial class SyncEndpointTests : IClassFixture<NeedleBaseApiFactory>
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
