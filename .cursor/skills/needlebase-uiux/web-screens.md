@@ -149,7 +149,8 @@ Reference: box mockup `/workspace/mockup/dashboard.html` (v4) and `/workspace/we
 | Dashboard | 4 raised metric cards with inset icon chips (Active, Overdue → warning colour, Due 7d, Fittings 7d); Money grid 1.4fr/1fr/1fr with the **Left to collect** hero (green left bar, 40px green figure, "View payments →"); Due next list or inset empty state; By status card with inset segmented bar (SVG, CSP-safe) + dot rows (non-zero rows inset, bold green count); Recent payments with inset icon chips (owner/manager only) |
 | Production | Segmented control (Everyone / Assigned to me); raised columns with inset wells holding raised cards; overdue = warning left border |
 | Orders / Customers / Payments | Raised filter panel with inset inputs; raised table; <768 each row is a raised card with `data-label` captions |
-| Order details | Back link, title + status chip; 1.4fr/1fr grid of raised cards (Details, Garments · Status form, Payments incl. voided struck-through, History) |
+| Order details | Back link, title + status chip; 1.4fr/1fr grid of raised cards (Details + View customer, Garments as `.nb-line` cards with inset `.nb-measure` snapshot · Status form, Payments incl. voided struck-through, History); Edit order button (Owner/Manager) |
+| Order edit | Same grid: Garments card with one `.nb-edit-line` fieldset per garment + Add a garment; Details card (due date, notes), Total card (current total, already paid); filled Save + outline Cancel |
 | Activity | Filter panel; raised list; `<details>` opens as an inset well |
 | Terms/Privacy | Raised reading card, 52rem max |
 | Error/404/403 | Centred raised card with icon chip and one primary action |

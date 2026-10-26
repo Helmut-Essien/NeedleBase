@@ -101,6 +101,12 @@ See `needlebase-uiux/web-screens.md` § "Web front-end rules": same-origin asset
 - Design: Material structure + soft UI, tokens/components in `site.css` (v4 block); spec in `needlebase-uiux/design-system.md` § Web v4 and `web-screens.md` § v4.
 - `_Layout`: one `<aside id="nb-drawer" class="nb-sidebar">` = desktop sidebar (≥768) and mobile off-canvas drawer (<768) opened by the app-bar hamburger (`data-nb-drawer-open`, `href="#nb-drawer"` no-JS fallback). Drawer JS (focus trap, Escape, scrim, scroll lock, focus return) is in `site.js`. **Bootstrap JS removed**; don't add `data-bs-*` components back.
 - Dashboard status bar is an SVG (`viewBox="0 0 total 1"`, `<rect width=count>`) because inline `style` is blocked by CSP.
-- Keep: read-only except order status, tailors don't see payments, no notifications bell, antiforgery, double-submit guard, Terms/Privacy in footer.
+- Keep: read-only except order status and the Owner/Manager order edit (below), tailors don't see payments, no notifications bell, antiforgery, double-submit guard, Terms/Privacy in footer.
 
 - Audit 23 Oct 2026: transparent logo `needlebase-logo-clear.png` is the only web logo (favicon + apple-touch icon derived from its NB mark); error `#B42318`/warning `#9A4406`/focus `#247A2B` tokens for the soft surface; forced-colours + print CSS; drawer makes the page `inert` and pins the body; `AppPageModel.CanRetry` hides "Try again" on 403/404; card tables carry explicit ARIA table roles; dead pre-v4 CSS and `_Layout.cshtml.css` rules removed. Render tests cover drawer markup, no inline `style`, no Bootstrap JS, tailor sees no money copy.
+
+## Order edit + measurement snapshot (23 Oct 2026)
+
+- Product decision changed: Owners/Managers edit orders on the web at `/Orders/Edit/{id}` (`EditModel`, PUT `api/orders/{id}` via `INeedleBaseApi.UpdateOrderAsync`): due date, order notes, each garment's quantity/price/notes, remove a garment (checkbox), add one garment per save. `WebUser.CanEditOrders()` gates the Edit button; the page returns 403 to Tailors and the Api refuses them too (`ORDER_EDIT_FORBIDDEN`).
+- Locked (Collected/Cancelled) shows a message instead of the form. Stale (`BaseModified`) reloads the latest order with `EditModel.StaleMessage`. Total below paid → `ORDER_TOTAL_BELOW_PAID` (409) shown as friendly copy. Prices use the phone's cedi rules (`ParseMoney`: "1,250.50", "GH₵ 150", "10,50" = 10.50; "1.000" and minus refused).
+- Order details: each garment is a `.nb-line` card with a read-only `.nb-measure` block (values, "Taken {date}" / "Saved with this order (date not recorded)") or "No measurements saved with this order" plus a link to the customer's current measurements. Tailors see measurements (no money added).
