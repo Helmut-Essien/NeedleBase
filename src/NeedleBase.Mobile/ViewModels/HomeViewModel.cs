@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using NeedleBase.Domain.Enums;
 using NeedleBase.Mobile.Data.Services;
 using NeedleBase.Mobile.Helpers;
 using NeedleBase.Mobile.Services;
@@ -235,7 +236,36 @@ public partial class HomeViewModel : BaseViewModel
     private async Task MeasureAsync() => await Shell.Current.GoToAsync("//main/CustomersPage");
 
     [RelayCommand]
-    private async Task ViewAllOrdersAsync() => await Shell.Current.GoToAsync("//main/OrdersPage");
+    private async Task ViewAllOrdersAsync() => await OpenOrdersAsync("All");
+
+    [RelayCommand]
+    private async Task ViewActiveOrdersAsync() => await OpenOrdersAsync(OrderStatus.ActiveFilter);
+
+    [RelayCommand]
+    private async Task ViewReadyOrdersAsync() => await OpenOrdersAsync(OrderStatus.Ready);
+
+    public static string OrdersRoute(string filter) =>
+        $"//main/OrdersPage?{OrdersViewModel.FilterQueryKey}={Uri.EscapeDataString(filter)}";
+
+    private bool _opening;
+
+    private async Task OpenOrdersAsync(string filter)
+    {
+        if (_opening)
+        {
+            return; // double-tap: one navigation
+        }
+
+        _opening = true;
+        try
+        {
+            await Shell.Current.GoToAsync(OrdersRoute(filter));
+        }
+        finally
+        {
+            _opening = false;
+        }
+    }
 
     // Bound per row via HomeAttentionItem.OpenCommand (no separate page-level command).
     private static async Task OpenAttentionAsync(HomeAttentionItem? item)

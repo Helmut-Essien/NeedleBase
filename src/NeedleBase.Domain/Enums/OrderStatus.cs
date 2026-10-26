@@ -22,6 +22,15 @@ public static class OrderStatus
         New, Cutting, Sewing, Fitting, Ready, Collected, Cancelled
     ];
 
+    /// <summary>Open work (everything not Collected/Cancelled): Home's "Active orders" count and the Orders "Active" filter.</summary>
+    public static readonly IReadOnlyList<string> Active =
+    [
+        New, Cutting, Sewing, Fitting, Ready
+    ];
+
+    /// <summary>List-filter key for <see cref="Active"/> (not a status; never stored on an order).</summary>
+    public const string ActiveFilter = "Active";
+
     public static bool IsValid(string? status) =>
         status is New or Cutting or Sewing or Fitting or Ready or Collected or Cancelled;
 

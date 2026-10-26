@@ -22,7 +22,7 @@ public sealed class StatusFilterOption
     public string Display { get; }
 }
 
-public partial class OrdersViewModel : BaseViewModel
+public partial class OrdersViewModel : BaseViewModel, IQueryAttributable
 {
     private readonly IOrderLocalService _orders;
     private readonly IAuthService _auth;
@@ -37,6 +37,7 @@ public partial class OrdersViewModel : BaseViewModel
         _auth = auth;
         Title = "Orders";
         StatusFilters.Add(new StatusFilterOption(null, "All"));
+        StatusFilters.Add(new StatusFilterOption(OrderStatus.ActiveFilter, "Active"));
         foreach (var status in OrderStatus.All)
         {
             StatusFilters.Add(new StatusFilterOption(status, OrderStatus.DisplayName(status)));
@@ -116,6 +117,46 @@ public partial class OrdersViewModel : BaseViewModel
         }
 
         await LoadAsync();
+    }
+
+    /// <summary>Query key for deep links, e.g. <c>//main/OrdersPage?filter=Active</c>.</summary>
+    public const string FilterQueryKey = "filter";
+
+    /// <summary>
+    /// Deep link from Home: preselect a filter (Active, Ready, All...). The tab's AppearAsync then loads it
+    /// (filter differs from _loadedStatus) — no second load from the filter-changed handler. A plain tab tap
+    /// carries no query, so the last visible filter stays (the picker shows it).
+    /// </summary>
+    public void ApplyQueryAttributes(IDictionary<string, object> query)
+    {
+        if (!query.TryGetValue(FilterQueryKey, out var raw))
+        {
+            return;
+        }
+
+        try { query.Remove(FilterQueryKey); } catch (NotSupportedException) { } // Shell can re-deliver a tab's last query; apply each link once
+        ApplyFilter(Uri.UnescapeDataString(raw?.ToString() ?? string.Empty));
+    }
+
+    /// <summary>Select a filter by key without reloading here; unknown/empty keys mean All.</summary>
+    public void ApplyFilter(string? key)
+    {
+        var option = StatusFilters.FirstOrDefault(o =>
+            string.Equals(o.Status, string.IsNullOrWhiteSpace(key) || key == "All" ? null : key.Trim(), StringComparison.Ordinal))
+            ?? StatusFilters[0];
+        if (ReferenceEquals(option, SelectedStatusFilter))
+        {
+            return; // repeated taps: AppearAsync keeps the cached rows
+        }
+
+        // A load for the old filter may be running: supersede it so its rows can't land under the new filter.
+        Interlocked.Increment(ref _loadGeneration);
+        IsBusy = false;
+        ForgetLoaded();
+        _suppressFilterReload = true;
+        SelectedStatusFilter = option;
+        _suppressFilterReload = false;
+        OnPropertyChanged(nameof(ShowEmptyAdd));
     }
 
     private void ForgetLoaded()
@@ -299,9 +340,7 @@ public partial class OrdersViewModel : BaseViewModel
             _loadedDay = BusinessTime.Today(DateTimeOffset.UtcNow);
             _loadedSearch = search;
             _loadedStatus = status;
-            EmptyMessage = string.IsNullOrWhiteSpace(search) && status is null
-                ? "Create your first order to track sewing work."
-                : "No orders match that filter.";
+            EmptyMessage = EmptyMessageFor(search, status);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -336,6 +375,15 @@ public partial class OrdersViewModel : BaseViewModel
     }
 
     private readonly SyncService? _sync;
+
+    public static string EmptyMessageFor(string? search, string? status) =>
+        (string.IsNullOrWhiteSpace(search), status) switch
+        {
+            (true, null) => "Create your first order to track sewing work.",
+            (true, OrderStatus.ActiveFilter) => "No active orders. Everything is collected or cancelled.",
+            (true, OrderStatus.Ready) => "Nothing is ready to collect right now.",
+            _ => "No orders match that filter."
+        };
 
     /// <summary>Pull-to-refresh syncs first (bounded wait), then reloads from the device.</summary>
     [RelayCommand]

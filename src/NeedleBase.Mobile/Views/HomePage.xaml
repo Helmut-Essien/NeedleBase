@@ -51,9 +51,9 @@
             <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
                 <Border Grid.Column="0" BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeThickness="1"
                         StrokeShape="RoundRectangle 12" Padding="14"
-                        SemanticProperties.Description="Active orders, open Orders tab">
+                        SemanticProperties.Description="Active orders, not yet collected. Opens Orders filtered to active">
                     <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding ViewAllOrdersCommand}" />
+                        <TapGestureRecognizer Command="{Binding ViewActiveOrdersCommand}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="2">
                         <Label Text="ACTIVE ORDERS" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Gray600}" />
@@ -63,9 +63,9 @@
                 </Border>
                 <Border Grid.Column="1" BackgroundColor="{StaticResource Charcoal}" StrokeThickness="0"
                         StrokeShape="RoundRectangle 12" Padding="14"
-                        SemanticProperties.Description="Ready to collect, open Orders tab">
+                        SemanticProperties.Description="Ready to collect. Opens Orders filtered to ready to collect">
                     <Border.GestureRecognizers>
-                        <TapGestureRecognizer Command="{Binding ViewAllOrdersCommand}" />
+                        <TapGestureRecognizer Command="{Binding ViewReadyOrdersCommand}" />
                     </Border.GestureRecognizers>
                     <VerticalStackLayout Spacing="2">
                         <Label Text="READY TO COLLECT" FontSize="11" FontAttributes="Bold" TextColor="{StaticResource Gray400}" />

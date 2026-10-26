@@ -38,7 +38,15 @@ public sealed class OrderLocalService : IOrderLocalService
         if (!string.IsNullOrWhiteSpace(status))
         {
             var statusFilter = status.Trim();
-            orders = orders.Where(o => o.Status == statusFilter);
+            if (statusFilter == OrderStatus.ActiveFilter)
+            {
+                var active = OrderStatus.Active.ToArray();
+                orders = orders.Where(o => active.Contains(o.Status));
+            }
+            else
+            {
+                orders = orders.Where(o => o.Status == statusFilter);
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(search))
@@ -198,7 +206,7 @@ public sealed class OrderLocalService : IOrderLocalService
         }
 
         var active = byStatus
-            .Where(kv => !OrderStatus.IsTerminal(kv.Key))
+            .Where(kv => OrderStatus.Active.Contains(kv.Key))
             .Sum(kv => kv.Value);
         var ready = byStatus[OrderStatus.Ready];
 
