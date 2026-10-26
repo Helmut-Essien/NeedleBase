@@ -13,6 +13,8 @@ public static class OrderErrorMessages
     public const string CustomerNotFound = "CUSTOMER_NOT_FOUND";
     public const string MeasurementNotFound = "MEASUREMENT_NOT_FOUND";
     public const string HasPayments = "ORDER_HAS_PAYMENTS";
+    public const string TotalBelowPaid = "ORDER_TOTAL_BELOW_PAID";
+    public const string EditForbidden = "ORDER_EDIT_FORBIDDEN";
 
     public const string Fallback = "Couldn't save the order. Check the details and try again.";
 
@@ -28,6 +30,8 @@ public static class OrderErrorMessages
         MeasurementNotFound => "We couldn't find those measurements for this customer.",
         Validation => "Check the order details and try again.",
         HasPayments => "Payments are recorded on this order, so it can't be deleted. Cancel it instead.",
+        TotalBelowPaid => "The new total would be less than the customer has already paid. Keep the total at or above the amount paid, or void a payment first.",
+        EditForbidden => "Only the owner or a manager can edit an order. You can still change its status.",
         NeedleBase.Application.Common.StaleUpdate.Code => "Someone else saved a newer version. Reload to see it, then make your change again.",
         _ => Fallback
     };

@@ -11,6 +11,9 @@ public static class WebUser
     /// <summary>Owner/Manager see money (Tailors never do; the Api also returns 403 PAYMENT_FORBIDDEN).</summary>
     public static bool CanSeePayments(this ClaimsPrincipal user) => PaymentRules.CanManage(user.Role());
 
+    /// <summary>Owner/Manager edit orders (due date, notes, garments and prices); the Api enforces it too.</summary>
+    public static bool CanEditOrders(this ClaimsPrincipal user) => NeedleBase.Application.Orders.OrderEditor.CanEdit(user.Role());
+
     /// <summary>Owner/Manager see the activity log (the Api enforces it too; Managers without security events).</summary>
     public static bool CanSeeActivity(this ClaimsPrincipal user) =>
         user.Role() is "Owner" or "Manager";

@@ -258,7 +258,7 @@ public sealed class SyncService : ISyncService
 
     private async Task<SyncPushResult> ApplyOrderAsync(SyncPushOperation op, CancellationToken ct)
     {
-        var existing = await _db.Orders.AsNoTracking()
+        var existing = await _db.Orders.AsNoTracking().Include(o => o.Lines)
             .FirstOrDefaultAsync(o => o.Id == op.EntityId, ct).ConfigureAwait(false);
 
         if (op.Operation == SyncOperation.Delete)
@@ -291,6 +291,19 @@ public sealed class SyncService : ISyncService
             return Failed(op, SyncErrorCodes.PayloadInvalid, "Missing order.");
         }
 
+        // Line ids already used by another order can't be kept: those lines get fresh server ids.
+        // Ids the order already has are its own: only unseen ids need the lookup (none on a replay or a qty edit).
+        var ownLineIds = existing?.Lines.Select(l => l.Id).ToHashSet(StringComparer.Ordinal) ?? [];
+        var pushedLineIds = dto.Lines.Select(l => l.Id)
+            .Where(id => !string.IsNullOrWhiteSpace(id) && !ownLineIds.Contains(id))
+            .Distinct(StringComparer.Ordinal).ToList();
+        var foreignLineIds = pushedLineIds.Count == 0
+            ? new HashSet<string>(StringComparer.Ordinal)
+            : (await _db.OrderLines.AsNoTracking()
+                .Where(l => pushedLineIds.Contains(l.Id) && l.OrderId != dto.Id)
+                .Select(l => l.Id)
+                .ToListAsync(ct).ConfigureAwait(false)).ToHashSet(StringComparer.Ordinal);
+
         if (existing is null)
         {
             if (op.BaseModifiedUtc is not null)
@@ -311,12 +324,14 @@ public sealed class SyncService : ISyncService
                     TotalAmount = dto.TotalAmount,
                     Lines = dto.Lines.OrderBy(l => l.SortOrder).Select(l => new CreateOrderLineRequest
                     {
+                        Id = foreignLineIds.Contains(l.Id) ? null : l.Id,
                         GarmentTemplate = l.GarmentTemplate,
                         Quantity = l.Quantity,
                         UnitPrice = l.UnitPrice,
                         MeasurementProfileId = l.MeasurementProfileId,
                         Unit = l.Unit,
                         MeasurementFields = new Dictionary<string, decimal?>(MeasurementFieldsSerializer.Deserialize(l.MeasurementFieldsJson)),
+                        MeasurementTakenAtUtc = l.MeasurementTakenAtUtc,
                         Notes = l.Notes
                     }).ToList()
                 },
@@ -350,7 +365,21 @@ public sealed class SyncService : ISyncService
             !string.Equals(existing.AssignedToUserId, dto.AssignedToUserId, StringComparison.Ordinal) ||
             !string.Equals(existing.Notes, string.IsNullOrWhiteSpace(dto.Notes) ? null : dto.Notes.Trim(), StringComparison.Ordinal);
         var statusChanged = !string.Equals(existing.Status, dto.Status, StringComparison.Ordinal);
-        if (!headerChanged && !statusChanged)
+        // Old clients and status-only pushes carry no lines: lines unchanged.
+        var lineRequests = dto.Lines.OrderBy(l => l.SortOrder).Select(l => new CreateOrderLineRequest
+        {
+            Id = foreignLineIds.Contains(l.Id) ? null : l.Id,
+            GarmentTemplate = l.GarmentTemplate,
+            Quantity = l.Quantity,
+            UnitPrice = l.UnitPrice,
+            MeasurementProfileId = l.MeasurementProfileId,
+            Unit = l.Unit,
+            MeasurementFields = new Dictionary<string, decimal?>(MeasurementFieldsSerializer.Deserialize(l.MeasurementFieldsJson)),
+            MeasurementTakenAtUtc = l.MeasurementTakenAtUtc,
+            Notes = l.Notes
+        }).ToList();
+        var linesChanged = lineRequests.Count > 0 && OrderEditor.LinesDiffer(existing, lineRequests);
+        if (!headerChanged && !statusChanged && !linesChanged)
         {
             return Applied(op, order: await LoadOrderAsync(dto.Id, ct).ConfigureAwait(false));
         }
@@ -360,16 +389,19 @@ public sealed class SyncService : ISyncService
             return Conflict(op, order: await LoadOrderAsync(dto.Id, ct).ConfigureAwait(false));
         }
 
-        if (headerChanged)
+        if (headerChanged || linesChanged)
         {
+            // Same rules as the API edit (Owner/Manager, not locked, total ≥ paid); input limits are lenient.
             var header = await _orders.UpdateAsync(
                 dto.Id,
                 new UpdateOrderRequest
                 {
+                    Lenient = true,
                     DueDate = dto.DueDate,
                     FittingDate = dto.FittingDate,
                     AssignedToUserId = dto.AssignedToUserId,
-                    Notes = dto.Notes
+                    Notes = dto.Notes,
+                    Lines = linesChanged ? lineRequests : null
                 },
                 ct).ConfigureAwait(false);
             if (!header.IsSuccess)
@@ -528,6 +560,8 @@ public sealed class SyncService : ISyncService
         OrderError.AssigneeInvalid => OrderErrorMessages.AssigneeInvalid,
         OrderError.TotalMismatch => OrderErrorMessages.TotalMismatch,
         OrderError.HasPayments => OrderErrorMessages.HasPayments,
+        OrderError.BelowPaid => OrderErrorMessages.TotalBelowPaid,
+        OrderError.Forbidden => OrderErrorMessages.EditForbidden,
         _ => OrderErrorMessages.Validation
     };
 

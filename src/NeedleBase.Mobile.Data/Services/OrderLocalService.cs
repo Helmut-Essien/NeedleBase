@@ -345,6 +345,85 @@ public sealed class OrderLocalService : IOrderLocalService
     }
 
     /// <summary>
+    /// Owner/Manager edit (due date, notes, lines incl. price) with the server's rules (<see cref="OrderEditor"/>):
+    /// role, collected/cancelled lock, total not below the locally known amount paid. Saved offline; the auto-queue
+    /// sends the order with its lines and the base version, so a newer server edit comes back as a conflict.
+    /// </summary>
+    public async Task<RecordResult<OrderDetailDto>> UpdateAsync(
+        string businessId,
+        string id,
+        UpdateOrderRequest request,
+        string? role,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(businessId);
+        ArgumentNullException.ThrowIfNull(request);
+        if (!OrderEditor.CanEdit(role))
+        {
+            return Fail(OrderError.Forbidden, null);
+        }
+
+        await using var scope = _scopeFactory.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+
+        var entity = await db.Orders
+            .Include(o => o.Lines)
+            .FirstOrDefaultAsync(o => o.BusinessId == businessId && o.Id == id, cancellationToken)
+            .ConfigureAwait(false);
+        if (entity is null)
+        {
+            return Fail(OrderError.NotFound, null);
+        }
+
+        if (StaleUpdate.IsStale(request.BaseModifiedUtc, entity.DateModifiedUtc))
+        {
+            return Fail(OrderError.Stale, null);
+        }
+
+        try
+        {
+            // Only what the edit needs (low-end phones): profiles for new lines, paid only when lines change.
+            // SQLite stores decimals as text, so the sum runs here over the non-voided amounts only.
+            IReadOnlyList<MeasurementProfile> profiles = [];
+            decimal paid = 0;
+            if (request.Lines is { } reqLines)
+            {
+                var (ids, garments) = OrderEditor.ProfileNeeds(entity, reqLines);
+                if (ids.Count + garments.Count > 0)
+                {
+                    profiles = await db.MeasurementProfiles.AsNoTracking()
+                        .Where(m => m.BusinessId == businessId && m.CustomerId == entity.CustomerId &&
+                                    (ids.Contains(m.Id) || garments.Contains(m.GarmentTemplate)))
+                        .ToListAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                paid = (await db.Payments.AsNoTracking()
+                    .Where(p => p.BusinessId == businessId && p.OrderId == id && !p.IsVoided)
+                    .Select(p => p.Amount)
+                    .ToListAsync(cancellationToken).ConfigureAwait(false)).Sum();
+            }
+
+            var (error, detail) = OrderEditor.Apply(entity, request, profiles, paid, DateTimeOffset.UtcNow);
+            if (error != OrderError.None)
+            {
+                return Fail(error, detail);
+            }
+
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            var replay = await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false);
+            return replay is null ? RecordResult.Fail(RecordError.Validation, OrderErrorMessages.Fallback) : replay;
+        }
+        catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
+        {
+            return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
+        }
+        catch (ArgumentException ex)
+        {
+            return Fail(OrderLineFactory.FromException(ex), ex.Message);
+        }
+    }
+
+    /// <summary>
     /// Friendly, user-safe copy for the UI. Technical detail goes to the debug log only
     /// (never <c>ex.Message</c> to the screen).
     /// </summary>
@@ -392,5 +471,6 @@ public sealed class OrderLocalService : IOrderLocalService
                 l.Unit,
                 MeasurementFieldsSerializer.Deserialize(l.MeasurementFieldsJson),
                 l.Notes,
-                l.SortOrder)).ToList());
+                l.SortOrder,
+                l.MeasurementTakenAtUtc)).ToList());
 }

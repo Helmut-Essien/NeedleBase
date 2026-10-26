@@ -568,6 +568,9 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasMaxLength(26)
                         .HasColumnType("character varying(26)");
 
+                    b.Property<DateTimeOffset?>("MeasurementTakenAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");

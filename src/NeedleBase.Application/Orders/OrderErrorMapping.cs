@@ -24,5 +24,11 @@ public static class OrderErrorMapping
 
     /// <summary>Stable ProblemDetails/UI code for an order error (same values the API sends).</summary>
     public static string Code(OrderError error) =>
-        error == OrderError.HasPayments ? OrderErrorMessages.HasPayments : RecordErrorMessages.Code(ToRecord(error));
+        error switch
+        {
+            OrderError.HasPayments => OrderErrorMessages.HasPayments,
+            OrderError.BelowPaid => OrderErrorMessages.TotalBelowPaid,
+            OrderError.Forbidden => OrderErrorMessages.EditForbidden,
+            _ => RecordErrorMessages.Code(ToRecord(error))
+        };
 }

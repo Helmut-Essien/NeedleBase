@@ -14,7 +14,11 @@
         <h1 class="nb-page-title mb-0">Order #@o.DisplayRef</h1>
         <partial name="_StatusChip" model="(o.Status, o.IsOverdue)" />
     </div>
-    <p class="nb-meta">@o.CustomerName · @o.CustomerPhone</p>
+    <p class="nb-meta">@o.CustomerName · @o.CustomerPhone · <a asp-page="/Customers/Index" asp-route-search="@o.CustomerPhone">View customer</a></p>
+    @if (Model.CanEdit)
+    {
+        <p><a class="btn nb-btn-outline" asp-page="/Orders/Edit" asp-route-id="@o.Id">Edit order</a></p>
+    }
 
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
     {
@@ -43,12 +47,31 @@
                 <ul class="nb-list">
                     @foreach (var line in o.Lines)
                     {
-                        <li class="nb-list__row">
-                            <span>@line.Quantity× @line.GarmentDisplay<br /><span class="nb-meta">@line.SnapshotLabel@(string.IsNullOrWhiteSpace(line.Notes) ? "" : " · " + line.Notes)</span></span>
-                            <span class="nb-money">@Money.Format(line.LineTotal)</span>
+                        <li class="nb-list__row nb-line">
+                            <div class="nb-line__head">
+                                <span>@line.Quantity× @line.GarmentDisplay@if (!string.IsNullOrWhiteSpace(line.Notes)) {<br /><span class="nb-meta">@line.Notes</span>}</span>
+                                <span class="nb-money">@Money.Format(line.LineTotal)</span>
+                            </div>
+                            <div class="nb-measure" aria-label="Measurements for @line.GarmentDisplay">
+                                <p class="nb-measure__when">@line.MeasurementTakenDisplay</p>
+                                @if (line.HasMeasurements)
+                                {
+                                    <dl class="nb-measure__grid">
+                                        @foreach (var v in line.MeasurementValues)
+                                        {
+                                            <div><dt>@v.Label</dt><dd>@v.Value</dd></div>
+                                        }
+                                    </dl>
+                                }
+                                else
+                                {
+                                    <p class="mb-0"><a asp-page="/Customers/Index" asp-route-search="@o.CustomerPhone">See the customer's current measurements</a></p>
+                                }
+                            </div>
                         </li>
                     }
                 </ul>
+                <p class="nb-meta mb-0 mt-2">Measurements are a copy saved when each garment was added, so later changes to the customer's profile don't alter this order.</p>
             </section>
         </div>
 

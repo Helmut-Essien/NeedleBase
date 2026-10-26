@@ -133,7 +133,43 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
         // A void or payment pulled from another phone while this order is open updates the balance (live refresh).
         _live ??= new LiveListRefresh(RefreshPaymentsAsync);
         _live.Attach();
+        if (_reloadOnAppear)
+        {
+            _reloadOnAppear = false;
+            return LoadAsync(); // back from Edit order: header, lines and total may have changed
+        }
+
         return _loadedOnce ? RefreshPaymentsAsync() : Task.CompletedTask;
+    }
+
+    private bool _reloadOnAppear;
+
+    /// <summary>Owner/Manager on an order that isn't collected/cancelled (the server enforces the same).</summary>
+    [ObservableProperty] private bool canEdit;
+
+    public string CustomerId { get; private set; } = string.Empty;
+
+    [RelayCommand]
+    private async Task EditOrderAsync()
+    {
+        if (!CanEdit || IsBusy || string.IsNullOrWhiteSpace(OrderId))
+        {
+            return;
+        }
+
+        _reloadOnAppear = true;
+        await Shell.Current.GoToAsync($"EditOrderPage?orderId={Uri.EscapeDataString(OrderId)}");
+    }
+
+    [RelayCommand]
+    private async Task ViewCustomerAsync()
+    {
+        if (string.IsNullOrWhiteSpace(CustomerId))
+        {
+            return;
+        }
+
+        await Shell.Current.GoToAsync($"CustomerDetailPage?customerId={Uri.EscapeDataString(CustomerId)}");
     }
 
     public void Disappear() => _live?.Detach();
@@ -161,6 +197,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasLines => Lines.Count > 0;
+    public bool HasNoLines => !IsBusy && Lines.Count == 0 && !HasError && !string.IsNullOrEmpty(DisplayRef);
     public bool CanUpdateStatus =>
         !string.IsNullOrWhiteSpace(OrderId) &&
         !string.IsNullOrWhiteSpace(Status) &&
@@ -215,6 +252,8 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
             }
 
             ApplyDetail(detail);
+            var user = await _auth.GetCachedUserAsync();
+            CanEdit = NeedleBase.Application.Orders.OrderEditor.CanEdit(user?.Role) && !OrderStatus.IsTerminal(detail.Status);
             await RefreshPaymentsAsync();
         }
         catch (Exception)
@@ -233,6 +272,11 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
         DisplayRef = $"#{detail.DisplayRef}";
         Title = DisplayRef;
         CustomerName = detail.CustomerName;
+        CustomerId = detail.CustomerId;
+        if (OrderStatus.IsTerminal(detail.Status))
+        {
+            CanEdit = false;
+        }
         CustomerPhone = detail.CustomerPhone;
         Status = detail.Status;
         StatusDisplay = detail.StatusDisplay;
@@ -250,13 +294,19 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
         SelectedStatusOption = StatusOptions.FirstOrDefault(s => s.Status == detail.Status);
         ShowStatusPicker = false;
 
-        Lines.Clear();
-        foreach (var line in detail.Lines)
+        // Back from Edit without changes (or a refresh with the same items): keep the rendered garment cards
+        // instead of tearing down and re-inflating every line and its measurement rows.
+        if (!SameLines(Lines, detail.Lines))
         {
-            Lines.Add(line);
+            Lines.Clear();
+            foreach (var line in detail.Lines)
+            {
+                Lines.Add(line);
+            }
         }
 
         OnPropertyChanged(nameof(HasLines));
+        OnPropertyChanged(nameof(HasNoLines));
         OnPropertyChanged(nameof(CanUpdateStatus));
     }
 
@@ -264,6 +314,8 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     {
         DisplayRef = string.Empty;
         CustomerName = string.Empty;
+        CustomerId = string.Empty;
+        CanEdit = false;
         CustomerPhone = string.Empty;
         StatusDisplay = string.Empty;
         Status = string.Empty;
@@ -278,6 +330,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
         IsOverdue = false;
         Lines.Clear();
         OnPropertyChanged(nameof(HasLines));
+        OnPropertyChanged(nameof(HasNoLines));
         OnPropertyChanged(nameof(CanUpdateStatus));
     }
 
@@ -344,4 +397,28 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
 
     [RelayCommand]
     private async Task GoBackAsync() => await Shell.Current.GoToAsync("..");
+
+    /// <summary>Same lines in the same order with the same shown values (snapshot values are frozen per line id).</summary>
+    public static bool SameLines(IList<OrderLineDto> shown, IReadOnlyList<OrderLineDto> next)
+    {
+        if (shown.Count != next.Count)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < shown.Count; i++)
+        {
+            var a = shown[i];
+            var b = next[i];
+            if (!string.Equals(a.Id, b.Id, StringComparison.Ordinal) || a.Quantity != b.Quantity || a.UnitPrice != b.UnitPrice ||
+                a.LineTotal != b.LineTotal || !string.Equals(a.Notes, b.Notes, StringComparison.Ordinal) ||
+                a.MeasurementTakenAtUtc != b.MeasurementTakenAtUtc || a.MeasurementFields.Count != b.MeasurementFields.Count ||
+                !string.Equals(a.GarmentTemplate, b.GarmentTemplate, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

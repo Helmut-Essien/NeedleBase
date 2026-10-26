@@ -16,7 +16,8 @@ public static class SyncMapper
 
     public static SyncOrderLineDto ToDto(OrderLine l) =>
         new(l.Id, l.GarmentTemplate, l.Quantity, l.UnitPrice, l.MeasurementProfileId, l.Unit,
-            l.MeasurementFieldsJson, l.Notes, l.SortOrder);
+            l.MeasurementFieldsJson, l.Notes, l.SortOrder,
+            l.MeasurementTakenAtUtc is { } taken ? SyncTime.Normalize(taken) : null);
 
     public static SyncOrderDto ToDto(Order o, IEnumerable<OrderLine> lines) =>
         new(o.Id, o.CustomerId, o.DisplayRef, o.Status, o.DueDate, o.FittingDate, o.AssignedToUserId,

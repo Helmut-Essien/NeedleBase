@@ -196,6 +196,14 @@ public static class LocalSchemaMigrator
         CREATE INDEX IF NOT EXISTS "IX_Payments_Unknown" ON "Payments" ("BusinessId") WHERE "ServerKnown" = 0;
         """;
 
+    /// <summary>
+    /// Version 9 = order editing: when each line's measurement snapshot was taken. Existing lines stay NULL
+    /// ("date not recorded"); no backfill, because the profile may have changed since the order was made.
+    /// </summary>
+    private const string V9MeasurementTakenAt = """
+        ALTER TABLE "OrderLines" ADD COLUMN "MeasurementTakenAtUtc" TEXT NULL;
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
@@ -207,6 +215,7 @@ public static class LocalSchemaMigrator
         V6Adoption,
         V7PhoneNormalize,
         V8Payments,
+        V9MeasurementTakenAt,
     ];
 
     public static int LatestVersion => Steps.Length;
@@ -246,7 +255,15 @@ public static class LocalSchemaMigrator
             for (var next = version + 1; next <= Steps.Length; next++)
             {
                 await using var tx = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-                await ExecuteAsync(connection, tx, Steps[next - 1], cancellationToken).ConfigureAwait(false);
+                // ADD COLUMN has no IF NOT EXISTS in SQLite: skip V9 when the column is already there
+                // (a half-applied or rebuilt database) so the step stays idempotent.
+                var skip = ReferenceEquals(Steps[next - 1], V9MeasurementTakenAt)
+                    && await ColumnExistsAsync(connection, tx, "OrderLines", "MeasurementTakenAtUtc", cancellationToken).ConfigureAwait(false);
+                if (!skip)
+                {
+                    await ExecuteAsync(connection, tx, Steps[next - 1], cancellationToken).ConfigureAwait(false);
+                }
+
                 await ExecuteAsync(connection, tx, $"PRAGMA user_version = {next};", cancellationToken).ConfigureAwait(false);
                 await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
                 version = next;
@@ -340,6 +357,18 @@ public static class LocalSchemaMigrator
 
     private static Task SetVersionAsync(DbConnection connection, int version, CancellationToken cancellationToken) =>
         ExecuteAsync(connection, null, $"PRAGMA user_version = {version};", cancellationToken);
+
+    private static async Task<bool> ColumnExistsAsync(
+        DbConnection connection, DbTransaction tx, string table, string column, CancellationToken cancellationToken)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = tx;
+        command.CommandText = "SELECT COUNT(*) FROM pragma_table_info($table) WHERE name = $column;";
+        AddParameter(command, "$table", table);
+        AddParameter(command, "$column", column);
+        var result = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        return Convert.ToInt64(result, System.Globalization.CultureInfo.InvariantCulture) > 0;
+    }
 
     private static async Task<bool> TableExistsAsync(DbConnection connection, string table, CancellationToken cancellationToken)
     {

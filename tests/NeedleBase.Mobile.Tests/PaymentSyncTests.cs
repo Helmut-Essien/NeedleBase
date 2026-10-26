@@ -479,7 +479,7 @@ public class PaymentSyncTests
     }
 
     [Fact]
-    public void Migrator_LatestVersion_IsPayments() => Assert.Equal(8, LocalSchemaMigrator.LatestVersion);
+    public void Migrator_LatestVersion_IsMeasurementTakenAt() => Assert.Equal(9, LocalSchemaMigrator.LatestVersion);
 
     // ------------------------------------------------------------------ helpers
 

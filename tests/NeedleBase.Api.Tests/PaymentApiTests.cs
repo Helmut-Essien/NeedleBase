@@ -17,7 +17,7 @@ using NeedleBase.Infrastructure.Identity;
 namespace NeedleBase.Api.Tests;
 
 /// <summary>Slice 5: payments REST + sync (Journey 1 steps 6–7, Journey 4), rules, tenancy, roles, conflicts.</summary>
-public class PaymentApiTests : IClassFixture<NeedleBaseApiFactory>
+public partial class PaymentApiTests : IClassFixture<NeedleBaseApiFactory>
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

@@ -38,7 +38,8 @@ public sealed record OrderLineDto(
     string Unit,
     IReadOnlyDictionary<string, decimal?> MeasurementFields,
     string? Notes,
-    int SortOrder)
+    int SortOrder,
+    DateTimeOffset? MeasurementTakenAtUtc = null)
 {
     public string GarmentDisplay => Domain.Enums.GarmentTemplate.DisplayName(GarmentTemplate);
 
@@ -48,9 +49,44 @@ public sealed record OrderLineDto(
 
     public string SnapshotLabel =>
         MeasurementFields.Count > 0 || !string.IsNullOrWhiteSpace(MeasurementProfileId)
-            ? "Measurements snapped"
+            ? "Measurements saved"
             : "No measurements";
+
+    public bool HasMeasurements => MeasurementFields.Any(f => f.Value is not null);
+
+    public bool HasNoMeasurements => !HasMeasurements;
+
+    /// <summary>"Taken 22 Oct 2026" (Accra), or an honest fallback for lines saved before the date was recorded.</summary>
+    public string MeasurementTakenDisplay => !HasMeasurements
+        ? "No measurements saved with this order"
+        : MeasurementTakenAtUtc is { } taken
+            ? "Taken " + Payments.Money.Date(taken)
+            : "Saved with this order (date not recorded)";
+
+    /// <summary>Snapshot values in display order ("Chest: 102 cm"), nulls skipped.</summary>
+    public IReadOnlyList<MeasurementValueDto> MeasurementValues => MeasurementFields
+        .Where(f => f.Value is not null)
+        .OrderBy(f => FieldRank(f.Key))
+        .ThenBy(f => f.Key, StringComparer.Ordinal)
+        .Select(f => new MeasurementValueDto(
+            Common.GarmentTemplateFields.DisplayLabel(f.Key),
+            f.Value!.Value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + " " + Unit))
+        .ToList();
+
+    private int FieldRank(string key)
+    {
+        var fields = Common.GarmentTemplateFields.GetFields(GarmentTemplate);
+        for (var i = 0; i < fields.Count; i++)
+        {
+            if (string.Equals(fields[i], key, StringComparison.OrdinalIgnoreCase)) return i;
+        }
+
+        return int.MaxValue;
+    }
 }
+
+/// <summary>One read-only snapshot value for display.</summary>
+public sealed record MeasurementValueDto(string Label, string Value);
 
 public sealed record OrderDetailDto(
     string Id,
@@ -74,11 +110,19 @@ public sealed record OrderDetailDto(
 }
 
 /// <summary>
-/// One garment line. Line ids are always generated server-side (idempotency is per order id),
-/// so a client never supplies them.
+/// One garment line. Line ids are generated server-side, except a sync push keeps the device's (valid, unused) line id.
+/// On an edit (<see cref="UpdateOrderRequest.Lines"/>) <see cref="Id"/> names an existing line to keep: only its
+/// quantity, price and notes change; its garment and measurement snapshot stay frozen.
 /// </summary>
 public sealed class CreateOrderLineRequest
 {
+    /// <summary>Edit only: id of the existing line this row keeps. Null/unknown = a new line.</summary>
+    [MaxLength(FieldLimits.Id)]
+    public string? Id { get; set; }
+
+    /// <summary>When a carried snapshot was taken (sync from devices); profile-backed lines use the profile's date.</summary>
+    public DateTimeOffset? MeasurementTakenAtUtc { get; set; }
+
     [Required, MaxLength(FieldLimits.GarmentTemplate)]
     public string GarmentTemplate { get; set; } = string.Empty;
 
@@ -154,6 +198,20 @@ public sealed class UpdateOrderRequest
 
     [MaxLength(FieldLimits.Notes)]
     public string? Notes { get; set; }
+
+    /// <summary>
+    /// Optional garment lines (Owner/Manager). Null = lines unchanged. The full new list: rows with an existing
+    /// <see cref="CreateOrderLineRequest.Id"/> are kept (qty/price/notes editable), others are added, missing ones removed.
+    /// A new line with no profile and no values snapshots the customer's latest measurements for that garment.
+    /// </summary>
+    public List<CreateOrderLineRequest>? Lines { get; set; }
+
+    /// <summary>Optional client-computed total; a disagreement is refused (TOTAL_MISMATCH).</summary>
+    public decimal? TotalAmount { get; set; }
+
+    /// <summary>Sync push only: skip input limits added after data may already be queued on devices.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Lenient { get; set; }
 }
 
 /// <summary>Order list sort keys (query <c>sort</c>).</summary>

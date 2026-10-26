@@ -102,6 +102,7 @@ public static class AuditActions
         "DueDate" => "due date",
         "FittingDate" => "fitting date",
         "TotalAmount" => "total",
+        "UnitPrice" => "unit price",
         "AssignedToUserId" or "Assignee" => "assignee",
         "CustomerId" => "customer",
         "GarmentTemplate" => "garment",

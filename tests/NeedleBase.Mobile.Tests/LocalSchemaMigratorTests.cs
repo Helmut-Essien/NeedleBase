@@ -132,7 +132,7 @@ public class LocalSchemaMigratorTests
 
         await using (var db = Create(path))
         {
-            Assert.Equal(8, await LocalSchemaMigrator.MigrateAsync(db));
+            Assert.Equal(LocalSchemaMigrator.LatestVersion, await LocalSchemaMigrator.MigrateAsync(db));
             Assert.Equal("Efua Mensah", (await db.Customers.SingleAsync()).Name);
             Assert.Equal(0, await db.Payments.CountAsync());
         }

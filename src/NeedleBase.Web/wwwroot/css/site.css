@@ -681,3 +681,61 @@ a.nb-list__row:hover { color: var(--nb-brand-primary-dark); }
   .nb-money-grid { grid-template-columns: 1fr; }
 }
 .text-danger { color: var(--nb-error) !important; }
+
+/* Order lines with their measurement snapshot (read-only) */
+.nb-list__row.nb-line {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+.nb-line__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.nb-measure {
+  background: var(--nb-bg-app);
+  box-shadow: var(--nb-inset);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+}
+.nb-measure__when {
+  color: var(--nb-text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+.nb-measure__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+.nb-measure__grid div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.nb-measure__grid dt {
+  font-weight: 400;
+  color: var(--nb-text-secondary);
+}
+.nb-measure__grid dd {
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Edit order */
+.nb-edit-line {
+  border: 1px solid var(--nb-border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  background: var(--nb-bg-surface);
+}
+.nb-edit-line legend {
+  font-size: 1rem;
+  font-weight: 600;
+  float: none;
+  width: auto;
+  margin-bottom: 0.25rem;
+}

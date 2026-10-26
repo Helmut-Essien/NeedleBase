@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Orders;
+using NeedleBase.Application.Payments;
 using NeedleBase.Domain.Entities;
 using NeedleBase.Domain.Enums;
 
@@ -254,13 +255,38 @@ public sealed class OrderService : IOrderService
         }
     }
 
+    /// <summary>
+    /// Owner/Manager edit: header and, when <see cref="UpdateOrderRequest.Lines"/> is set, the garment lines (rules in
+    /// <see cref="OrderEditor"/>). Runs under the order row lock so a payment recorded at the same moment can't slip
+    /// under the "total ≥ paid" check.
+    /// </summary>
     public async Task<OrderResult> UpdateAsync(
         string id,
         UpdateOrderRequest request,
         CancellationToken cancellationToken = default)
     {
         EnsureBusiness();
-        var entity = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id, cancellationToken)
+        if (!OrderEditor.CanEdit(_currentUser.Role))
+        {
+            return OrderResult.Fail(OrderError.Forbidden);
+        }
+
+        if (_db.HasActiveTransaction)
+        {
+            return await UpdateLockedAsync(id, request, cancellationToken).ConfigureAwait(false);
+        }
+
+        return await _db.InTransactionAsync(async ct =>
+        {
+            var r = await UpdateLockedAsync(id, request, ct).ConfigureAwait(false);
+            return (r, r.Error == OrderError.None);
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<OrderResult> UpdateLockedAsync(string id, UpdateOrderRequest request, CancellationToken cancellationToken)
+    {
+        await _db.LockOrderAsync(id, cancellationToken).ConfigureAwait(false);
+        var entity = await _db.Orders.Include(o => o.Lines).FirstOrDefaultAsync(o => o.Id == id, cancellationToken)
             .ConfigureAwait(false);
         if (entity is null)
         {
@@ -270,6 +296,11 @@ public sealed class OrderService : IOrderService
         if (StaleUpdate.IsStale(request.BaseModifiedUtc, entity.DateModifiedUtc))
         {
             return OrderResult.Fail(OrderError.Stale);
+        }
+
+        if (OrderStatus.IsTerminal(entity.Status))
+        {
+            return OrderResult.Fail(OrderError.Locked);
         }
 
         // Re-saving the current assignee is allowed even if they have since been deactivated (editing notes on
@@ -282,12 +313,30 @@ public sealed class OrderService : IOrderService
 
         try
         {
-            entity.UpdateHeader(
-                request.DueDate,
-                request.FittingDate,
-                request.AssignedToUserId,
-                request.Notes,
-                _clock.UtcNow);
+            // Only what the edit needs: profiles for new lines (by named id or garment), paid only when lines change.
+            IReadOnlyList<MeasurementProfile> profiles = [];
+            decimal paid = 0;
+            if (request.Lines is { } reqLines)
+            {
+                var (ids, garments) = OrderEditor.ProfileNeeds(entity, reqLines);
+                if (ids.Count + garments.Count > 0)
+                {
+                    profiles = await _db.MeasurementProfiles.AsNoTracking()
+                        .Where(m => m.CustomerId == entity.CustomerId && (ids.Contains(m.Id) || garments.Contains(m.GarmentTemplate)))
+                        .ToListAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                paid = await _db.Payments.AsNoTracking()
+                    .Where(p => p.OrderId == id && !p.IsVoided)
+                    .SumAsync(p => (decimal?)p.Amount, cancellationToken).ConfigureAwait(false) ?? 0m;
+            }
+
+            var (error, detail) = OrderEditor.Apply(entity, request, profiles, paid, _clock.UtcNow);
+            if (error != OrderError.None)
+            {
+                return OrderResult.Fail(error, detail);
+            }
+
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return OrderResult.Ok(await GetByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false));
         }
@@ -443,7 +492,8 @@ public sealed class OrderService : IOrderService
                 l.Unit,
                 MeasurementFieldsSerializer.Deserialize(l.MeasurementFieldsJson),
                 l.Notes,
-                l.SortOrder)).ToList());
+                l.SortOrder,
+                l.MeasurementTakenAtUtc)).ToList());
 
     private string EnsureBusiness()
     {

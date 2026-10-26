@@ -108,6 +108,9 @@ public class DetailsModel : AppPageModel
     /// <summary>Latest activity on this order (Owner/Manager); null hides the panel.</summary>
     public PaginatedResponse<AuditEventDto>? History { get; private set; }
 
+    /// <summary>Owner/Manager on an order that isn't collected/cancelled (the Api enforces the same).</summary>
+    public bool CanEdit => Order is not null && User.CanEditOrders() && !OrderStatus.IsTerminal(Order.Status);
+
     public bool CanChangeStatus => Order is not null && !OrderStatus.IsTerminal(Order.Status);
 
     private async Task<IActionResult?> LoadAsync(CancellationToken cancellationToken)

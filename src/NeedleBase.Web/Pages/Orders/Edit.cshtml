@@ -1,0 +1,121 @@
+@page "{id}"
+@model NeedleBase.Web.Pages.Orders.EditModel
+@using NeedleBase.Application.Contracts.Payments
+@using NeedleBase.Domain.Enums
+@{
+    ViewData["Title"] = Model.Order is null ? "Edit order" : "Edit order #" + Model.Order.DisplayRef;
+}
+<a class="nb-back" asp-page="/Orders/Details" asp-route-id="@Model.Id"><span aria-hidden="true">←</span> Back to order</a>
+<partial name="_PageState" model="Model" />
+
+@if (Model.Order is { } o)
+{
+    <h1 class="nb-page-title">Edit order #@o.DisplayRef</h1>
+    <p class="nb-meta">@o.CustomerName · @o.CustomerPhone</p>
+
+    @if (Model.Locked)
+    {
+        <div class="alert alert-warning" role="alert">
+            This order is @OrderStatus.DisplayName(o.Status).ToLowerInvariant(), so it can't be edited.
+            <a asp-page="/Orders/Details" asp-route-id="@o.Id">Back to the order</a>
+        </div>
+    }
+    else
+    {
+        <form method="post" asp-route-id="@o.Id" novalidate>
+            <input type="hidden" asp-for="BaseModified" />
+            @if (!string.IsNullOrWhiteSpace(Model.FormError))
+            {
+                <div class="alert alert-danger" role="alert" id="form-error" tabindex="-1">@Model.FormError</div>
+            }
+
+            <div class="nb-detail-grid">
+                <div>
+                    <section class="nb-card" aria-labelledby="lines-heading">
+                        <h2 id="lines-heading" class="nb-section-title">Garments</h2>
+                        <p class="nb-meta">Measurements saved with each garment stay as they were. A new garment uses the customer's latest saved measurements for that garment.</p>
+
+                        @foreach (var (input, line, i) in Model.Rows())
+                        {
+                            <fieldset class="nb-edit-line">
+                                <legend>@line.GarmentDisplay</legend>
+                                <input type="hidden" name="Lines[@i].Id" value="@input.Id" />
+                                <p class="nb-meta mb-2">@line.MeasurementTakenDisplay</p>
+                                <div class="row g-2">
+                                    <div class="col-4">
+                                        <label class="form-label" for="qty-@i">Quantity</label>
+                                        <input class="form-control" id="qty-@i" name="Lines[@i].Quantity" type="number" min="1" max="@NeedleBase.Domain.Common.FieldLimits.OrderLineQuantityMax" inputmode="numeric" value="@input.Quantity" required />
+                                    </div>
+                                    <div class="col-8">
+                                        <label class="form-label" for="price-@i">Price each (GH₵)</label>
+                                        <input class="form-control" id="price-@i" name="Lines[@i].Price" inputmode="decimal" maxlength="20" value="@input.Price" required />
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label" for="notes-@i">Garment notes (optional)</label>
+                                        <input class="form-control" id="notes-@i" name="Lines[@i].Notes" maxlength="2000" value="@input.Notes" />
+                                    </div>
+                                    <div class="col-12 form-check ms-1">
+                                        <input class="form-check-input" type="checkbox" id="remove-@i" name="Lines[@i].Remove" value="true" @(input.Remove ? "checked" : "") />
+                                        <label class="form-check-label" for="remove-@i">Remove this garment from the order</label>
+                                    </div>
+                                </div>
+                            </fieldset>
+                        }
+
+                        <fieldset class="nb-edit-line">
+                            <legend>Add a garment (optional)</legend>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label" for="NewGarment">Garment</label>
+                                    <select class="form-select" id="NewGarment" name="NewGarment">
+                                        <option value="">Don't add a garment</option>
+                                        @foreach (var g in GarmentTemplate.All)
+                                        {
+                                            <option value="@g" selected="@(Model.NewGarment == g)">@GarmentTemplate.DisplayName(g)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-4">
+                                    <label class="form-label" for="NewQuantity">Quantity</label>
+                                    <input class="form-control" id="NewQuantity" name="NewQuantity" type="number" min="1" max="@NeedleBase.Domain.Common.FieldLimits.OrderLineQuantityMax" inputmode="numeric" value="@Model.NewQuantity" />
+                                </div>
+                                <div class="col-8">
+                                    <label class="form-label" for="NewPrice">Price each (GH₵)</label>
+                                    <input class="form-control" id="NewPrice" name="NewPrice" inputmode="decimal" maxlength="20" placeholder="150.00" value="@Model.NewPrice" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label" for="NewNotes">Garment notes (optional)</label>
+                                    <input class="form-control" id="NewNotes" name="NewNotes" maxlength="2000" value="@Model.NewNotes" />
+                                </div>
+                            </div>
+                        </fieldset>
+                    </section>
+                </div>
+
+                <div>
+                    <section class="nb-card" aria-labelledby="details-heading">
+                        <h2 id="details-heading" class="nb-section-title">Details</h2>
+                        <label class="form-label" for="DueDate">Due date</label>
+                        <input class="form-control mb-1" id="DueDate" name="DueDate" type="date" value="@(Model.DueDate?.ToString("yyyy-MM-dd"))" aria-describedby="due-help" />
+                        <p class="nb-meta" id="due-help">Leave empty for no due date.</p>
+                        <label class="form-label" for="Notes">Order notes (optional)</label>
+                        <textarea class="form-control" id="Notes" name="Notes" rows="4" maxlength="2000">@Model.Notes</textarea>
+                    </section>
+
+                    <section class="nb-card" aria-labelledby="money-heading">
+                        <h2 id="money-heading" class="nb-section-title">Total</h2>
+                        <p class="mb-1">Current total: <span class="nb-money">@Money.Format(o.TotalAmount)</span></p>
+                        @if (Model.Paid is { } paid)
+                        {
+                            <p class="mb-1">Already paid: <span class="nb-money">@Money.Format(paid)</span></p>
+                            <p class="nb-meta mb-0">The new total can't be less than what's already paid.</p>
+                        }
+                    </section>
+
+                    <button type="submit" class="btn nb-btn-primary w-100" data-pending-text="Saving…">Save changes</button>
+                    <a class="btn nb-btn-outline w-100 mt-2" asp-page="/Orders/Details" asp-route-id="@o.Id">Cancel</a>
+                </div>
+            </div>
+        </form>
+    }
+}

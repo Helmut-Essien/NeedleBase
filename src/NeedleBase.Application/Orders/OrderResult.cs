@@ -18,7 +18,11 @@ public enum OrderError
     /// <summary>BaseModifiedUtc no longer matches (someone else changed it). API: 409 STALE_UPDATE.</summary>
     Stale,
     /// <summary>Delete refused: money was recorded against the order. API: 409 ORDER_HAS_PAYMENTS.</summary>
-    HasPayments
+    HasPayments,
+    /// <summary>Edit would make the total less than what's already paid. API: 409 ORDER_TOTAL_BELOW_PAID.</summary>
+    BelowPaid,
+    /// <summary>Only Owners and Managers edit orders (tailors change status only). API: 403 ORDER_EDIT_FORBIDDEN.</summary>
+    Forbidden
 }
 
 public sealed record OrderResult(OrderDetailDto? Order, OrderError Error, string? Detail = null)

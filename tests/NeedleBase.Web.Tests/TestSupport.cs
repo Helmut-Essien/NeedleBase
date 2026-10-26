@@ -38,6 +38,9 @@ public sealed class FakeApi : INeedleBaseApi
     public Task<ApiResult<DashboardSummaryDto>> GetDashboardAsync(CancellationToken c = default) { Calls.Enqueue("dashboard"); return Task.FromResult(Dashboard()); }
     public Task<ApiResult<PaginatedResponse<OrderListItemDto>>> ListOrdersAsync(OrderQuery q, CancellationToken c = default) { Calls.Enqueue("orders"); OrderQueries.Enqueue(q); return Task.FromResult(Orders(q)); }
     public Task<ApiResult<OrderDetailDto>> GetOrderAsync(string id, CancellationToken c = default) { Calls.Enqueue("order"); return Task.FromResult(Order(id)); }
+    public UpdateOrderRequest? LastEdit { get; private set; }
+    public Func<string, UpdateOrderRequest, ApiResult<OrderDetailDto>>? UpdateOrder { get; set; }
+    public Task<ApiResult<OrderDetailDto>> UpdateOrderAsync(string id, UpdateOrderRequest r, CancellationToken c = default) { Calls.Enqueue("edit"); LastEdit = r; return Task.FromResult(UpdateOrder?.Invoke(id, r) ?? ApiResult<OrderDetailDto>.Offline()); }
     public Task<ApiResult<OrderDetailDto>> UpdateOrderStatusAsync(string id, UpdateOrderStatusRequest r, CancellationToken c = default) { Calls.Enqueue("status"); LastUpdate = r; return Task.FromResult(UpdateStatus(id, r)); }
     public Task<ApiResult<OrderPaymentsDto>> GetOrderPaymentsAsync(string id, CancellationToken c = default) { Calls.Enqueue("orderPayments"); return Task.FromResult(OrderPayments()); }
     public Task<ApiResult<PaginatedResponse<CustomerListItemDto>>> ListCustomersAsync(string? s, int p, int ps, CancellationToken c = default) { Calls.Enqueue("customers"); return Task.FromResult(Customers()); }

@@ -25,7 +25,8 @@ internal static class AuditCapture
     private static readonly HashSet<string> Skipped = new(StringComparer.Ordinal)
     {
         nameof(Entity.Id), "BusinessId", "CreatedAtUtc", "DateModifiedUtc", "VoidedAtUtc", "JoinedAtUtc",
-        nameof(OrderLine.MeasurementFieldsJson), nameof(OrderLine.SortOrder)
+        nameof(OrderLine.MeasurementFieldsJson), nameof(OrderLine.SortOrder),
+        nameof(OrderLine.MeasurementTakenAtUtc)
     };
 
     private static readonly HashSet<string> HiddenText = new(StringComparer.Ordinal)
@@ -81,7 +82,7 @@ internal static class AuditCapture
 
             var business = list.Select(e => e.Entity).OfType<OrderLine>().First(l => l.OrderId == orderId).BusinessId;
             Add(business, AuditActions.OrderLinesChanged, "Changed order items: " + LineText(counts), "order", orderId, orderId: orderId,
-                changes: [new Change("items", null, LineText(counts))]);
+                changes: [new Change("items", null, LineText(counts)), .. LineDetails(orderId)]);
         }
 
         return events;
@@ -177,8 +178,9 @@ internal static class AuditCapture
 
                     if (rest.Count > 0)
                     {
+                        // Summary names the fields; the change list also says which garment changed and how.
                         Add(o.BusinessId, AuditActions.OrderUpdated, $"Edited order {reference}: {Fields(rest)}", "order", o.Id,
-                            orderId: o.Id, customerId: o.CustomerId, changes: rest);
+                            orderId: o.Id, customerId: o.CustomerId, changes: [.. rest, .. LineDetails(o.Id)]);
                     }
 
                     break;
@@ -256,6 +258,39 @@ internal static class AuditCapture
             {
                 Add(b.Id, AuditActions.BusinessUpdated, $"Edited business details: {Fields(d)}", "business", b.Id, changes: d);
             }
+        }
+
+        // Readable per-garment line changes ("Shirt quantity 1 → 2"); notes stay hidden, measurement values never stored.
+        List<Change> LineDetails(string orderId)
+        {
+            var details = new List<Change>();
+            foreach (var e in list.Where(x => x.Entity is OrderLine l && l.OrderId == orderId))
+            {
+                var l = (OrderLine)e.Entity;
+                var garment = GarmentTemplate.DisplayName(l.GarmentTemplate);
+                switch (e.State)
+                {
+                    case EntityState.Added:
+                        details.Add(new Change("item added", null, $"{garment} × {l.Quantity} at {Money.Format(l.UnitPrice)}"));
+                        break;
+                    case EntityState.Deleted:
+                        details.Add(new Change("item removed", $"{garment} × {l.Quantity} at {Money.Format(l.UnitPrice)}", null));
+                        break;
+                    case EntityState.Modified:
+                        details.AddRange(Diff(e).Select(c => c with { Field = $"{garment} {Label(c.Field)}" }));
+                        break;
+                }
+            }
+
+            // A 50-line edit stays a readable row: first 20 details, then a count.
+            const int MaxLineDetails = 20;
+            if (details.Count > MaxLineDetails)
+            {
+                var more = details.Count - MaxLineDetails;
+                details = [.. details.Take(MaxLineDetails), new Change("more item changes", null, more.ToString(System.Globalization.CultureInfo.InvariantCulture))];
+            }
+
+            return details;
         }
 
         void Add(string? businessId, string action, string summary, string? entityType, string? entityId,

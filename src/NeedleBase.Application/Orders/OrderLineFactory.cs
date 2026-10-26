@@ -1,4 +1,5 @@
 using NeedleBase.Application.Common;
+using NUlid;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Domain.Entities;
 
@@ -30,6 +31,7 @@ public static class OrderLineFactory
         }
 
         var lines = new List<OrderLine>(requests.Count);
+        var usedIds = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < requests.Count; i++)
         {
             var req = requests[i];
@@ -42,6 +44,8 @@ public static class OrderLineFactory
             var unit = req.Unit;
             var fieldsJson = MeasurementFieldsSerializer.Serialize(req.MeasurementFields ?? new Dictionary<string, decimal?>());
             string? profileId = string.IsNullOrWhiteSpace(req.MeasurementProfileId) ? null : req.MeasurementProfileId.Trim();
+            // A carried snapshot keeps its own date (sync); a profile-backed one takes the profile's.
+            DateTimeOffset? takenAt = req.MeasurementFields is { Count: > 0 } ? req.MeasurementTakenAtUtc : null;
 
             if (profileId is not null)
             {
@@ -50,6 +54,7 @@ public static class OrderLineFactory
                     garmentTemplate = profile.GarmentTemplate;
                     unit = profile.Unit;
                     fieldsJson = profile.FieldsJson;
+                    takenAt = profile.MeasuredAtUtc;
                 }
                 else if (lenient || req.MeasurementFields is { Count: > 0 })
                 {
@@ -61,8 +66,13 @@ public static class OrderLineFactory
                 }
             }
 
+            // Sync keeps the device's line id (a valid ULID, once per batch) so a replayed or later push
+            // matches the same line instead of looking like a replaced one. The caller drops ids taken elsewhere.
+            var lineId = lenient && Ulid.TryParse(req.Id?.Trim(), out var ulid) && usedIds.Add(ulid.ToString())
+                ? ulid.ToString()
+                : IdGenerator.NewId();
             lines.Add(OrderLine.Create(
-                IdGenerator.NewId(),
+                lineId,
                 businessId,
                 orderId,
                 garmentTemplate,
@@ -72,7 +82,8 @@ public static class OrderLineFactory
                 unit,
                 fieldsJson,
                 req.Notes,
-                i));
+                i,
+                takenAt));
         }
 
         return (lines, OrderError.None);

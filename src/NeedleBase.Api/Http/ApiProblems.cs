@@ -68,6 +68,8 @@ public static class ApiProblems
             OrderError.TotalMismatch => (StatusCodes.Status400BadRequest, OrderErrorMessages.TotalMismatch, "Total doesn't match"),
             OrderError.Stale => (StatusCodes.Status409Conflict, NeedleBase.Application.Common.StaleUpdate.Code, "Changed by someone else"),
             OrderError.HasPayments => (StatusCodes.Status409Conflict, OrderErrorMessages.HasPayments, "Order has payments"),
+            OrderError.BelowPaid => (StatusCodes.Status409Conflict, OrderErrorMessages.TotalBelowPaid, "Total below amount paid"),
+            OrderError.Forbidden => (StatusCodes.Status403Forbidden, OrderErrorMessages.EditForbidden, "Not allowed to edit orders"),
             _ => (StatusCodes.Status400BadRequest, OrderErrorMessages.Validation, "Check the order details")
         };
 

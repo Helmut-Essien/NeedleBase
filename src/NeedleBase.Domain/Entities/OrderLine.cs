@@ -20,6 +20,12 @@ public class OrderLine : Entity, IBusinessScoped
     public string? Notes { get; private set; }
     public int SortOrder { get; private set; }
 
+    /// <summary>
+    /// When the snapshotted measurements were taken (the profile's MeasuredAtUtc at order time).
+    /// Null for lines saved before this was recorded, or lines without measurements.
+    /// </summary>
+    public DateTimeOffset? MeasurementTakenAtUtc { get; private set; }
+
     private OrderLine()
     {
     }
@@ -35,7 +41,8 @@ public class OrderLine : Entity, IBusinessScoped
         string unit,
         string measurementFieldsJson,
         string? notes,
-        int sortOrder = 0)
+        int sortOrder = 0,
+        DateTimeOffset? measurementTakenAtUtc = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(businessId);
@@ -56,8 +63,16 @@ public class OrderLine : Entity, IBusinessScoped
             measurementFieldsJson,
             notes,
             sortOrder);
+        line.MeasurementTakenAtUtc = measurementTakenAtUtc;
         return line;
     }
+
+    /// <summary>
+    /// Edits the priced part of an existing line (quantity, unit price, notes). The garment and its
+    /// measurement snapshot are frozen; to change the garment, remove the line and add a new one.
+    /// </summary>
+    public void Revise(int quantity, decimal unitPrice, string? notes) =>
+        ApplyDetails(GarmentTemplate, quantity, unitPrice, MeasurementProfileId, Unit, MeasurementFieldsJson, notes, SortOrder);
 
     internal void SetSortOrder(int sortOrder) => SortOrder = sortOrder;
 

@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:mi="http://www.aathifmahir.com/dotnet/2022/maui/icons"
+             xmlns:vm="clr-namespace:NeedleBase.Mobile.ViewModels"
+             x:Class="NeedleBase.Mobile.Views.EditOrderPage"
+             x:DataType="vm:EditOrderViewModel"
+             Title="{Binding Title}"
+             Shell.NavBarIsVisible="False"
+             NavigationPage.HasNavigationBar="False"
+             BackgroundColor="{StaticResource AppBackground}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="16,40,16,24" Spacing="12">
+            <Button Text="Back"
+                    ImageSource="{mi:Material Icon=ArrowBack, IconColor={StaticResource Charcoal}}"
+                    Command="{Binding GoBackCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource Charcoal}"
+                    HorizontalOptions="Start"
+                    HeightRequest="48"
+                    Padding="0,0,12,0"
+                    SemanticProperties.Description="Go back without saving" />
+
+            <Label Text="{Binding Heading}"
+                   FontSize="22"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource Charcoal}"
+                   SemanticProperties.HeadingLevel="Level1" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" Color="{StaticResource Primary}"
+                               SemanticProperties.Description="Loading" />
+
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{StaticResource SemanticError}"
+                   IsVisible="{Binding HasError}"
+                   FontSize="14"
+                   LineBreakMode="WordWrap" />
+
+            <VerticalStackLayout Spacing="12" IsVisible="{Binding IsEditable}">
+                <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
+                    <Label Text="Has a due date" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" VerticalOptions="Center" />
+                    <Switch Grid.Column="1" IsToggled="{Binding HasDueDate}" SemanticProperties.Description="Order has a due date" />
+                </Grid>
+                <DatePicker Date="{Binding DueDate}"
+                            Format="dd MMM yyyy"
+                            IsVisible="{Binding HasDueDate}"
+                            TextColor="{StaticResource Charcoal}"
+                            BackgroundColor="White"
+                            HeightRequest="48"
+                            SemanticProperties.Description="Due date" />
+
+                <Label Text="Order notes (optional)" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
+                <Editor Text="{Binding Notes}"
+                        Placeholder="e.g. Add lining, customer prefers loose fit"
+                        PlaceholderColor="{StaticResource Gray600}"
+                        TextColor="{StaticResource Charcoal}"
+                        AutoSize="TextChanges"
+                        MaxLength="2000"
+                        BackgroundColor="White"
+                        MinimumHeightRequest="80"
+                        SemanticProperties.Description="Order notes" />
+
+                <Label Text="Garments"
+                       FontAttributes="Bold"
+                       FontSize="18"
+                       TextColor="{StaticResource Charcoal}"
+                       Margin="0,8,0,0"
+                       SemanticProperties.HeadingLevel="Level2" />
+                <Label Text="Measurements saved with each garment stay as they were. New garments use the customer's latest measurements."
+                       FontSize="13"
+                       LineBreakMode="WordWrap"
+                       TextColor="{StaticResource Gray600}" />
+
+                <VerticalStackLayout Spacing="12" BindableLayout.ItemsSource="{Binding Lines}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:EditOrderLineRow">
+                            <Border StrokeThickness="0" BackgroundColor="White" StrokeShape="RoundRectangle 12" Padding="12">
+                                <VerticalStackLayout Spacing="8">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <Label Text="{Binding GarmentDisplay}" FontAttributes="Bold" FontSize="16"
+                                               TextColor="{StaticResource Charcoal}" VerticalOptions="Center" />
+                                        <Button Grid.Column="1"
+                                                Text="Remove"
+                                                ImageSource="{mi:Material Icon=Delete, IconColor={StaticResource SemanticError}}"
+                                                BackgroundColor="Transparent"
+                                                TextColor="{StaticResource SemanticError}"
+                                                HeightRequest="48"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type vm:EditOrderViewModel}}, Path=RemoveLineCommand, x:DataType=vm:EditOrderViewModel}"
+                                                CommandParameter="{Binding .}"
+                                                SemanticProperties.Description="{Binding RemoveDescription}" />
+                                    </Grid>
+                                    <Label Text="{Binding MeasurementNote}" FontSize="13" TextColor="{StaticResource Gray600}" LineBreakMode="WordWrap" />
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8" RowDefinitions="Auto,Auto">
+                                        <Label Text="Quantity" FontSize="13" TextColor="{StaticResource Charcoal}" />
+                                        <Label Grid.Column="1" Text="Price each (GH₵)" FontSize="13" TextColor="{StaticResource Charcoal}" />
+                                        <Entry Grid.Row="1"
+                                               Text="{Binding QuantityText}"
+                                               Keyboard="Numeric"
+                                               MaxLength="3"
+                                               HeightRequest="48"
+                                               BackgroundColor="{StaticResource AppBackground}"
+                                               TextColor="{StaticResource Charcoal}"
+                                               SemanticProperties.Description="{Binding QuantityDescription}" />
+                                        <Entry Grid.Row="1" Grid.Column="1"
+                                               Text="{Binding PriceText}"
+                                               Keyboard="Numeric"
+                                               MaxLength="14"
+                                               Placeholder="150.00"
+                                               PlaceholderColor="{StaticResource Gray600}"
+                                               HeightRequest="48"
+                                               BackgroundColor="{StaticResource AppBackground}"
+                                               TextColor="{StaticResource Charcoal}"
+                                               SemanticProperties.Description="{Binding PriceDescription}" />
+                                    </Grid>
+                                    <Entry Text="{Binding Notes}"
+                                           Placeholder="Garment notes (optional)"
+                                           PlaceholderColor="{StaticResource Gray600}"
+                                           MaxLength="2000"
+                                           HeightRequest="48"
+                                           BackgroundColor="{StaticResource AppBackground}"
+                                           TextColor="{StaticResource Charcoal}"
+                                           SemanticProperties.Description="Garment notes" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Picker Title="Garment to add"
+                            ItemsSource="{Binding TemplateChoices}"
+                            ItemDisplayBinding="{Binding DisplayName, x:DataType=vm:TemplateChoice}"
+                            SelectedItem="{Binding SelectedTemplate}"
+                            TextColor="{StaticResource Charcoal}"
+                            BackgroundColor="White"
+                            HeightRequest="48"
+                            SemanticProperties.Description="Garment type to add" />
+                    <Button Grid.Column="1"
+                            Style="{StaticResource SecondaryButton}"
+                            Text="Add garment"
+                            ImageSource="{mi:Material Icon=Add, IconColor={StaticResource Charcoal}}"
+                            Command="{Binding AddLineCommand}"
+                            HeightRequest="48"
+                            SemanticProperties.Description="Add the chosen garment to this order" />
+                </Grid>
+
+                <Label Text="{Binding TotalText}" FontSize="18" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+
+                <Button Text="Save changes"
+                        HeightRequest="48"
+                        CornerRadius="10"
+                        FontSize="16"
+                        FontAttributes="Bold"
+                        Command="{Binding SaveCommand}"
+                        TextColor="White"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        IsEnabled="{Binding CanSubmit}"
+                        Margin="0,12,0,0"
+                        SemanticProperties.Description="Save order changes on this device" />
+            </VerticalStackLayout>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -37,6 +37,14 @@ public interface IOrderLocalService
         string id,
         string status,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Owner/Manager edit of due date, notes and lines (see <c>OrderEditor</c>); queued for sync.</summary>
+    Task<RecordResult<OrderDetailDto>> UpdateAsync(
+        string businessId,
+        string id,
+        UpdateOrderRequest request,
+        string? role,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>Home KPI + stage counts from local orders.</summary>

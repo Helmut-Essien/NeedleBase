@@ -51,7 +51,9 @@ public sealed record SyncOrderLineDto(
     string Unit,
     string MeasurementFieldsJson,
     string? Notes,
-    int SortOrder);
+    int SortOrder,
+    // Added with order editing; old clients omit it (null = date not recorded).
+    DateTimeOffset? MeasurementTakenAtUtc = null);
 
 public sealed record SyncOrderDto(
     string Id,

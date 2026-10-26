@@ -137,5 +137,12 @@ public class HomeViewModelTests
             string status,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+        public Task<RecordResult<OrderDetailDto>> UpdateAsync(
+            string businessId,
+            string id,
+            UpdateOrderRequest request,
+            string? role,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

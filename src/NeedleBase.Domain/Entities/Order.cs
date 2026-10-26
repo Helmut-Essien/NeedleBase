@@ -71,14 +71,47 @@ public class Order : Entity, IBusinessScoped
         string? notes,
         DateTimeOffset utcNow)
     {
-        if (OrderStatus.IsTerminal(Status))
+        EnsureEditable();
+        ApplyHeader(dueDate, fittingDate, assignedToUserId, notes, utcNow);
+    }
+
+    /// <summary>
+    /// Owner/Manager edit of the garment lines: <paramref name="lines"/> is the full new list (existing
+    /// tracked lines, already revised, plus new ones). Lines left out are removed. Locked when terminal.
+    /// </summary>
+    public void ReviseLines(IEnumerable<OrderLine> lines, DateTimeOffset utcNow)
+    {
+        EnsureEditable();
+        var list = lines?.ToList() ?? [];
+        if (list.Count == 0)
         {
-            throw new DomainRuleException(
-                DomainErrorCodes.OrderLocked,
-                $"Cannot edit a {Status.ToLowerInvariant()} order.");
+            throw new ArgumentException("An order needs at least one garment line.", nameof(lines));
         }
 
-        ApplyHeader(dueDate, fittingDate, assignedToUserId, notes, utcNow);
+        foreach (var line in list.Where(l =>
+                     !string.Equals(l.BusinessId, BusinessId, StringComparison.Ordinal) ||
+                     !string.Equals(l.OrderId, Id, StringComparison.Ordinal)))
+        {
+            throw new ArgumentException("Order line business/order id mismatch.", nameof(lines));
+        }
+
+        foreach (var gone in Lines.Where(l => !list.Contains(l)).ToList())
+        {
+            Lines.Remove(gone);
+        }
+
+        var sort = 0;
+        foreach (var line in list)
+        {
+            line.SetSortOrder(sort++);
+            if (!Lines.Contains(line))
+            {
+                Lines.Add(line);
+            }
+        }
+
+        TotalAmount = decimal.Round(Lines.Sum(l => l.LineTotal), 2, MidpointRounding.AwayFromZero);
+        DateModifiedUtc = utcNow;
     }
 
     public void SetStatus(string status, DateTimeOffset utcNow)
@@ -136,6 +169,16 @@ public class Order : Entity, IBusinessScoped
         }
 
         DisplayRef = displayRef;
+    }
+
+    private void EnsureEditable()
+    {
+        if (OrderStatus.IsTerminal(Status))
+        {
+            throw new DomainRuleException(
+                DomainErrorCodes.OrderLocked,
+                $"Cannot edit a {Status.ToLowerInvariant()} order.");
+        }
     }
 
     private void ApplyHeader(

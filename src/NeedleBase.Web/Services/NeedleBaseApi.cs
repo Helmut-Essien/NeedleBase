@@ -43,6 +43,9 @@ public sealed class NeedleBaseApi : INeedleBaseApi
     public Task<ApiResult<OrderDetailDto>> GetOrderAsync(string id, CancellationToken cancellationToken = default) =>
         SendAsync<OrderDetailDto>(HttpMethod.Get, $"api/orders/{Uri.EscapeDataString(id)}", null, cancellationToken);
 
+    public Task<ApiResult<OrderDetailDto>> UpdateOrderAsync(string id, UpdateOrderRequest request, CancellationToken cancellationToken = default) =>
+        SendAsync<OrderDetailDto>(HttpMethod.Put, $"api/orders/{Uri.EscapeDataString(id)}", request, cancellationToken);
+
     public Task<ApiResult<OrderDetailDto>> UpdateOrderStatusAsync(string id, UpdateOrderStatusRequest request, CancellationToken cancellationToken = default) =>
         SendAsync<OrderDetailDto>(HttpMethod.Patch, $"api/orders/{Uri.EscapeDataString(id)}/status", request, cancellationToken);
 

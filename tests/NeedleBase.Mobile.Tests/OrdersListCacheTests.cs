@@ -30,6 +30,7 @@ public partial class SyncEdgeCaseTests
         public Task<IReadOnlyList<OrderListItemDto>> ListAttentionAsync(string businessId, int take = 5, CancellationToken cancellationToken = default) => inner.ListAttentionAsync(businessId, take, cancellationToken);
         public Task<RecordResult<OrderDetailDto>> SaveAsync(string businessId, CreateOrderRequest request, CancellationToken cancellationToken = default) => inner.SaveAsync(businessId, request, cancellationToken);
         public Task<RecordResult<OrderDetailDto>> UpdateStatusAsync(string businessId, string id, string status, CancellationToken cancellationToken = default) => inner.UpdateStatusAsync(businessId, id, status, cancellationToken);
+        public Task<RecordResult<OrderDetailDto>> UpdateAsync(string businessId, string id, NeedleBase.Application.Contracts.Orders.UpdateOrderRequest request, string? role, CancellationToken cancellationToken = default) => inner.UpdateAsync(businessId, id, request, role, cancellationToken);
     }
 
     private static CreateOrderRequest OneShirt(string customerId) => new()
@@ -136,5 +137,6 @@ public partial class SyncEdgeCaseTests
         public Task<IReadOnlyList<OrderListItemDto>> ListAttentionAsync(string businessId, int take = 5, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<RecordResult<OrderDetailDto>> SaveAsync(string businessId, CreateOrderRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<RecordResult<OrderDetailDto>> UpdateStatusAsync(string businessId, string id, string status, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<RecordResult<OrderDetailDto>> UpdateAsync(string businessId, string id, NeedleBase.Application.Contracts.Orders.UpdateOrderRequest request, string? role, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

@@ -1029,7 +1029,7 @@ public sealed class SyncEngine
         if (order is not null && state.HasCustomer(order.CustomerId))
         {
             var lines = order.Lines.Select(l => OrderLine.Create(l.Id, businessId, order.Id, l.GarmentTemplate, l.Quantity, l.UnitPrice,
-                l.MeasurementProfileId, l.Unit, l.MeasurementFieldsJson, l.Notes, l.SortOrder)).ToList();
+                l.MeasurementProfileId, l.Unit, l.MeasurementFieldsJson, l.Notes, l.SortOrder, l.MeasurementTakenAtUtc)).ToList();
             if (!state.Orders.TryGetValue(order.Id, out var entity))
             {
                 entity = Order.Create(order.Id, businessId, order.CustomerId, order.DueDate, order.FittingDate, order.AssignedToUserId,
@@ -1039,14 +1039,34 @@ public sealed class SyncEngine
             }
             else
             {
-                // Lines are immutable after create; align ids with the server (it generates line ids).
+                // Align with the server's lines: it generates line ids, and Owners/Managers edit lines (qty, price, notes,
+                // added/removed). Any difference replaces the local set with the server's.
                 var localLines = state.LinesFor(order.Id);
-                var serverIds = order.Lines.Select(l => l.Id).ToHashSet(StringComparer.Ordinal);
-                if (localLines.Count != serverIds.Count || localLines.Any(l => !serverIds.Contains(l.Id)))
+                var serverLines = order.Lines.ToDictionary(l => l.Id, StringComparer.Ordinal);
+                if (localLines.Count != serverLines.Count ||
+                    localLines.Any(l => !serverLines.TryGetValue(l.Id, out var sl) || sl != (NeedleBase.Application.Sync.SyncMapper.ToDto(l) with { MeasurementTakenAtUtc = sl.MeasurementTakenAtUtc }) ||
+                                        !SameInstant(sl.MeasurementTakenAtUtc, l.MeasurementTakenAtUtc)))
                 {
-                    db.OrderLines.RemoveRange(localLines);
-                    db.OrderLines.AddRange(lines);
-                    state.SetLines(order.Id, lines);
+                    // Diff in place instead of delete-all/reinsert: unchanged rows are untouched, changed rows get
+                    // one UPDATE, and only lines that really came or went are inserted/deleted.
+                    var byId = localLines.ToDictionary(l => l.Id, StringComparer.Ordinal);
+                    var merged = new List<OrderLine>(lines.Count);
+                    foreach (var line in lines)
+                    {
+                        if (byId.Remove(line.Id, out var local))
+                        {
+                            db.Entry(local).CurrentValues.SetValues(line);
+                            merged.Add(local);
+                        }
+                        else
+                        {
+                            db.OrderLines.Add(line);
+                            merged.Add(line);
+                        }
+                    }
+
+                    db.OrderLines.RemoveRange(byId.Values);
+                    state.SetLines(order.Id, merged);
                 }
             }
 
@@ -1064,6 +1084,9 @@ public sealed class SyncEngine
             entry.Property(LocalDbContext.ServerKnownColumn).CurrentValue = true;
         }
     }
+
+    private static bool SameInstant(DateTimeOffset? a, DateTimeOffset? b) =>
+        a is null ? b is null : b is not null && Application.Sync.SyncTime.Normalize(a.Value) == Application.Sync.SyncTime.Normalize(b.Value);
 
     private static async Task<DeviceInfo> GetOrAddDeviceInfoAsync(LocalDbContext db, string businessId, CancellationToken ct)
     {
