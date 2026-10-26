@@ -18,6 +18,10 @@ public sealed class MorePage : ContentPage
         body.Add(Ui.Heading("More"));
         body.Add(_staffSlot);
 
+        body.Add(Ui.Heading("This device", 2));
+        body.Add(Ui.Card(Ui.LinkRow("Sync details", MaterialIcons.Sync, () => Shell.Current.GoToAsync(nameof(SyncDetailsPage)), "MoreSyncDetails",
+            "What's waiting to sync, problems and conflicts")));
+
         body.Add(Ui.Heading("Your account", 2));
         body.Add(Ui.Card(Ui.LinkRow("Change password", MaterialIcons.Lock, () => Shell.Current.GoToAsync(nameof(ChangePasswordPage)), "MoreChangePassword")));
 
@@ -54,8 +58,17 @@ public sealed class MorePage : ContentPage
                     Children =
                     {
                         Ui.Heading("Team", 2),
-                        Ui.Card(Ui.LinkRow("Staff", MaterialIcons.Group, () => Shell.Current.GoToAsync(nameof(StaffPage)), "MoreStaff",
-                            StaffRoles.CanManage(role) ? "Invite someone to help, change roles" : "See who's on the team"))
+                        Ui.Card(new VerticalStackLayout
+                        {
+                            Children =
+                            {
+                                Ui.LinkRow("Staff", MaterialIcons.Group, () => Shell.Current.GoToAsync(nameof(StaffPage)), "MoreStaff",
+                                    StaffRoles.CanManage(role) ? "Invite someone to help, change roles" : "See who's on the team"),
+                                Ui.Divider(),
+                                Ui.LinkRow("WhatsApp", MaterialIcons.Chat, () => Shell.Current.GoToAsync(nameof(WhatsAppSettingsPage)), "MoreWhatsApp",
+                                    "Automatic order updates and message log")
+                            }
+                        })
                     }
                 }
                 : new ContentView();

@@ -34,4 +34,9 @@ public sealed class OrderListRow
     /// <summary>"#REF · due · amount", precomputed (no MultiBinding per row).</summary>
     public string SubLine { get; }
     public bool IsOverdue { get; }
+
+    /// <summary>"Not synced yet" / "Needs attention" while this order has a queued change on the device.</summary>
+    public string? SyncBadge => Item.SyncBadge;
+    public bool HasSyncBadge => Item.HasSyncBadge;
+    public bool SyncNeedsAttention => Item.SyncNeedsAttention;
 }

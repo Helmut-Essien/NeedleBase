@@ -143,10 +143,28 @@
                                         </HorizontalStackLayout>
                                     </Border>
                                 </HorizontalStackLayout>
-                                <Label Grid.Row="2" Grid.Column="0"
-                                       FontSize="13"
+                                <VerticalStackLayout Grid.Row="2" Grid.Column="0" Spacing="2">
+                                <Label FontSize="13"
                                        Text="{Binding SubLine}"
                                        TextColor="{StaticResource Gray600}" />
+                                <Label Text="{Binding SyncBadge}"
+                                       IsVisible="{Binding HasSyncBadge}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray600}"
+                                       Padding="0,6"
+                                       SemanticProperties.Description="{Binding SyncBadge}"
+                                       SemanticProperties.Hint="Opens sync details">
+                                    <Label.GestureRecognizers>
+                                        <TapGestureRecognizer Command="{Binding OpenSyncDetailsCommand, Source={RelativeSource AncestorType={x:Type vm:OrdersViewModel}}}" x:DataType="vm:OrdersViewModel" />
+                                    </Label.GestureRecognizers>
+                                    <Label.Triggers>
+                                        <DataTrigger TargetType="Label" Binding="{Binding SyncNeedsAttention}" Value="True">
+                                            <Setter Property="TextColor" Value="{StaticResource SemanticError}" />
+                                            <Setter Property="FontAttributes" Value="Bold" />
+                                        </DataTrigger>
+                                    </Label.Triggers>
+                                </Label>
+                                </VerticalStackLayout>
                             </Grid>
                         </DataTemplate>
                     </CollectionView.ItemTemplate>

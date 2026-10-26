@@ -85,6 +85,32 @@ public sealed class SyncService
 
     public SyncEngine Engine => _engine;
 
+    /// <summary>Runs after each successful sync (records first, so new customers exist on the server). Failures never fail the sync.</summary>
+    public Func<string, CancellationToken, Task>? AfterRun { get; set; }
+
+    /// <summary>Other unsynced changes to count in the badge (e.g. WhatsApp choices waiting to be sent).</summary>
+    public Func<string, Task<int>>? ExtraPending { get; set; }
+
+    private async Task<SyncQueueSummary> SummaryAsync(string businessId)
+    {
+        var engineSummary = await _engine.GetSummaryAsync(businessId).ConfigureAwait(false);
+        if (ExtraPending is not { } extra)
+        {
+            return engineSummary;
+        }
+
+        try
+        {
+            var more = await extra(businessId).ConfigureAwait(false);
+            return more > 0 ? engineSummary with { Pending = engineSummary.Pending + more } : engineSummary;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Extra pending count failed: {ex.Message}");
+            return engineSummary;
+        }
+    }
+
     public event EventHandler<SyncStatusSnapshot>? StatusChanged;
 
     /// <summary>Raised when sync lost its session because the server revoked access (see AccessRevokedService).</summary>
@@ -202,14 +228,14 @@ public sealed class SyncService
             return 0;
         }
 
-        var summary = await _engine.GetSummaryAsync(businessId).ConfigureAwait(false);
+        var summary = await SummaryAsync(businessId).ConfigureAwait(false);
         return summary.Pending + summary.NeedsAttention;
     }
 
     /// <summary>Unsynced changes (queued or needing attention) for a business, even after the tokens were cleared.</summary>
     public async Task<int> PendingCountForAsync(string businessId)
     {
-        var summary = await _engine.GetSummaryAsync(businessId).ConfigureAwait(false);
+        var summary = await SummaryAsync(businessId).ConfigureAwait(false);
         return summary.Pending + summary.NeedsAttention;
     }
 
@@ -418,6 +444,18 @@ public sealed class SyncService
         try
         {
             await _engine.RunAsync(businessId, token).ConfigureAwait(false);
+            if (AfterRun is { } after)
+            {
+                try
+                {
+                    await after(businessId, token).ConfigureAwait(false); // e.g. WhatsApp consent choices
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine($"After-sync step failed: {ex.Message}");
+                }
+            }
+
             _failures = 0;
             _backoffUntil = DateTimeOffset.MinValue;
             _lastError = null;
@@ -495,7 +533,7 @@ public sealed class SyncService
 
     private async Task PublishAsync(string businessId, SyncChipState? forced)
     {
-        var summary = await _engine.GetSummaryAsync(businessId).ConfigureAwait(false);
+        var summary = await SummaryAsync(businessId).ConfigureAwait(false);
         Publish(summary, forced ?? Derive(summary));
     }
 

@@ -36,6 +36,11 @@ public static class AuditActions
     public const string StaffInvited = "staff.invited";
     public const string StaffInviteRevoked = "staff.invite_revoked";
     public const string StaffOrdersReassigned = "staff.orders_reassigned";
+    public const string WhatsAppOpened = "whatsapp.opened";
+    public const string WhatsAppSent = "whatsapp.sent";
+    public const string WhatsAppFailed = "whatsapp.failed";
+    public const string WhatsAppSettingsChanged = "whatsapp.settings_changed";
+    public const string WhatsAppConsentChanged = "whatsapp.consent_changed";
 
     public const string LoginSucceeded = "auth.login";
     public const string LoginFailed = "auth.login_failed";
@@ -90,6 +95,11 @@ public static class AuditActions
         StaffInvited => "Invite sent",
         StaffInviteRevoked => "Invite cancelled",
         StaffOrdersReassigned => "Orders reassigned",
+        WhatsAppOpened => "WhatsApp opened",
+        WhatsAppSent => "WhatsApp message sent",
+        WhatsAppFailed => "WhatsApp message failed",
+        WhatsAppSettingsChanged => "WhatsApp settings changed",
+        WhatsAppConsentChanged => "WhatsApp consent changed",
         LoginSucceeded => "Signed in",
         LoginFailed => "Sign-in failed",
         LoginThrottled => "Sign-in slowed down",
@@ -141,6 +151,7 @@ public static class AuditActions
         ("business.", "Business details"),
         ("auth.", "Sign-in and security"),
         ("sync.", "Phone sync"),
+        ("whatsapp.", "WhatsApp"),
         ("access.", "Sensitive views")
     ];
 }

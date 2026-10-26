@@ -80,6 +80,7 @@ public sealed class LocalDbContext : DbContext
     public DbSet<SyncQueueItem> SyncQueue => Set<SyncQueueItem>();
     public DbSet<DeviceInfo> DeviceInfo => Set<DeviceInfo>();
     public DbSet<SyncDeferredItem> SyncDeferred => Set<SyncDeferredItem>();
+    public DbSet<LocalWhatsAppConsent> WhatsAppConsents => Set<LocalWhatsAppConsent>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
         optionsBuilder.AddInterceptors(LocalDataVersionInterceptor.Instance, LocalDataVersionTransactionInterceptor.Instance);
@@ -227,6 +228,16 @@ public sealed class LocalDbContext : DbContext
             e.Property(x => x.PayloadJson).IsRequired();
             e.HasIndex(x => new { x.BusinessId, x.EntityType, x.EntityId }).IsUnique();
             e.HasIndex(x => new { x.BusinessId, x.ParentId });
+        });
+
+        builder.Entity<LocalWhatsAppConsent>(e =>
+        {
+            e.ToTable("WhatsAppConsents");
+            e.HasKey(x => x.CustomerId);
+            e.Property(x => x.CustomerId).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.Source).HasMaxLength(16);
+            e.HasIndex(x => x.BusinessId, "IX_WhatsAppConsents_Pending").HasFilter("\"PendingOptedIn\" IS NOT NULL");
         });
 
         builder.Entity<DeviceInfo>(e =>

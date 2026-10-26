@@ -7,8 +7,17 @@ public sealed record CustomerListItemDto(
     string Id,
     string Name,
     string Phone,
-    DateTimeOffset DateModifiedUtc)
+    DateTimeOffset DateModifiedUtc,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? LocalSyncState = null)
 {
+    /// <summary>Device only (never sent by the server): this row's queued sync state, see LocalSyncBadge.</summary>
+    public string? SyncBadge => NeedleBase.Application.Common.LocalSyncBadge.Text(LocalSyncState);
+
+    public bool HasSyncBadge => LocalSyncState is not null;
+
+    public bool SyncNeedsAttention => LocalSyncState == NeedleBase.Application.Common.LocalSyncBadge.Attention;
+
     public string Initials
     {
         get

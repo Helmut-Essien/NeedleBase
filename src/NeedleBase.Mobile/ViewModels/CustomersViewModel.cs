@@ -314,4 +314,8 @@ public partial class CustomersViewModel : BaseViewModel
 
         await Shell.Current.GoToAsync($"CustomerDetailPage?customerId={Uri.EscapeDataString(item.Id)}");
     }
+
+    /// <summary>Row sync badge tapped: open Sync details (the row itself still opens the record).</summary>
+    [RelayCommand]
+    private Task OpenSyncDetailsAsync() => Shell.Current.GoToAsync("SyncDetailsPage");
 }

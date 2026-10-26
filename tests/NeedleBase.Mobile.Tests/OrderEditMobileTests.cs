@@ -166,10 +166,10 @@ public partial class OrderEditMobileTests
 
         await using (var db = new LocalDbContext(new DbContextOptionsBuilder<LocalDbContext>().UseSqlite($"Data Source={path};Pooling=False").Options))
         {
-            Assert.Equal(9, await LocalSchemaMigrator.MigrateAsync(db));
+            Assert.Equal(LocalSchemaMigrator.LatestVersion, await LocalSchemaMigrator.MigrateAsync(db));
             Assert.Equal(0, await db.OrderLines.CountAsync(l => l.MeasurementTakenAtUtc != null));
             // Re-running is a no-op.
-            Assert.Equal(9, await LocalSchemaMigrator.MigrateAsync(db));
+            Assert.Equal(LocalSchemaMigrator.LatestVersion, await LocalSchemaMigrator.MigrateAsync(db));
         }
     }
 

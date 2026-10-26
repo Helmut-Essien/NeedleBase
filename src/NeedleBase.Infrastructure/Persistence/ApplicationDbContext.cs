@@ -98,6 +98,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<DeletedItem> DeletedItems => Set<DeletedItem>();
     public DbSet<SyncState> SyncStates => Set<SyncState>();
+    public DbSet<WhatsAppSettings> WhatsAppSettings => Set<WhatsAppSettings>();
+    public DbSet<WhatsAppConsent> WhatsAppConsents => Set<WhatsAppConsent>();
+
+    /// <summary>Automatic WhatsApp outbox + delivery log (written by <see cref="WhatsApp.WhatsAppOutbox"/> on status changes).</summary>
+    public DbSet<WhatsAppMessage> WhatsAppMessages => Set<WhatsAppMessage>();
 
     /// <summary>Append-only audit trail (tenant-filtered; never synced; written by <see cref="CaptureAudit"/>).</summary>
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
@@ -111,6 +116,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         var restored = StampSyncChangesAsync(CancellationToken.None).GetAwaiter().GetResult();
+        WhatsApp.WhatsAppOutbox.AddAsync(this, CancellationToken.None).GetAwaiter().GetResult();
         CaptureAudit(restored);
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -118,6 +124,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         var restored = await StampSyncChangesAsync(cancellationToken).ConfigureAwait(false);
+        await WhatsApp.WhatsAppOutbox.AddAsync(this, cancellationToken).ConfigureAwait(false);
         CaptureAudit(restored);
         return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
     }
@@ -634,6 +641,58 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).ValueGeneratedNever();
             e.HasData(new SyncState { Id = 1, Epoch = 0, HighWaterTx = 0 });
+        });
+
+        builder.Entity<WhatsAppSettings>(e =>
+        {
+            e.ToTable("WhatsAppSettings");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.Statuses).HasMaxLength(Domain.Entities.WhatsAppSettings.StatusesMax).IsRequired();
+            e.Property(x => x.UpdatedByUserId).HasMaxLength(450);
+            e.Ignore(x => x.StatusList);
+            e.HasIndex(x => x.BusinessId).IsUnique();
+            e.HasOne<Business>().WithMany().HasForeignKey(x => x.BusinessId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
+
+        builder.Entity<WhatsAppConsent>(e =>
+        {
+            e.ToTable("WhatsAppConsents");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.CustomerId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.Source).HasMaxLength(WhatsAppConsent.SourceMax).IsRequired();
+            e.Property(x => x.ChangedByUserId).HasMaxLength(450);
+            e.HasIndex(x => x.CustomerId).IsUnique();
+            e.HasIndex(x => x.BusinessId);
+            e.HasOne<Business>().WithMany().HasForeignKey(x => x.BusinessId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
+
+        builder.Entity<WhatsAppMessage>(e =>
+        {
+            e.ToTable("WhatsAppMessages");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.OrderId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.CustomerId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.OrderStatus).HasMaxLength(32).IsRequired();
+            e.Property(x => x.State).HasMaxLength(16).IsRequired();
+            e.Property(x => x.ProviderMessageId).HasMaxLength(WhatsAppMessage.ProviderIdMax);
+            e.Property(x => x.Error).HasMaxLength(WhatsAppMessage.ErrorMax);
+            // No FK to orders/customers: the log outlives deleted orders (the sender skips them).
+            e.HasIndex(x => new { x.BusinessId, x.CreatedAtUtc, x.Id });
+            e.HasIndex(x => new { x.OrderId, x.OrderStatus });
+            e.HasIndex(x => new { x.State, x.NotBeforeUtc }).HasFilter("\"State\" IN ('Pending', 'Sending')");
+            e.HasIndex(x => x.ProviderMessageId).HasFilter("\"ProviderMessageId\" IS NOT NULL");
+            e.HasIndex(x => new { x.BusinessId, x.SentAtUtc }).HasFilter("\"SentAtUtc\" IS NOT NULL");
+            e.HasOne<Business>().WithMany().HasForeignKey(x => x.BusinessId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
         });
 
         builder.Entity<RefreshToken>(e =>

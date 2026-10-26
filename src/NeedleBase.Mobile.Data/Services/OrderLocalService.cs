@@ -78,6 +78,8 @@ public sealed class OrderLocalService : IOrderLocalService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        var syncStates = await LocalSyncStates.ForAsync(db, businessId, SyncEntityType.Order, rows.Select(r => r.Id).ToList(), cancellationToken)
+            .ConfigureAwait(false);
         return rows
             .Select(x => new OrderListItemDto(
                 x.Id,
@@ -88,7 +90,9 @@ public sealed class OrderLocalService : IOrderLocalService
                 x.DueDate,
                 x.TotalAmount,
                 x.DateModifiedUtc,
-                OrderStatus.IsOverdue(x.Status, x.DueDate, today)))
+                OrderStatus.IsOverdue(x.Status, x.DueDate, today),
+                null,
+                syncStates.GetValueOrDefault(x.Id)))
             .ToList();
     }
 

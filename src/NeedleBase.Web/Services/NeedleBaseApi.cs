@@ -8,6 +8,7 @@ using NeedleBase.Application.Contracts.Errors;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Contracts.Staff;
+using NeedleBase.Application.Contracts.WhatsApp;
 using NeedleBase.Application.Contracts.Audit;
 
 namespace NeedleBase.Web.Services;
@@ -105,6 +106,29 @@ public sealed class NeedleBaseApi : INeedleBaseApi
 
     public Task<ApiResult<AuthSessionPayload>> ChangePasswordAsync(NeedleBase.Application.Contracts.Auth.ChangePasswordRequest request, CancellationToken cancellationToken = default) =>
         SendAsync<AuthSessionPayload>(HttpMethod.Post, "api/auth/change-password", request, cancellationToken);
+
+    public Task<ApiResult<WhatsAppSettingsDto>> GetWhatsAppSettingsAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<WhatsAppSettingsDto>(HttpMethod.Get, "api/whatsapp/settings", null, cancellationToken);
+
+    public Task<ApiResult<WhatsAppSettingsDto>> UpdateWhatsAppSettingsAsync(UpdateWhatsAppSettingsRequest request, CancellationToken cancellationToken = default) =>
+        SendAsync<WhatsAppSettingsDto>(HttpMethod.Put, "api/whatsapp/settings", request, cancellationToken);
+
+    public Task<ApiResult<WhatsAppConsentDto>> GetWhatsAppConsentAsync(string customerId, CancellationToken cancellationToken = default) =>
+        SendAsync<WhatsAppConsentDto>(HttpMethod.Get, $"api/whatsapp/customers/{Uri.EscapeDataString(customerId)}/consent", null, cancellationToken);
+
+    public Task<ApiResult<WhatsAppConsentDto>> SetWhatsAppConsentAsync(string customerId, bool optedIn, CancellationToken cancellationToken = default) =>
+        SendAsync<WhatsAppConsentDto>(HttpMethod.Put, $"api/whatsapp/customers/{Uri.EscapeDataString(customerId)}/consent",
+            new SetWhatsAppConsentRequest { OptedIn = optedIn }, cancellationToken);
+
+    public Task<ApiResult<WhatsAppMessagePageDto>> ListWhatsAppMessagesAsync(string? orderId, int page, CancellationToken cancellationToken = default)
+    {
+        var url = new StringBuilder("api/whatsapp/messages?page=").Append(Math.Max(1, page));
+        Append(url, "orderId", orderId);
+        return SendAsync<WhatsAppMessagePageDto>(HttpMethod.Get, url.ToString(), null, cancellationToken);
+    }
+
+    public Task<ApiResult<bool>> RecordWhatsAppOpenedAsync(string orderId, string? status, CancellationToken cancellationToken = default) =>
+        SendAsync<bool>(HttpMethod.Post, $"api/whatsapp/orders/{Uri.EscapeDataString(orderId)}/opened", new WhatsAppOpenedRequest { Status = status }, cancellationToken);
 
     internal static bool IsUnreachable(ApiProblem problem) =>
         problem.Status is 502 or 503 or 504 && problem.Code is null && problem.Detail is null;

@@ -14,8 +14,17 @@ public sealed record OrderListItemDto(
     decimal TotalAmount,
     DateTimeOffset DateModifiedUtc,
     bool IsOverdue,
-    string? AssignedToUserId = null)
+    string? AssignedToUserId = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? LocalSyncState = null)
 {
+    /// <summary>Device only (never sent by the server): this row's queued sync state, see LocalSyncBadge.</summary>
+    public string? SyncBadge => NeedleBase.Application.Common.LocalSyncBadge.Text(LocalSyncState);
+
+    public bool HasSyncBadge => LocalSyncState is not null;
+
+    public bool SyncNeedsAttention => LocalSyncState == NeedleBase.Application.Common.LocalSyncBadge.Attention;
+
     public string StatusDisplay => OrderStatus.DisplayName(Status);
 
     public string DueDateDisplay => DueDate is { } due

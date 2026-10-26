@@ -422,4 +422,8 @@ public partial class OrdersViewModel : BaseViewModel, IQueryAttributable
         await Shell.Current.GoToAsync(
             $"{nameof(Views.OrderDetailPage)}?orderId={Uri.EscapeDataString(item.Id)}");
     }
+
+    /// <summary>Row sync badge tapped: open Sync details (the row itself still opens the record).</summary>
+    [RelayCommand]
+    private Task OpenSyncDetailsAsync() => Shell.Current.GoToAsync("SyncDetailsPage");
 }

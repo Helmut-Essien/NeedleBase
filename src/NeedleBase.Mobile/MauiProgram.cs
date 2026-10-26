@@ -60,7 +60,16 @@ public static class MauiProgram
         builder.Services.AddSingleton(Connectivity.Current);
         builder.Services.AddSingleton<ISyncApi, HttpSyncApi>();
         builder.Services.AddSingleton<SyncEngine>();
-        builder.Services.AddSingleton<SyncService>();
+        builder.Services.AddSingleton<NeedleBase.Mobile.Data.Services.WhatsAppConsentSync>();
+        builder.Services.AddSingleton<SyncService>(sp =>
+        {
+            var sync = new SyncService(sp.GetRequiredService<SyncEngine>(), sp.GetRequiredService<IAuthService>(), sp.GetRequiredService<IConnectivity>());
+            var consent = sp.GetRequiredService<NeedleBase.Mobile.Data.Services.WhatsAppConsentSync>();
+            sync.AfterRun = (businessId, ct) => consent.PushAsync(businessId, sp.GetRequiredService<StaffApi>(), ct);
+            sync.ExtraPending = businessId => consent.PendingCountAsync(businessId);
+            consent.Changed += (_, _) => sync.Trigger();
+            return sync;
+        });
         builder.Services.AddSingleton<SyncStatusViewModel>();
         builder.Services.AddTransient<SyncDetailsPage>();
 
@@ -84,7 +93,9 @@ public static class MauiProgram
         builder.Services.AddTransient<CustomerDetailViewModel>();
         builder.Services.AddTransient<MeasurementEditViewModel>();
         builder.Services.AddTransient<CreateOrderViewModel>();
-        builder.Services.AddTransient<OrderDetailViewModel>();
+        builder.Services.AddTransient<OrderDetailViewModel>(sp => new OrderDetailViewModel(
+            sp.GetRequiredService<NeedleBase.Mobile.Data.Services.IOrderLocalService>(), sp.GetRequiredService<IAuthService>(),
+            sp.GetService<NeedleBase.Mobile.Data.Services.IPaymentLocalService>(), sp.GetService<IWhatsAppOpenedApi>()));
         builder.Services.AddSingleton<PaymentsViewModel>();
         builder.Services.AddTransient<RecordPaymentViewModel>();
         builder.Services.AddTransient<EditOrderViewModel>();
@@ -107,7 +118,13 @@ public static class MauiProgram
         builder.Services.AddTransient<EditOrderPage>();
         builder.Services.AddTransient<PaymentReceiptPage>();
         builder.Services.AddSingleton<MorePage>();
-        builder.Services.AddSingleton<IStaffApi, StaffApi>();
+        builder.Services.AddSingleton<StaffApi>();
+        builder.Services.AddSingleton<IStaffApi>(sp => sp.GetRequiredService<StaffApi>());
+        builder.Services.AddSingleton<IWhatsAppOpenedApi>(sp => sp.GetRequiredService<StaffApi>());
+        builder.Services.AddSingleton<IWhatsAppAdminApi>(sp => sp.GetRequiredService<StaffApi>());
+        builder.Services.AddSingleton<NeedleBase.Mobile.Data.Services.IWhatsAppConsentApi>(sp => sp.GetRequiredService<StaffApi>());
+        builder.Services.AddTransient<WhatsAppSettingsViewModel>();
+        builder.Services.AddTransient<WhatsAppSettingsPage>();
         builder.Services.AddTransient<StaffViewModel>();
         builder.Services.AddTransient<StaffPage>();
         builder.Services.AddTransient<ChangePasswordViewModel>();

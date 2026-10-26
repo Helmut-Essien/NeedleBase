@@ -36,11 +36,14 @@ public sealed class CustomerLocalService : ICustomerLocalService
             parsed);
 
         // SQLite's ADO provider is synchronous under async; keep the query off the UI thread.
-        return await Task.Run(
-            () => CustomerSearchFilter.Rank(query, parsed)
-            .Take(take)
-            .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
-            .ToListAsync(cancellationToken),
+        return await Task.Run(async () =>
+            {
+                var list = await CustomerSearchFilter.Rank(query, parsed)
+                    .Take(take)
+                    .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc, null))
+                    .ToListAsync(cancellationToken).ConfigureAwait(false);
+                return await WithSyncStatesAsync(db, businessId, list, cancellationToken).ConfigureAwait(false);
+            },
             cancellationToken)
             .ConfigureAwait(false);
     }
@@ -71,7 +74,7 @@ public sealed class CustomerLocalService : ICustomerLocalService
 
             var byOrder = await db.Customers.AsNoTracking()
                 .Where(c => c.BusinessId == businessId && recentIds.Contains(c.Id))
-                .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
+                .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc, null))
                 .ToListAsync(cancellationToken)
                 .ConfigureAwait(false);
             var result = byOrder.OrderBy(c => recentIds.IndexOf(c.Id)).ToList();
@@ -83,14 +86,35 @@ public sealed class CustomerLocalService : ICustomerLocalService
                     .Where(c => c.BusinessId == businessId && !recentIds.Contains(c.Id))
                     .OrderByDescending(c => c.Id) // ULID = newest added (SQLite can't ORDER BY DateTimeOffset)
                     .Take(take - result.Count)
-                    .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
+                    .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc, null))
                     .ToListAsync(cancellationToken)
                     .ConfigureAwait(false);
                 result.AddRange(fill);
             }
 
-            return (IReadOnlyList<CustomerListItemDto>)result;
+            return await WithSyncStatesAsync(db, businessId, result, cancellationToken).ConfigureAwait(false);
         }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<IReadOnlyList<CustomerListItemDto>> WithSyncStatesAsync(
+        LocalDbContext db, string businessId, List<CustomerListItemDto> list, CancellationToken cancellationToken)
+    {
+        var states = await LocalSyncStates.ForAsync(db, businessId, NeedleBase.Domain.Enums.SyncEntityType.Customer,
+            list.Select(c => c.Id).ToList(), cancellationToken).ConfigureAwait(false);
+        if (states.Count == 0)
+        {
+            return list;
+        }
+
+        for (var i = 0; i < list.Count; i++)
+        {
+            if (states.TryGetValue(list[i].Id, out var state))
+            {
+                list[i] = list[i] with { LocalSyncState = state };
+            }
+        }
+
+        return list;
     }
 
     /// <summary>Customers with the same number (any formatting), for the non-blocking duplicate warning on create.</summary>
@@ -115,7 +139,7 @@ public sealed class CustomerLocalService : ICustomerLocalService
             .Where(c => excludeId == null || c.Id != excludeId)
             .OrderBy(c => c.Name)
             .Take(5)
-            .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
+            .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc, null))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return rows.Where(c => PhoneNumbers.Same(c.Phone, normalized)).ToList();

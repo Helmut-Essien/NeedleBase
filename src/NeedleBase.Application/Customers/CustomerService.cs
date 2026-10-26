@@ -41,7 +41,7 @@ public sealed class CustomerService : ICustomerService
             .ThenBy(c => c.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
+            .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc, null))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
@@ -106,7 +106,7 @@ public sealed class CustomerService : ICustomerService
             .Where(c => excludeId == null || c.Id != excludeId)
             .OrderBy(c => c.Name)
             .Take(5)
-            .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc))
+            .Select(c => new CustomerListItemDto(c.Id, c.Name, c.Phone, c.DateModifiedUtc, null))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         return rows.Where(c => PhoneNumbers.Same(c.Phone, normalized)).ToList();

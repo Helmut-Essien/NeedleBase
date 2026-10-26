@@ -33,8 +33,12 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     private bool _loadedOnce;
     private LiveListRefresh? _live;
 
-    public OrderDetailViewModel(IOrderLocalService orders, IAuthService auth, IPaymentLocalService? payments = null)
+    private readonly IWhatsAppOpenedApi? _whatsApp;
+    private string _orderRef = string.Empty;
+
+    public OrderDetailViewModel(IOrderLocalService orders, IAuthService auth, IPaymentLocalService? payments = null, IWhatsAppOpenedApi? whatsApp = null)
     {
+        _whatsApp = whatsApp;
         _orders = orders;
         _auth = auth;
         _payments = payments;
@@ -281,6 +285,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
 
     private void ApplyDetail(OrderDetailDto detail)
     {
+        _orderRef = detail.DisplayRef;
         DisplayRef = $"#{detail.DisplayRef}";
         Title = DisplayRef;
         CustomerName = detail.CustomerName;
@@ -322,8 +327,70 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
         OnPropertyChanged(nameof(CanUpdateStatus));
     }
 
+    /// <summary>Prefilled tap-to-send text (status, customer, shop, order ref); built on the device, so it works offline.</summary>
+    public async Task<string> WhatsAppTextAsync()
+    {
+        var user = await _auth.GetCachedUserAsync();
+        return NeedleBase.Application.WhatsApp.WhatsAppLinks.Message(Status, CustomerName, user?.BusinessName, _orderRef);
+    }
+
+    /// <summary>
+    /// Opens WhatsApp with an editable, prefilled message to this customer. NeedleBase doesn't send it: the user
+    /// presses Send. The server audit ("opened") is best effort and skipped offline.
+    /// </summary>
+    [RelayCommand]
+    private async Task MessageOnWhatsAppAsync()
+    {
+        if (string.IsNullOrWhiteSpace(OrderId) || string.IsNullOrEmpty(DisplayRef))
+        {
+            return;
+        }
+
+        if (NeedleBase.Application.WhatsApp.WhatsAppLinks.ToWhatsAppDigits(CustomerPhone) is null)
+        {
+            await Toast.Make(NeedleBase.Application.WhatsApp.WhatsAppLinks.NoNumberMessage, ToastDuration.Long, 14).Show();
+            return;
+        }
+
+        try
+        {
+            var suggested = await WhatsAppTextAsync();
+            var edited = await Shell.Current.DisplayPromptAsync("WhatsApp message", "Change the message if you like. Nothing is sent until you press Send in WhatsApp.",
+                "Open WhatsApp", "Cancel", initialValue: suggested, maxLength: 1000, keyboard: Keyboard.Chat);
+            if (edited is null)
+            {
+                return; // cancelled
+            }
+
+            var text = string.IsNullOrWhiteSpace(edited) ? suggested : edited.Trim();
+            var app = NeedleBase.Application.WhatsApp.WhatsAppLinks.AppUri(CustomerPhone, text);
+            var web = NeedleBase.Application.WhatsApp.WhatsAppLinks.Url(CustomerPhone, text);
+            var opened = app is not null && await Launcher.Default.TryOpenAsync(new Uri(app));
+            if (!opened && web is not null)
+            {
+                opened = await Launcher.Default.OpenAsync(new Uri(web));
+            }
+
+            if (!opened)
+            {
+                await Toast.Make("Couldn't open WhatsApp on this phone.", ToastDuration.Long, 14).Show();
+                return;
+            }
+
+            if (_whatsApp is not null && Connectivity.Current.NetworkAccess == NetworkAccess.Internet)
+            {
+                _ = _whatsApp.RecordOpenedAsync(OrderId, Status); // fire and forget; never blocks the user
+            }
+        }
+        catch (Exception)
+        {
+            await Toast.Make("Couldn't open WhatsApp on this phone.", ToastDuration.Long, 14).Show();
+        }
+    }
+
     private void ClearFields()
     {
+        _orderRef = string.Empty;
         DisplayRef = string.Empty;
         CustomerName = string.Empty;
         CustomerId = string.Empty;

@@ -233,6 +233,13 @@
                 </BindableLayout.ItemTemplate>
             </VerticalStackLayout>
 
+            <Button Text="Message on WhatsApp"
+                    Style="{StaticResource SecondaryButton}"
+                    Command="{Binding MessageOnWhatsAppCommand}"
+                    HeightRequest="48"
+                    IsVisible="{Binding HasLines}"
+                    SemanticProperties.Description="Open WhatsApp with a ready message about this order to the customer" />
+
             <Button Text="Open customer profile"
                     Style="{StaticResource SecondaryButton}"
                     Command="{Binding ViewCustomerCommand}"

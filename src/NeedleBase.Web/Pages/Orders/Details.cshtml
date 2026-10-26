@@ -103,6 +103,40 @@
                 }
             </section>
 
+            <section class="nb-card" aria-labelledby="wa-heading">
+                <h2 id="wa-heading" class="nb-section-title">WhatsApp</h2>
+                @if (Model.WhatsAppDigits is null)
+                {
+                    <p class="mb-0">@NeedleBase.Application.WhatsApp.WhatsAppLinks.NoNumberMessage</p>
+                }
+                else
+                {
+                    <form method="post" asp-page-handler="WhatsApp" asp-route-id="@o.Id" target="_blank" rel="noopener">
+                        <label for="WhatsAppText" class="form-label">Message (you can change it)</label>
+                        <textarea id="WhatsAppText" name="WhatsAppText" class="form-control mb-2" rows="4" maxlength="1000">@Model.DefaultWhatsAppText</textarea>
+                        <button type="submit" class="btn nb-btn-outline w-100">Open in WhatsApp</button>
+                        <p class="nb-meta mt-2 mb-0">WhatsApp opens with this message. Nothing is sent until you press Send there.</p>
+                    </form>
+                }
+                @if (Model.Consent is { } c)
+                {
+                    <form method="post" asp-page-handler="Consent" asp-route-id="@o.Id" class="mt-3">
+                        <input type="hidden" name="OptIn" value="@(c.OptedIn ? "false" : "true")" />
+                        <p class="mb-2">Automatic updates: <strong>@(c.OptedIn ? "On" : "Off")</strong>@(c.Source == "reply" && !c.OptedIn ? " (customer replied STOP)" : "")</p>
+                        <button type="submit" class="btn nb-btn-outline btn-sm">@(c.OptedIn ? "Stop automatic updates" : "Customer agreed: send automatic updates")</button>
+                    </form>
+                }
+                @if (Model.WhatsAppLog is { Items.Count: > 0 } log)
+                {
+                    <ul class="nb-list mt-3">
+                        @foreach (var msg in log.Items)
+                        {
+                            <li class="nb-list__row"><span>@NeedleBase.Domain.Enums.OrderStatus.DisplayName(msg.OrderStatus)<br /><span class="nb-meta">@Money.Date(msg.CreatedAtUtc)@(msg.Error is null ? "" : " · " + msg.Error)</span></span><span>@msg.State</span></li>
+                        }
+                    </ul>
+                }
+            </section>
+
             @if (Model.Payments is { } m)
             {
                 <section class="nb-card" aria-labelledby="pay-heading">

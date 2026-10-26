@@ -1,0 +1,78 @@
+@page
+@model NeedleBase.Web.Pages.Settings.WhatsAppModel
+@using NeedleBase.Domain.Enums
+@using NeedleBase.Application.Contracts.Payments
+@{
+    ViewData["Title"] = "WhatsApp";
+}
+<h1 class="nb-page-title">WhatsApp</h1>
+<p class="nb-meta">Any staff member can message a customer from an order page: WhatsApp opens with a ready message. Automatic updates are sent for you when an order changes status.</p>
+<partial name="_PageState" model="Model" />
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-success" role="status">@Model.StatusMessage</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.ActionError))
+{
+    <div class="alert alert-danger" role="alert">@Model.ActionError</div>
+}
+
+@if (Model.Settings is { } s)
+{
+    <section class="nb-card" aria-labelledby="auto-heading">
+        <h2 id="auto-heading" class="nb-section-title">Automatic updates</h2>
+        @if (!s.Configured)
+        {
+            <p class="mb-0">Automatic WhatsApp messages aren't set up on this server yet, so they're off. You can still message customers from each order page.</p>
+        }
+        else
+        {
+            <form method="post">
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="Enabled" name="Enabled" value="true" checked="@s.Enabled" />
+                    <label class="form-check-label" for="Enabled">Send automatic updates</label>
+                </div>
+                <fieldset class="mb-3">
+                    <legend class="form-label">Send when an order becomes</legend>
+                    @foreach (var st in s.AvailableStatuses)
+                    {
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="st-@st" name="Statuses" value="@st" checked="@s.Statuses.Contains(st)" />
+                            <label class="form-check-label" for="st-@st">@OrderStatus.DisplayName(st)</label>
+                        </div>
+                    }
+                </fieldset>
+                <p class="nb-meta">Only customers who agreed get messages (set it on the order page). A customer who replies STOP is switched off. Messages wait @s.DelayMinutes min, so a status set by mistake and changed back isn't sent.</p>
+                <button type="submit" class="btn nb-btn-primary" data-pending-text="Saving…">Save</button>
+            </form>
+        }
+    </section>
+
+    <section class="nb-card" aria-labelledby="log-heading">
+        <h2 id="log-heading" class="nb-section-title">Messages</h2>
+        @if (Model.Log is not { } log)
+        {
+            <p class="mb-0">The message log couldn't be loaded. Try again.</p>
+        }
+        else if (log.Items.Count == 0)
+        {
+            <p class="nb-empty mb-0">No automatic messages yet.</p>
+        }
+        else
+        {
+            <ul class="nb-list">
+                @foreach (var m in log.Items)
+                {
+                    <li class="nb-list__row">
+                        <span><a asp-page="/Orders/Details" asp-route-id="@m.OrderId">#@(m.OrderRef ?? "order")</a> · @m.CustomerName · @m.MaskedPhone<br /><span class="nb-meta">@OrderStatus.DisplayName(m.OrderStatus) · @Money.Date(m.CreatedAtUtc)@(m.Error is null ? "" : " · " + m.Error)</span></span>
+                        <span>@m.State</span>
+                    </li>
+                }
+            </ul>
+            <nav class="mt-2" aria-label="Message pages">
+                @if (log.Page > 1) { <a asp-route-page="@(log.Page - 1)">Newer</a> }
+                @if (log.HasMore) { <a class="ms-3" asp-route-page="@(log.Page + 1)">Older</a> }
+            </nav>
+        }
+    </section>
+}

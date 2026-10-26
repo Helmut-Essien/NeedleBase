@@ -25,7 +25,14 @@
                     SemanticProperties.Hint="Sends changes saved on this device and gets changes from other devices" />
             <ActivityIndicator IsRunning="{Binding IsSyncing}" IsVisible="{Binding IsSyncing}" />
 
-            <Label Text="Waiting on this device" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" IsVisible="{Binding HasItems}" />
+            <Label Text="{Binding ListError}" IsVisible="{Binding HasListError}" FontSize="14" TextColor="{StaticResource SemanticError}" />
+            <Button Text="Try again" Style="{StaticResource SecondaryButton}" Command="{Binding LoadItemsCommand}" IsVisible="{Binding HasListError}" />
+            <Label Text="{Binding AttentionText}" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource SemanticError}" IsVisible="{Binding HasAttention}"
+                   SemanticProperties.HeadingLevel="Level2" />
+            <Label Text="Conflicts and failed changes are listed first. Nothing is sent or dropped until you choose." FontSize="13"
+                   TextColor="{StaticResource Gray600}" IsVisible="{Binding HasAttention}" />
+            <Label Text="{Binding WaitingHeading}" FontSize="17" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" IsVisible="{Binding HasItems}"
+                   SemanticProperties.HeadingLevel="Level2" />
             <Label Text="Everything on this device is synced." FontSize="14" TextColor="{StaticResource Gray600}"
                    IsVisible="{Binding IsEmpty}" />
 

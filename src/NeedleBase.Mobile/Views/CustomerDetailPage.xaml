@@ -40,6 +40,22 @@
                    TextColor="{StaticResource SemanticError}"
                    IsVisible="{Binding HasError}"
                    SemanticProperties.Description="Customer detail error" />
+            <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeShape="RoundRectangle 12" Padding="12"
+                    IsVisible="{Binding HasConsent}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="{Binding ConsentText}" FontSize="14" TextColor="{StaticResource Charcoal}" LineBreakMode="WordWrap" />
+                    <Button Style="{StaticResource SecondaryButton}" Text="{Binding ConsentButtonText}" HeightRequest="48" CornerRadius="10"
+                            Command="{Binding ToggleConsentCommand}" IsVisible="{Binding CanChangeConsent}"
+                            SemanticProperties.Hint="Records whether this customer agreed to automatic WhatsApp order updates" />
+                    <Label Text="Only an owner or manager can change this." FontSize="12" TextColor="{StaticResource Gray600}">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label" Binding="{Binding CanChangeConsent}" Value="True">
+                                <Setter Property="IsVisible" Value="False" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+                </VerticalStackLayout>
+            </Border>
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                IsVisible="{Binding IsBusy}"
                                Color="{StaticResource Primary}" />

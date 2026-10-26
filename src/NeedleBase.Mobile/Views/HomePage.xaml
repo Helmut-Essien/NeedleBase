@@ -171,6 +171,8 @@
                     </DataTemplate>
                 </BindableLayout.ItemTemplate>
             </VerticalStackLayout>
+            <Label Text="{Binding LoadError}" IsVisible="{Binding HasLoadError}" FontSize="14" TextColor="{StaticResource SemanticError}" />
+            <Button Text="Try again" Style="{StaticResource SecondaryButton}" Command="{Binding LoadCommand}" IsVisible="{Binding HasLoadError}" />
             <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeThickness="1" StrokeShape="RoundRectangle 12"
                     Padding="16" IsVisible="{Binding ShowNoAttention}">
                 <VerticalStackLayout Spacing="3">

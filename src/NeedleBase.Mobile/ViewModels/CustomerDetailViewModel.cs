@@ -14,14 +14,22 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
     private readonly IMeasurementLocalService _measurements;
     private readonly IAuthService _auth;
 
+    private readonly WhatsAppConsentSync? _consent;
+    private readonly IWhatsAppConsentApi? _consentApi;
+    private int _loadGeneration;
+
     public CustomerDetailViewModel(
         ICustomerLocalService customers,
         IMeasurementLocalService measurements,
-        IAuthService auth)
+        IAuthService auth,
+        WhatsAppConsentSync? consent = null,
+        IWhatsAppConsentApi? consentApi = null)
     {
         _customers = customers;
         _measurements = measurements;
         _auth = auth;
+        _consent = consent;
+        _consentApi = consentApi;
         Title = "Customer";
     }
 
@@ -49,6 +57,143 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
     private MeasurementListItemDto? selectedMeasurement;
 
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+
+    // ---- WhatsApp consent (works offline; Owner/Manager change it, Tailors see it) ----
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ConsentText), nameof(ConsentButtonText), nameof(HasConsent))]
+    private WhatsAppConsentView? consent;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ConsentButtonText))]
+    private bool canChangeConsent;
+
+    /// <summary>UI hook (tests replace it).</summary>
+    public Func<string, string, Task<bool>> Confirm { get; set; } =
+        (title, message) => Shell.Current.DisplayAlert(title, message, "Turn on", "Cancel");
+
+    /// <summary>Clock (tests replace it).</summary>
+    public Func<DateTimeOffset> Now { get; set; } = () => DateTimeOffset.UtcNow;
+
+    public bool HasConsent => Consent is not null && _consent is not null;
+
+    public string ConsentText => DescribeConsent(Consent);
+
+    public string ConsentButtonText => Consent?.OptedIn == true ? "Turn off WhatsApp updates" : "Turn on WhatsApp updates";
+
+    public static string DescribeConsent(WhatsAppConsentView? c) => c switch
+    {
+        null => string.Empty,
+        { RepliedStop: true } => "WhatsApp updates: off. The customer replied STOP.",
+        { OptedIn: true, Pending: true } => "WhatsApp updates: on (saved on this phone, sends when you're online).",
+        { OptedIn: false, Pending: true } => "WhatsApp updates: off (saved on this phone, sends when you're online).",
+        { OptedIn: true } => "WhatsApp updates: on. The customer agreed to order updates.",
+        _ => "WhatsApp updates: off. Ask the customer before turning them on."
+    };
+
+    [RelayCommand]
+    private async Task ToggleConsentAsync()
+    {
+        if (_consent is null || Consent is null || !CanChangeConsent || string.IsNullOrWhiteSpace(CustomerId) || _consentBusy)
+        {
+            return;
+        }
+
+        _consentBusy = true; // a quick double tap must not ask twice or save twice
+        try
+        {
+            await ToggleConsentCoreAsync();
+        }
+        finally
+        {
+            _consentBusy = false;
+        }
+    }
+
+    private bool _consentBusy;
+
+    private async Task ToggleConsentCoreAsync()
+    {
+        if (Consent is not { } current || _consent is not { } consent)
+        {
+            return;
+        }
+
+        var turnOn = !current.OptedIn;
+        if (turnOn && !await Confirm("Turn on WhatsApp updates?",
+                current.RepliedStop
+                    ? "This customer replied STOP. Only turn updates back on if they asked you to."
+                    : "Only turn this on if the customer agreed to get order updates on WhatsApp."))
+        {
+            return;
+        }
+
+        try
+        {
+            var businessId = await _auth.GetBusinessIdAsync();
+            if (string.IsNullOrWhiteSpace(businessId))
+            {
+                return;
+            }
+
+            var customerId = CustomerId;
+            Consent = await consent.SetAsync(businessId, customerId, turnOn, Now());
+            if (_consentApi is not null)
+            {
+                // Best effort now; otherwise it goes with the next sync.
+                await consent.PushAsync(businessId, _consentApi);
+                var fresh = await consent.GetAsync(businessId, customerId);
+                if (customerId == CustomerId)
+                {
+                    Consent = fresh;
+                }
+            }
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Couldn't save the WhatsApp choice. Try again.";
+        }
+    }
+
+    private async Task LoadConsentAsync(string businessId, string customerId, int generation)
+    {
+        if (_consent is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var role = (await _auth.GetCachedUserAsync())?.Role;
+            CanChangeConsent = role is BusinessRole.Owner or BusinessRole.Manager;
+            var local = await _consent.GetAsync(businessId, customerId);
+            if (generation != _loadGeneration)
+            {
+                return;
+            }
+
+            Consent = local;
+            if (_consentApi is null)
+            {
+                return;
+            }
+
+            // Refresh from the server in the background (STOP replies, other phones); offline keeps the local copy.
+            var result = await _consentApi.GetConsentAsync(customerId);
+            if (result.Outcome == ConsentPushOutcome.Saved && result.Value is { } dto && dto.CustomerId == customerId)
+            {
+                var view = await _consent.ApplyServerAsync(businessId, dto);
+                if (generation == _loadGeneration)
+                {
+                    Consent = view;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Consent load failed: {ex.Message}");
+        }
+    }
     public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
     public bool HasMeasurements => Measurements.Count > 0;
 
@@ -89,6 +234,8 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
         }
 
         IsBusy = true;
+        var generation = ++_loadGeneration;
+        Consent = null;
         OnPropertyChanged(nameof(ShowEmptyMeasurements));
         ErrorMessage = null;
         // Clear before fetch so a reused page never keeps prior customer PII.
@@ -123,6 +270,7 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
             }
 
             OnPropertyChanged(nameof(HasMeasurements));
+            _ = LoadConsentAsync(businessId, CustomerId, generation);
         }
         catch (Exception)
         {

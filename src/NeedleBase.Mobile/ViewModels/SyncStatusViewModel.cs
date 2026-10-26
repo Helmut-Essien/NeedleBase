@@ -41,7 +41,48 @@ public partial class SyncStatusViewModel : BaseViewModel
 
     public ObservableCollection<SyncItemRow> Items { get; } = new();
     public bool HasItems => Items.Count > 0;
-    public bool IsEmpty => Items.Count == 0;
+
+    /// <summary>"Everything synced" only after the list really loaded empty (not before loading, not after an error).</summary>
+    public bool IsEmpty => _itemsLoaded && ListError is null && Items.Count == 0;
+
+    private bool _itemsLoaded;
+
+    /// <summary>The waiting list couldn't be read from this device; the page offers Try again.</summary>
+    [ObservableProperty] private string? listError;
+
+    public bool HasListError => ListError is not null;
+
+    /// <summary>Failed + conflicting changes (shown first, they need a choice).</summary>
+    [ObservableProperty] private int attentionCount;
+
+    public bool HasAttention => AttentionCount > 0;
+
+    public string AttentionText => AttentionCount == 1 ? "1 change needs your choice" : $"{AttentionCount} changes need your choice";
+
+    public string WaitingHeading => AttentionCount > 0 && AttentionCount < Items.Count
+        ? $"{Items.Count - AttentionCount} more waiting to sync"
+        : AttentionCount == 0 ? "Waiting on this device" : string.Empty;
+
+    partial void OnListErrorChanged(string? value)
+    {
+        OnPropertyChanged(nameof(HasListError));
+        OnPropertyChanged(nameof(IsEmpty));
+    }
+
+    partial void OnAttentionCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(HasAttention));
+        OnPropertyChanged(nameof(AttentionText));
+        OnPropertyChanged(nameof(WaitingHeading));
+    }
+
+    /// <summary>Needs-attention rows first (conflicts, then failures), then waiting rows in push order.</summary>
+    public static IReadOnlyList<SyncQueueEntry> Ordered(IEnumerable<SyncQueueEntry> entries) =>
+        entries.Select((e, i) => (e, i))
+            .OrderBy(x => x.e.State == SyncQueueState.Conflict ? 0 : x.e.State == SyncQueueState.Failed ? 1 : 2)
+            .ThenBy(x => x.i)
+            .Select(x => x.e)
+            .ToList();
     public bool CanSyncNow => !IsSyncing;
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorText);
 
@@ -150,7 +191,7 @@ public partial class SyncStatusViewModel : BaseViewModel
                 return;
             }
 
-            var entries = await _sync.Engine.ListAsync(businessId);
+            var entries = Ordered(await _sync.Engine.ListAsync(businessId));
             MainThread.BeginInvokeOnMainThread(() =>
             {
                 Items.Clear();
@@ -164,13 +205,18 @@ public partial class SyncStatusViewModel : BaseViewModel
                     Items.Add(row);
                 }
 
+                _itemsLoaded = true;
+                ListError = null;
+                AttentionCount = Items.Count(r => r.IsConflict || r.IsFailed);
                 OnPropertyChanged(nameof(HasItems));
                 OnPropertyChanged(nameof(IsEmpty));
+                OnPropertyChanged(nameof(WaitingHeading));
             });
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Sync list failed: {ex.Message}");
+            MainThread.BeginInvokeOnMainThread(() => ListError = "Couldn't read the changes waiting on this device. Try again.");
         }
     }
 }
@@ -204,7 +250,7 @@ public sealed class SyncItemRow
             (SyncQueueState.Conflict, SyncErrorCodes.DeleteRefused) =>
                 ("Customer has orders on another device, so it wasn't deleted.", "Restore customer", null),
             (SyncQueueState.Conflict, SyncErrorCodes.PaymentMismatch) =>
-                ("Payment · a different payment was saved under the same record. Keep both records them as two payments; Use theirs drops this phone's copy.",
+                ("Payment · a different payment was saved under the same record. Keep both keeps them as two payments; Use theirs drops this phone's copy.",
                     "Keep both", "Use theirs"),
             (SyncQueueState.Conflict, _) when e.ServerCopyDeleted =>
                 (e.EntityType == SyncEntityType.Customer && e.Problem is { Length: > 0 } p && p.Contains("still has", StringComparison.Ordinal)

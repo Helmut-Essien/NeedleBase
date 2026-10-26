@@ -14,6 +14,7 @@ using NeedleBase.Application.Contracts.Errors;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Contracts.Staff;
+using NeedleBase.Application.Contracts.WhatsApp;
 using NeedleBase.Web.Services;
 
 namespace NeedleBase.Web.Tests;
@@ -45,6 +46,18 @@ public sealed class FakeApi : INeedleBaseApi
     public Task<ApiResult<StaffMemberDto>> SetStaffActiveAsync(string userId, bool active, CancellationToken c = default) { Calls.Enqueue($"active:{userId}:{active}"); throw new InvalidOperationException("Active not stubbed"); }
     public Func<string, string?, ApiResult<ReassignOrdersResultDto>>? Reassign { get; set; }
     public Task<ApiResult<ReassignOrdersResultDto>> ReassignOrdersAsync(string userId, string? toUserId, CancellationToken c = default) { Calls.Enqueue($"reassign:{userId}:{toUserId}"); return Task.FromResult(Reassign?.Invoke(userId, toUserId) ?? throw new InvalidOperationException("Reassign not stubbed")); }
+    public Func<ApiResult<WhatsAppSettingsDto>> WhatsAppSettings { get; set; } = () => ApiResult<WhatsAppSettingsDto>.Ok(new WhatsAppSettingsDto(false, false, [], [], 2, null));
+    public Func<UpdateWhatsAppSettingsRequest, ApiResult<WhatsAppSettingsDto>>? UpdateWhatsApp { get; set; }
+    public Func<string, ApiResult<WhatsAppConsentDto>> Consent { get; set; } = id => ApiResult<WhatsAppConsentDto>.Ok(new WhatsAppConsentDto(id, false, null, null));
+    public Func<ApiResult<WhatsAppMessagePageDto>> WhatsAppMessages { get; set; } = () => ApiResult<WhatsAppMessagePageDto>.Ok(new WhatsAppMessagePageDto([], 1, 50, false));
+    public ConcurrentQueue<(string OrderId, string? Status)> Opened { get; } = new();
+    public ConcurrentQueue<(string CustomerId, bool OptedIn)> ConsentChanges { get; } = new();
+    public Task<ApiResult<WhatsAppSettingsDto>> GetWhatsAppSettingsAsync(CancellationToken c = default) { Calls.Enqueue("wa-settings"); return Task.FromResult(WhatsAppSettings()); }
+    public Task<ApiResult<WhatsAppSettingsDto>> UpdateWhatsAppSettingsAsync(UpdateWhatsAppSettingsRequest r, CancellationToken c = default) { Calls.Enqueue("wa-settings-put"); return Task.FromResult(UpdateWhatsApp?.Invoke(r) ?? throw new InvalidOperationException("UpdateWhatsApp not stubbed")); }
+    public Task<ApiResult<WhatsAppConsentDto>> GetWhatsAppConsentAsync(string id, CancellationToken c = default) { Calls.Enqueue("wa-consent"); return Task.FromResult(Consent(id)); }
+    public Task<ApiResult<WhatsAppConsentDto>> SetWhatsAppConsentAsync(string id, bool optedIn, CancellationToken c = default) { Calls.Enqueue("wa-consent-put"); ConsentChanges.Enqueue((id, optedIn)); return Task.FromResult(ApiResult<WhatsAppConsentDto>.Ok(new WhatsAppConsentDto(id, optedIn, "staff", DateTimeOffset.UtcNow))); }
+    public Task<ApiResult<WhatsAppMessagePageDto>> ListWhatsAppMessagesAsync(string? orderId, int page, CancellationToken c = default) { Calls.Enqueue("wa-messages"); return Task.FromResult(WhatsAppMessages()); }
+    public Task<ApiResult<bool>> RecordWhatsAppOpenedAsync(string orderId, string? status, CancellationToken c = default) { Calls.Enqueue("wa-opened"); Opened.Enqueue((orderId, status)); return Task.FromResult(ApiResult<bool>.Ok(true)); }
     public Task<ApiResult<AuthSessionPayload>> ChangePasswordAsync(NeedleBase.Application.Contracts.Auth.ChangePasswordRequest r, CancellationToken c = default) { Calls.Enqueue("change-password"); return Task.FromResult(ChangePassword?.Invoke(r) ?? throw new InvalidOperationException("ChangePassword not stubbed")); }
     public Task<ApiResult<DashboardSummaryDto>> GetDashboardAsync(CancellationToken c = default) { Calls.Enqueue("dashboard"); return Task.FromResult(Dashboard()); }
     public Task<ApiResult<PaginatedResponse<OrderListItemDto>>> ListOrdersAsync(OrderQuery q, CancellationToken c = default) { Calls.Enqueue("orders"); OrderQueries.Enqueue(q); return Task.FromResult(Orders(q)); }

@@ -5,6 +5,7 @@ using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Contracts.Staff;
 using NeedleBase.Application.Contracts.Audit;
+using NeedleBase.Application.Contracts.WhatsApp;
 
 namespace NeedleBase.Web.Services;
 
@@ -46,6 +47,19 @@ public interface INeedleBaseApi
 
     /// <summary>New tokens for this browser (every other session is signed out).</summary>
     Task<ApiResult<AuthSessionPayload>> ChangePasswordAsync(NeedleBase.Application.Contracts.Auth.ChangePasswordRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<WhatsAppSettingsDto>> GetWhatsAppSettingsAsync(CancellationToken cancellationToken = default);
+
+    Task<ApiResult<WhatsAppSettingsDto>> UpdateWhatsAppSettingsAsync(UpdateWhatsAppSettingsRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<WhatsAppConsentDto>> GetWhatsAppConsentAsync(string customerId, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<WhatsAppConsentDto>> SetWhatsAppConsentAsync(string customerId, bool optedIn, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<WhatsAppMessagePageDto>> ListWhatsAppMessagesAsync(string? orderId, int page, CancellationToken cancellationToken = default);
+
+    /// <summary>Tap-to-send audit ("opened", not "sent"); best effort.</summary>
+    Task<ApiResult<bool>> RecordWhatsAppOpenedAsync(string orderId, string? status, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Order list filters (server-side paging/filtering).</summary>

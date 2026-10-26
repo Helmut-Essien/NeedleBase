@@ -81,7 +81,14 @@ public partial class HomeViewModel : BaseViewModel
 
     public bool HasCustomersSavedText => !string.IsNullOrWhiteSpace(CustomersSavedText);
     public bool HasAttentionItems => AttentionItems.Count > 0;
-    public bool ShowNoAttention => AttentionItems.Count == 0;
+    public bool ShowNoAttention => AttentionItems.Count == 0 && LoadError is null;
+
+    /// <summary>Home counts couldn't be read: say so (never "nothing needs attention") and offer Try again.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLoadError), nameof(ShowNoAttention))]
+    private string? loadError;
+
+    public bool HasLoadError => LoadError is not null;
 
     private readonly LiveListRefresh _live;
     private int _loadGeneration;
@@ -175,6 +182,7 @@ public partial class HomeViewModel : BaseViewModel
                     AttentionItems.Add(item);
                 }
 
+                LoadError = null;
                 OnPropertyChanged(nameof(HasAttentionItems));
                 OnPropertyChanged(nameof(ShowNoAttention));
             }
@@ -182,6 +190,10 @@ public partial class HomeViewModel : BaseViewModel
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Home load failed: {ex.Message}");
+            if (generation == Volatile.Read(ref _loadGeneration))
+            {
+                LoadError = "Couldn't load today's work from this device. Try again.";
+            }
         }
     }
 

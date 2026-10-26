@@ -204,6 +204,23 @@ public static class LocalSchemaMigrator
         ALTER TABLE "OrderLines" ADD COLUMN "MeasurementTakenAtUtc" TEXT NULL;
         """;
 
+    /// <summary>
+    /// Version 10 = customer WhatsApp consent (Slice 8). Server state cached for offline display plus one
+    /// pending choice per customer, pushed after each sync (newest change wins on the server, STOP included).
+    /// </summary>
+    private const string V10WhatsAppConsent = """
+        CREATE TABLE IF NOT EXISTS "WhatsAppConsents" (
+            "CustomerId" TEXT NOT NULL CONSTRAINT "PK_WhatsAppConsents" PRIMARY KEY,
+            "BusinessId" TEXT NOT NULL,
+            "OptedIn" INTEGER NOT NULL,
+            "Source" TEXT NULL,
+            "ChangedAtUtc" TEXT NULL,
+            "PendingOptedIn" INTEGER NULL,
+            "PendingAtUtc" TEXT NULL
+        );
+        CREATE INDEX IF NOT EXISTS "IX_WhatsAppConsents_Pending" ON "WhatsAppConsents" ("BusinessId") WHERE "PendingOptedIn" IS NOT NULL;
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
@@ -216,6 +233,7 @@ public static class LocalSchemaMigrator
         V7PhoneNormalize,
         V8Payments,
         V9MeasurementTakenAt,
+        V10WhatsAppConsent,
     ];
 
     public static int LatestVersion => Steps.Length;
