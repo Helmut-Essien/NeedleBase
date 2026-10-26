@@ -13,7 +13,7 @@ description: >-
 
 Composition: **Api** host + **Infrastructure** implementations of **Application** interfaces. Domain stays persistence-ignorant.
 
-**Built:** auth (register-business, login, refresh, logout), `/api/me`, Customers + Measurements CRUD, Orders CRUD + status patch, health, ping, ProblemDetails. sync push/pull + `DeletedItem` (S4). **Planned:** Payments (S5), Staff/Invitations (S7), Subscription (S8).
+**Built:** auth (register-business, login, refresh, logout), `/api/me`, Customers + Measurements CRUD, Orders CRUD + status patch, health, ping, ProblemDetails. sync push/pull + `DeletedItem` (S4). Payments (S5), Staff/Invitations (S7: `api/staff`, `api/auth/invite-preview|accept-invite|change-password`; S7b: `GET api/auth/options` → `{emailEnabled}`, `POST api/auth/forgot-password` 202 (same reply for unknown emails; 503 `PASSWORD_RESET_UNAVAILABLE` when email is off), `POST api/auth/reset-password` 204 / `RESET_CODE_INVALID` / `PASSWORD_WEAK` / 429, `POST api/staff/{userId}/reassign-orders` RequireOwner `{toUserId?}` → `{moved,toUserId,toName}` / `REASSIGN_TARGET_INVALID`). Email: `IEmailSender.TryQueue` (never blocks a request; never log codes/passwords); settings section `Email` (Host, Port, Username, Password, FromAddress, FromName, AppBaseUrl, TimeoutSeconds), password only from user-secrets/env. **Planned:** Subscription (S8).
 
 ## Hard rules
 
@@ -116,3 +116,22 @@ Second audit: `PAYMENT_EXCEEDS_BALANCE` → 409 with the specific detail; `Recor
 - Owner sees everything incl. `auth.*`, IP and user agent; Manager sees data + payment events, no `auth.*`, no IP/UA. Events without a business (unknown-email logins) are visible to no tenant.
 - Optional headers: `X-NeedleBase-Client: web`, `X-Device-Id`, `X-Correlation-Id`. Sync push/pull bodies take an optional `deviceId`.
 - New write endpoints need nothing extra (capture is in SaveChanges); new security/read-sensitive endpoints call `IAuditLog.WriteAsync` with a throttle key if noisy.
+
+## Email setup (Gmail SMTP, Slice 7b)
+
+Needs a Google account with 2-Step Verification and an **App Password** (Google Account → Security → App passwords; 16 characters). Your normal Gmail password will not work. Never put the password in appsettings or git.
+
+Dev (user-secrets, `UserSecretsId` `needlebase-api-dev-secrets`):
+
+```bash
+cd src/NeedleBase.Api
+dotnet user-secrets set "Email:Host" "smtp.gmail.com"
+dotnet user-secrets set "Email:Port" "587"
+dotnet user-secrets set "Email:Username" "you@gmail.com"
+dotnet user-secrets set "Email:Password" "<16-character App Password>"
+# optional
+dotnet user-secrets set "Email:FromName" "NeedleBase"
+dotnet user-secrets set "Email:AppBaseUrl" "https://your-web-address"   # links in emails; defaults to FrontendBaseUrl
+```
+
+Production: environment variables `Email__Host`, `Email__Port`, `Email__Username`, `Email__Password`, … . Restart the Api; the log says "Email sending is on (…)" or warns that it's off. Off = invite codes shared by hand and no Forgot password link. Gmail allows about 500 messages a day; a restart drops unsent queued mail.

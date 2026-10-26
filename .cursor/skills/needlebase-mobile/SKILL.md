@@ -45,7 +45,7 @@ All VMs inherit `BaseViewModel` (`IsBusy`, `Title`, `CanSubmit`). Patterns, busy
 ## Shell & IA (mobile)
 
 Bottom nav: **Home | Customers | Orders | Payments | More** + FAB **New Order**.  
-Role-filter nav (hide Staff/Payments as per domain skill). Match [needlebase-uiux information-architecture](../needlebase-uiux/information-architecture.md).
+Role-filter nav (hide Staff/Payments as per domain skill). Built (S7): Payments tab hidden for Tailors (`AppShell.ApplyRoleTabsAsync`, cached role, on every navigation); More → Staff (Owner/Manager, online-only `IStaffApi`), Change password; `AcceptInvitePage` is a root ShellContent like Register. S7b: `ForgotPasswordPage` (root ShellContent; email step → code + new password) linked from Login only when `IAuthService.EmailEnabledAsync()` is true (cached 5 min, hidden when never reached); Staff → member actions include "Move their open orders", also offered right after "Turn off access"; `PasswordRules` delegates to `Application/Common/PasswordPolicy`. Slice 7 pages are code-only (`Views/Ui.cs` builders). Match [needlebase-uiux information-architecture](../needlebase-uiux/information-architecture.md).
 
 ### Chrome (all screens)
 

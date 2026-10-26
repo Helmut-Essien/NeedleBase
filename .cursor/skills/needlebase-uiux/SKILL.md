@@ -85,7 +85,7 @@ Concise, friendly, non-technical; icons **with** labels (low-literacy friendly).
 - Subscription banner dominating everyday work or blocking login
 - Staff invitations forced on solo onboarding
 - Claiming “synced to cloud” when only local save succeeded
-- Entry points to unbuilt features (Notifications bell, Forgot password): hidden until the real screen ships
+- Entry points to unbuilt features (Notifications bell): hidden until the real screen ships. Forgot password shows only when email is configured
 - Shell nav title bar on any mobile screen (rule: [needlebase-mobile #14](../needlebase-mobile/SKILL.md))
 
 ## Output expectations

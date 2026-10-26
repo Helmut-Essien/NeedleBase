@@ -33,7 +33,7 @@ Either way: page/components call typed HTTP services; business rules stay on Api
 
 ## Shell (from UI skill)
 
-**Built (Slice 6):** persistent left sidebar (Dashboard, Production, Orders, Customers, Payments, Activity). Still planned: Measurements, Staff, Reports, Settings, search, SyncChip.  
+**Built (Slice 6–7):** persistent left sidebar (Dashboard, Production, Orders, Customers, Payments, Staff [Owner/Manager], Activity); `/Staff`, `/Account/AcceptInvite`, `/Profile/Password` (authenticated pages must live outside `/Account`, which is anonymous by folder convention). An invite code is shown once on the page that created it — never TempData/URL. S7b: `/Account/ForgotPassword` → `/Account/ResetPassword?email=…&sent=true` (never the code in a URL); Login shows "Forgot password?" only when `IApiAuthService.EmailEnabledAsync()` (cached 5 min); Staff rows with open orders get a "Move N open orders" form (Owner). Password hints/validation come from `PasswordPolicy`. Still planned: Measurements, Reports, Settings, search, SyncChip.  
 **Today:** `_Layout` sidebar from md up, top bar + collapsible menu below md, user name + Sign out, footer Terms/Privacy links. Collapse breakpoint for all nav = `md` (768) + `_AuthLayout` for auth/legal. Shared partials: `_PasswordToggleButton`, `_ValidationScriptsPartial`.  
 Responsive, tables→cards, states, copy: [web-screens](../needlebase-uiux/web-screens.md), [content-and-states](../needlebase-uiux/content-and-states.md).
 

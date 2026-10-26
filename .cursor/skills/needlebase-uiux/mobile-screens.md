@@ -15,7 +15,7 @@ Sample business: **Ama Stitches**, Accra. Currency **GH₵**.
 | Welcome | Logo, short promise (“Manage orders & measurements — works offline”), Log in / Create account | Brand-first, no metric clutter; no Shell nav bar |
 | Sign up | Name, phone/email, password | Clear validation; no Shell nav bar |
 | Login | Phone/email + password; Forgot password | In-page “Sign in” only |
-| Password recovery | Phone/email → instructions | **Hidden until built** (decision). No Forgot password link on mobile or web; add the link in the same change that ships the reset flow |
+| Password recovery | Email → 8-digit emailed code + new password | Built (S7b) `ForgotPasswordPage`; the Login link shows only when email is configured on the server |
 | Business profile | Business name, phone, location (optional), logo optional | Solo-friendly; no staff required |
 | Offline explainer | One screen: local save + sync later | Mandatory once; no Shell nav bar |
 | Trial / activation | Plan summary + Start | Soft; then Home |

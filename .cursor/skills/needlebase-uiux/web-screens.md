@@ -2,7 +2,7 @@
 
 Oversight and management tool. Persistent sidebar, denser data, keyboard-friendly. Same identity as mobile.
 
-**Built today [code]:** Razor Pages `Account/Login`, `Account/Register`, `Account/Logout`, `Index`, `Terms`, `Privacy`, `Error`, plus Slice 5/6 pages `Production`, `Orders/Index`, `Orders/Details` (status change is the only web write), `Payments`, `Customers`, `Activity`, with `_AuthLayout` (auth card 448px, system font, no CDN) and `_Layout` (left `.nb-sidebar` from md 768 up; below md a top bar with a collapsible menu; skip link; footer Terms/Privacy). Shared partials: `_PageState` (error + Try again), `_StatusChip`, `_Pager`, `_ActivityItem`, `_NavLinks`, `_PasswordToggleButton`. No Forgot password link until reset is built. Sections below still marked **[planned]** are not built.
+**Built today [code]:** Razor Pages `Account/Login`, `Account/Register`, `Account/Logout`, `Index`, `Terms`, `Privacy`, `Error`, plus Slice 5/6 pages `Production`, `Orders/Index`, `Orders/Details` (status change is the only web write), `Payments`, `Customers`, `Activity`, with `_AuthLayout` (auth card 448px, system font, no CDN) and `_Layout` (left `.nb-sidebar` from md 768 up; below md a top bar with a collapsible menu; skip link; footer Terms/Privacy). Shared partials: `_PageState` (error + Try again), `_StatusChip`, `_Pager`, `_ActivityItem`, `_NavLinks`, `_PasswordToggleButton`. `Account/ForgotPassword` + `Account/ResetPassword` (S7b); the Login link shows only when email is configured. Sections below still marked **[planned]** are not built.
 
 ## Responsive rules [rec]
 

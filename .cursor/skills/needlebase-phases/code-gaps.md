@@ -117,3 +117,52 @@ Device speed (22 Oct 2026): Orders and Customers tabs cache rows and reload only
 - Done (speed): edit save (API, sync, phone) reads profiles only for new lines that need them (`OrderEditor.ProfileNeeds`) and paid (non-voided) only when lines change; sync push skips the foreign-line-id query for ids the order already has; phone pull merges lines in place (no delete-all/reinsert); phone edit screen parses qty/price once per keystroke, ignores notes typing and recalculates the total once on load (50 lines: 51 → 1 recalculation, load ~11.7 → ~9.9 ms, 200 price keystrokes ~5.1 → ~2.2 ms, in-memory SQLite); order detail keeps garment cards when lines are unchanged (back from Edit). Api edit on small orders unchanged (~8 ms median, dev Postgres). Indexes already cover the new queries (no migration).
 - Done (edge cases): audit row for a large edit keeps the first 20 item details plus "more item changes" count; phone edit shows "locked" (not "stale") when the order became Collected/Cancelled while open; phone edit errors are announced to screen readers; web new-garment quantity has a max.
 - Open: roles are fixed at join (no role-change feature); the role comes from the access token. When role changes are added, rotate the security stamp so tokens re-check. Order detail/edit use BindableLayout inside a ScrollView (bounded at 50 lines; CollectionView would lose virtualization inside the ScrollView). Tailor price visibility still undecided.
+
+## Slice 7 — Staff + roles (26 Oct 2026)
+
+- Done: invitations (code shared by hand, hash stored, 7 days, one use under a row lock), accept on web + phone, Owner-only role change / turn access off/on with security-stamp rotation, change password (other devices signed out), Tailor status rule (`ORDER_NOT_ASSIGNED`), Payments tab hidden for Tailors, More page replaces the placeholder.
+- Review fixes: turned-off staff signing in got "isn't linked to a business" → now `ACCOUNT_DEACTIVATED` copy; web order detail showed the status form to Tailors on others' orders (Api refused) → hidden; phone change-password retries once after an expired access token and holds the refresh lock (no refresh racing the token wipe); phone stack-clear on sign-out no longer aborts when the Payments tab is hidden; invite/staff error copy shared (`StaffErrorMessages.ForProblem`) by web and phone.
+- Done (Slice 7b): Gmail SMTP email (`Infrastructure/Email`: `EmailOptions` section `Email`, `SmtpTransport` MailKit STARTTLS 587, `EmailQueue` + `EmailSendingService` 3 tries 5 s/30 s, per-try timeout); invite emails; Forgot/Reset password (`api/auth/options|forgot-password|reset-password`, table `PasswordResetCodes`); `POST api/staff/{id}/reassign-orders` (Owner); shared `PasswordPolicy`.
+- Open: owner transfer (by choice, not yet); invited emails unverified; Tailors see order totals (by choice); device + browser run of Journey 5 and of the reset/reassign flows.
+- Open (email): the send queue is in memory — mail queued at a restart is lost (user asks again; invite code is still shown on screen). Gmail caps ~500 messages/day per account (lower for new accounts); a real provider (or Google Workspace) is needed past that. One instance assumed (no shared queue). No automated test of the 5 s/30 s retry timing (would add ~35 s).
+- Open (reassign): capped at 2,000 orders per call (press again for the rest); a tailor's offline edit to a moved order conflicts under the normal sync rules.
+
+### Slice 7 edge-case review (26 Oct 2026)
+- Fixed: reset throttles are per (address, IP), not IP-wide, so people sharing a carrier IP (CGNAT) don't lock each other out; per-account caps (3 codes/hour, 5 tries/code) still bound guessing and mail. Trade-off: one IP can request resets for many different addresses (each capped at 3/hour; Gmail ~500/day).
+- Fixed: email worker no longer blocks the queue on a failing message (retries scheduled in the background: 5 s, 30 s); unsent count logged on shutdown; SMTP disconnect error after a successful send no longer causes a duplicate retry.
+- Fixed: names/business name flattened to one line (no CR/LF/control chars) in subject and To; invite email must be one plain address; invite name rejects control characters.
+- Fixed: reassign locks the target's membership row inside the transaction (a concurrent "turn off" can't receive orders); staff overview ordered before Take(500).
+- Fixed: web "Forgot password?" check serves the last known answer at once and refreshes in the background (one refresh at a time); a blip no longer hides the link.
+- Open: tailor creating an order offline assigned to someone else with a non-New status — order is created, status change rejected (ORDER_NOT_ASSIGNED), op stays failed; rare. Forgot password still emails a user whose only membership is turned off (they can reset but not sign in). Order has no concurrency token; concurrent web edits during reassign are last-write-wins on AssignedTo (phones are protected by the sync staleness check).
+
+### Slice 7 review, second pass (26 Oct 2026)
+Fixed:
+- Forgot password: an address with no active membership gets no email and no audit row; the reply is the same neutral 202.
+- Reset requests: a cap of 60 per hour per IP across all addresses (`ResetRequestIpCap`, in memory, bounded). This is on top of the per-(address, IP) throttle and the per-minute "auth" rate limit. It is set high enough for shared CGNAT mobile IPs.
+- Sync push: when a tailor creates an order offline with a status past New and the order is assigned to someone else, the order is now saved as New. The push returns Conflict with ORDER_NOT_ASSIGNED and the server copy, so the item is no longer stuck as failed. The mobile app shows a clear text for this. Other status errors on create still roll back.
+- Reassign: the source's open orders are locked FOR UPDATE before they are moved, so a concurrent assignee edit can't be silently overwritten. The web order edit and status changes already had optimistic concurrency through BaseModifiedUtc and a stale message.
+- Mobile: `GetCachedUserAsync` is memoized and cleared on sign-in and sign-out. This saves 7 Keystore reads per navigation.
+- Mobile accessibility: status and error banners are announced to TalkBack; the old fixed "Error"/"Status" description hid the message. Web password hints are linked to their fields with aria-describedby.
+- Tests: SyncEndpoint, Payment and AuditTrail API tests share the non-parallel `SyncEpoch` collection, so a background epoch bump can't break another class's paging. This was a flaky failure before this pass.
+
+Query counts (measured by QueryCountTests):
+
+| Path | Queries |
+|---|---|
+| auth-only request | 2 |
+| staff list, 3 members | 4 |
+| staff list, 8 members | 4 |
+| accept invite | 12 |
+| change password | 12 |
+| forgot password | 7 |
+| reset password | 9 |
+| sync push, tailor status change | 9 |
+| reassign, 3 orders | 9 |
+| reassign, 12 orders | 9 |
+
+No N+1: the staff list and reassign counts stay the same as size grows.
+
+Open:
+- The API test run takes about 24 s, up from about 12 s, because of the serial sync collection.
+- A turned-off account gets no reset email at all; the owner has to turn it back on first.
+- The IP cap is per process and is lost on restart.

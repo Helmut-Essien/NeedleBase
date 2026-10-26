@@ -20,7 +20,7 @@ Cross-cutting rules for every screen on mobile and web. Users are mostly **phone
 
 ## 2. Voice & microcopy
 
-- **No entry points to features that don't exist.** No Notifications bell until a real notifications screen ships (the Home bell was removed). No Forgot password link until reset is built (hidden on mobile and web) [code].
+- **No entry points to features that don't exist.** No Notifications bell until a real notifications screen ships (the Home bell was removed). Forgot password is built (Slice 7b) but shows only when the server can send email; with email off there is no link [code].
 
 - Short, plain, friendly English. Aim for a reading age of about 12. One idea per sentence. Avoid jargon (sync **queue**, **entity**, **tenant**, **401**).
 - Buttons are verbs: "Save customer", "Record payment", "Try again". Avoid "OK"/"Submit" except in confirmations.
