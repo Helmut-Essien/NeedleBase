@@ -207,3 +207,11 @@ Fixed:
 Open:
 - Switching cm to inches and back more than once can drift in the 3rd decimal.
 - A value saved before this fix with more than 4 decimals (the old parser allowed it) is refused again on a full re-check or sync of that record.
+
+### Password show/hide eye everywhere (2026-10-27)
+
+- All 8 password boxes in the phone app now have the same eye as sign-in: closed eye while hidden, open eye while shown, 44dp target, spoken "Show password"/"Hide password".
+  - Sign-in (1) and register (password and confirm) already had it in XAML.
+  - Change password (3), reset password (2) and accept invite (1) now use the shared `PasswordField` control (`Views/PasswordField.cs`).
+- The text hides again when the page goes away.
+- Open: sign-in and register still carry the same markup in XAML. Moving them to a shared XAML control would remove the duplication. It is not needed for behaviour.
