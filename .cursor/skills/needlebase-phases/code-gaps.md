@@ -190,3 +190,20 @@ Fixed:
 Open:
 - Meta has no idempotency key, so a send that crashes after Meta accepts it may be sent again after 10 minutes.
 - The audit row's own time is the server's receive time; the phone time appears in the summary text.
+
+### Measurement decimals (2026-10-27)
+
+Fixed:
+- Measurements like 4.125 or 37.250 (eighths of an inch) were refused as "must be a number", because the price rule that blocks "1.000" also applied.
+  - Measurements now use `DecimalInput.TryParseMeasurement` (up to 4 decimals, "." or ",").
+  - Prices and payments keep the strict rule.
+- Saved values reopened with `ToString("0.##")` (4.125 appeared as 4.13 and could be saved back rounded). They now use `DecimalInput.Format`: exact, with the same text in every phone language.
+- Switching between cm and inches rounds to 3 decimals instead of 2.
+- The error now names the field and the text it couldn't read.
+- The server (`AmountRules.CheckMeasurement`) refuses more than 4 decimals.
+  - Phones already send at most that many.
+  - Older phones only sent up to 2.
+
+Open:
+- Switching cm to inches and back more than once can drift in the 3rd decimal.
+- A value saved before this fix with more than 4 decimals (the old parser allowed it) is refused again on a full re-check or sync of that record.
