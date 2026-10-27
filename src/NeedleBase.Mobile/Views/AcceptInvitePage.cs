@@ -34,7 +34,9 @@ public sealed class AcceptInvitePage : ContentPage
         joinStep.Add(Ui.FieldLabel("Surname"));
         joinStep.Add(Ui.Field(Ui.Entry("Surname", nameof(AcceptInviteViewModel.Surname), "Surname", Keyboard.Create(KeyboardFlags.CapitalizeWord))));
         joinStep.Add(Ui.FieldLabel("Choose a password"));
-        joinStep.Add(Ui.Field(Ui.Entry("Password", nameof(AcceptInviteViewModel.Password), "Choose a password", password: true)));
+        var choose = new PasswordField("Password", nameof(AcceptInviteViewModel.Password), "Choose a password", "AcceptInvitePassword");
+        joinStep.Add(choose);
+        Disappearing += (_, _) => choose.Remask();
         joinStep.Add(Ui.Body(PasswordRules.Hint));
         var join = Ui.Primary("Join", nameof(AcceptInviteViewModel.JoinCommand));
         join.AutomationId = "AcceptInviteJoin";

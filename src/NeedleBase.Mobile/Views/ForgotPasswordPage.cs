@@ -30,10 +30,13 @@ public sealed class ForgotPasswordPage : ContentPage
         codeStep.Add(Ui.FieldLabel("Code from the email"));
         codeStep.Add(Ui.Field(Ui.Entry("1234 5678", nameof(ForgotPasswordViewModel.Code), "8-digit code", Keyboard.Numeric)));
         codeStep.Add(Ui.FieldLabel("New password"));
-        codeStep.Add(Ui.Field(Ui.Entry("New password", nameof(ForgotPasswordViewModel.NewPassword), "New password", password: true)));
+        var next = new PasswordField("New password", nameof(ForgotPasswordViewModel.NewPassword), "New password", "ResetPasswordNew");
+        codeStep.Add(next);
         codeStep.Add(Ui.Body(PasswordRules.Hint));
         codeStep.Add(Ui.FieldLabel("New password again"));
-        codeStep.Add(Ui.Field(Ui.Entry("New password again", nameof(ForgotPasswordViewModel.ConfirmPassword), "Confirm new password", password: true)));
+        var again = new PasswordField("New password again", nameof(ForgotPasswordViewModel.ConfirmPassword), "Confirm new password", "ResetPasswordConfirm");
+        codeStep.Add(again);
+        Disappearing += (_, _) => { next.Remask(); again.Remask(); };
         var reset = Ui.Primary("Set new password", nameof(ForgotPasswordViewModel.ResetCommand));
         reset.AutomationId = "ForgotReset";
         codeStep.Add(reset);
