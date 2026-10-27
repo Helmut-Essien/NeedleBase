@@ -225,9 +225,9 @@ public partial class MeasurementEditViewModel : BaseViewModel, IBackAware, IQuer
                 continue;
             }
 
-            if (!DecimalInput.TryParse(field.ValueText, out var number))
+            if (!DecimalInput.TryParseMeasurement(field.ValueText, out var number))
             {
-                field.Error = $"{field.Label} must be a number. {DecimalInput.Hint}";
+                field.Error = $"{field.Label}: can't read \"{field.ValueText.Trim()}\". {DecimalInput.MeasurementHint}";
                 ErrorMessage = field.Error;
                 return;
             }
@@ -301,7 +301,7 @@ public partial class MeasurementEditViewModel : BaseViewModel, IBackAware, IQuer
         foreach (var field in Fields)
         {
             if (string.IsNullOrWhiteSpace(field.ValueText) ||
-                !DecimalInput.TryParse(field.ValueText, out var value))
+                !DecimalInput.TryParseMeasurement(field.ValueText, out var value))
             {
                 continue;
             }
@@ -311,7 +311,7 @@ public partial class MeasurementEditViewModel : BaseViewModel, IBackAware, IQuer
                 : fromUnit == MeasurementUnit.Inches && toUnit == MeasurementUnit.Centimetres
                     ? value * CmPerInch
                     : value;
-            field.ValueText = DecimalInput.Format(decimal.Round(converted, 2));
+            field.ValueText = DecimalInput.Format(decimal.Round(converted, 3));
         }
     }
 
@@ -332,7 +332,7 @@ public partial class MeasurementEditViewModel : BaseViewModel, IBackAware, IQuer
             var text = string.Empty;
             if (seed is not null && seed.TryGetValue(key, out var seeded) && seeded is not null)
             {
-                text = seeded.Value.ToString("0.##");
+                text = DecimalInput.Format(seeded.Value); // exact and culture-independent (4.125 stays 4.125)
             }
             else if (previous is not null && previous.TryGetValue(key, out var prior))
             {

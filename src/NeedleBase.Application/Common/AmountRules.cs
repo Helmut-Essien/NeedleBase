@@ -46,7 +46,14 @@ public static class AmountRules
             return $"{label} must be more than 0.";
         }
 
-        return v > max ? $"{label} can be at most {max:0} {unit?.Trim().ToLowerInvariant()}." : null;
+        if (v > max)
+        {
+            return $"{label} can be at most {max:0} {unit?.Trim().ToLowerInvariant()}.";
+        }
+
+        return decimal.Round(v, DecimalInput.MeasurementDecimals) != v
+            ? $"{label} can have at most {DecimalInput.MeasurementDecimals} decimal places."
+            : null;
     }
 
     /// <summary>Throws <see cref="ArgumentException"/> (services map it to a validation error).</summary>

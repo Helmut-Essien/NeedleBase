@@ -21,6 +21,24 @@ public partial class OrderEndpointTests
     };
 
     [Fact]
+    public async Task Measurement_WithEighthsOfAnInch_IsAccepted_ButTooManyDecimalsIsRefused()
+    {
+        var (token, _) = await RegisterAsync("MeasureDecimals");
+        var customer = await CreateCustomerAsync(token, "Akosua");
+        using (var ok = Authorized(HttpMethod.Post, $"/api/customers/{customer.Id}/measurements", token, Chest(40.125m)))
+        using (var created = await _client.SendAsync(ok))
+        {
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            var m = (await created.Content.ReadFromJsonAsync<MeasurementDetailDto>(JsonOptions))!;
+            Assert.Equal(40.125m, m.Fields["chest"]);
+        }
+
+        using var bad = Authorized(HttpMethod.Post, $"/api/customers/{customer.Id}/measurements", token, Chest(40.12345m));
+        using var refused = await _client.SendAsync(bad);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+    }
+
+    [Fact]
     public async Task RecordErrors_KeepStatusAndCodes()
     {
         var (token, _) = await RegisterAsync("TypedErrors");

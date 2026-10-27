@@ -81,6 +81,53 @@ public class AuditFixRulesTests
         Assert.Equal(match, parsed.Split(' ').All(t => key.Contains(" " + t, StringComparison.Ordinal)));
     }
 
+    [Theory]
+    [InlineData("4.5", 4.5)]
+    [InlineData("4,5", 4.5)]
+    [InlineData("4.125", 4.125)]   // eighths of an inch: three decimals are normal for measurements
+    [InlineData("4,375", 4.375)]
+    [InlineData("37.250", 37.25)]
+    [InlineData("92.500", 92.5)]
+    [InlineData("0.0625", 0.0625)]
+    [InlineData(" 98 ", 98)]
+    [InlineData(",5", 0.5)]
+    public void MeasurementInput_Accepts(string text, double expected)
+    {
+        Assert.True(DecimalInput.TryParseMeasurement(text, out var value));
+        Assert.Equal((decimal)expected, value);
+    }
+
+    [Theory]
+    [InlineData("4.12345")]    // more than 4 decimals
+    [InlineData("1,000.5")]
+    [InlineData("1.2.3")]
+    [InlineData("12.")]
+    [InlineData("12,")]
+    [InlineData(".")]
+    [InlineData("1 000")]
+    [InlineData("4 1/8")]
+    [InlineData("abc")]
+    [InlineData("")]
+    [InlineData(null)]
+    public void MeasurementInput_Rejects(string? text) => Assert.False(DecimalInput.TryParseMeasurement(text, out _));
+
+    [Fact]
+    public void PriceRule_StaysStrict_WhileMeasurementRuleIsNot()
+    {
+        Assert.False(DecimalInput.TryParse("4.125", out _));
+        Assert.False(DecimalInput.TryParse("1.000", out _));
+        Assert.True(DecimalInput.TryParseMeasurement("4.125", out var v));
+        Assert.Equal("4.125", DecimalInput.Format(v));
+    }
+
+    [Fact]
+    public void Measurement_DecimalPlaces_AreCapped()
+    {
+        Assert.Null(AmountRules.CheckMeasurement(MeasurementUnit.Inches, "chest", 4.125m));
+        Assert.Null(AmountRules.CheckMeasurement(MeasurementUnit.Inches, "chest", 4.1234m));
+        Assert.NotNull(AmountRules.CheckMeasurement(MeasurementUnit.Inches, "chest", 4.12345m));
+    }
+
     [Fact]
     public void WordPrefixMatch_ReturnsRangeInOriginalString_WithCombiningMarksAndEmoji()
     {
