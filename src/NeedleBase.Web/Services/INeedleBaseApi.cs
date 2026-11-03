@@ -6,6 +6,7 @@ using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Contracts.Staff;
 using NeedleBase.Application.Contracts.Audit;
 using NeedleBase.Application.Contracts.WhatsApp;
+using NeedleBase.Application.Contracts.Licensing;
 
 namespace NeedleBase.Web.Services;
 
@@ -60,6 +61,12 @@ public interface INeedleBaseApi
 
     /// <summary>Tap-to-send audit ("opened", not "sent"); best effort.</summary>
     Task<ApiResult<bool>> RecordWhatsAppOpenedAsync(string orderId, string? status, CancellationToken cancellationToken = default);
+
+    /// <summary>The shop's license status (banner + Owner license page). Never includes the key.</summary>
+    Task<ApiResult<SubscriptionStatusDto>> GetSubscriptionAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Owner: attach a license key (shops created before licensing, or a replacement key).</summary>
+    Task<ApiResult<SubscriptionStatusDto>> AttachLicenseAsync(string licenseKey, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Order list filters (server-side paging/filtering).</summary>

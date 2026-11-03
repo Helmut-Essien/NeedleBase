@@ -1,0 +1,9 @@
+@model NeedleBase.Application.Contracts.Licensing.SubscriptionStatusDto
+@using NeedleBase.Web.Services
+<div class="alert @(Model.IsReadOnly ? "alert-danger" : "alert-warning") nb-license-banner" role="@(Model.IsReadOnly ? "alert" : "status")">
+    @Model.Message
+    @if (User.IsOwner())
+    {
+        <a asp-page="/Settings/License" class="alert-link ms-1">Open license</a>
+    }
+</div>

@@ -22,4 +22,8 @@
         <li><a asp-page="/Settings/WhatsApp" aria-current="@Current("/Settings/WhatsApp")"><svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 20l1.3-4A8 8 0 1 1 8 19z"/></svg>WhatsApp</a></li>
         <li><a asp-page="/Activity/Index" aria-current="@Current("/Activity")"><svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Activity</a></li>
     }
+    @if (User.IsOwner())
+    {
+        <li><a asp-page="/Settings/License" aria-current="@Current("/Settings/License")"><svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/></svg>License</a></li>
+    }
 </ul>

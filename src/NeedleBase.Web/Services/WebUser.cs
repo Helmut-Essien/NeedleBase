@@ -23,6 +23,9 @@ public static class WebUser
 
     public static bool CanManageStaff(this ClaimsPrincipal user) => NeedleBase.Application.Staff.StaffRoles.CanManage(user.Role());
 
+    /// <summary>Only the Owner adds or replaces the shop's license key (the Api enforces it too).</summary>
+    public static bool IsOwner(this ClaimsPrincipal user) => user.Role() == "Owner";
+
     public static string? UserId(this ClaimsPrincipal user) => user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
     public static string BusinessName(this ClaimsPrincipal user) => user.FindFirst("BusinessName")?.Value ?? "NeedleBase";

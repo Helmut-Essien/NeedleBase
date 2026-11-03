@@ -107,6 +107,36 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
     }
 
     [Fact]
+    public async Task License_banner_owner_only_task_shows_to_owner_not_tailor_and_link_is_owner_only()
+    {
+        var cache = _factory.Services.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+        var before = _factory.Api.Subscription;
+        try
+        {
+            _factory.Api.Subscription = () => ApiResult<NeedleBase.Application.Contracts.Licensing.SubscriptionStatusDto>.Ok(new()
+            {
+                State = NeedleBase.Application.Licensing.SubscriptionStates.NotAttached, OwnerOnly = true,
+                Message = "Add your NeedleBase license key to keep using the shop."
+            });
+            cache.Remove("nb-sub:u1");
+            var (_, owner) = await GetAsync("/", BusinessRole.Owner);
+            Assert.Contains("nb-license-banner", owner);
+            Assert.Contains("/Settings/License", owner);
+            var (_, tailor) = await GetAsync("/", BusinessRole.Tailor);
+            Assert.DoesNotContain("nb-license-banner", tailor);
+            Assert.DoesNotContain("/Settings/License", tailor);
+            var (status, page) = await GetAsync("/Settings/License", BusinessRole.Owner);
+            Assert.Equal(HttpStatusCode.OK, status);
+            Assert.Contains("Add your license key", page);
+        }
+        finally
+        {
+            _factory.Api.Subscription = before;
+            cache.Remove("nb-sub:u1");
+        }
+    }
+
+    [Fact]
     public async Task Tailor_has_no_staff_link()
     {
         var (_, html) = await GetAsync("/", BusinessRole.Tailor);

@@ -34,6 +34,7 @@ builder.Services.AddTransient<ForwardClientIpHandler>();
 builder.Services.AddTransient<TokenRefreshHandler>();
 builder.Services.AddTransient<UnauthorizedRedirectHandler>();
 builder.Services.AddScoped<INeedleBaseApi, NeedleBaseApi>();
+builder.Services.AddMemoryCache();
 
 // Api:BaseUrl is required — never hardcode production hosts.
 // CreateBuilder already loads env vars / user secrets; do not re-read after this check.

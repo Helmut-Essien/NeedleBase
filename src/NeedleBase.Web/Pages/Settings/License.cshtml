@@ -1,0 +1,67 @@
+@page
+@model NeedleBase.Web.Pages.Settings.LicenseModel
+@using NeedleBase.Application.Licensing
+@{
+    ViewData["Title"] = "License";
+    string Date(DateTimeOffset? d) => d is { } v ? v.ToString("d MMM yyyy", System.Globalization.CultureInfo.InvariantCulture) : "—";
+    string StateName(string s) => s switch
+    {
+        SubscriptionStates.Active => "Active",
+        SubscriptionStates.Trial => "Trial",
+        SubscriptionStates.Complimentary => "Complimentary",
+        SubscriptionStates.Problem => "Needs attention",
+        SubscriptionStates.ReadOnly => "New changes paused",
+        SubscriptionStates.NeedsReattach => "Key needs re-entering",
+        _ => "No key yet"
+    };
+}
+<h1 class="nb-page-title">License</h1>
+<p class="nb-meta">Your NeedleBase license key came by email when your plan was set up. Only you, the owner, can see or change it here.</p>
+<partial name="_PageState" model="Model" />
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-success" role="status">@Model.StatusMessage</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model.ActionError))
+{
+    <div class="alert alert-danger" role="alert">@Model.ActionError</div>
+}
+
+@if (Model.Status is { } s)
+{
+    <section class="nb-card" aria-labelledby="status-heading">
+        <h2 id="status-heading" class="nb-section-title">Status</h2>
+        <dl class="row mb-0">
+            <dt class="col-sm-4">State</dt><dd class="col-sm-8">@StateName(s.State)</dd>
+            @if (!string.IsNullOrEmpty(s.KeyHint))
+            {
+                <dt class="col-sm-4">Key</dt><dd class="col-sm-8">@s.KeyHint</dd>
+            }
+            @if (!string.IsNullOrEmpty(s.Plan))
+            {
+                <dt class="col-sm-4">Plan</dt><dd class="col-sm-8">@s.Plan</dd>
+            }
+            @if (s.KeyHint is not null)
+            {
+                <dt class="col-sm-4">Expires</dt><dd class="col-sm-8">@(s.ExpiresAtUtc is null ? "No end date" : Date(s.ExpiresAtUtc))</dd>
+                <dt class="col-sm-4">Last checked</dt><dd class="col-sm-8">@Date(s.LastCheckedUtc)</dd>
+            }
+            @if (s.ReadOnlyFromUtc is { } ro && !s.IsReadOnly)
+            {
+                <dt class="col-sm-4">Changes pause on</dt><dd class="col-sm-8">@Date(ro)</dd>
+            }
+        </dl>
+    </section>
+
+    <section class="nb-card" aria-labelledby="key-heading">
+        <h2 id="key-heading" class="nb-section-title">@(s.KeyHint is null ? "Add your license key" : "Replace the license key")</h2>
+        <p class="nb-meta">The key must belong to the email address you sign in with.</p>
+        <form method="post" autocomplete="off">
+            <div class="mb-3">
+                <label for="LicenseKey" class="form-label">License key</label>
+                <input id="LicenseKey" name="LicenseKey" class="form-control" maxlength="200" autocapitalize="characters" spellcheck="false" required />
+            </div>
+            <button type="submit" class="btn nb-btn-primary" data-pending-text="Checking…">@(s.KeyHint is null ? "Add key" : "Replace key")</button>
+        </form>
+    </section>
+}

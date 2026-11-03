@@ -57,6 +57,11 @@ public class RegisterModel : PageModel
         [Display(Name = "Business name")]
         public string BusinessName { get; set; } = string.Empty;
 
+        // The server decides whether a key is required (Platform:RequireLicenseKey) and says so in plain words.
+        [MaxLength(200)]
+        [Display(Name = "License key")]
+        public string? LicenseKey { get; set; }
+
         [MaxLength(40)]
         [Display(Name = "Business phone (optional)")]
         public string? BusinessPhone { get; set; }
@@ -93,7 +98,8 @@ public class RegisterModel : PageModel
                 Input.FirstName,
                 Input.Surname,
                 Input.BusinessName,
-                string.IsNullOrWhiteSpace(Input.BusinessPhone) ? null : Input.BusinessPhone.Trim());
+                string.IsNullOrWhiteSpace(Input.BusinessPhone) ? null : Input.BusinessPhone.Trim(),
+                string.IsNullOrWhiteSpace(Input.LicenseKey) ? null : Input.LicenseKey.Trim());
 
             var session = await _authService.RegisterBusinessAsync(request, cancellationToken);
             if (session is null)

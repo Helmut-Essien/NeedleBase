@@ -15,6 +15,7 @@ using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Contracts.Staff;
 using NeedleBase.Application.Contracts.WhatsApp;
+using NeedleBase.Application.Contracts.Licensing;
 using NeedleBase.Web.Services;
 
 namespace NeedleBase.Web.Tests;
@@ -70,6 +71,10 @@ public sealed class FakeApi : INeedleBaseApi
     public Task<ApiResult<PaginatedResponse<CustomerListItemDto>>> ListCustomersAsync(string? s, int p, int ps, CancellationToken c = default) { Calls.Enqueue("customers"); return Task.FromResult(Customers()); }
     public Task<ApiResult<PaginatedResponse<PaymentListItemDto>>> ListPaymentsAsync(int p, int ps, CancellationToken c = default) { Calls.Enqueue("payments"); return Task.FromResult(Payments()); }
     public Task<ApiResult<IReadOnlyList<StaffNameDto>>> GetStaffNamesAsync(CancellationToken c = default) { Calls.Enqueue("staff"); return Task.FromResult(Staff()); }
+    public Func<ApiResult<SubscriptionStatusDto>> Subscription { get; set; } = () => ApiResult<SubscriptionStatusDto>.Ok(SubscriptionStatusDto.Unlocked);
+    public Func<string, ApiResult<SubscriptionStatusDto>>? Attach { get; set; }
+    public Task<ApiResult<SubscriptionStatusDto>> GetSubscriptionAsync(CancellationToken c = default) { Calls.Enqueue("subscription"); return Task.FromResult(Subscription()); }
+    public Task<ApiResult<SubscriptionStatusDto>> AttachLicenseAsync(string key, CancellationToken c = default) { Calls.Enqueue("attach:" + key); return Task.FromResult(Attach?.Invoke(key) ?? throw new InvalidOperationException("Attach not stubbed")); }
     public AuditQuery? LastActivityQuery { get; private set; }
     public Task<ApiResult<PaginatedResponse<AuditEventDto>>> ListActivityAsync(AuditQuery q, CancellationToken c = default) { Calls.Enqueue("activity"); LastActivityQuery = q; return Task.FromResult(Activity(q)); }
 }

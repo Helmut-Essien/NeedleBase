@@ -43,6 +43,12 @@
         <span asp-validation-for="Input.Email" class="text-danger small nb-auth-error"></span>
     </div>
     <div class="nb-auth-field text-start">
+        <label asp-for="Input.LicenseKey" class="form-label"></label>
+        <input asp-for="Input.LicenseKey" class="form-control nb-auth-input" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="license-hint" />
+        <p id="license-hint" class="nb-auth-helper mb-0">From the email we sent you. Use the same email address above.</p>
+        <span asp-validation-for="Input.LicenseKey" class="text-danger small nb-auth-error"></span>
+    </div>
+    <div class="nb-auth-field text-start">
         <label asp-for="Input.Password" class="form-label"></label>
         <div class="nb-password-field">
             <input asp-for="Input.Password"

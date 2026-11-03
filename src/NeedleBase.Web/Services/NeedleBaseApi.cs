@@ -9,6 +9,7 @@ using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Contracts.Staff;
 using NeedleBase.Application.Contracts.WhatsApp;
+using NeedleBase.Application.Contracts.Licensing;
 using NeedleBase.Application.Contracts.Audit;
 
 namespace NeedleBase.Web.Services;
@@ -129,6 +130,12 @@ public sealed class NeedleBaseApi : INeedleBaseApi
 
     public Task<ApiResult<bool>> RecordWhatsAppOpenedAsync(string orderId, string? status, CancellationToken cancellationToken = default) =>
         SendAsync<bool>(HttpMethod.Post, $"api/whatsapp/orders/{Uri.EscapeDataString(orderId)}/opened", new WhatsAppOpenedRequest { Status = status }, cancellationToken);
+
+    public Task<ApiResult<SubscriptionStatusDto>> GetSubscriptionAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<SubscriptionStatusDto>(HttpMethod.Get, "api/subscription", null, cancellationToken);
+
+    public Task<ApiResult<SubscriptionStatusDto>> AttachLicenseAsync(string licenseKey, CancellationToken cancellationToken = default) =>
+        SendAsync<SubscriptionStatusDto>(HttpMethod.Post, "api/subscription/license", new AttachLicenseRequest { LicenseKey = licenseKey }, cancellationToken);
 
     internal static bool IsUnreachable(ApiProblem problem) =>
         problem.Status is 502 or 503 or 504 && problem.Code is null && problem.Detail is null;

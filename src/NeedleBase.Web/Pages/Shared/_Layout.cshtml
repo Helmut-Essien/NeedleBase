@@ -51,6 +51,10 @@
         }
         <div class="nb-content" data-nb-drawer-outside>
             <main id="main-content" role="main" class="nb-main" tabindex="-1">
+                @if (signedIn)
+                {
+                    @await Component.InvokeAsync("SubscriptionBanner")
+                }
                 @RenderBody()
             </main>
             <footer class="nb-footer">
