@@ -28,6 +28,7 @@ public static class AuditActions
     public const string PaymentDeleted = "payment.deleted";
     public const string BusinessCreated = "business.created";
     public const string BusinessUpdated = "business.updated";
+    public const string LicenseAttached = "business.license_attached";
     public const string StaffAdded = "staff.added";
     public const string StaffRoleChanged = "staff.role_changed";
     public const string StaffDeactivated = "staff.deactivated";
@@ -87,6 +88,7 @@ public static class AuditActions
         PaymentDeleted => "Payment removed",
         BusinessCreated => "Business created",
         BusinessUpdated => "Business edited",
+        LicenseAttached => "License key added",
         StaffAdded => "Team member added",
         StaffRoleChanged => "Role changed",
         StaffDeactivated => "Team member deactivated",

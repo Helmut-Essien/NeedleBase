@@ -33,7 +33,9 @@ public enum RecordError
     /// <summary>The order is cancelled: no new payments.</summary>
     PaymentOrderLocked,
     /// <summary>Only the owner or a manager can record or void payments.</summary>
-    PaymentForbidden
+    PaymentForbidden,
+    /// <summary>The shop's license has lapsed past its grace period: new changes are paused (viewing still works).</summary>
+    SubscriptionReadOnly
 }
 
 /// <summary>A failure without a value type; converts to any <see cref="RecordResult{T}"/>.</summary>

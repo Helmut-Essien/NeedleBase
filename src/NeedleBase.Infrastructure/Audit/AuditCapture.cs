@@ -313,7 +313,8 @@ internal static class AuditCapture
         foreach (var p in e.Properties)
         {
             var name = p.Metadata.Name;
-            if (!p.IsModified || p.Metadata.IsShadowProperty() || Skipped.Contains(name) || Equals(p.OriginalValue, p.CurrentValue))
+            if (!p.IsModified || p.Metadata.IsShadowProperty() || Skipped.Contains(name) || IsLicenseField(name) ||
+                Equals(p.OriginalValue, p.CurrentValue))
             {
                 continue;
             }
@@ -335,10 +336,13 @@ internal static class AuditCapture
         return changes;
     }
 
+    /// <summary>Business license columns (encrypted key, token, re-check bookkeeping): never in the activity log.</summary>
+    private static bool IsLicenseField(string name) => name.StartsWith("License", StringComparison.Ordinal);
+
     /// <summary>New values of a created row (masked).</summary>
     private static List<Change> Snapshot(EntityEntry e) =>
         e.Properties
-            .Where(p => !p.Metadata.IsShadowProperty() && !Skipped.Contains(p.Metadata.Name) &&
+            .Where(p => !p.Metadata.IsShadowProperty() && !Skipped.Contains(p.Metadata.Name) && !IsLicenseField(p.Metadata.Name) &&
                         p.Metadata.Name != nameof(MeasurementProfile.FieldsJson) && p.CurrentValue is not null &&
                         p.Metadata.Name is not ("CustomerId" or "OrderId") && // already the row's links
                         p.Metadata.Name != nameof(Payment.IsVoided))

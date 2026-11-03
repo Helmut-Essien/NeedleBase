@@ -12,6 +12,8 @@ using NeedleBase.Application.Contracts.Errors;
 using NeedleBase.Application.Contracts.Staff;
 using NeedleBase.Application.Staff;
 using NeedleBase.Application.Email;
+using NeedleBase.Application.Licensing;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 
@@ -41,8 +43,14 @@ public sealed class AuthService : IAuthService
         ResetRequestIpCap resetIpCap,
         IAuditLog audit,
         IEmailSender email,
-        IOptionsMonitor<Email.EmailOptions> emailOptions)
+        IOptionsMonitor<Email.EmailOptions> emailOptions,
+        Licensing.LicenseService licenses,
+        Licensing.PendingShopIds pendingShopIds,
+        ILogger<AuthService> logger)
     {
+        _licenses = licenses;
+        _pendingShopIds = pendingShopIds;
+        _logger = logger;
         _email = email;
         _emailOptions = emailOptions;
         _throttle = throttle;
@@ -54,20 +62,61 @@ public sealed class AuthService : IAuthService
         _clock = clock;
     }
 
+    private readonly Licensing.LicenseService _licenses;
+    private readonly Licensing.PendingShopIds _pendingShopIds;
+    private readonly ILogger<AuthService> _logger;
+
+    private static AuthResult LicenseFail(string code, TimeSpan? retryAfter = null) =>
+        new(false, null, null, LicenseErrors.MessageFor(code), code, retryAfter);
+
     public async Task<AuthResult> RegisterBusinessAsync(
         RegisterBusinessRequest request,
         string? ipAddress,
         CancellationToken cancellationToken = default)
     {
         var email = request.Email.Trim();
+        var licenseKey = Licensing.LicenseService.Normalize(request.LicenseKey);
+        if (licenseKey.Length == 0 && _licenses.RequireLicenseKey)
+        {
+            return LicenseFail(LicenseErrors.KeyRequired);
+        }
+
+        // Cheap local checks first, so a request that would fail anyway never uses up the key's device slot.
         if (await _userManager.FindByEmailAsync(email) is not null)
         {
             return AuthResult.Fail("Unable to register with the provided details.", "REGISTER_FAILED");
         }
 
+        foreach (var validator in _userManager.PasswordValidators)
+        {
+            if (!(await validator.ValidateAsync(_userManager, new ApplicationUser { UserName = email, Email = email }, request.Password)).Succeeded)
+            {
+                return AuthResult.Fail("Unable to register with the provided details.", "REGISTER_FAILED");
+            }
+        }
+
+        // Platform before anything is created. The shop id is the license's device id (one shop per key); a retry with
+        // the same key + email reuses it so a lost answer doesn't burn the slot.
+        var fingerprint = licenseKey.Length == 0 ? null : Licensing.LicenseService.AttemptFingerprint(licenseKey, email);
+        var businessId = fingerprint is null ? IdGenerator.NewId() : _pendingShopIds.For(fingerprint);
+        LicenseCheck? license = null;
+        if (fingerprint is not null)
+        {
+            var (check, code, retry) = await _licenses.CheckKeyAsync(licenseKey, businessId, request.BusinessName, email, cancellationToken);
+            if (check is null)
+            {
+                return LicenseFail(code ?? LicenseErrors.CheckUnavailable, retry);
+            }
+
+            license = check;
+        }
+
         var now = _clock.UtcNow;
-        var businessId = IdGenerator.NewId();
         var business = Business.Create(businessId, request.BusinessName, request.BusinessPhone, now);
+        if (license is not null)
+        {
+            business.AttachLicense(_licenses.Protect(licenseKey), SubscriptionRules.KeyHint(licenseKey), license, now);
+        }
 
         var user = new ApplicationUser
         {
@@ -84,44 +133,64 @@ public sealed class AuthService : IAuthService
         var strategy = _db.Database.CreateExecutionStrategy();
         AuthResult? identityFailure = null;
 
-        await strategy.ExecuteAsync(async () =>
+        try
         {
-            await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
-            try
+            await strategy.ExecuteAsync(async () =>
             {
-                var createResult = await _userManager.CreateAsync(user, request.Password);
-                if (!createResult.Succeeded)
+                await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+                try
                 {
-                    identityFailure = AuthResult.Fail(
-                        "Unable to register with the provided details.",
-                        "REGISTER_FAILED");
-                    await tx.RollbackAsync(cancellationToken);
-                    return;
+                    var createResult = await _userManager.CreateAsync(user, request.Password);
+                    if (!createResult.Succeeded)
+                    {
+                        identityFailure = AuthResult.Fail(
+                            "Unable to register with the provided details.",
+                            "REGISTER_FAILED");
+                        await tx.RollbackAsync(cancellationToken);
+                        return;
+                    }
+
+                    var membership = StaffMembership.Create(
+                        IdGenerator.NewId(),
+                        businessId,
+                        user.Id,
+                        BusinessRole.Owner,
+                        now);
+
+                    _db.CurrentBusinessId = null;
+                    _db.Businesses.Add(business);
+                    _db.StaffMemberships.Add(membership);
+                    await _db.SaveChangesAsync(cancellationToken);
+                    await tx.CommitAsync(cancellationToken);
                 }
-
-                var membership = StaffMembership.Create(
-                    IdGenerator.NewId(),
-                    businessId,
-                    user.Id,
-                    BusinessRole.Owner,
-                    now);
-
-                _db.CurrentBusinessId = null;
-                _db.Businesses.Add(business);
-                _db.StaffMemberships.Add(membership);
-                await _db.SaveChangesAsync(cancellationToken);
-                await tx.CommitAsync(cancellationToken);
-            }
-            catch
-            {
-                await tx.RollbackAsync(cancellationToken);
-                throw;
-            }
-        });
+                catch
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    throw;
+                }
+            });
+        }
+        catch (DbUpdateException)
+        {
+            // Two registrations with the same email (or a double-tapped retry reusing the pending shop id) raced:
+            // the unique indexes stopped the second one. Same answer as any other duplicate.
+            _db.ChangeTracker.Clear();
+            identityFailure = AuthResult.Fail("Unable to register with the provided details.", "REGISTER_FAILED");
+        }
 
         if (identityFailure is not null)
         {
+            if (license is not null)
+            {
+                _logger.LogWarning("Registration failed after Platform accepted the license for shop {ShopId}; a retry reuses the same shop id.", businessId);
+            }
+
             return identityFailure;
+        }
+
+        if (fingerprint is not null)
+        {
+            _pendingShopIds.Done(fingerprint);
         }
 
         await _audit.WriteAsync(new AuditEntry(AuditActions.Registered, "Registered the business owner account", businessId, user.Id, BusinessRole.Owner),

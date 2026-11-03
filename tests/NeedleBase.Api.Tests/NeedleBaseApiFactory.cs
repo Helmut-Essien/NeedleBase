@@ -24,6 +24,9 @@ public sealed class NeedleBaseApiFactory : WebApplicationFactory<Program>
     {
         builder.UseSetting("JwtSettings:SecurityKey", TestJwtKey);
         builder.UseSetting("RateLimits:AuthPermitPerMinute", "100000");
+        builder.UseSetting("RateLimits:RegisterPermitPer10Minutes", "100000");
+        // Most tests register shops without a license key; LicensingApiTests turns this on with a fake Platform.
+        builder.UseSetting("Platform:RequireLicenseKey", "false");
         builder.UseSetting(
             "ConnectionStrings:DefaultConnection",
             Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
@@ -42,7 +45,9 @@ public sealed class NeedleBaseApiFactory : WebApplicationFactory<Program>
                 ["JwtSettings:AccessTokenExpirationMinutes"] = "60",
                 ["JwtSettings:RefreshTokenExpirationDays"] = "7",
                 ["Seed:DevelopmentData"] = "false",
-                ["RateLimits:AuthPermitPerMinute"] = "100000"
+                ["RateLimits:AuthPermitPerMinute"] = "100000",
+                ["RateLimits:RegisterPermitPer10Minutes"] = "100000",
+                ["Platform:RequireLicenseKey"] = "false"
             });
         });
     }

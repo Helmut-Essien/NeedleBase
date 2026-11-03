@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using System.Globalization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -17,7 +18,7 @@ ghanaianCulture.NumberFormat.CurrencyDecimalDigits = 2;
 CultureInfo.DefaultThreadCurrentCulture = ghanaianCulture;
 CultureInfo.DefaultThreadCurrentUICulture = ghanaianCulture;
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<NeedleBase.Api.Http.SubscriptionWriteGuard>());
 // RFC 9457 ProblemDetails for every error (model validation, 404/401/429 status codes, unhandled exceptions).
 builder.Services.AddProblemDetails(options =>
 {
@@ -50,12 +51,30 @@ builder.Services.AddProblemDetails(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// Data Protection encrypts each shop's license key at rest. The key ring must survive restarts/redeploys, or stored
+// license keys can't be read (the shop is NOT locked then; the Owner re-enters the key). DataProtection:KeysPath
+// overrides the location; production defaults to App_Data/Keys/Api. Development uses the user-profile key ring.
+{
+    var keysPath = builder.Configuration["DataProtection:KeysPath"];
+    if (string.IsNullOrWhiteSpace(keysPath) && builder.Environment.IsProduction())
+    {
+        keysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "Keys", "Api");
+    }
+
+    var dataProtection = builder.Services.AddDataProtection().SetApplicationName("NeedleBase.Api");
+    if (!string.IsNullOrWhiteSpace(keysPath))
+    {
+        dataProtection.PersistKeysToFileSystem(Directory.CreateDirectory(keysPath));
+    }
+}
+
 // Auth attempts per IP per minute. Configurable (RateLimits:AuthPermitPerMinute) so integration tests, which
 // register many accounts from one address, are not throttled; production keeps the default.
 var authPermitPerMinute = builder.Configuration.GetValue("RateLimits:AuthPermitPerMinute", 30);
 // Token refresh is routine (every app start and every expired access token, from a whole shop behind one IP), so it
 // has its own, larger per-IP budget and never eats into the login/register budget.
 var refreshPermitPerMinute = builder.Configuration.GetValue("RateLimits:RefreshPermitPerMinute", 300);
+var registerPermitPer10Minutes = builder.Configuration.GetValue("RateLimits:RegisterPermitPer10Minutes", 10);
 
 // Behind a reverse proxy / the web front end, the client IP arrives in X-Forwarded-For. It is trusted only from
 // loopback (default) plus ForwardedHeaders:KnownProxies (IPs) / KnownNetworks (CIDR), comma-separated.
@@ -88,6 +107,17 @@ builder.Services.AddRateLimiter(options =>
             {
                 PermitLimit = authPermitPerMinute,
                 Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    // Registration / license attach call Platform: much stricter than sign-in (per IP, 10-minute window).
+    options.AddPolicy(AuthRateLimits.RegisterPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = registerPermitPer10Minutes,
+                Window = TimeSpan.FromMinutes(10),
                 QueueLimit = 0
             }));
 
@@ -233,6 +263,7 @@ public partial class Program;
 internal static class AuthRateLimits
 {
     public const string RefreshPolicy = "refresh";
+    public const string RegisterPolicy = "register";
 }
 
 internal static class SyncRateLimit

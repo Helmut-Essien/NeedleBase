@@ -396,6 +396,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
             e.Property(x => x.MeasurementUnit).HasMaxLength(20).IsRequired();
             e.HasIndex(x => x.Name);
+            // Platform license (key encrypted with Data Protection; never plain text).
+            e.Property(x => x.LicenseKeyProtected).HasMaxLength(2000);
+            e.Property(x => x.LicenseKeyHint).HasMaxLength(8);
+            e.Property(x => x.LicenseReason).HasMaxLength(40);
+            e.Property(x => x.LicenseId).HasMaxLength(100);
+            e.Property(x => x.LicensePlan).HasMaxLength(200);
+            e.Property(x => x.LicenseToken).HasMaxLength(8192);
+            e.HasIndex(x => x.LicenseNextCheckUtc).HasFilter("\"LicenseKeyProtected\" IS NOT NULL");
         });
 
         builder.Entity<StaffMembership>(e =>

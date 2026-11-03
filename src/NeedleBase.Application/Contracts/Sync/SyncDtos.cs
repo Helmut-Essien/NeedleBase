@@ -165,6 +165,9 @@ public sealed record SyncPullResponse(
 {
     /// <summary>Payments (phase 4). Older servers omit it: treat null as none.</summary>
     public IReadOnlyList<SyncPaymentDto>? Payments { get; init; }
+
+    /// <summary>The shop's license status (banner + read-only on phones). Older servers omit it: null = no change.</summary>
+    public NeedleBase.Application.Contracts.Licensing.SubscriptionStatusDto? Subscription { get; init; }
 }
 
 /// <summary>Stable codes in <see cref="SyncPushResult.Code"/> and sync ProblemDetails.</summary>

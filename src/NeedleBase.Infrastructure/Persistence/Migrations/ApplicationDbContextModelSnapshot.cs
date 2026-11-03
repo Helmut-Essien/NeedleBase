@@ -258,6 +258,63 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<DateTimeOffset?>("LicenseAttachedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LicenseCheckedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LicenseExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("LicenseFailedChecks")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("LicenseGraceUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LicenseId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTimeOffset?>("LicenseInvalidSinceUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("LicenseIsComplimentary")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("LicenseIsTrial")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("LicenseIsValid")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LicenseKeyHint")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("LicenseKeyProtected")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset?>("LicenseNextCheckUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LicensePlan")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("LicenseReason")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<DateTimeOffset?>("LicenseRefreshAfterUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LicenseToken")
+                        .HasMaxLength(8192)
+                        .HasColumnType("character varying(8192)");
+
                     b.Property<string>("MeasurementUnit")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -273,6 +330,9 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(40)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("LicenseNextCheckUtc")
+                        .HasFilter("\"LicenseKeyProtected\" IS NOT NULL");
 
                     b.HasIndex("Name");
 

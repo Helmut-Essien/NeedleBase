@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.DataProtection;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -64,6 +65,15 @@ public static class DependencyInjection
         services.AddHttpClient<WhatsApp.IWhatsAppClient, WhatsApp.MetaWhatsAppClient>();
         services.AddScoped<WhatsApp.WhatsAppService>();
         services.AddHostedService<WhatsApp.WhatsAppSender>();
+        // Platform licensing. Integration key only from user-secrets/environment (Platform__IntegrationKey).
+        services.AddMemoryCache();
+        services.AddDataProtection(); // the Api host sets the key ring location/app name (Program.cs)
+        services.Configure<Licensing.PlatformOptions>(configuration.GetSection(Licensing.PlatformOptions.Section));
+        services.AddSingleton<Licensing.PlatformJwksCache>();
+        services.AddSingleton<Licensing.PendingShopIds>();
+        services.AddHttpClient<Application.Licensing.ILicensePlatform, Licensing.PlatformLicenseClient>();
+        services.AddScoped<Licensing.LicenseService>();
+        services.AddHostedService<Licensing.LicenseRecheckWorker>();
 
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         if (string.IsNullOrWhiteSpace(connectionString))

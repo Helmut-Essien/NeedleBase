@@ -33,6 +33,24 @@ public static class ApiProblems
         };
     }
 
+    /// <summary>
+    /// License problems at registration/attach: "couldn't check" (Platform down, busy, misconfigured) is 503 with
+    /// Retry-After; anything about the key or email is 400. The detail says which one failed.
+    /// </summary>
+    public static ObjectResult ForLicense(HttpContext ctx, string? code, TimeSpan? retryAfter, string title)
+    {
+        code ??= NeedleBase.Application.Licensing.LicenseErrors.CheckUnavailable;
+        var unavailable = code is NeedleBase.Application.Licensing.LicenseErrors.CheckUnavailable or NeedleBase.Application.Licensing.LicenseErrors.NotConfigured;
+        if (unavailable)
+        {
+            var seconds = (int)Math.Clamp(Math.Ceiling((retryAfter ?? TimeSpan.FromSeconds(60)).TotalSeconds), 1, 3600);
+            ctx.Response.Headers.RetryAfter = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        return Create(ctx, unavailable ? StatusCodes.Status503ServiceUnavailable : StatusCodes.Status400BadRequest, code, title,
+            NeedleBase.Application.Licensing.LicenseErrors.MessageFor(code));
+    }
+
     public static ObjectResult CustomerNotFound(HttpContext ctx) =>
         Create(ctx, StatusCodes.Status404NotFound, RecordErrorMessages.CustomerNotFound, "Customer not found",
             "We couldn't find that customer. It may have been deleted.");

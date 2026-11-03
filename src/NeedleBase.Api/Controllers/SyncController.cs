@@ -14,6 +14,7 @@ namespace NeedleBase.Api.Controllers;
 [ApiController]
 [Authorize(Policy = "RequireStaff")]
 [Route("api/sync")]
+[AllowWhenReadOnly]
 [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(SyncRateLimit.PolicyName)]
 public sealed class SyncController : ControllerBase
 {
@@ -22,8 +23,12 @@ public sealed class SyncController : ControllerBase
     private readonly IAuditLog _audit;
     private readonly ICurrentUser _currentUser;
 
-    public SyncController(ISyncService sync, AuditContext auditContext, IAuditLog audit, ICurrentUser currentUser)
+    private readonly NeedleBase.Infrastructure.Licensing.LicenseService _licenses;
+
+    public SyncController(ISyncService sync, AuditContext auditContext, IAuditLog audit, ICurrentUser currentUser,
+        NeedleBase.Infrastructure.Licensing.LicenseService licenses)
     {
+        _licenses = licenses;
         _sync = sync;
         _auditContext = auditContext;
         _audit = audit;
@@ -89,7 +94,15 @@ public sealed class SyncController : ControllerBase
                     throttleKey: "sync.pull:" + DeviceKey(_auditContext.DeviceId), window: SyncAuditWindow, cancellationToken: cancellationToken);
             }
 
-            return page is null ? ApiProblems.SyncCursorInvalid(HttpContext, error) : Ok(page);
+            if (page is null)
+            {
+                return ApiProblems.SyncCursorInvalid(HttpContext, error);
+            }
+
+            // Pull always works, even read-only: phones keep their data and learn the license state here.
+            return Ok(string.IsNullOrEmpty(_currentUser.BusinessId)
+                ? page
+                : page with { Subscription = await _licenses.GetStatusAsync(_currentUser.BusinessId, cancellationToken) });
         }
         catch (SyncMaintenanceException)
         {

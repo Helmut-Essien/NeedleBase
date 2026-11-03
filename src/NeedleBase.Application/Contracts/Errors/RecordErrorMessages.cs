@@ -40,6 +40,7 @@ public static class RecordErrorMessages
         RecordError.PaymentExceedsBalance => PaymentExceedsBalance,
         RecordError.PaymentOrderLocked => PaymentOrderLocked,
         RecordError.PaymentForbidden => PaymentForbidden,
+        RecordError.SubscriptionReadOnly => NeedleBase.Application.Licensing.LicenseErrors.ReadOnly,
         _ => Validation
     };
 
@@ -55,6 +56,7 @@ public static class RecordErrorMessages
         RecordError.OrderNotFound or RecordError.OrderConflict or RecordError.OrderLocked
             or RecordError.OrderStatusInvalid or RecordError.AssigneeInvalid or RecordError.TotalMismatch
             => OrderErrorMessages.For(Code(error)),
+        RecordError.SubscriptionReadOnly => NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage,
         RecordError.PaymentNotFound => "We couldn't find that payment.",
         RecordError.PaymentConflict => "This payment has already been saved.",
         RecordError.PaymentInvalid => "Check the amount and how the customer paid.",

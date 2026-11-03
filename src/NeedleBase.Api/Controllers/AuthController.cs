@@ -11,6 +11,7 @@ namespace NeedleBase.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[AllowWhenReadOnly]
 [EnableRateLimiting("auth")]
 public sealed class AuthController : ControllerBase
 {
@@ -62,6 +63,7 @@ public sealed class AuthController : ControllerBase
     /// <summary>Register a new business and its Owner account.</summary>
     [HttpPost("register-business")]
     [AllowAnonymous]
+    [EnableRateLimiting(AuthRateLimits.RegisterPolicy)]
     [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RegisterBusiness(
@@ -69,6 +71,11 @@ public sealed class AuthController : ControllerBase
         CancellationToken cancellationToken)
     {
         var result = await _authService.RegisterBusinessAsync(request, GetIpAddress(), cancellationToken);
+        if (!result.Succeeded && result.ErrorCode?.StartsWith("LICENSE_", StringComparison.Ordinal) == true)
+        {
+            return ApiProblems.ForLicense(HttpContext, result.ErrorCode, result.RetryAfter, "Couldn't create your account");
+        }
+
         if (!result.Succeeded || result.Tokens is null || result.User is null)
         {
             return ApiProblems.Create(HttpContext, StatusCodes.Status400BadRequest, result.ErrorCode ?? "REGISTER_FAILED", "Couldn't create your account", result.Error);

@@ -19,7 +19,7 @@ public static class AuthErrorMessages
         };
 
     public static string ForRegister(ApiProblem problem) =>
-        Common(problem) ?? problem.Code switch
+        NeedleBase.Application.Licensing.LicenseErrors.MessageFor(problem.Code) ?? Common(problem) ?? problem.Code switch
         {
             // The API deliberately does not say whether an email is already taken (no account enumeration).
             "REGISTER_FAILED" => "Couldn't create an account with those details. If you already have an account, sign in instead.",

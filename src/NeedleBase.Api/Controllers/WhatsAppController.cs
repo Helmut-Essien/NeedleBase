@@ -35,6 +35,7 @@ public sealed class WhatsAppController : ControllerBase
         string.IsNullOrEmpty(_user.BusinessId) ? ApiProblems.SessionInvalid(HttpContext) : Ok(await _service.GetSettingsAsync(cancellationToken));
 
     [HttpPut("settings")]
+    [AllowWhenReadOnly] // stopping messages / honouring opt-outs must work while a shop is paused
     [Authorize(Policy = "RequireManagerOrOwner")]
     public async Task<IActionResult> PutSettings([FromBody] UpdateWhatsAppSettingsRequest request, CancellationToken cancellationToken)
     {
@@ -56,6 +57,7 @@ public sealed class WhatsAppController : ControllerBase
     }
 
     [HttpPut("customers/{customerId}/consent")]
+    [AllowWhenReadOnly] // stopping messages / honouring opt-outs must work while a shop is paused
     [Authorize(Policy = "RequireManagerOrOwner")]
     public async Task<IActionResult> SetConsent(string customerId, [FromBody] SetWhatsAppConsentRequest request, CancellationToken cancellationToken)
     {
@@ -76,6 +78,7 @@ public sealed class WhatsAppController : ControllerBase
             : Ok(await _service.GetMessagesAsync(orderId, page, cancellationToken));
 
     [HttpPost("orders/{orderId}/opened")]
+    [AllowWhenReadOnly] // stopping messages / honouring opt-outs must work while a shop is paused
     [Authorize(Policy = "RequireStaff")]
     public async Task<IActionResult> Opened(string orderId, [FromBody] WhatsAppOpenedRequest? request, CancellationToken cancellationToken) =>
         await _service.RecordOpenedAsync(orderId, request?.Status, cancellationToken) ? NoContent() : ApiProblems.OrderNotFound(HttpContext);

@@ -15,6 +15,7 @@ namespace NeedleBase.Api.Controllers;
 [ApiController]
 [Authorize(Policy = "RequireStaff")]
 [Route("api/staff")]
+[AllowWhenReadOnly]
 public sealed class StaffController : ControllerBase
 {
     private readonly ApplicationDbContext _db;

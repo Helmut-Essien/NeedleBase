@@ -14,8 +14,10 @@ public sealed class RegisterBusinessRequest
         string firstName,
         string surname,
         string businessName,
-        string? businessPhone)
+        string? businessPhone,
+        string? licenseKey = null)
     {
+        LicenseKey = licenseKey;
         Email = email;
         Password = password;
         FirstName = firstName;
@@ -38,6 +40,10 @@ public sealed class RegisterBusinessRequest
 
     [Required, MaxLength(200)]
     public string BusinessName { get; set; } = string.Empty;
+
+    /// <summary>Platform license key from the welcome email (required unless <c>Platform:RequireLicenseKey</c> is false).</summary>
+    [MaxLength(200)]
+    public string? LicenseKey { get; set; }
 
     [MaxLength(40)]
     public string? BusinessPhone { get; set; }

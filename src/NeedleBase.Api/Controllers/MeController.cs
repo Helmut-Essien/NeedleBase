@@ -10,6 +10,7 @@ namespace NeedleBase.Api.Controllers;
 /// <summary>Protected probe: requires auth + business_id claim (Slice 1 acceptance).</summary>
 [ApiController]
 [Route("api/me")]
+[AllowWhenReadOnly]
 [Authorize(Policy = "RequireStaff")]
 public sealed class MeController : ControllerBase
 {
