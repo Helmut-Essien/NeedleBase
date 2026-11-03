@@ -143,6 +143,10 @@ public sealed class MeasurementLocalService : IMeasurementLocalService
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return MapDetail(entity);
         }
+        catch (NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+        {
+            return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
+        }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {
             return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);

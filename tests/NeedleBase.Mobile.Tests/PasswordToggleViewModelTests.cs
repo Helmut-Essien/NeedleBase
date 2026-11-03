@@ -86,6 +86,15 @@ public class PasswordToggleViewModelTests
     }
 
     [Fact]
+    public void RegisterViewModel_ClearSensitiveFields_AlsoClearsTheLicenseKey()
+    {
+        var vm = new RegisterViewModel(new StubAuthService(), new StubNavigationService()) { LicenseKey = "NB-KEY-1", Password = "Secret1" };
+        vm.ClearSensitiveFields();
+        Assert.Null(vm.LicenseKey);
+        Assert.Equal(string.Empty, vm.Password);
+    }
+
+    [Fact]
     public void RegisterViewModel_PrepareForDisplay_RemasksWithoutClearingPasswords()
     {
         var vm = new RegisterViewModel(new StubAuthService(), new StubNavigationService())

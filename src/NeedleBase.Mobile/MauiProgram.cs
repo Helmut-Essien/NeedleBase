@@ -81,6 +81,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMeasurementLocalService, MeasurementLocalService>();
         builder.Services.AddSingleton<IOrderLocalService, OrderLocalService>();
         builder.Services.AddSingleton<IPaymentLocalService, PaymentLocalService>();
+        builder.Services.AddSingleton<SubscriptionStatusStore>();
         builder.Services.AddSingleton<AppStartupService>();
         builder.Services.AddSingleton<AccessRevokedService>();
 

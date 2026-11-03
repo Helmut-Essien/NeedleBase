@@ -11,14 +11,17 @@ public sealed class AppStartupService
     private readonly INavigationService _navigation;
     private readonly ILocalDatabaseService _localDatabase;
     private readonly AccessRevokedService _accessRevoked;
+    private readonly SubscriptionStatusStore? _subscription;
     private bool _started;
 
     public AppStartupService(
         IAuthService authService,
         INavigationService navigation,
         ILocalDatabaseService localDatabase,
-        AccessRevokedService accessRevoked)
+        AccessRevokedService accessRevoked,
+        SubscriptionStatusStore? subscription = null)
     {
+        _subscription = subscription;
         _authService = authService;
         _navigation = navigation;
         _localDatabase = localDatabase;
@@ -87,6 +90,11 @@ public sealed class AppStartupService
                     await _authService.ClearTokensAsync();
                     await _navigation.ShowLoginAsync();
                     return;
+                }
+
+                if (_subscription is not null)
+                {
+                    await _subscription.RestoreAsync(businessId); // banner + pause until the next sync answers
                 }
 
                 await _navigation.ShowMainAsync();

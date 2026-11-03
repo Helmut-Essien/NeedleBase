@@ -90,6 +90,46 @@ public partial class HomeViewModel : BaseViewModel
 
     public bool HasLoadError => LoadError is not null;
 
+    /// <summary>License banner from the last sync (null = none). Owner-only tasks are hidden from other staff.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasLicenseBanner))]
+    private string? licenseBanner;
+
+    public bool HasLicenseBanner => LicenseBanner is not null;
+
+    private string? _role;
+    private SynchronizationContext? _uiContext;
+
+    /// <summary>Banner copy for a status and the signed-in role (pure; unit tested).</summary>
+    public static string? LicenseBannerText(NeedleBase.Application.Contracts.Licensing.SubscriptionStatusDto? status, string? role)
+    {
+        if (status?.Message is not { Length: > 0 } message)
+        {
+            return null;
+        }
+
+        return status.OwnerOnly && role != BusinessRole.Owner ? null : message;
+    }
+
+    private void UpdateLicenseBanner()
+    {
+        var status = NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current;
+        LicenseBanner = LicenseBannerText(status, _role);
+    }
+
+    private void OnSubscriptionChanged(object? sender, EventArgs e)
+    {
+        var context = _uiContext;
+        if (context is null)
+        {
+            UpdateLicenseBanner();
+        }
+        else
+        {
+            context.Post(static state => ((HomeViewModel)state!).UpdateLicenseBanner(), this);
+        }
+    }
+
     private readonly LiveListRefresh _live;
     private int _loadGeneration;
 
@@ -97,10 +137,18 @@ public partial class HomeViewModel : BaseViewModel
     public Task AppearAsync()
     {
         _live.Attach();
+        _uiContext = SynchronizationContext.Current;
+        NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Changed -= OnSubscriptionChanged;
+        NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Changed += OnSubscriptionChanged;
+        UpdateLicenseBanner();
         return LoadCommand.ExecuteAsync(null);
     }
 
-    public void Disappear() => _live.Detach();
+    public void Disappear()
+    {
+        _live.Detach();
+        NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Changed -= OnSubscriptionChanged;
+    }
 
     [RelayCommand]
     private async Task LoadAsync()
@@ -117,6 +165,8 @@ public partial class HomeViewModel : BaseViewModel
                 Greeting = string.IsNullOrWhiteSpace(user.FirstName) ? dayPart : $"{dayPart}, {user.FirstName.Trim()}";
                 BusinessName = string.IsNullOrWhiteSpace(user.BusinessName) ? "NeedleBase" : user.BusinessName.Trim();
                 UserInitials = BuildInitials(user.FirstName, user.Surname, user.BusinessName);
+                _role = user.Role;
+                UpdateLicenseBanner();
             }
 
             var businessId = await _auth.GetBusinessIdAsync();

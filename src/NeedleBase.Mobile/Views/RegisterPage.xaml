@@ -91,6 +91,24 @@
                        AutomationId="RegisterEmail" />
             </Border>
 
+            <Label Text="License key" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
+            <Border Stroke="{StaticResource Gray300}" StrokeThickness="1" BackgroundColor="{StaticResource White}"
+                    Padding="14,2" MinimumHeightRequest="48" StrokeShape="RoundRectangle 8" Margin="0,0,0,4">
+                <Entry Placeholder="From the email we sent you"
+                       PlaceholderColor="{StaticResource Gray600}"
+                       TextColor="{StaticResource Charcoal}"
+                       Text="{Binding LicenseKey}"
+                       Keyboard="Plain"
+                       IsSpellCheckEnabled="False"
+                       IsTextPredictionEnabled="False"
+                       MaxLength="200"
+                       IsEnabled="{Binding CanSubmit}"
+                       SemanticProperties.Description="License key"
+                       SemanticProperties.Hint="From the email we sent you. Use the same email address above."
+                       AutomationId="RegisterLicenseKey" />
+            </Border>
+            <Label Text="Use the same email address the key was sent to." FontSize="13" TextColor="{StaticResource Gray600}" Margin="0,0,0,14" />
+
             <Label Text="Password" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" Margin="0,0,0,6" />
             <Border Stroke="{StaticResource Gray300}"
                     StrokeThickness="1"

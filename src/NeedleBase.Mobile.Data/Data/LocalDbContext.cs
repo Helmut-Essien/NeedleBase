@@ -31,6 +31,7 @@ public sealed class LocalDbContext : DbContext
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
+        ThrowIfReadOnly();
         StampCustomerSearchKeys();
         var queued = !SuppressSyncQueue && SyncQueueWriter.EnqueueAsync(this, CancellationToken.None).GetAwaiter().GetResult();
         var result = base.SaveChanges(acceptAllChangesOnSuccess);
@@ -45,6 +46,7 @@ public sealed class LocalDbContext : DbContext
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        ThrowIfReadOnly();
         StampCustomerSearchKeys();
         var queued = !SuppressSyncQueue && await SyncQueueWriter.EnqueueAsync(this, cancellationToken).ConfigureAwait(false);
         var result = await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
@@ -55,6 +57,28 @@ public sealed class LocalDbContext : DbContext
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// New work is paused while the shop's license is read-only (<see cref="Sync.LocalSubscriptionGate"/>). Sync's own
+    /// writes (pull, push bookkeeping) set <see cref="SuppressSyncQueue"/> and are never blocked, so changes made before
+    /// the pause still reach the server.
+    /// </summary>
+    private void ThrowIfReadOnly()
+    {
+        if (SuppressSyncQueue || !Sync.LocalSubscriptionGate.IsReadOnly)
+        {
+            return;
+        }
+
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            if (entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted &&
+                entry.Entity is Customer or MeasurementProfile or Order or OrderLine or Payment)
+            {
+                throw new Sync.SubscriptionReadOnlyException();
+            }
+        }
     }
 
     /// <summary>Every writer (forms now, sync pull in Slice 4) gets the same search keys.</summary>

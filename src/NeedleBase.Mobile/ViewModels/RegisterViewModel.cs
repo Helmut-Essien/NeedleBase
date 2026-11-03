@@ -31,6 +31,7 @@ public partial class RegisterViewModel : BaseViewModel
     [ObservableProperty] private string surname = string.Empty;
     [ObservableProperty] private string businessName = string.Empty;
     [ObservableProperty] private string? businessPhone;
+    [ObservableProperty] private string? licenseKey;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPasswordHidden))]
@@ -140,6 +141,7 @@ public partial class RegisterViewModel : BaseViewModel
     {
         Password = string.Empty;
         ConfirmPassword = string.Empty;
+        LicenseKey = null;
         RemaskPasswords();
     }
 
@@ -195,7 +197,8 @@ public partial class RegisterViewModel : BaseViewModel
                 FirstName.Trim(),
                 Surname.Trim(),
                 BusinessName.Trim(),
-                string.IsNullOrWhiteSpace(BusinessPhone) ? null : BusinessPhone.Trim());
+                string.IsNullOrWhiteSpace(BusinessPhone) ? null : BusinessPhone.Trim(),
+                string.IsNullOrWhiteSpace(LicenseKey) ? null : LicenseKey.Trim());
 
             var user = await _authService.RegisterBusinessAsync(request);
             if (user is null)

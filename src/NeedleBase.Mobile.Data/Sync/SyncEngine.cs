@@ -467,6 +467,11 @@ public sealed class SyncEngine
         {
             var request = new SyncPullRequest { Cursor = cursor, Limit = BatchSize, DeviceId = deviceId };
             var page = await WithRateLimitWaitAsync(ct => _api.PullAsync(request, ct), cancellationToken).ConfigureAwait(false);
+            if (page.Subscription is { } subscription)
+            {
+                LocalSubscriptionGate.Set(businessId, subscription); // banner + read-only gate (server decides)
+            }
+
             seen?.Add(page);
             var last = !page.HasMore;
             await ApplyPageAsync(businessId, page, last && seen is not null ? seen : null, cancellationToken).ConfigureAwait(false);

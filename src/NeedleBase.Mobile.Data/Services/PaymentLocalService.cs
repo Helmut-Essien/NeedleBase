@@ -121,6 +121,10 @@ public sealed class PaymentLocalService : IPaymentLocalService
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false); // queues the sync item in the same save
             return PaymentService.ToDto(entity);
         }
+        catch (NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+        {
+            return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
+        }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {
             return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
@@ -157,6 +161,10 @@ public sealed class PaymentLocalService : IPaymentLocalService
             entity.Void(reason, DateTimeOffset.UtcNow);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return PaymentService.ToDto(entity);
+        }
+        catch (NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+        {
+            return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
         }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {

@@ -52,6 +52,7 @@ public sealed class LocalDatabaseService : ILocalDatabaseService
         finally
         {
             NeedleBase.Mobile.Data.Data.LocalDataVersion.Bump(); // cached lists must not show wiped rows
+            NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Clear(); // the license view belonged to the wiped shop
         }
     }
 

@@ -298,6 +298,10 @@ public sealed class OrderLocalService : IOrderLocalService
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return await GetByIdAsync(businessId, entity.Id, cancellationToken).ConfigureAwait(false);
         }
+        catch (NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+        {
+            return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
+        }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {
             return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
@@ -337,6 +341,10 @@ public sealed class OrderLocalService : IOrderLocalService
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var replay = await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false);
             return replay is null ? RecordResult.Fail(RecordError.Validation, OrderErrorMessages.Fallback) : replay;
+        }
+        catch (NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+        {
+            return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
         }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {
@@ -416,6 +424,10 @@ public sealed class OrderLocalService : IOrderLocalService
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var replay = await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false);
             return replay is null ? RecordResult.Fail(RecordError.Validation, OrderErrorMessages.Fallback) : replay;
+        }
+        catch (NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+        {
+            return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
         }
         catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
         {

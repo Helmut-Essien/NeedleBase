@@ -29,6 +29,13 @@
                 </VerticalStackLayout>
             </Grid>
 
+            <!-- License banner (from sync; the server decides what's allowed) -->
+            <Border IsVisible="{Binding HasLicenseBanner}" BackgroundColor="#FFF4E5" Stroke="#F0B46B" StrokeThickness="1"
+                    StrokeShape="RoundRectangle 12" Padding="14" AutomationId="HomeLicenseBanner"
+                    SemanticProperties.Description="{Binding LicenseBanner}">
+                <Label Text="{Binding LicenseBanner}" FontSize="14" TextColor="{StaticResource Charcoal}" LineBreakMode="WordWrap" />
+            </Border>
+
             <!-- 2. SyncChip (Slice 4): honest sync state; tap for details -->
             <Border x:Name="SyncChip" x:DataType="vm:SyncStatusViewModel" BackgroundColor="White" Stroke="{StaticResource Gray300}"
                     StrokeThickness="1" StrokeShape="RoundRectangle 12" Padding="14"
