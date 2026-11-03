@@ -215,3 +215,28 @@ Open:
   - Change password (3), reset password (2) and accept invite (1) now use the shared `PasswordField` control (`Views/PasswordField.cs`).
 - The text hides again when the page goes away.
 - Open: sign-in and register still carry the same markup in XAML. Moving them to a shared XAML control would remove the duplication. It is not needed for behaviour.
+
+### Platform licensing (2026-11-03)
+
+Built: see `docs/platform-licensing.md` and the "Platform licensing" note in `phases.md`.
+Open / by design:
+- Existing shops are never locked until the owner adds a key (banner only). There is no deadline.
+- Adding or replacing a key is on the website only (`/Settings/License`); the phone banner points there.
+- Sync pushes are never refused for the license (so work made before the lock always reaches the server). Older
+  phone app versions without the local gate can therefore still add work offline while read-only and sync it.
+- If the server's Data Protection keys are lost, stored license keys can't be read: the shop shows "needs_reattach"
+  (never locked) until the owner enters the key again. Keep the Data Protection key ring persisted and backed up.
+- Device slot: each shop uses the key's single device slot. Moving a key to another shop needs the slot released in Platform.
+- A Platform outage blocks **new** registrations and key changes (with a "try again" message). Existing shops keep working.
+- Development may set `Platform:RequireLicenseKey=false`; such shops have no key and are never locked.
+- Platform must add the email-match field and the "no slot on failure" rule (docs list them); until then every
+  registration with a key is refused as an email mismatch.
+- Review (2026-11-03): the re-check claims each shop with a conditional update before calling Platform (no double
+  calls from overlapping passes or several Api instances), saves per shop, ignores an answer if the Owner changed the
+  key meanwhile, and stops the pass on network/timeout too. JWKS keeps working keys if a refresh fails or is empty.
+  Concurrent duplicate registrations get the normal "couldn't create" answer, not a 500.
+- Left on purpose: the old-phone push gap stays open. Closing it means refusing sync pushes while read-only, but the
+  server can't tell work made before the lock from work made after (phone clocks can't be trusted), so earlier offline
+  work could be lost. Status/JWKS/pending-shop-id caches are per Api instance (30 s / 1 h / 30 min); with several
+  instances a key change can take up to 30 s to show everywhere. Old phone app versions can't register (no key field)
+  and see the generic register message.

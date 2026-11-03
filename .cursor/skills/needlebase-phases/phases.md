@@ -158,6 +158,12 @@ Mark a slice **Done** in the table only when its acceptance list is met (or expl
 ### Audit trail (cross-cutting, 22 Oct 2026)
 Not owned by one slice (only “Recent activity” was in the IA). Built after Slice 6: `AuditEvents` (append-only), Api `GET /api/audit`, web **Activity** page + order History panel + customer History link. Slice 7 must keep emitting `staff.*` (captured automatically from `StaffMembership` changes) and emit `auth.password_changed` from the password-change endpoint it adds. Mobile read-only history: deferred.
 
+### Platform licensing (3 Nov 2026)
+Supersedes the 26 Oct "Trial/subscription: ON HOLD" decision (the user approved the flow on 3 Nov 2026). Code + automated tests done, not committed; not yet verified against a real Platform (Platform must first add the email-match field: `docs/platform-licensing.md`).
+Server: `Business` license fields + migration `20261103123054_PlatformLicense`; `Application/Licensing` (`SubscriptionRules`, `LicenseErrors`, `ILicensePlatform`); `Infrastructure/Licensing` (Platform client, ES256/JWKS token check, encrypted key, re-check worker); `SubscriptionWriteGuard` (read-only refuses new customers/measurements/orders/payments; sync pushes allowed); `GET /api/subscription`, `POST /api/subscription/license` (Owner, rate-limited); register needs a key (`Platform:RequireLicenseKey`); status in every sync pull.
+Web: license key on Register; banner on every page (cached 60 s); `Settings/License` (Owner). Mobile: key on Register; Home banner; local read-only gate (offline), status kept in secure storage.
+Tests: `LicensingApiTests`, `PlatformLicenseClientTests`, `LicensingRulesTests`, `BusinessLicenseTests`, `LicensePageTests`, `LicenseGateMobileTests`.
+
 ## Out of scope until explicitly requested
 
 Multi-currency runtime, multi-business workspace switcher, full web offline parity, external payment-provider webhooks as source of truth, AI, Redis, Excel/PDF reporting suites, rewriting away from Clean Architecture / MVVM.
