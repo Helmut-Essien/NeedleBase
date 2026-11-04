@@ -22,8 +22,14 @@
 		<ApplicationId>com.helmutcode.needlebase</ApplicationId>
 
 		<!-- Versions -->
-		<ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
-		<ApplicationVersion>1</ApplicationVersion>
+		<!-- Version scheme (docs/android-release.md): NeedleBaseVersion = what users see (major.minor.patch);
+		     NeedleBaseVersionCode = Android versionCode, a whole number that must go UP by at least 1 for every
+		     upload to Google Play (Play refuses a repeat). Pass both on each release build:
+		     -p:NeedleBaseVersion=1.0.0 -p:NeedleBaseVersionCode=2 -->
+		<NeedleBaseVersion Condition="'$(NeedleBaseVersion)' == ''">0.1.0</NeedleBaseVersion>
+		<NeedleBaseVersionCode Condition="'$(NeedleBaseVersionCode)' == ''">1</NeedleBaseVersionCode>
+		<ApplicationDisplayVersion>$(NeedleBaseVersion)</ApplicationDisplayVersion>
+		<ApplicationVersion>$(NeedleBaseVersionCode)</ApplicationVersion>
 
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
 
@@ -48,7 +54,83 @@
 	<PropertyGroup Condition="'$(Configuration)' == 'Release' And $(TargetFramework.Contains('-android'))">
 		<RunAOTCompilation>true</RunAOTCompilation>
 		<AndroidEnableProfiledAot>true</AndroidEnableProfiledAot>
+		<!-- Package format(s), both signed with the same upload key (docs/android-release.md):
+		     aab  = Google Play App Bundle (default), apk = universal APK for sideloading (all ABIs in one file),
+		     both = one build that writes both. Set with -p:NeedleBasePackageFormat=apk|aab|both
+		     (the format option of scripts/android-release.sh). -->
+		<NeedleBasePackageFormat Condition="'$(NeedleBasePackageFormat)' == ''">aab</NeedleBasePackageFormat>
+		<AndroidPackageFormats Condition="'$(NeedleBasePackageFormat)' == 'aab'">aab</AndroidPackageFormats>
+		<AndroidPackageFormats Condition="'$(NeedleBasePackageFormat)' == 'apk'">apk</AndroidPackageFormats>
+		<AndroidPackageFormats Condition="'$(NeedleBasePackageFormat)' == 'both'">aab;apk</AndroidPackageFormats>
+		<AndroidCreatePackagePerAbi>false</AndroidCreatePackagePerAbi>
+		<!-- .NET 9 builds only 64-bit (arm64, x64) by default. 32-bit ARM is added so the sideloaded APK also installs on
+		     low-cost/Android Go phones; Play serves each phone only its own ABI from the .aab. -->
+		<RuntimeIdentifiers>android-arm;android-arm64;android-x64</RuntimeIdentifiers>
 	</PropertyGroup>
+	<!-- In-app (OTA) updates (docs/android-release.md, "Updates"). NeedleBaseUpdateChannel:
+	       sideload = APK published on GitHub Pages; the app checks NeedleBaseUpdateManifestUrl (update.json),
+	                  downloads, verifies SHA-256 + signing certificate and opens the system installer.
+	       play     = Google Play updates the app; the updater, its FileProvider and REQUEST_INSTALL_PACKAGES
+	                  are compiled out (Play policy).
+	     Default: Release apk = sideload, Release aab/both = play, Debug = sideload (inactive without a manifest URL). -->
+	<PropertyGroup>
+		<NeedleBaseUpdateChannel Condition="'$(NeedleBaseUpdateChannel)' == '' And '$(Configuration)' == 'Release' And '$(NeedleBasePackageFormat)' != 'apk'">play</NeedleBaseUpdateChannel>
+		<NeedleBaseUpdateChannel Condition="'$(NeedleBaseUpdateChannel)' == ''">sideload</NeedleBaseUpdateChannel>
+		<DefineConstants Condition="'$(NeedleBaseUpdateChannel)' == 'sideload'">$(DefineConstants);NEEDLEBASE_OTA</DefineConstants>
+	</PropertyGroup>
+	<ItemGroup>
+		<AssemblyMetadata Include="NeedleBaseUpdateChannel" Value="$(NeedleBaseUpdateChannel)" />
+		<AssemblyMetadata Include="NeedleBaseUpdateManifestUrl" Value="$(NeedleBaseUpdateManifestUrl)" />
+	</ItemGroup>
+	<!-- Release signing (G9). Nothing secret lives in the repo: the keystore file stays OUTSIDE the repo and the
+	     passwords come from environment variables (MSBuild "env:" prefix), never the command line:
+	       NEEDLEBASE_KEYSTORE_PATH   absolute path to the upload keystore (.jks/.keystore)
+	       NEEDLEBASE_KEY_ALIAS       key alias inside it
+	       NEEDLEBASE_KEYSTORE_PASS   keystore password
+	       NEEDLEBASE_KEY_PASS        key password (often the same)
+	     scripts/android-release.sh sets the MSBuild properties from these. -->
+	<PropertyGroup>
+		<NeedleBaseKeystorePath Condition="'$(NeedleBaseKeystorePath)' == ''">$(NEEDLEBASE_KEYSTORE_PATH)</NeedleBaseKeystorePath>
+		<NeedleBaseKeyAlias Condition="'$(NeedleBaseKeyAlias)' == ''">$(NEEDLEBASE_KEY_ALIAS)</NeedleBaseKeyAlias>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)' == 'Release' And $(TargetFramework.Contains('-android')) And '$(NeedleBaseKeystorePath)' != ''">
+		<AndroidKeyStore>true</AndroidKeyStore>
+		<AndroidSigningKeyStore>$(NeedleBaseKeystorePath)</AndroidSigningKeyStore>
+		<AndroidSigningKeyAlias>$(NeedleBaseKeyAlias)</AndroidSigningKeyAlias>
+		<AndroidSigningStorePass>env:NEEDLEBASE_KEYSTORE_PASS</AndroidSigningStorePass>
+		<AndroidSigningKeyPass>env:NEEDLEBASE_KEY_PASS</AndroidSigningKeyPass>
+	</PropertyGroup>
+	<!-- Release guards: stop with a clear message instead of shipping a package that calls the placeholder host,
+	     is signed with the debug key, or targets an SDK Google Play refuses. NeedleBaseAllowUnsignedRelease=true
+	     is only for compile checks (the output must never be uploaded). They run on `dotnet publish` (how a Play
+	     bundle is made) or with -p:NeedleBaseReleaseGuards=true, so Release solution builds/tests and IDE
+	     design-time builds are not blocked (a non-published build still points at the .invalid placeholder,
+	     which fails visibly at run time). -->
+	<Target Name="NeedleBaseReleaseGuards" BeforeTargets="BeforeBuild"
+	        Condition="'$(Configuration)' == 'Release' And $(TargetFramework.Contains('-android')) And '$(DesignTimeBuild)' != 'true' And ('$(_IsPublishing)' == 'true' Or '$(NeedleBaseReleaseGuards)' == 'true')">
+		<Error Condition="$(NeedleBaseReleaseApiBaseUrl.Contains('.invalid')) Or !$(NeedleBaseReleaseApiBaseUrl.StartsWith('https://'))"
+		       Text="NeedleBase Release: set the real https API address, e.g. -p:NeedleBaseReleaseApiBaseUrl=https://YOUR-API-HOST/ (current: $(NeedleBaseReleaseApiBaseUrl)). See docs/android-release.md." />
+		<Error Condition="'$(NeedleBaseKeystorePath)' == '' And '$(NeedleBaseAllowUnsignedRelease)' != 'true'"
+		       Text="NeedleBase Release: no upload keystore. Set NEEDLEBASE_KEYSTORE_PATH, NEEDLEBASE_KEY_ALIAS, NEEDLEBASE_KEYSTORE_PASS and NEEDLEBASE_KEY_PASS (docs/android-release.md), or -p:NeedleBaseAllowUnsignedRelease=true for a compile check only." />
+		<Error Condition="'$(NeedleBaseKeystorePath)' != '' And !Exists('$(NeedleBaseKeystorePath)')"
+		       Text="NeedleBase Release: keystore not found at NEEDLEBASE_KEYSTORE_PATH." />
+		<Error Condition="'$(NeedleBaseKeystorePath)' != '' And ('$(NeedleBaseKeyAlias)' == '' Or '$(NEEDLEBASE_KEYSTORE_PASS)' == '' Or '$(NEEDLEBASE_KEY_PASS)' == '')"
+		       Text="NeedleBase Release: NEEDLEBASE_KEY_ALIAS, NEEDLEBASE_KEYSTORE_PASS and NEEDLEBASE_KEY_PASS must all be set with the keystore." />
+		<Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(NeedleBaseVersionCode)', '^[1-9][0-9]{0,8}$'))"
+		       Text="NeedleBase Release: NeedleBaseVersionCode must be a whole number from 1 to 999999999 (got '$(NeedleBaseVersionCode)')." />
+		<Error Condition="'$(NeedleBasePackageFormat)' != 'aab' And '$(NeedleBasePackageFormat)' != 'apk' And '$(NeedleBasePackageFormat)' != 'both'"
+		       Text="NeedleBase Release: NeedleBasePackageFormat must be apk, aab or both (got '$(NeedleBasePackageFormat)')." />
+		<Error Condition="'$(NeedleBaseUpdateChannel)' != 'sideload' And '$(NeedleBaseUpdateChannel)' != 'play'"
+		       Text="NeedleBase Release: NeedleBaseUpdateChannel must be sideload or play (got '$(NeedleBaseUpdateChannel)')." />
+		<Error Condition="'$(NeedleBaseUpdateChannel)' == 'sideload' And '$(NeedleBasePackageFormat)' != 'apk'"
+		       Text="NeedleBase Release: the sideload update channel is for the APK only. Build the Play bundle with NeedleBaseUpdateChannel=play (no REQUEST_INSTALL_PACKAGES) in a separate build." />
+		<Error Condition="'$(NeedleBaseUpdateChannel)' == 'sideload' And (!$(NeedleBaseUpdateManifestUrl.StartsWith('https://')) Or $(NeedleBaseUpdateManifestUrl.Contains('.invalid')))"
+		       Text="NeedleBase Release: a sideload APK needs the https address of update.json, e.g. -p:NeedleBaseUpdateManifestUrl=https://OWNER.github.io/NeedleBase/update.json (current: '$(NeedleBaseUpdateManifestUrl)')." />
+		<Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(NeedleBaseVersion)', '^[0-9]+\.[0-9]+\.[0-9]+$'))"
+		       Text="NeedleBase Release: NeedleBaseVersion must look like 1.0.0 (got '$(NeedleBaseVersion)')." />
+		<Error Condition="'$(TargetPlatformVersion)' != '' And $([MSBuild]::VersionLessThan('$(TargetPlatformVersion)', '35.0'))"
+		       Text="NeedleBase Release: target SDK $(TargetPlatformVersion) is below 35, which Google Play requires." />
+	</Target>
 
 
 	<ItemGroup>

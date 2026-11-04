@@ -10,6 +10,9 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
+    <!-- GHSA-2m69-gcr7-jv3q: EF Core Sqlite 9.0.9 pulls SQLitePCLRaw 2.1.10 (bundled SQLite with known CVEs, fixed
+         in 2.1.12+). Pin the bundle so lib.e_sqlite3 (and lib.e_sqlite3.android in the app) resolve to 2.1.14. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.9" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />

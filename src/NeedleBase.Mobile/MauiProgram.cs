@@ -82,6 +82,26 @@ public static class MauiProgram
         builder.Services.AddSingleton<IOrderLocalService, OrderLocalService>();
         builder.Services.AddSingleton<IPaymentLocalService, PaymentLocalService>();
         builder.Services.AddSingleton<SubscriptionStatusStore>();
+        // In-app updates (sideload builds; docs/android-release.md "Updates"). Play builds compile the installer out.
+        builder.Services.AddHttpClient(NeedleBase.Mobile.Services.Updates.AppUpdateService.HttpClientName, client =>
+        {
+            client.Timeout = TimeSpan.FromMinutes(15); // whole APK on a slow connection; resumable if it drops
+            client.DefaultRequestHeaders.UserAgent.ParseAdd($"NeedleBase-Android/{AppInfo.Current.VersionString}");
+        });
+#if ANDROID
+        builder.Services.AddSingleton<NeedleBase.Mobile.Services.Updates.IApkInstaller, NeedleBase.Mobile.AndroidApkInstaller>();
+#else
+        builder.Services.AddSingleton<NeedleBase.Mobile.Services.Updates.IApkInstaller, NeedleBase.Mobile.Services.Updates.UnsupportedApkInstaller>();
+#endif
+        builder.Services.AddSingleton(sp => new NeedleBase.Mobile.Services.Updates.AppUpdateService(
+            sp.GetRequiredService<IHttpClientFactory>(),
+            sp.GetRequiredService<NeedleBase.Mobile.Services.Updates.IApkInstaller>(),
+            Preferences.Default,
+            sp.GetRequiredService<IConnectivity>(),
+            NeedleBase.Mobile.Configuration.UpdateEndpoint.ManifestUrl())
+        {
+            BeforeInstall = _ => sp.GetRequiredService<SyncService>().SyncNowAsync()
+        });
         builder.Services.AddSingleton<AppStartupService>();
         builder.Services.AddSingleton<AccessRevokedService>();
 

@@ -19,6 +19,9 @@ public partial class App : Microsoft.Maui.Controls.Application
         window.Stopped += OnWindowStopped;
         window.Stopped += (_, _) => Sync?.OnBackground();
         window.Activated += (_, _) => Sync?.OnForeground(); // first show and every return to the foreground
+        // Sideload builds: throttled update check off the start-up path (never blocks sync or the UI).
+        window.Activated += (_, _) => UpdatePrompter.CheckInBackground(
+            NeedleBase.Mobile.Services.ServiceHelper.GetService<NeedleBase.Mobile.Services.Updates.AppUpdateService>());
         return window;
     }
 
