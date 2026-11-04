@@ -85,7 +85,10 @@ try {
     $a = NewPackage $existing
     Set-PackageEnvironment -Path $a -Variables $apiEnv
     Check 'other env entries kept' { $e = Get-PackageEnvironment $a; $e['ASPNETCORE_ENVIRONMENT'] -eq 'Production' -and $e['FrontendBaseUrl'] -ceq $site }
-    Check 'secret name refused' { Throws { Set-PackageEnvironment -Path (NewPackage $good) -Variables @{ JwtSettings__SecurityKey = 'x' } } }
+    Check 'unlisted name refused' { Throws { Set-PackageEnvironment -Path (NewPackage $good) -Variables @{ Email__Password = 'x' } } }
+    $srv = NewPackage $good
+    Set-PackageEnvironment -Path $srv -Variables (Get-ApiServerEnvironment -DbConnection 'Host=h;Database=d;Username=u;Password="a;b"')
+    Check 'server env written' { $e = Get-PackageEnvironment $srv; $e['ConnectionStrings__DefaultConnection'] -match 'Host=h' -and $e['JwtSettings__SecurityKey'].Length -ge 32 -and $e['Platform__RequireLicenseKey'] -eq 'false' }
     Check 'empty value refused' { Throws { Set-PackageEnvironment -Path (NewPackage $good) -Variables @{ FrontendBaseUrl = ' ' } } }
     Check 'inheriting config refused' { Throws { Set-PackageEnvironment -Path (NewPackage $inheriting) -Variables $apiEnv } }
     Check 'no web.config refused' { Throws { Set-PackageEnvironment -Path (NewPackage '') -Variables $apiEnv } }
@@ -111,6 +114,19 @@ $v6 = ConvertTo-PgEnvironment 'postgresql://u:p@[::1]:5432/d'
 Check 'uri ipv6 host' { $v6.PGHOST -eq '::1' }
 Check 'garbage refused' { Throws { ConvertTo-PgEnvironment 'Host="unterminated' } }
 Check 'incomplete refused' { Throws { ConvertTo-PgEnvironment 'Host=h' } }
+
+# The one database secret -> Api settings
+$c = ConvertTo-NpgsqlConnectionString 'postgresql://us%40r:p%3Bw@db.example:6543/nb?sslmode=verify-full'
+$cb = [System.Data.Common.DbConnectionStringBuilder]::new(); $cb.set_ConnectionString($c)
+Check 'uri -> npgsql' { $cb['Host'] -eq 'db.example' -and $cb['Port'] -eq '6543' -and $cb['Database'] -eq 'nb' -and $cb['Username'] -eq 'us@r' -and $cb['Password'] -eq 'p;w' -and $cb['SSL Mode'] -eq 'VerifyFull' }
+Check 'npgsql default ssl' { (ConvertTo-NpgsqlConnectionString 'Host=h;Database=d;Username=u') -match 'SSL Mode=Require' }
+$k1 = Get-DerivedJwtKey 'Host=h;Database=d;Username=u;Password=p'
+Check 'derived jwt stable and long' { $k1 -ceq (Get-DerivedJwtKey ' Host=h;Database=d;Username=u;Password=p ') -and $k1.Length -ge 32 }
+Check 'derived jwt depends on secret' { $k1 -cne (Get-DerivedJwtKey 'Host=h;Database=d;Username=u;Password=q') }
+$se = Get-ApiServerEnvironment -DbConnection 'Host=h;Database=d;Username=u' -JwtKey ('k' * 40) -PlatformBaseUrl 'https://p.example/' -PlatformKey 'pk' -PlatformIssuer 'iss'
+Check 'explicit jwt + platform' { $se['JwtSettings__SecurityKey'] -eq ('k' * 40) -and $se['Platform__RequireLicenseKey'] -eq 'true' -and $se['Platform__BaseUrl'] -eq 'https://p.example/' -and $se['Platform__IntegrationKey'] -eq 'pk' -and $se['Platform__TokenIssuer'] -eq 'iss' }
+Check 'short jwt refused' { Throws { Get-ApiServerEnvironment -DbConnection 'Host=h;Database=d;Username=u' -JwtKey 'short' } }
+Check 'half platform refused' { Throws { Get-ApiServerEnvironment -DbConnection 'Host=h;Database=d;Username=u' -PlatformKey 'pk' } }
 
 # Health URL of the sub-application
 Check 'health url' { (Get-ApiHealthUrl 'https://site.example/') -eq 'https://site.example/api/health/ready' }

@@ -4,8 +4,10 @@ name: CI
 
 on:
   pull_request:
+  # Pushes to main run CI inside release.yml (AssetTag style: one workflow per push, nothing runs twice). Other
+  # branches still get CI on push.
   push:
-    branches: [main, master]
+    branches-ignore: [main]
   workflow_dispatch:
   workflow_call:
     inputs:

@@ -17,9 +17,9 @@ Panel setup, once:
 2. Create the folder `wwwroot\api`, then add an **application** (not just a virtual directory) with the alias
    `api` pointing at it and its **own application pool** (No Managed Code). Without it `/api/health/ready` returns the
    Web's 404 and the release rolls the Api back.
-3. Set each app's environment variables on its own application ([production-config.md](production-config.md)).
-   `Api__BaseUrl` (Web) and `FrontendBaseUrl` (Api) are **not** needed there: the release writes both from the
-   `SITE_URL` variable into each package's `web.config` (see "Precedence" in production-config.md).
+3. Nothing to set on the panel: the release writes the Api's connection string (from
+   `PROD_DB_MIGRATION_CONNECTION_STRING`), JWT key and site URLs into each package's `web.config`
+   (see "Precedence" in production-config.md).
 4. Enable Web Deploy and put its server, site name and login into the GitHub secrets ([ci-cd.md](ci-cd.md)).
 
 How it fits together: the SDK writes each `web.config` with `<location path="." inheritInChildApplications="false">`,
@@ -35,7 +35,7 @@ On the free plan MonsterASP support enables HTTPS only **after** the site is upl
 purpose (Secure cookies, https `Api__BaseUrl`, HSTS, https-only OTA URLs); nothing is weakened for this:
 
 1. Keep `SITE_URL=https://needlebase.runasp.net/` (never an http value; the Android app bakes it in).
-2. Set the repository variable `SITE_HTTPS_PENDING=true` and run the release with deploy. The files are uploaded;
+2. Set the repository variable `SITE_HTTPS_PENDING=true` and push to main. The files are uploaded;
    health checks become plain-http smoke checks that only warn and never roll back.
 3. Ask support to enable HTTPS. Until then sign-in does not work (browsers drop Secure cookies on http). Expected.
 4. **Delete `SITE_HTTPS_PENDING`** and re-run the deploy: the normal https health checks and automatic rollback return.
@@ -55,8 +55,8 @@ purpose (Secure cookies, https `Api__BaseUrl`, HSTS, https-only OTA URLs); nothi
 
 ## Database migrations (every release)
 
-The Api **never migrates itself** outside Development (two instances or a half-finished deploy could race, and the
-running app should not hold schema-owner rights). Development keeps auto-migrate + demo seed on start-up.
+The Api **never migrates itself** outside Development (two instances or a half-finished deploy could race); the
+release applies the SQL first. Development keeps auto-migrate + demo seed on start-up.
 
 Each release:
 
@@ -102,8 +102,8 @@ credentials and are git-ignored.
 
 - [ ] DNS + TLS for the site hostname on helmutcode.com (https only; HSTS is on in Production).
 - [ ] `/api` is an IIS application with its own app pool.
-- [ ] Environment variables set on both sites; start-up log shows no configuration errors.
-- [ ] Database backup schedule on, migration script applied, app runs with a non-owner login.
+- [ ] Start-up log shows no configuration errors (settings come from the release).
+- [ ] Database backup before releases with migrations; migration script applied.
 - [ ] Data Protection key folders writable, outside/kept on deploy, backed up.
 - [ ] `ForwardedHeaders__KnownProxies`/`KnownNetworks` set to the host's proxy addresses.
 - [ ] Uptime monitor on `https://your-host/api/health/ready`.

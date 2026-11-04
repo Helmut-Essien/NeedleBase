@@ -134,6 +134,62 @@ function ConvertTo-PgEnvironment {
     return $result
 }
 
+# The one database secret (URI or Npgsql string) -> the Npgsql string the Api runs with.
+function ConvertTo-NpgsqlConnectionString {
+    param([Parameter(Mandatory)][string]$Connection)
+    $pg = ConvertTo-PgEnvironment -Connection $Connection
+    $ssl = switch ($pg.PGSSLMODE) {
+        'disable' { 'Disable' } 'allow' { 'Allow' } 'prefer' { 'Prefer' } 'require' { 'Require' }
+        'verify-ca' { 'VerifyCA' } 'verify-full' { 'VerifyFull' } default { throw "Unknown sslmode '$($pg.PGSSLMODE)'." }
+    }
+    $b = [System.Data.Common.DbConnectionStringBuilder]::new()
+    $b.set_Item('Host', $pg.PGHOST); $b.set_Item('Port', $pg.PGPORT); $b.set_Item('Database', $pg.PGDATABASE)
+    $b.set_Item('Username', $pg.PGUSER)
+    if ($pg.PGPASSWORD) { $b.set_Item('Password', $pg.PGPASSWORD) }
+    $b.set_Item('SSL Mode', $ssl)
+    return $b.get_ConnectionString()
+}
+
+# Stable JWT signing key when no JWT_SECURITY_KEY secret is set: HMAC-SHA256 of a fixed label keyed with the database
+# secret (anyone holding that secret already owns the data). Same secret -> same key, so deploys keep sign-ins;
+# changing the database password signs everyone out once.
+function Get-DerivedJwtKey {
+    param([Parameter(Mandatory)][string]$Connection)
+    $hmac = [System.Security.Cryptography.HMACSHA256]::new([System.Text.Encoding]::UTF8.GetBytes($Connection.Trim()))
+    try { return [Convert]::ToBase64String($hmac.ComputeHash([System.Text.Encoding]::UTF8.GetBytes('NeedleBase JWT signing key v1'))) }
+    finally { $hmac.Dispose() }
+}
+
+# Server settings the deploy writes into the Api package (nothing to set on the MonsterASP panel). Platform licensing
+# is on only when both the Platform URL and key are given; otherwise shops register without a key (Api warns).
+function Get-ApiServerEnvironment {
+    param(
+        [Parameter(Mandatory)][string]$DbConnection,
+        [string]$JwtKey = '',
+        [string]$PlatformBaseUrl = '',
+        [string]$PlatformKey = '',
+        [string]$PlatformIssuer = ''
+    )
+    $jwt = if ([string]::IsNullOrWhiteSpace($JwtKey)) { Get-DerivedJwtKey -Connection $DbConnection } else { $JwtKey.Trim() }
+    if ($jwt.Length -lt 32) { throw 'JWT_SECURITY_KEY must be at least 32 characters.' }
+    $result = [ordered]@{
+        ConnectionStrings__DefaultConnection = ConvertTo-NpgsqlConnectionString -Connection $DbConnection
+        JwtSettings__SecurityKey             = $jwt
+    }
+    $hasUrl = -not [string]::IsNullOrWhiteSpace($PlatformBaseUrl)
+    $hasKey = -not [string]::IsNullOrWhiteSpace($PlatformKey)
+    if ($hasUrl -ne $hasKey) { throw 'Set both PLATFORM_BASE_URL and PLATFORM_INTEGRATION_KEY, or neither.' }
+    if ($hasUrl) {
+        $result['Platform__RequireLicenseKey'] = 'true'
+        $result['Platform__BaseUrl'] = $PlatformBaseUrl.Trim()
+        $result['Platform__IntegrationKey'] = $PlatformKey.Trim()
+        if (-not [string]::IsNullOrWhiteSpace($PlatformIssuer)) { $result['Platform__TokenIssuer'] = $PlatformIssuer.Trim() }
+    } else {
+        $result['Platform__RequireLicenseKey'] = 'false'
+    }
+    return $result
+}
+
 # Health URL of the Api sub-application from the site URL.
 function Get-ApiHealthUrl {
     param([Parameter(Mandatory)][string]$SiteUrl, [string]$AppPath = 'api')
@@ -151,9 +207,12 @@ function Get-SiteRootUrl {
     return $u.TrimEnd('/') + '/'
 }
 
-# Non-secret settings CI may bake into a package's web.config. Anything else is refused, so a secret can never be
-# written into a package (secrets stay on the server).
-$script:PackageEnvironmentAllowList = @('Api__BaseUrl', 'FrontendBaseUrl')
+# Settings CI may write into a package's web.config. SITE_URL values are baked in at build time; the Api's server
+# settings (connection string, JWT key, Platform) only by the deploy job, right before upload, so the uploaded
+# artifacts never contain a secret. Any other name is refused.
+$script:PackageEnvironmentAllowList = @('Api__BaseUrl', 'FrontendBaseUrl',
+    'ConnectionStrings__DefaultConnection', 'JwtSettings__SecurityKey',
+    'Platform__RequireLicenseKey', 'Platform__BaseUrl', 'Platform__IntegrationKey', 'Platform__TokenIssuer')
 
 # The package settings each app gets from SITE_URL (single site: Web at /, Api at /api; the Web and the Android app
 # call "api/..." relative to the site root, so both values are the root).
@@ -210,4 +269,4 @@ function Get-PackageEnvironment {
     return $result
 }
 
-Export-ModuleMember -Function Get-MsDeploySkipArgs, Get-MsDeployEndpoint, Assert-MsDeployValue, Get-ContentPath, Test-DeployPackage, ConvertTo-PgEnvironment, Get-ApiHealthUrl, Get-SiteRootUrl, Get-SitePackageEnvironment, Set-PackageEnvironment, Get-PackageEnvironment
+Export-ModuleMember -Function Get-MsDeploySkipArgs, Get-MsDeployEndpoint, Assert-MsDeployValue, Get-ContentPath, Test-DeployPackage, ConvertTo-PgEnvironment, Get-ApiHealthUrl, Get-SiteRootUrl, Get-SitePackageEnvironment, Set-PackageEnvironment, Get-PackageEnvironment, ConvertTo-NpgsqlConnectionString, Get-DerivedJwtKey, Get-ApiServerEnvironment

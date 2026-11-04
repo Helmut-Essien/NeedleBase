@@ -33,7 +33,7 @@ These are not to be implemented now (there is deliberately no ops/deployment ski
 
 ### G3: No CI
 **Closed 3 Nov 2026 (code side):** `.github/workflows/ci.yml` (change detection via `.github/scripts/detect-changes.sh`, per-part build -warnaserror + tests with a Postgres service for the Api, Android Debug build, vulnerable-package check, single required "CI result" check) and `release.yml` (signed APK + AAB, migration SQL, GitHub Release + SHA256SUMS, approval-gated MonsterASP Web Deploy with App_Data kept and `/health/ready` check, optional Play internal upload). Setup, secrets, variables: `docs/ci-cd.md`.
-- **Still open (you):** create the `production` environment with required reviewers, the secrets/variables, `DEPLOY_ENABLED=true`, branch protection on "CI result"; first run on GitHub not yet seen green. `dotnet format --verify-no-changes` not added (format not yet enforced on the codebase).
+- **Still open (you):** create the `production` environment (holds the secrets; reviewers optional), the secrets/variables in docs/ci-cd.md (release deploys on every tag since 4 Nov 2026, AssetTag style), branch protection on "CI result"; first run on GitHub not yet seen green. `dotnet format --verify-no-changes` not added (format not yet enforced on the codebase).
 
 ### G7: Production config & publish hygiene
 **Closed 3 Nov 2026:** `.gitignore` covers `*.publishSettings`, `*.pubxml.user`, keystores (`*.jks`/`*.keystore`/`*.p12`/`*.pfx`/`*.pepk`), `*.aab`/`*.apk`, `App_Data/`; every setting is in `docs/production-config.md`; the Api fails fast outside Development/Testing (`Api/Configuration/ProductionConfigValidator.cs`); Production never migrates/seeds (idempotent script, `scripts/db-migrate.sh`, `docs/deployment.md`).

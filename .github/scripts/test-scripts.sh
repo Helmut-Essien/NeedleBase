@@ -117,6 +117,24 @@ else
   echo "WARN: jq not found; skipped the update-site tests"
 fi
 
+# next-version: version from the csproj, patch raised past existing tags.
+nextver() { # csproj-version tags...
+  local d; d=$(mktemp -d)
+  (
+    cd "$d"; git init -q
+    printf '<Project><NeedleBaseVersion Condition="x">%s</NeedleBaseVersion></Project>\n' "$1" > app.csproj
+    git add -A; git -c user.name=t -c user.email=t@t commit -q -m c
+    shift; for t in "$@"; do git tag "$t"; done
+    "$root/.github/scripts/next-version.sh" app.csproj 2>&1
+  )
+  rm -rf "$d"
+}
+check "version: first release"    "0.1.0" "$(nextver 0.1.0)"
+check "version: patch bumped"     "0.1.3" "$(nextver 0.1.0 v0.1.0 v0.1.2 v0.1.1)"
+check "version: 10 after 9"       "0.1.10" "$(nextver 0.1.0 v0.1.9)"
+check "version: new minor"        "0.2.0" "$(nextver 0.2.0 v0.1.7)"
+check "version: csproj ahead"     "0.1.5" "$(nextver 0.1.5 v0.1.2)"
+check "version: other tags ignored" "1.0.0" "$(nextver 1.0.0 v1.0.0-rc v10.0.4 mobile-v1.0.0)"
 echo "script tests: $pass passed, $fail failed"
 
 # --- iis-deploy PowerShell helpers (single-site Web + /api deploy). pwsh ships on GitHub's ubuntu runners;

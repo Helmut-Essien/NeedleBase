@@ -1,38 +1,21 @@
-# Release: signed Android APK (+ in-app update site on GitHub Pages) and optional AAB, server packages, migration SQL, GitHub Release, gated deploy to MonsterASP,
-# optional Google Play upload. Every secret and variable is listed in docs/ci-cd.md.
+# Release, AssetTag style: every push to main builds, releases and deploys what changed. Nobody types a version or a
+# tag: the version comes from NeedleBaseVersion in src/NeedleBase.Mobile/NeedleBase.Mobile.csproj (patch raised
+# automatically, .github/scripts/next-version.sh), versionCode = run number + VERSION_CODE_OFFSET, and the workflow
+# creates tag v<version> + the GitHub Release itself (after a successful deploy). Tags made with GITHUB_TOKEN never
+# start workflows, and this one does not run on tags, so there is no loop. CI runs inside this workflow (ci.yml no
+# longer runs on pushes to main), so nothing runs twice.
 #
-#   git tag v1.2.0 && git push origin v1.2.0      -> build, test, release, deploy (waits for approval)
-#   Actions > Release > Run workflow               -> same, with switches for deploy / GitHub Release / Play
+#   git push origin main                                   -> CI, APK + update site, release, deploy (changed parts)
+#   Actions > Release > Run workflow (from main)           -> same with everything rebuilt and redeployed
+#   Actions > Release > Run workflow (from tag v1.2.3)     -> redeploy that old version (rollback)
+# Secrets and variables: docs/ci-cd.md.
 name: Release
 
 on:
   push:
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md", ".cursor/**"]
   workflow_dispatch:
-    inputs:
-      version:
-        description: Version x.y.z (must match the tag when run from a tag)
-        required: true
-      version_code:
-        description: Android versionCode (blank = run number + VERSION_CODE_OFFSET). Must be higher than the last build installed.
-        required: false
-        default: ""
-      github_release:
-        description: Create the GitHub Release (tag v<version>)
-        type: boolean
-        default: true
-      deploy:
-        description: Deploy Api + Web to MonsterASP (asks for approval; needs DEPLOY_ENABLED=true)
-        type: boolean
-        default: false
-      everything:
-        description: Build and deploy every part, not only what changed since the previous v* tag
-        type: boolean
-        default: false
-      play_upload:
-        description: Upload the AAB to Google Play (also needs PLAY_UPLOAD_ENABLED=true)
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -64,37 +47,35 @@ jobs:
       # Only what changed since the previous release tag is built and deployed ('' = everything).
       - id: base
         env:
-          EVERYTHING: ${{ inputs.everything }}
+          # Manual runs build and deploy everything (redeploy, or roll back by running an older tag).
+          EVERYTHING: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           prev=""
           if [[ "$EVERYTHING" != "true" ]]; then
-            prev=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD^ 2>/dev/null || true)
+            # Last release reachable from this commit (the release of a failed deploy has no tag, so its changes
+            # are included again next time).
+            prev=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null || true)
           fi
           echo "Previous release: ${prev:-none (build everything)}" >> "$GITHUB_STEP_SUMMARY"
           echo "base=$prev" >> "$GITHUB_OUTPUT"
       - id: v
         env:
-          INPUT_VERSION: ${{ inputs.version }}
-          INPUT_CODE: ${{ inputs.version_code }}
           OFFSET: ${{ vars.VERSION_CODE_OFFSET }}
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-            version="${REF_NAME#v}"
+          if [[ "$REF_TYPE" == "tag" ]]; then
+            version="${REF_NAME#v}"          # manual run from an old tag: redeploy that version
           else
-            version="$INPUT_VERSION"
-            if [[ "$REF_TYPE" == "tag" && "$REF_NAME" != "v$version" ]]; then
-              echo "::error::Version $version does not match the selected tag $REF_NAME."; exit 1
-            fi
+            version=$(.github/scripts/next-version.sh)
           fi
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Version must look like 1.2.3 (got '$version')."; exit 1
           fi
           offset="${OFFSET:-0}"
           [[ "$offset" =~ ^[0-9]{1,9}$ ]] || { echo "::error::VERSION_CODE_OFFSET must be a whole number."; exit 1; }
-          code="${INPUT_CODE:-$((GITHUB_RUN_NUMBER + 10#$offset))}"
+          code="$((GITHUB_RUN_NUMBER + 10#$offset))"
           if [[ ! "$code" =~ ^[1-9][0-9]{0,8}$ ]]; then
             echo "::error::versionCode must be 1..999999999 (got '$code')."; exit 1
           fi
@@ -161,7 +142,7 @@ jobs:
           CODE: ${{ needs.meta.outputs.code }}
           UPDATE_BASE: ${{ needs.meta.outputs.update_base }}
           # The Play bundle is a second build (it must not contain the updater or REQUEST_INSTALL_PACKAGES).
-          BUILD_AAB: ${{ vars.PLAY_UPLOAD_ENABLED == 'true' || vars.ANDROID_BUILD_AAB == 'true' }}
+          BUILD_AAB: ${{ vars.PLAY_UPLOAD_ENABLED == 'true' }}
         # Passwords reach MSBuild only through the environment (AndroidSigning*Pass = env:...), never argv.
         run: |
           set -euo pipefail
@@ -187,7 +168,7 @@ jobs:
           shopt -s nullglob
           for f in artifacts/android/"$VERSION-$CODE"-aab/*-Signed.aab; do cp "$f" "dist/needlebase-$VERSION-$CODE.aab"; done
       # update.json for the in-app updater: hash, size, signing certificate (read from the APK itself with apksigner,
-      # which also verifies the signature), minimum supported build and release notes (tag message).
+      # which also verifies the signature), minimum supported build and release notes (commit message).
       - name: Update manifest
         env:
           VERSION: ${{ needs.meta.outputs.version }}
@@ -201,8 +182,8 @@ jobs:
           "$apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/certs.txt"
           mapfile -t certs < <(sed -n 's/^Signer #[0-9]* certificate SHA-256 digest: *//p' "$RUNNER_TEMP/certs.txt")
           [[ ${#certs[@]} -gt 0 ]] || { echo "::error::No signing certificate found in $apk."; exit 1; }
-          git fetch --no-tags --depth=1 origin "+refs/tags/v$VERSION:refs/tags/v$VERSION" 2>/dev/null || true
-          git tag -l --format='%(contents)' "v$VERSION" | sed '/^-----BEGIN PGP SIGNATURE-----/,$d' > "$RUNNER_TEMP/notes.txt" || true
+          # Release notes = the pushed commit's message (the tag is created later, by the release job).
+          git log -1 --format=%B > "$RUNNER_TEMP/notes.txt" || true
           [[ -s "$RUNNER_TEMP/notes.txt" ]] && [[ -n "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes.txt")" ]] || echo "NeedleBase $VERSION" > "$RUNNER_TEMP/notes.txt"
           cert_args=(); for c in "${certs[@]}"; do cert_args+=(--cert "$c"); done
           mkdir -p update
@@ -254,14 +235,6 @@ jobs:
             rm -f "$out/appsettings.Development.json"
             rm -rf "$out/App_Data"
           done
-      - name: Check SITE_URL before anyone is asked to approve
-        if: vars.DEPLOY_ENABLED == 'true'
-        env:
-          SITE_URL: ${{ vars.SITE_URL }}
-        run: |
-          if [[ ! "$SITE_URL" =~ ^https://[^/[:space:]]+/?$ ]]; then
-            echo "::error::SITE_URL must be the site root, e.g. https://needlebase.example/ (got '$SITE_URL')."; exit 1
-          fi
       # Non-secret URLs from SITE_URL into each package's web.config (aspNetCore environmentVariables, inside the
       # non-inheriting <location>): Web Api__BaseUrl and Api FrontendBaseUrl = the site root. Secrets never go here.
       - name: Write site URLs into the packages
@@ -272,14 +245,11 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
           Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
-          if ([string]::IsNullOrWhiteSpace($env:SITE_URL)) {
-            Write-Host "::warning::SITE_URL is not set; Api__BaseUrl/FrontendBaseUrl are not written (set them on the server)."
-            exit 0
-          }
+          # Throws unless SITE_URL is an https site root such as https://needlebase.runasp.net/.
           if ($env:API -eq 'true') { Set-PackageEnvironment -Path artifacts/publish/api -Variables (Get-SitePackageEnvironment -App Api -SiteUrl $env:SITE_URL) }
           if ($env:WEB -eq 'true') { Set-PackageEnvironment -Path artifacts/publish/web -Variables (Get-SitePackageEnvironment -App Web -SiteUrl $env:SITE_URL) }
       - name: Check packages for the single site (Web at /, Api at /api)
-        # Fails before anyone is asked to approve: web.config must not leak into child applications, no App_Data or
+        # Fails before the deploy starts: web.config must not leak into child applications, no App_Data or
         # development settings, and the Web must not contain anything named "api" (it would collide with /api).
         shell: pwsh
         env:
@@ -288,10 +258,9 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
           Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
-          $site = -not [string]::IsNullOrWhiteSpace($env:SITE_URL)
           $checks = @()
-          if ($env:API -eq 'true') { $checks += @{ Path = 'artifacts/publish/api'; Protect = ''; Env = $(if ($site) { Get-SitePackageEnvironment -App Api -SiteUrl $env:SITE_URL }) } }
-          if ($env:WEB -eq 'true') { $checks += @{ Path = 'artifacts/publish/web'; Protect = 'api'; Env = $(if ($site) { Get-SitePackageEnvironment -App Web -SiteUrl $env:SITE_URL }) } }
+          if ($env:API -eq 'true') { $checks += @{ Path = 'artifacts/publish/api'; Protect = ''; Env = (Get-SitePackageEnvironment -App Api -SiteUrl $env:SITE_URL) } }
+          if ($env:WEB -eq 'true') { $checks += @{ Path = 'artifacts/publish/web'; Protect = 'api'; Env = (Get-SitePackageEnvironment -App Web -SiteUrl $env:SITE_URL) } }
           $bad = $false
           foreach ($c in $checks) {
             foreach ($p in Test-DeployPackage -Path $c.Path -ProtectSubApp $c.Protect -RequiredEnvironment $c.Env) { Write-Host "::error::$($c.Path): $p"; $bad = $true }
@@ -324,12 +293,12 @@ jobs:
 
   github-release:
     name: GitHub Release
-    needs: [meta, ci, android, server]
-    # Runs when at least one part was built and nothing failed (a skipped part simply has no files).
+    needs: [meta, ci, android, server, deploy]
+    # Creates tag v<version> + the release once at least one part was built and nothing failed, deploy included
+    # (so a failed deploy leaves no tag and the next push retries those changes).
     if: >-
       always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
       && (needs.android.result == 'success' || needs.server.result == 'success')
-      && (github.event_name == 'push' || inputs.github_release)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -394,7 +363,7 @@ jobs:
   pages:
     name: Update site (GitHub Pages)
     needs: [meta, android]
-    if: needs.android.result == 'success' && vars.UPDATES_PAGES_ENABLED != 'false'
+    if: needs.android.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -457,12 +426,11 @@ jobs:
   deploy:
     name: Deploy to MonsterASP
     needs: [meta, ci, server]
-    # DEPLOY_ENABLED must be true AND the production environment must have required reviewers (docs/ci-cd.md);
-    # without the variable a tag only builds and releases, so a missing environment can never deploy unreviewed.
-    if: vars.DEPLOY_ENABLED == 'true' && needs.server.result == 'success' && (github.event_name == 'push' || inputs.deploy)
+    # Like AssetTag: every release deploys what it built. No approval step (add Required reviewers to the
+    # "production" environment if you ever want one); the environment only holds the deploy and database secrets.
+    if: needs.server.result == 'success'
     runs-on: windows-latest
     timeout-minutes: 60  # worst case: 2 deploys + 2 rollbacks with health checks of up to 9 min each; never cut a rollback short
-    # Required reviewers are set on this environment (docs/ci-cd.md); the job waits for approval.
     environment:
       name: production
       url: ${{ vars.SITE_URL }}
@@ -518,16 +486,9 @@ jobs:
         shell: pwsh
         env:
           DB_URL: ${{ secrets.PROD_DB_MIGRATION_CONNECTION_STRING }}
-          MIGRATIONS_MANUAL: ${{ vars.MIGRATIONS_MANUAL }}
         run: |
           $sql = 'pkg/migrations/needlebase-migrate.sql'
-          if ([string]::IsNullOrWhiteSpace($env:DB_URL)) {
-            if ($env:MIGRATIONS_MANUAL -eq 'true') {
-              Write-Host "::warning::PROD_DB_MIGRATION_CONNECTION_STRING not set; MIGRATIONS_MANUAL=true, so apply $sql by hand BEFORE approving."
-              exit 0
-            }
-            throw 'PROD_DB_MIGRATION_CONNECTION_STRING is not set (or set the MIGRATIONS_MANUAL variable to true and apply the SQL yourself).'
-          }
+          if ([string]::IsNullOrWhiteSpace($env:DB_URL)) { throw 'PROD_DB_MIGRATION_CONNECTION_STRING is not set (docs/ci-cd.md).' }
           Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
           # Npgsql string or postgres:// URI -> PG* variables: the connection never appears on a command line.
           $pg = ConvertTo-PgEnvironment -Connection $env:DB_URL
@@ -544,6 +505,32 @@ jobs:
           if (-not $psql) { throw 'psql not found on the runner (PGBIN, PATH, C:\Program Files\PostgreSQL).' }
           & $psql --no-psqlrc -v ON_ERROR_STOP=1 --quiet --file=$sql
           if ($LASTEXITCODE -ne 0) { throw "Migration failed (exit $LASTEXITCODE); the transaction was rolled back, nothing was deployed." }
+
+      # The Api's server settings go into its web.config here (never into the uploaded artifact): one database, so the
+      # running app uses PROD_DB_MIGRATION_CONNECTION_STRING too. JWT key: JWT_SECURITY_KEY, or derived from the database
+      # secret (stable across deploys). Platform licensing only when PLATFORM_BASE_URL + PLATFORM_INTEGRATION_KEY are set.
+      # Values are masked before anything can print them.
+      - name: Write server settings into the Api package
+        if: needs.ci.outputs.api == 'true'
+        shell: pwsh
+        env:
+          DB_URL: ${{ secrets.PROD_DB_MIGRATION_CONNECTION_STRING }}
+          JWT_SECURITY_KEY: ${{ secrets.JWT_SECURITY_KEY }}
+          PLATFORM_INTEGRATION_KEY: ${{ secrets.PLATFORM_INTEGRATION_KEY }}
+          PLATFORM_BASE_URL: ${{ vars.PLATFORM_BASE_URL }}
+          PLATFORM_TOKEN_ISSUER: ${{ vars.PLATFORM_TOKEN_ISSUER }}
+        run: |
+          Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
+          $vars = Get-ApiServerEnvironment -DbConnection $env:DB_URL -JwtKey $env:JWT_SECURITY_KEY `
+            -PlatformBaseUrl $env:PLATFORM_BASE_URL -PlatformKey $env:PLATFORM_INTEGRATION_KEY -PlatformIssuer $env:PLATFORM_TOKEN_ISSUER
+          foreach ($n in 'ConnectionStrings__DefaultConnection', 'JwtSettings__SecurityKey', 'Platform__IntegrationKey') {
+            if ($vars.Contains($n)) { Write-Host "::add-mask::$($vars[$n])" }
+          }
+          Set-PackageEnvironment -Path pkg/api -Variables $vars
+          if ($vars['Platform__RequireLicenseKey'] -eq 'false') {
+            Write-Host "::warning::PLATFORM_BASE_URL / PLATFORM_INTEGRATION_KEY not set: license keys are off (shops register without one)."
+          }
+          Write-Host "Api settings written: $($vars.Keys -join ', ')"
 
       # 2. Api into /api. The current /api content is copied to the RUNNER first (never uploaded as an artifact: its
       #    web.config may hold panel settings) so a failed deploy or health check is rolled back automatically.
@@ -620,8 +607,8 @@ jobs:
   play:
     name: Google Play (internal track)
     needs: [meta, android]
-    # Skipped when Android did not change (android job skipped). Off until PLAY_UPLOAD_ENABLED=true (repository variable); then on tags, or on manual runs that ask for it.
-    if: vars.PLAY_UPLOAD_ENABLED == 'true' && (github.event_name == 'push' || inputs.play_upload)
+    # Skipped when Android did not change (android job skipped). Off until PLAY_UPLOAD_ENABLED=true (repository variable).
+    if: vars.PLAY_UPLOAD_ENABLED == 'true'
     runs-on: ubuntu-latest
     environment: play-store
     steps:

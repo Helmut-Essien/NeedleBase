@@ -74,7 +74,7 @@ finish their download). The app (More › *Check for updates*, and automatically
    the updater, and unsynced changes stay in the local database across the update.
 
 `update.json` (schema 1): `packageName`, `versionName`, `versionCode`, `minSupportedVersionCode`, `apkUrl`
-(relative), `sha256`, `size`, `signingCertSha256` (from `apksigner`), `releaseNotes` (the tag message, max 2000
+(relative), `sha256`, `size`, `signingCertSha256` (from `apksigner`), `releaseNotes` (the pushed commit message, max 2000
 characters), `publishedAt`.
 
 **Build flag.** `NeedleBaseUpdateChannel`: `sideload` (APK; updater, FileProvider and `REQUEST_INSTALL_PACKAGES`

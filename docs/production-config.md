@@ -23,14 +23,14 @@ In the single-site layout ([deployment.md](deployment.md#one-site-web-at--api-at
 | Setting (env var) | Required | Notes |
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | yes | `Production` (IIS default when unset). Never `Development` on the server: Development migrates, seeds demo data and shows error details. |
-| `ConnectionStrings__DefaultConnection` | **yes** | PostgreSQL, e.g. `Host=...;Port=5432;Database=...;Username=...;Password=...;SSL Mode=Require`. Use a login that is **not** the schema owner for the running app (owner only for migrations; see deployment.md). On MonsterASP use the **Local access** string for the site. Checked at start-up (an invalid string stops the Api). |
+| `ConnectionStrings__DefaultConnection` | **yes**, automatic | PostgreSQL. The release writes it from the `PROD_DB_MIGRATION_CONNECTION_STRING` secret (URI or Npgsql form, converted to `Host=..;Port=..;Database=..;Username=..;Password=..;SSL Mode=..`). Checked at start-up (an invalid string stops the Api). |
 | `Database__MaxPoolSize` | no | Default 20. Connection-pool cap used when the connection string has no `Maximum Pool Size` (Npgsql's own default is 100). Keep it below the database's **Connection limit** (MonsterASP: database Overview page). |
-| `JwtSettings__SecurityKey` | **yes** | ≥ 32 characters, random (e.g. `openssl rand -base64 48`). The Development key is refused. Changing it signs everyone out. |
+| `JwtSettings__SecurityKey` | **yes**, automatic | ≥ 32 characters. The release writes the `JWT_SECURITY_KEY` secret, or a key derived from the database secret when that is unset. Changing it signs everyone out. |
 | `JwtSettings__Issuer` / `JwtSettings__Audience` | no | Defaults `NeedleBaseApi` / `NeedleBaseClient`. |
 | `JwtSettings__AccessTokenExpirationMinutes` / `RefreshTokenExpirationDays` | no | Defaults 60 / 7. |
 | `FrontendBaseUrl` | **yes**, automatic | https address of the Web app (links in emails). The release writes it from `SITE_URL` into the Api package's `web.config`; set it yourself only for a manual deploy. |
-| `Platform__BaseUrl` | **yes**\* | https Platform licensing address. |
-| `Platform__IntegrationKey` | **yes**\* | Secret from Platform for the `NEEDLEBASE` service. |
+| `Platform__BaseUrl` | **yes**\* | https Platform licensing address (release: `PLATFORM_BASE_URL` variable). |
+| `Platform__IntegrationKey` | **yes**\* | Secret from Platform for the `NEEDLEBASE` service (release: `PLATFORM_INTEGRATION_KEY` secret; without both, the release writes `Platform__RequireLicenseKey=false`). |
 | `Platform__TokenIssuer` | recommended | Expected license-token issuer; empty = not checked (warning). |
 | `Platform__RequireLicenseKey` | no | `true`/`false` (anything else is a start-up error). Default `true`. `false` = shops register without a key and are never locked (warning). \*Platform settings are only required while this is `true`. |
 | `Platform__ServiceCode`, `LockGraceDays`, `TimeoutSeconds`, `RecheckPollMinutes` | no | See [platform-licensing.md](platform-licensing.md). |
@@ -75,18 +75,15 @@ Rules:
 
 ## Precedence: web.config vs panel
 
-- The release writes only two **non-secret** values, from the `SITE_URL` repository variable (normalised to one
-  trailing `/`, must be an `https://host/` site root): Web `Api__BaseUrl` and Api `FrontendBaseUrl`. They go into
-  the package's `web.config` as `<aspNetCore><environmentVariables>`, inside the
-  `<location path="." inheritInChildApplications="false">` so the Web's values never leak into `/api`. Only these
-  two names are allowed; secrets are never written. The package check fails the release if either is missing or wrong.
-- The ASP.NET Core Module sets `web.config` environment variables on the app process, so a `web.config` value
-  **wins** over the same name set on the panel/app pool, and environment variables win over `appsettings.json`.
-- So the panel values for these two keys are no longer needed (delete them to avoid confusion). To change the
-  address, change `SITE_URL` and re-run the release. Everything else (connection string, JWT key, Platform key, ...)
-  stays on the panel.
+- The release writes the settings into each package's `web.config` as `<aspNetCore><environmentVariables>`, inside
+  `<location path="." inheritInChildApplications="false">` so the Web's values never leak into `/api`:
+  Web `Api__BaseUrl` and Api `FrontendBaseUrl` (from `SITE_URL`, at build time), and, only in the deploy job right
+  before upload, Api `ConnectionStrings__DefaultConnection`, `JwtSettings__SecurityKey` and `Platform__*`
+  (from the secrets in [ci-cd.md](ci-cd.md)). Uploaded artifacts never contain a secret; only listed names are allowed.
+- `web.config` values win over the panel/app pool and over `appsettings.json`, and each deploy replaces
+  `web.config`. So set nothing on the panel; change a secret or variable in GitHub and re-run the release.
 
-## Setting variables on MonsterASP (IIS)
+## Setting variables by hand (manual deploy only)
 
 1. Control panel → your site → look for **Environment variables** / **Application settings** and add each
    variable there (name with `__`).
