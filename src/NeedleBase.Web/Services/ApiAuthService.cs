@@ -174,6 +174,9 @@ public sealed class ApiAuthService : IApiAuthService
     /// <summary>Tests: make the cached answer stale (kept as the last known value).</summary>
     internal static void ExpireEmailEnabledCache() => _emailEnabled = _emailEnabled with { Until = DateTimeOffset.MinValue };
 
+    /// <summary>Tests: true while a background refresh is still running (it would write the cache when it ends).</summary>
+    internal static bool EmailEnabledRefreshInFlight => Volatile.Read(ref _emailRefreshing) == 1;
+
     /// <summary>Tests: forget the cached answer.</summary>
     internal static void ResetEmailEnabledCache()
     {

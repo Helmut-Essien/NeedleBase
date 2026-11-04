@@ -6,6 +6,13 @@ using NeedleBase.Web.Services;
 
 namespace NeedleBase.Web.Tests;
 
+/// <summary>
+/// The "email enabled" answer is a process-wide static cache that pages such as /Account/Login read. Tests that fill it
+/// with true must not run alongside page-render tests, which expect it to be off (their Api is unreachable).
+/// </summary>
+[CollectionDefinition("EmailEnabledCache", DisableParallelization = true)]
+public sealed class EmailEnabledCacheCollection;
+
 [Collection("EmailEnabledCache")]
 public sealed class EmailEnabledCacheTests
 {
@@ -49,6 +56,12 @@ public sealed class EmailEnabledCacheTests
         Assert.True(sw.ElapsedMilliseconds < 200, $"took {sw.ElapsedMilliseconds} ms");
         await Task.Delay(100);
         Assert.Equal(2, handler.Calls); // first fill + a single refresh
+
+        // Let the background refresh finish before clearing, or it writes "true" back into the shared cache after the
+        // reset and leaks into later tests (it did: /Account/Login showed "Forgot password?" on CI).
+        var until = DateTime.UtcNow.AddSeconds(15);
+        while (ApiAuthService.EmailEnabledRefreshInFlight && DateTime.UtcNow < until) await Task.Delay(20);
+        Assert.False(ApiAuthService.EmailEnabledRefreshInFlight);
         ApiAuthService.ResetEmailEnabledCache();
     }
 }
