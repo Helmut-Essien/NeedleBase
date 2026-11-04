@@ -37,9 +37,7 @@ Same shape as AssetTag's `main.yml`: one database, one secret for it, and nothin
    deploy job can read them). No reviewers needed; add yourself as *Required reviewer* only if you want to approve
    each deploy.
 2. Repository **variables** below (at least `SITE_URL`).
-3. **GitHub Pages** (in-app updates, [android-release.md](android-release.md#updates-in-app-sideload-builds)):
-   Settings → Pages → Source **GitHub Actions**.
-4. Optional: branch protection on main requiring "CI result"; environment `play-store` when you move to Play.
+3. Optional: branch protection on main requiring "CI result"; environment `play-store` when you move to Play.
 
 ### Secrets
 
@@ -69,13 +67,12 @@ replaces `/api/web.config`, so add them to the workflow step *Write server setti
 | `SITE_HTTPS_PENDING` | off | **First deploy only**, before the host has enabled HTTPS: `true` turns the health checks into http smoke checks that warn and never roll back. Delete it once HTTPS works ([deployment.md](deployment.md)). |
 | `MONSTER_ALLOW_UNTRUSTED` | off | `true` adds msdeploy `-allowUntrusted` (only if the Web Deploy endpoint has no valid certificate). |
 | `VERSION_CODE_OFFSET` | 0 | Added to the run number for the Android versionCode. |
-| `UPDATE_BASE_URL` | `https://<owner>.github.io/<repo>/` | Update site address; the APK reads `<this>update.json`. Set before the first release. |
 | `ANDROID_MIN_SUPPORTED_VERSION_CODE` | 0 | Builds below this versionCode must update. |
 | `PLATFORM_BASE_URL` / `PLATFORM_TOKEN_ISSUER` | unset | Optional, with `PLATFORM_INTEGRATION_KEY`. |
 | `PLAY_UPLOAD_ENABLED` | off | `true` = also build the AAB and upload it to Play. |
 | `PLAY_TRACK` / `PLAY_RELEASE_STATUS` | `internal` / `completed` | Play upload options. |
 
-No longer used (delete if set): `DEPLOY_ENABLED`, `MIGRATIONS_MANUAL`, `ANDROID_BUILD_AAB`, `UPDATES_PAGES_ENABLED`.
+No longer used (delete if set): `DEPLOY_ENABLED`, `MIGRATIONS_MANUAL`, `ANDROID_BUILD_AAB`, `UPDATES_PAGES_ENABLED`, `UPDATE_BASE_URL`. GitHub Pages is not used any more (Settings → Pages can be turned off).
 
 ## Releasing
 
@@ -101,8 +98,10 @@ Each push (back up the database first if it has migrations):
    package → Api into `/api` → `/api/health/ready` must answer 200 → Web into `/` (the `/api` folder is skipped) →
    `/` must answer 200. A failed step restores the previous files (see *Failure behaviour*).
 3. Tag `v<version>` + GitHub Release with the files and `SHA256SUMS` (0.x versions are pre-releases).
-4. Android changed → GitHub Pages update site (download page, `update.json`, APK); installed apps offer the update.
-   The commit message becomes the release notes. Play upload if enabled.
+4. Android changed → the release also carries `update.json` (APK address, SHA-256, size, signing certificate,
+   minimum build). Installed apps ask their Api (`/api/mobile/update`), which serves the newest release's
+   `update.json` from the GitHub Releases API (like AssetTag), and offer the update. The commit message becomes the
+   release notes. Play upload if enabled.
 
 Manual run (Actions → Release → Run workflow): from `main` it rebuilds and redeploys **everything** as a new
 version; from an old tag `v1.2.3` it redeploys that version (rollback).
@@ -144,7 +143,8 @@ Kept from AssetTag: push to main = release + deploy (version from the csproj, ta
 settings written by CI (nothing on the panel), change detection, signed APK as a GitHub Release asset.
 Different on purpose: one site (Web `/`, Api `/api`) instead of two, idempotent SQL via psql instead of
 `dotnet ef database update`, secrets written into `web.config` only in the deploy job (never in an uploaded
-artifact), health check with automatic rollback, and GitHub Pages in-app updates.
+artifact), health check with automatic rollback. In-app updates work like AssetTag (app → own Api → GitHub Releases), plus
+a signed `update.json` per release so the app verifies the APK's SHA-256 and signing certificate before installing.
 
 ## Local checks
 

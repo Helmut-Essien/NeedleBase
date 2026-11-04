@@ -3,15 +3,17 @@
 #
 #   NEEDLEBASE_KEYSTORE_PATH=/secure/place/needlebase-upload.jks \
 #   NEEDLEBASE_KEY_ALIAS=needlebase NEEDLEBASE_KEYSTORE_PASS=... NEEDLEBASE_KEY_PASS=... \
-#   scripts/android-release.sh --format apk --update-url https://OWNER.github.io/NeedleBase/update.json https://YOUR-API-HOST/ 1.0.0 2
+#   scripts/android-release.sh --format apk https://YOUR-SITE/ 1.0.0 2
 #   scripts/android-release.sh --format aab https://YOUR-API-HOST/ 1.0.0 2
 #
-# Usage: scripts/android-release.sh [--format apk|aab|both] [--update-url <https update.json>] <api-base-url (https)> <version e.g. 1.0.0> [versionCode]
+# Usage: scripts/android-release.sh [--format apk|aab|both] [--update-url <https url> | --no-updates] <api-base-url (https)> <version e.g. 1.0.0> [versionCode]
 #   --format apk   universal signed APK for sideloading (adb install / file share)
 #   --format aab   Google Play App Bundle (default)
 #   --format both  one build, both files, same upload key (no in-app updates)
-#   --update-url   APK only: turns on in-app updates from that update.json (GitHub Pages; docs/android-release.md
-#                  "Updates"). Without it the APK has no updater. Play bundles never get one (Play policy).
+#   (in-app updates) An APK checks its own Api, <api-base-url>api/mobile/update, which serves update.json from the
+#                  newest GitHub Release (AssetTag style; docs/android-release.md "Updates").
+#   --update-url   APK only: check another https address instead. --no-updates: APK without the updater.
+#                  Play bundles never get one (Play policy).
 #   versionCode    whole number that must go UP for every build users install (sideload or Play). If left out it
 #                  is GITHUB_RUN_NUMBER + NEEDLEBASE_VERSION_CODE_OFFSET (CI); outside CI it must be given.
 # Passwords are read by MSBuild from the environment (never passed on the command line or stored in the repo).
@@ -19,10 +21,11 @@
 # Compile check without a keystore (output must NOT be shipped): NEEDLEBASE_ALLOW_UNSIGNED=true
 set -euo pipefail
 
-usage() { echo "Usage: $0 [--format apk|aab|both] [--update-url <url>] <api-base-url> <version> [versionCode]" >&2; exit 2; }
+usage() { echo "Usage: $0 [--format apk|aab|both] [--update-url <url> | --no-updates] <api-base-url> <version> [versionCode]" >&2; exit 2; }
 
 format="aab"
 update_url=""
+no_updates=false
 args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -30,6 +33,7 @@ while [[ $# -gt 0 ]]; do
     --format=*) format="${1#--format=}"; shift ;;
     --update-url) [[ $# -ge 2 ]] || usage; update_url="$2"; shift 2 ;;
     --update-url=*) update_url="${1#--update-url=}"; shift ;;
+    --no-updates) no_updates=true; shift ;;
     -h|--help) usage ;;
     -*) echo "Unknown option '$1'." >&2; usage ;;
     *) args+=("$1"); shift ;;
@@ -59,13 +63,20 @@ if [[ ! "$api" =~ ^https://[^/[:space:]]+(/.*)?$ || "$api" == *".invalid"* ]]; t
   exit 2
 fi
 channel="play" # no in-app updater
+if [[ "$no_updates" == true && -n "$update_url" ]]; then
+  echo "--update-url and --no-updates cannot be combined." >&2
+  exit 2
+fi
+if [[ "$format" == "apk" && "$no_updates" == false && -z "$update_url" ]]; then
+  update_url="${api%/}/api/mobile/update" # the Api serves update.json from the newest GitHub Release
+fi
 if [[ -n "$update_url" ]]; then
   if [[ "$format" != "apk" ]]; then
     echo "--update-url is only for --format apk (a Play bundle must not contain the in-app updater)." >&2
     exit 2
   fi
-  if [[ ! "$update_url" =~ ^https://[^/[:space:]]+/[^[:space:]]*\.json$ || "$update_url" == *".invalid"* ]]; then
-    echo "--update-url must be the https address of update.json, e.g. https://owner.github.io/NeedleBase/update.json (got '$update_url')." >&2
+  if [[ ! "$update_url" =~ ^https://[^/[:space:]]+/[^[:space:]]+$ || "$update_url" == *".invalid"* ]]; then
+    echo "--update-url must be an https address, e.g. https://needlebase.example/api/mobile/update (got '$update_url')." >&2
     exit 2
   fi
   channel="sideload"

@@ -30,16 +30,17 @@ export NEEDLEBASE_KEY_ALIAS=needlebase
 read -rs NEEDLEBASE_KEYSTORE_PASS; export NEEDLEBASE_KEYSTORE_PASS
 read -rs NEEDLEBASE_KEY_PASS; export NEEDLEBASE_KEY_PASS
 # Sideload APK with in-app updates (site ROOT; the app calls api/...):
-scripts/android-release.sh --format apk --update-url https://OWNER.github.io/NeedleBase/update.json https://YOUR-SITE/ 1.0.0 2
+scripts/android-release.sh --format apk https://YOUR-SITE/ 1.0.0 2
 # Play bundle (no updater, no REQUEST_INSTALL_PACKAGES):
 scripts/android-release.sh --format aab https://YOUR-SITE/ 1.0.0 2
 ```
 
 Output in `artifacts/android/1.0.0-2-apk/` or `-aab/`: `com.helmutcode.needlebase-Signed.apk` / `.aab` and
-`SHA256SUMS`. `--format both` still exists but has no updater; `--update-url` with aab/both is refused. Leave out the versionCode only in CI
+`SHA256SUMS`. An APK checks `https://YOUR-SITE/api/mobile/update` for updates (`--update-url` for another address, `--no-updates`
+for none). `--format both` still exists but has no updater; `--update-url` with aab/both is refused. Leave out the versionCode only in CI
 (it then uses `GITHUB_RUN_NUMBER` + `NEEDLEBASE_VERSION_CODE_OFFSET`). The APK holds armeabi-v7a, arm64-v8a and
 x86_64, so it installs on 32-bit budget phones too. Tagged releases build the APK (and the AAB when Play is
-enabled) in GitHub Actions and publish the update site ([ci-cd.md](ci-cd.md)).
+enabled) in GitHub Actions and attach it, with `update.json`, to the GitHub Release ([ci-cd.md](ci-cd.md)).
 
 ## Sideloading (for now)
 
@@ -53,17 +54,21 @@ enabled) in GitHub Actions and publish the update site ([ci-cd.md](ci-cd.md)).
   handed out.
 - Keep versionCodes increasing across both channels: the first Play upload must be higher than any sideloaded
   build. Set the `VERSION_CODE_OFFSET` variable if you ever need to jump ahead of earlier codes.
-- Sideloaded phones update themselves from GitHub Pages (next section). The first install comes from the download
-  page `https://OWNER.github.io/NeedleBase/` (or `UPDATE_BASE_URL`).
+- Sideloaded phones update themselves (next section). The first install comes from the APK on the GitHub Releases
+  page (`https://github.com/Helmut-Essien/NeedleBase/releases`).
 
 ## Updates (in-app, sideload builds)
 
-**How it works.** Each release publishes to GitHub Pages: `index.html` (branded download page), `update.json` and
-`apk/needlebase-<version>-<code>.apk` (plus the previous APK, so phones holding a CDN-cached `update.json` can
-finish their download). The app (More › *Check for updates*, and automatically when it comes to the foreground,
+**How it works (like AssetTag).** Each release attaches `needlebase-<version>-<code>.apk` and `update.json` to the
+GitHub Release. The app asks its own Api, `GET /api/mobile/update` (anonymous); the Api reads the repository's
+releases from the GitHub API (`GitHub:Owner` / `GitHub:Repository` in the Api's appsettings, optional
+`GitHub:Token`), takes the newest non-draft release that has an `update.json` (pre-releases included, as 0.x
+versions are pre-releases) and returns it. It caches the answer for 5 minutes (GitHub allows 60 anonymous calls an
+hour) and keeps serving the last good answer for up to an hour if GitHub is unreachable; with nothing to serve it
+answers 503 and the app keeps its last copy. The app (More › *Check for updates*, and automatically when it comes to the foreground,
 5 s after start, at most every 6 h):
 
-1. reads `update.json` (15 s timeout, cache-buster, 64 KB limit) and compares **versionCode**;
+1. reads `update.json` from the Api (15 s timeout, cache-buster, 64 KB limit) and compares **versionCode**;
 2. offers an **optional** update ("Later" stops automatic prompts for that version), or a **required** one when
    the installed build is below `minSupportedVersionCode` (no "Later"; still enforced offline from the last copy);
 3. asks for **Install unknown apps** first (Android 8+), before downloading anything;
@@ -74,12 +79,13 @@ finish their download). The app (More › *Check for updates*, and automatically
    the updater, and unsynced changes stay in the local database across the update.
 
 `update.json` (schema 1): `packageName`, `versionName`, `versionCode`, `minSupportedVersionCode`, `apkUrl`
-(relative), `sha256`, `size`, `signingCertSha256` (from `apksigner`), `releaseNotes` (the pushed commit message, max 2000
+(the GitHub release download address), `sha256`, `size`, `signingCertSha256` (from `apksigner`), `releaseNotes` (the pushed commit message, max 2000
 characters), `publishedAt`.
 
 **Build flag.** `NeedleBaseUpdateChannel`: `sideload` (APK; updater, FileProvider and `REQUEST_INSTALL_PACKAGES`
-compiled in) or `play` (no updater; Google Play policy). `NeedleBaseUpdateManifestUrl` is the https address of
-`update.json`, baked into the APK, so choose the final address (custom domain) **before the first release**.
+compiled in) or `play` (no updater; Google Play policy). `NeedleBaseUpdateManifestUrl` is the https address that
+serves `update.json`, baked into the APK: `<SITE_URL>api/mobile/update` by default (the same site the app already
+uses, so a new site address needs one manual reinstall anyway).
 Release defaults: apk = sideload, aab/both = play.
 
 **Forcing an update.** Set the `ANDROID_MIN_SUPPORTED_VERSION_CODE` variable to the lowest versionCode that may

@@ -9,7 +9,7 @@ public sealed class UpdateException(string userMessage, Exception? inner = null)
 
 /// <summary>
 /// Downloads the APK into <c>needlebase-&lt;versionCode&gt;.apk.part</c>, resuming with an HTTP Range request after an
-/// interruption (GitHub Pages supports ranges; a server that ignores the range just sends the whole file again).
+/// interruption (GitHub release downloads support ranges; a server that ignores the range just sends the whole file again).
 /// The file only gets its final name after its size and SHA-256 match the manifest, so a half or tampered download
 /// can never be installed.
 /// </summary>

@@ -4,8 +4,9 @@ using System.Text.Json;
 namespace NeedleBase.Mobile.Services.Updates;
 
 /// <summary>
-/// One release as described by <c>update.json</c> on GitHub Pages (written by .github/workflows/release.yml).
-/// <see cref="ApkUrl"/> is absolute (resolved against the manifest address).
+/// One release as described by <c>update.json</c> (written by .github/workflows/release.yml, attached to the GitHub
+/// Release and served by the Api at api/mobile/update). <see cref="ApkUrl"/> is absolute (the GitHub download
+/// address; a relative value is resolved against the manifest address).
 /// </summary>
 public sealed record UpdateManifest(
     string PackageName,

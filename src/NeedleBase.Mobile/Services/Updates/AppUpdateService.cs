@@ -13,7 +13,7 @@ public enum InstallOutcome
 }
 
 /// <summary>
-/// In-app updates for sideloaded builds (docs/android-release.md, "Updates"). Reads update.json from GitHub Pages,
+/// In-app updates for sideloaded builds (docs/android-release.md, "Updates"). Reads update.json from the Api (api/mobile/update; newest GitHub Release),
 /// at most every <see cref="UpdatePolicy.CheckInterval"/> automatically (always on "Check for updates"), downloads
 /// with resume, verifies size + SHA-256 + package + versionCode + signing certificate, gives pending changes a short
 /// chance to sync, then opens Android's installer. Never blocks or stops sync: local data stays in the app's
@@ -188,7 +188,7 @@ public sealed class AppUpdateService
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(ManifestTimeout);
-            // Cache-buster + no-cache: GitHub Pages' CDN caches for up to 10 minutes.
+            // Cache-buster + no-cache: never a stale proxy copy (the Api itself caches GitHub for 5 minutes).
             var url = new UriBuilder(_manifestUrl!) { Query = $"t={_now().ToUnixTimeSeconds() / 60}" }.Uri;
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true };

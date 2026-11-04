@@ -5,7 +5,7 @@
 # start workflows, and this one does not run on tags, so there is no loop. CI runs inside this workflow (ci.yml no
 # longer runs on pushes to main), so nothing runs twice.
 #
-#   git push origin main                                   -> CI, APK + update site, release, deploy (changed parts)
+#   git push origin main                                   -> CI, APK, release, deploy (changed parts)
 #   Actions > Release > Run workflow (from main)           -> same with everything rebuilt and redeployed
 #   Actions > Release > Run workflow (from tag v1.2.3)     -> redeploy that old version (rollback)
 # Secrets and variables: docs/ci-cd.md.
@@ -38,7 +38,6 @@ jobs:
       code: ${{ steps.v.outputs.code }}
       prerelease: ${{ steps.v.outputs.prerelease }}
       base: ${{ steps.base.outputs.base }}
-      update_base: ${{ steps.updates.outputs.base }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -82,22 +81,6 @@ jobs:
           prerelease=false; [[ "$version" == 0.* ]] && prerelease=true
           { echo "version=$version"; echo "code=$code"; echo "prerelease=$prerelease"; } >> "$GITHUB_OUTPUT"
           echo "### NeedleBase $version (versionCode $code)" >> "$GITHUB_STEP_SUMMARY"
-      # Where sideloaded apps read update.json (GitHub Pages; docs/android-release.md "Updates"). It is compiled
-      # into the APK, so changing it later needs one manual reinstall: set UPDATE_BASE_URL before the first release.
-      - id: updates
-        env:
-          UPDATE_BASE_URL: ${{ vars.UPDATE_BASE_URL }}
-          OWNER: ${{ github.repository_owner }}
-          REPO: ${{ github.event.repository.name }}
-        run: |
-          set -euo pipefail
-          base="${UPDATE_BASE_URL:-https://${OWNER,,}.github.io/$REPO/}"
-          [[ "$base" == */ ]] || base="$base/"
-          if [[ ! "$base" =~ ^https://[^/[:space:]]+/([^[:space:]?#]*/)?$ || "$base" == *".invalid"* ]]; then
-            echo "::error::UPDATE_BASE_URL must be an https address such as https://updates.example.com/ (got '$base')."; exit 1
-          fi
-          echo "base=$base" >> "$GITHUB_OUTPUT"
-          echo "In-app updates: ${base}update.json" >> "$GITHUB_STEP_SUMMARY"
 
   ci:
     name: CI
@@ -140,7 +123,6 @@ jobs:
           SITE_URL: ${{ vars.SITE_URL }}
           VERSION: ${{ needs.meta.outputs.version }}
           CODE: ${{ needs.meta.outputs.code }}
-          UPDATE_BASE: ${{ needs.meta.outputs.update_base }}
           # The Play bundle is a second build (it must not contain the updater or REQUEST_INSTALL_PACKAGES).
           BUILD_AAB: ${{ vars.PLAY_UPLOAD_ENABLED == 'true' }}
         # Passwords reach MSBuild only through the environment (AndroidSigning*Pass = env:...), never argv.
@@ -150,7 +132,9 @@ jobs:
           if [[ ! "$SITE_URL" =~ ^https://[^/[:space:]]+/?$ ]]; then
             echo "::error::SITE_URL must be the site root, e.g. https://needlebase.example/ (got '$SITE_URL')."; exit 1
           fi
-          scripts/android-release.sh --format apk --update-url "${UPDATE_BASE}update.json" "${SITE_URL%/}/" "$VERSION" "$CODE"
+          # In-app updates (AssetTag style): the APK asks its own Api, ${SITE_URL}api/mobile/update, which serves the
+          # update.json attached to the newest GitHub Release (android-release.sh sets that address by default).
+          scripts/android-release.sh --format apk "${SITE_URL%/}/" "$VERSION" "$CODE"
           if [[ "$BUILD_AAB" == "true" ]]; then
             scripts/android-release.sh --format aab "${SITE_URL%/}/" "$VERSION" "$CODE"
           fi
@@ -167,19 +151,21 @@ jobs:
           cp artifacts/android/"$VERSION-$CODE"-apk/*-Signed.apk "dist/needlebase-$VERSION-$CODE.apk"
           shopt -s nullglob
           for f in artifacts/android/"$VERSION-$CODE"-aab/*-Signed.aab; do cp "$f" "dist/needlebase-$VERSION-$CODE.aab"; done
-      # update.json for the in-app updater: hash, size, signing certificate (read from the APK itself with apksigner,
-      # which also verifies the signature), minimum supported build and release notes (commit message).
+      # update.json for the in-app updater, attached to the GitHub Release next to the APK (the Api serves it to the
+      # app): GitHub download address, hash, size, signing certificate (read from the APK itself with apksigner, which
+      # also verifies the signature), minimum supported build and release notes (commit message).
       - name: Update manifest
         env:
           VERSION: ${{ needs.meta.outputs.version }}
           CODE: ${{ needs.meta.outputs.code }}
           MIN_CODE: ${{ vars.ANDROID_MIN_SUPPORTED_VERSION_CODE }}
+          REPOSITORY: ${{ github.repository }}
         run: |
           set -euo pipefail
           apk="dist/needlebase-$VERSION-$CODE.apk"
           # Any apksigner wording (build-tools 37 prints "V3.0 Signer: certificate SHA-256 digest"), keytool fallback;
           # fails if the APK is unsigned or doesn't verify.
-          bash .github/scripts/update-site.sh certs --apk "$apk" > "$RUNNER_TEMP/certs.txt" ||
+          bash .github/scripts/update-manifest.sh certs --apk "$apk" > "$RUNNER_TEMP/certs.txt" ||
             { echo "::error::$apk is unsigned, doesn't verify, or no signing certificate could be read (log above)."; exit 1; }
           mapfile -t certs < "$RUNNER_TEMP/certs.txt"
           [[ ${#certs[@]} -gt 0 ]] || { echo "::error::No signing certificate found in $apk."; exit 1; }
@@ -187,16 +173,11 @@ jobs:
           git log -1 --format=%B > "$RUNNER_TEMP/notes.txt" || true
           [[ -s "$RUNNER_TEMP/notes.txt" ]] && [[ -n "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes.txt")" ]] || echo "NeedleBase $VERSION" > "$RUNNER_TEMP/notes.txt"
           cert_args=(); for c in "${certs[@]}"; do cert_args+=(--cert "$c"); done
-          mkdir -p update
-          bash .github/scripts/update-site.sh manifest --apk "$apk" --version "$VERSION" --code "$CODE" \
-            --min "${MIN_CODE:-0}" --notes "$RUNNER_TEMP/notes.txt" "${cert_args[@]}" --out update/update.json
-          cat update/update.json
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: android-update
-          path: update/update.json
-          if-no-files-found: error
-          retention-days: 30
+          # The release (tag v$VERSION) is created by the github-release job with this exact file name.
+          apk_url="https://github.com/$REPOSITORY/releases/download/v$VERSION/needlebase-$VERSION-$CODE.apk"
+          bash .github/scripts/update-manifest.sh manifest --apk "$apk" --apk-url "$apk_url" --version "$VERSION" --code "$CODE" \
+            --min "${MIN_CODE:-0}" --notes "$RUNNER_TEMP/notes.txt" "${cert_args[@]}" --out dist/update.json
+          cat dist/update.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: android
@@ -338,7 +319,7 @@ jobs:
                 echo "**Google Play:** \`needlebase-$VERSION-$CODE.aab\` (same upload key, no in-app updater)."
                 echo
               fi
-              echo "**Installed from the download page?** The app offers this version itself (More › Check for updates)."
+              echo "**Already installed?** The app offers this version itself (More › Check for updates); it reads \`update.json\` from this release through the Api."
               echo
             fi
             if [[ "$API" == true ]]; then
@@ -356,73 +337,8 @@ jobs:
             dist/*.apk
             dist/*.aab
             dist/*.sql
+            dist/update.json
             dist/SHA256SUMS
-
-  # Download page + update.json + APK on GitHub Pages (the in-app updater's source). The site is replaced on each
-  # deploy, so the APK the live site offered until now is copied in too: phones holding a CDN-cached update.json
-  # (up to 10 minutes) can still finish their download.
-  pages:
-    name: Update site (GitHub Pages)
-    needs: [meta, android]
-    if: needs.android.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
-    concurrency:
-      group: pages
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          sparse-checkout: |
-            .github/scripts
-            src/NeedleBase.Mobile/Resources/Images/needlebase_logo.png
-          sparse-checkout-cone-mode: false
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: android
-          path: dist
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: android-update
-          path: update
-      - name: Build site
-        env:
-          VERSION: ${{ needs.meta.outputs.version }}
-          CODE: ${{ needs.meta.outputs.code }}
-          UPDATE_BASE: ${{ needs.meta.outputs.update_base }}
-        run: |
-          set -euo pipefail
-          mkdir -p site/apk
-          cp "dist/needlebase-$VERSION-$CODE.apk" site/apk/
-          cp update/update.json site/update.json
-          bash .github/scripts/update-site.sh previous --base "$UPDATE_BASE" --site site --code "$CODE"
-          bash .github/scripts/update-site.sh page --manifest site/update.json --site site \
-            --logo src/NeedleBase.Mobile/Resources/Images/needlebase_logo.png
-          ls -la site site/apk
-      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
-        with:
-          path: site
-      - id: deploy
-        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
-      - name: Check the live manifest
-        env:
-          UPDATE_BASE: ${{ needs.meta.outputs.update_base }}
-          CODE: ${{ needs.meta.outputs.code }}
-        run: |
-          for _ in 1 2 3 4 5 6; do
-            live=$(curl -fsSL --max-time 20 "${UPDATE_BASE}update.json?t=$(date +%s)" | jq -r '.versionCode' 2>/dev/null || true)
-            if [[ "$live" == "$CODE" ]]; then echo "Live: ${UPDATE_BASE}update.json (versionCode $CODE)"; exit 0; fi
-            sleep 20
-          done
-          echo "::warning::${UPDATE_BASE}update.json does not show versionCode $CODE yet (CDN delay, or UPDATE_BASE_URL/custom domain not pointing at this Pages site)."
 
   deploy:
     name: Deploy to MonsterASP

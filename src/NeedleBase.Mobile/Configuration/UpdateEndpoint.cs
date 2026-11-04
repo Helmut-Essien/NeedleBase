@@ -4,9 +4,10 @@ namespace NeedleBase.Mobile.Configuration;
 
 /// <summary>
 /// Over-the-air update settings stamped at build time (docs/android-release.md, "Updates"):
-/// <c>NeedleBaseUpdateChannel</c> = <c>sideload</c> (APK from GitHub Pages, in-app updates on) or <c>play</c>
+/// <c>NeedleBaseUpdateChannel</c> = <c>sideload</c> (APK from GitHub Releases, in-app updates on) or <c>play</c>
 /// (Google Play updates the app; the in-app updater is compiled out and REQUEST_INSTALL_PACKAGES is not declared),
-/// and <c>NeedleBaseUpdateManifestUrl</c> = the https address of <c>update.json</c>.
+/// and <c>NeedleBaseUpdateManifestUrl</c> = the https address that serves <c>update.json</c>
+/// (the app's own Api, <c>https://SITE/api/mobile/update</c>, AssetTag style).
 /// </summary>
 public static class UpdateEndpoint
 {

@@ -58,6 +58,9 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 builder.Services.AddOpenApi();
+// Android in-app updates (GET api/mobile/update): newest GitHub Release's update.json, cached (AssetTag style).
+builder.Services.AddHttpClient(NeedleBase.Api.Updates.MobileUpdateFeed.HttpClientName);
+builder.Services.AddSingleton<NeedleBase.Api.Updates.MobileUpdateFeed>();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 // Data Protection encrypts each shop's license key at rest. The key ring must survive restarts/redeploys, or stored

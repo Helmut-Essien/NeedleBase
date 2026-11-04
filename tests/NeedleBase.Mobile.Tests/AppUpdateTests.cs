@@ -11,7 +11,7 @@ namespace NeedleBase.Mobile.Tests;
 public sealed class AppUpdateTests : IDisposable
 {
     private const string Package = "com.helmutcode.needlebase";
-    private static readonly Uri ManifestUrl = new("https://helmut-essien.github.io/NeedleBase/update.json");
+    private static readonly Uri ManifestUrl = new("https://needlebase.example/api/mobile/update");
     private static readonly string CertA = new('a', 64);
     private static readonly string CertB = new('b', 64);
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "nb-update-tests-" + Guid.NewGuid().ToString("N"));
@@ -21,7 +21,7 @@ public sealed class AppUpdateTests : IDisposable
         if (Directory.Exists(_dir)) Directory.Delete(_dir, recursive: true);
     }
 
-    private static string Json(int code = 42, int min = 0, string? sha = null, long size = 1000, string apk = "apk/needlebase-1.2.0-42.apk",
+    private static string Json(int code = 42, int min = 0, string? sha = null, long size = 1000, string apk = "https://github.com/Helmut-Essien/NeedleBase/releases/download/v1.2.0/needlebase-1.2.0-42.apk",
         string package = Package, int schema = 1, string certs = "[\"AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA:AA\"]") =>
         $$"""
         {"schema":{{schema}},"packageName":"{{package}}","versionName":"1.2.0","versionCode":{{code}},"minSupportedVersionCode":{{min}},
@@ -35,12 +35,12 @@ public sealed class AppUpdateTests : IDisposable
     // ---------- manifest parsing ----------
 
     [Fact]
-    public void Parse_ValidManifest_ResolvesRelativeApkUrlAndNormalisesCert()
+    public void Parse_ValidManifest_FromApi_KeepsGitHubReleaseApkUrlAndNormalisesCert()
     {
         var result = UpdateManifestParser.Parse(Json(), ManifestUrl, Package);
         Assert.True(result.Ok, result.Error);
         var m = result.Manifest!;
-        Assert.Equal("https://helmut-essien.github.io/NeedleBase/apk/needlebase-1.2.0-42.apk", m.ApkUrl.ToString());
+        Assert.Equal("https://github.com/Helmut-Essien/NeedleBase/releases/download/v1.2.0/needlebase-1.2.0-42.apk", m.ApkUrl.ToString());
         Assert.Equal(42, m.VersionCode);
         Assert.Equal(CertA, Assert.Single(m.SigningCertSha256));
         Assert.Equal("Faster sync", m.ReleaseNotes);
@@ -75,9 +75,9 @@ public sealed class AppUpdateTests : IDisposable
     }
 
     [Theory]
-    [InlineData("sideload", "https://x.github.io/NeedleBase/update.json", true)]
-    [InlineData("SIDELOAD", "https://x.github.io/NeedleBase/update.json", true)]
-    [InlineData("play", "https://x.github.io/NeedleBase/update.json", false)]
+    [InlineData("sideload", "https://needlebase.example/api/mobile/update", true)]
+    [InlineData("SIDELOAD", "https://needlebase.example/api/mobile/update", true)]
+    [InlineData("play", "https://needlebase.example/api/mobile/update", false)]
     [InlineData("sideload", "http://x.github.io/update.json", false)]
     [InlineData("sideload", "https://updates.placeholder.invalid/update.json", false)]
     [InlineData("sideload", "", false)]
@@ -378,7 +378,7 @@ public sealed class AppUpdateTests : IDisposable
 
     // ---------- helpers ----------
 
-    private AppUpdateService Service(HttpMessageHandler handler, FakeInstaller installer, string? manifestUrl = "https://helmut-essien.github.io/NeedleBase/update.json",
+    private AppUpdateService Service(HttpMessageHandler handler, FakeInstaller installer, string? manifestUrl = "https://needlebase.example/api/mobile/update",
         MemoryPreferences? prefs = null, FakeConnectivity? connectivity = null, Func<DateTimeOffset>? now = null, string? dir = null)
     {
         installer.DownloadDirectory = dir ?? _dir;

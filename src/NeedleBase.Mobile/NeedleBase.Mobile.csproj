@@ -68,7 +68,8 @@
 		<RuntimeIdentifiers>android-arm;android-arm64;android-x64</RuntimeIdentifiers>
 	</PropertyGroup>
 	<!-- In-app (OTA) updates (docs/android-release.md, "Updates"). NeedleBaseUpdateChannel:
-	       sideload = APK published on GitHub Pages; the app checks NeedleBaseUpdateManifestUrl (update.json),
+	       sideload = APK attached to the GitHub Release; the app checks NeedleBaseUpdateManifestUrl (its Api,
+	                  https://SITE/api/mobile/update, which serves update.json from the newest release),
 	                  downloads, verifies SHA-256 + signing certificate and opens the system installer.
 	       play     = Google Play updates the app; the updater, its FileProvider and REQUEST_INSTALL_PACKAGES
 	                  are compiled out (Play policy).
@@ -125,7 +126,7 @@
 		<Error Condition="'$(NeedleBaseUpdateChannel)' == 'sideload' And '$(NeedleBasePackageFormat)' != 'apk'"
 		       Text="NeedleBase Release: the sideload update channel is for the APK only. Build the Play bundle with NeedleBaseUpdateChannel=play (no REQUEST_INSTALL_PACKAGES) in a separate build." />
 		<Error Condition="'$(NeedleBaseUpdateChannel)' == 'sideload' And (!$(NeedleBaseUpdateManifestUrl.StartsWith('https://')) Or $(NeedleBaseUpdateManifestUrl.Contains('.invalid')))"
-		       Text="NeedleBase Release: a sideload APK needs the https address of update.json, e.g. -p:NeedleBaseUpdateManifestUrl=https://OWNER.github.io/NeedleBase/update.json (current: '$(NeedleBaseUpdateManifestUrl)')." />
+		       Text="NeedleBase Release: a sideload APK needs the https update address, e.g. -p:NeedleBaseUpdateManifestUrl=https://SITE/api/mobile/update (current: '$(NeedleBaseUpdateManifestUrl)')." />
 		<Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(NeedleBaseVersion)', '^[0-9]+\.[0-9]+\.[0-9]+$'))"
 		       Text="NeedleBase Release: NeedleBaseVersion must look like 1.0.0 (got '$(NeedleBaseVersion)')." />
 		<Error Condition="'$(TargetPlatformVersion)' != '' And $([MSBuild]::VersionLessThan('$(TargetPlatformVersion)', '35.0'))"

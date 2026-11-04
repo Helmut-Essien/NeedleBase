@@ -62,12 +62,13 @@ check "no code, no CI"    2 "$(code "$release" https://a.example/ 1.0.0)"
 check "too many args"     2 "$(code "$release" https://a.example/ 1.0.0 2 3)"
 check "bad run number"    2 "$(code env GITHUB_RUN_NUMBER=abc "$release" https://a.example/ 1.0.0)"
 check "bad offset"        2 "$(code env GITHUB_RUN_NUMBER=5 NEEDLEBASE_VERSION_CODE_OFFSET=-1 "$release" https://a.example/ 1.0.0)"
-u=https://o.github.io/NeedleBase/update.json
+u=https://a.example/api/mobile/update
 check "update-url + aab"  2 "$(code "$release" --format aab --update-url "$u" https://a.example/ 1.0.0 2)"
 check "update-url + both" 2 "$(code "$release" --format both --update-url "$u" https://a.example/ 1.0.0 2)"
 check "update-url default aab" 2 "$(code "$release" --update-url "$u" https://a.example/ 1.0.0 2)"
 check "update-url http"   2 "$(code "$release" --format apk --update-url http://o.github.io/update.json https://a.example/ 1.0.0 2)"
-check "update-url not json" 2 "$(code "$release" --format apk --update-url https://o.github.io/NeedleBase/ https://a.example/ 1.0.0 2)"
+check "update-url no path"  2 "$(code "$release" --format apk --update-url https://o.example/ https://a.example/ 1.0.0 2)"
+check "update-url + no-updates" 2 "$(code "$release" --format apk --no-updates --update-url "$u" https://a.example/ 1.0.0 2)"
 check "update-url invalid" 2 "$(code "$release" --format apk --update-url https://x.invalid/update.json https://a.example/ 1.0.0 2)"
 check "update-url missing" 2 "$(code "$release" --format apk https://a.example/ 1.0.0 2 --update-url)"
 # A valid sideload command gets past every check; a PATH holding only bash (no dotnet) stops it right after (127).
@@ -77,8 +78,8 @@ check "valid sideload args" 127 "$(code env PATH="$nodotnet" bash "$release" --f
 rm -rf "$nodotnet"
 check "run+offset > max"  2 "$(code env GITHUB_RUN_NUMBER=999999999 NEEDLEBASE_VERSION_CODE_OFFSET=1 "$release" https://a.example/ 1.0.0)"
 
-# update-site.sh (GitHub Pages update manifest, download page, previous APK). Needs jq (on GitHub's runners).
-site="$root/.github/scripts/update-site.sh"
+# update-manifest.sh (update.json attached to the GitHub Release; certs from the APK). Needs jq (on GitHub's runners).
+site="$root/.github/scripts/update-manifest.sh"
 # certs: apksigner/keytool output (real wordings captured from build-tools 35 and 37 on a throw-away keystore).
 h="e8537298a34ed82ceeea3ebf4644bc2d9072c8a3be6259128220f1271a396eab"
 h2="$(printf '0%.0s' {1..63})1"
@@ -100,40 +101,29 @@ check "certs from apksigner" "$h" "$(bash "$site" certs --apk "$ct/u.apk" --apks
 rm -rf "$ct"
 if command -v jq >/dev/null 2>&1; then
   t=$(mktemp -d)
+  u="https://github.com/o/r/releases/download/v1.2.0/needlebase-1.2.0-42.apk"
   printf 'fake apk bytes' > "$t/a.apk"
   printf 'Faster sync\n<script>alert(1)</script> & more' > "$t/notes.txt"
   cert="AA:BB:$(printf 'c%.0s' {1..60})"
-  check "manifest ok" 0 "$(code bash "$site" manifest --apk "$t/a.apk" --version 1.2.0 --code 42 --min 40 --notes "$t/notes.txt" --cert "$cert" --published 2026-11-04T10:00:00Z --out "$t/update.json")"
-  check "manifest fields" "1 com.helmutcode.needlebase 1.2.0 42 40 apk/needlebase-1.2.0-42.apk 14" \
+  check "manifest ok" 0 "$(code bash "$site" manifest --apk-url "$u" --apk "$t/a.apk" --version 1.2.0 --code 42 --min 40 --notes "$t/notes.txt" --cert "$cert" --published 2026-11-04T10:00:00Z --out "$t/update.json")"
+  check "manifest fields" "1 com.helmutcode.needlebase 1.2.0 42 40 https://github.com/o/r/releases/download/v1.2.0/needlebase-1.2.0-42.apk 14" \
     "$(jq -r '[.schema,.packageName,.versionName,.versionCode,.minSupportedVersionCode,.apkUrl,.size]|join(" ")' "$t/update.json")"
   check "manifest sha" "$(sha256sum "$t/a.apk" | cut -d' ' -f1)" "$(jq -r .sha256 "$t/update.json")"
   check "manifest cert normalised" "aabb$(printf 'c%.0s' {1..60})" "$(jq -r '.signingCertSha256[0]' "$t/update.json")"
   check "manifest notes" "Faster sync" "$(jq -r '.releaseNotes' "$t/update.json" | head -1)"
-  check "manifest min > code" 2 "$(code bash "$site" manifest --apk "$t/a.apk" --version 1.2.0 --code 42 --min 43 --cert "$cert" --out "$t/x.json")"
-  check "manifest no cert"    2 "$(code bash "$site" manifest --apk "$t/a.apk" --version 1.2.0 --code 42 --out "$t/x.json")"
-  check "manifest bad cert"   2 "$(code bash "$site" manifest --apk "$t/a.apk" --version 1.2.0 --code 42 --cert abc --out "$t/x.json")"
-  check "manifest bad version" 2 "$(code bash "$site" manifest --apk "$t/a.apk" --version 1.2 --code 42 --cert "$cert" --out "$t/x.json")"
-  check "manifest no apk"     2 "$(code bash "$site" manifest --apk "$t/none.apk" --version 1.2.0 --code 42 --cert "$cert" --out "$t/x.json")"
+  check "manifest min > code" 2 "$(code bash "$site" manifest --apk-url "$u" --apk "$t/a.apk" --version 1.2.0 --code 42 --min 43 --cert "$cert" --out "$t/x.json")"
+  check "manifest no cert"    2 "$(code bash "$site" manifest --apk-url "$u" --apk "$t/a.apk" --version 1.2.0 --code 42 --out "$t/x.json")"
+  check "manifest bad cert"   2 "$(code bash "$site" manifest --apk-url "$u" --apk "$t/a.apk" --version 1.2.0 --code 42 --cert abc --out "$t/x.json")"
+  check "manifest bad version" 2 "$(code bash "$site" manifest --apk-url "$u" --apk "$t/a.apk" --version 1.2 --code 42 --cert "$cert" --out "$t/x.json")"
+  check "manifest no apk"     2 "$(code bash "$site" manifest --apk-url "$u" --apk "$t/none.apk" --version 1.2.0 --code 42 --cert "$cert" --out "$t/x.json")"
   check "unknown command"     2 "$(code bash "$site" publish)"
-  check "page ok" 0 "$(code bash "$site" page --manifest "$t/update.json" --site "$t/site" --logo "$root/src/NeedleBase.Mobile/Resources/Images/needlebase_logo.png")"
-  check "page escapes notes" "0 1" "$(grep -c '<script>' "$t/site/index.html") $(grep -c '&lt;script&gt;alert(1)&lt;/script&gt; &amp; more' "$t/site/index.html")"
-  check "page links apk" 1 "$(grep -c 'href="apk/needlebase-1.2.0-42.apk"' "$t/site/index.html")"
-  check "page logo + nojekyll" "yes" "$([[ -f "$t/site/needlebase_logo.png" && -f "$t/site/.nojekyll" ]] && echo yes)"
-  # previous: a "live" site served from file:// with version 41; its APK is copied into the new site.
-  mkdir -p "$t/live/apk" "$t/new"
-  printf 'old apk' > "$t/live/apk/needlebase-1.1.0-41.apk"
-  bash "$site" manifest --apk "$t/live/apk/needlebase-1.1.0-41.apk" --version 1.1.0 --code 41 --cert "$cert" --out "$t/live/update.json"
-  check "previous kept" 0 "$(code bash "$site" previous --base "file://$t/live/" --site "$t/new" --code 42)"
-  check "previous file" "old apk" "$(cat "$t/new/apk/needlebase-1.1.0-41.apk" 2>/dev/null)"
-  printf 'tampered' > "$t/live/apk/needlebase-1.1.0-41.apk"
-  check "previous tampered skipped" "0 no" "$(code bash "$site" previous --base "file://$t/live/" --site "$t/new2" --code 42) $([[ -f "$t/new2/apk/needlebase-1.1.0-41.apk" ]] && echo yes || echo no)"
-  check "previous none live" 0 "$(code bash "$site" previous --base "file://$t/missing/" --site "$t/new3" --code 42)"
-  check "previous not older" "no" "$(bash "$site" previous --base "file://$t/live/" --site "$t/new4" --code 41 >/dev/null; [[ -d "$t/new4/apk" ]] && echo yes || echo no)"
+  check "manifest no apk url"  2 "$(code bash "$site" manifest --apk "$t/a.apk" --version 1.2.0 --code 42 --cert "$cert" --out "$t/x.json")"
+  check "manifest http apk url" 2 "$(code bash "$site" manifest --apk-url "http://x/a.apk" --apk "$t/a.apk" --version 1.2.0 --code 42 --cert "$cert" --out "$t/x.json")"
   rm -rf "$t"
 elif [[ -n "${CI:-}" ]]; then
-  echo "FAIL: jq not found; the update-site tests could not run"; fail=$((fail + 1))
+  echo "FAIL: jq not found; the update-manifest tests could not run"; fail=$((fail + 1))
 else
-  echo "WARN: jq not found; skipped the update-site tests"
+  echo "WARN: jq not found; skipped the update-manifest tests"
 fi
 
 # next-version: version from the csproj, patch raised past existing tags.
