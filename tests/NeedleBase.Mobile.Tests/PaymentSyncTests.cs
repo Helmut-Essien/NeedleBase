@@ -14,6 +14,7 @@ using NeedleBase.Mobile.ViewModels;
 namespace NeedleBase.Mobile.Tests;
 
 /// <summary>Slice 5 on the phone: local rules, queue, push/pull, deferral, conflicts, prune, receipt copy.</summary>
+[Collection(LocalDataVersionCollection.Name)] // counts ChangedBySync / list re-queries
 public class PaymentSyncTests
 {
     private const string Biz = "biz-pay";

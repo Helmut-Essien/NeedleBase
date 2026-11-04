@@ -43,16 +43,18 @@ public partial class SyncEdgeCaseTests
     {
         var reloads = 0;
         var live = new LiveListRefresh(() => { Interlocked.Increment(ref reloads); return Task.CompletedTask; },
-            TimeSpan.FromMilliseconds(60));
+            TimeSpan.FromMilliseconds(150));
         live.Attach();
+        // One burst (e.g. one event per pulled page) raised back to back: far inside the debounce window even on a
+        // slow runner. (A Task.Delay between events could itself outlast the window under load.)
         for (var i = 0; i < 10; i++)
         {
-            LocalDataVersion.NotifyChangedBySync("burst"); // e.g. one per pulled page, from a background thread
-            await Task.Delay(5);
+            LocalDataVersion.NotifyChangedBySync("burst");
         }
 
-        await Task.Delay(400);
-        Assert.InRange(reloads, 1, 2); // merged (another test's pull may add one)
+        await WaitUntilAsync(() => Volatile.Read(ref reloads) > 0, TimeSpan.FromSeconds(10));
+        await Task.Delay(400); // a second reload would have fired by now
+        Assert.Equal(1, Volatile.Read(ref reloads)); // merged into one
 
         live.Detach();
         var after = reloads;
@@ -60,6 +62,16 @@ public partial class SyncEdgeCaseTests
         await Task.Delay(300);
         Assert.Equal(after, reloads);
         Assert.False(live.IsAttached);
+    }
+
+    private static async Task WaitUntilAsync(Func<bool> condition, TimeSpan timeout)
+    {
+        var until = DateTime.UtcNow + timeout;
+        while (!condition())
+        {
+            Assert.True(DateTime.UtcNow < until, "Timed out waiting for the live reload.");
+            await Task.Delay(20);
+        }
     }
 
     [Fact]
@@ -128,9 +140,8 @@ public partial class SyncEdgeCaseTests
         vm.SearchText = "Es";                       // typing: the debounced search will read fresh rows
         await vm.LiveReloadAsync();
         Assert.Equal(before, flaky.Searches);
-        await Task.Delay(SearchDebouncer.DefaultDelay + TimeSpan.FromMilliseconds(400));
-        // At least the debounced search ran; other tests in this process may bump LocalDataVersion meanwhile.
-        Assert.True(flaky.Searches >= before + 1, $"expected a search after typing ({before} → {flaky.Searches})");
+        // The debounced search runs (waits as long as a slow runner needs, instead of a fixed delay).
+        await WaitUntilAsync(() => Volatile.Read(ref flaky.Searches) >= before + 1, TimeSpan.FromSeconds(10));
         vm.ClearSessionState();
     }
 

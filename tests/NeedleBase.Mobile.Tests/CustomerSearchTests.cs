@@ -136,13 +136,15 @@ public class CustomerSearchTests
         var ran = new List<string>();
         CancellationToken firstToken = default;
 
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var first = debouncer.Run(async ct =>
         {
             firstToken = ct;
             ran.Add("first");
+            started.SetResult();
             await Task.Delay(Timeout.Infinite, ct);
         });
-        await Task.Delay(120); // first starts and is now "in flight"
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(10)); // first has started and is now "in flight" (no timing guess)
         var second = debouncer.Run(ct => { ran.Add("second"); return Task.CompletedTask; });
         var third = debouncer.Run(ct => { ran.Add("third"); return Task.CompletedTask; }); // supersedes second during delay
 

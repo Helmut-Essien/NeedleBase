@@ -19,6 +19,7 @@ using NeedleBase.Mobile.Services;
 namespace NeedleBase.Mobile.Tests;
 
 /// <summary>Regression tests for the Slice 4 edge-case audit (one per finding) + order/measurement round trips.</summary>
+[Collection(LocalDataVersionCollection.Name)] // list-cache and live-refresh tests read the process-wide data version
 public partial class SyncEdgeCaseTests
 {
     private const string Biz = "biz-edge";
@@ -435,13 +436,19 @@ public partial class SyncEdgeCaseTests
     [Fact]
     public async Task Service_ConcurrentTriggers_NeverRunTwoAtOnce()
     {
-        var api = new CountingApi { Delay = TimeSpan.FromMilliseconds(50) };
+        // The first pull is held open until every other trigger has arrived, so "they overlap" is a fact, not a hope
+        // about thread timing (on a 1-core CI runner the Task.Run triggers could otherwise start one after another).
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var api = new CountingApi { HoldFirstPull = gate.Task };
         await using var device = await DeviceAsync();
         var service = new SyncService(Engine(device, api), new FakeAuth(), new FakeConnectivity());
-        await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => Task.Run(service.RunAsync)));
-        await Task.Delay(300);
+        var first = Task.Run(service.RunAsync);
+        await WaitUntilAsync(() => Volatile.Read(ref api.Pulls) == 1, TimeSpan.FromSeconds(10));
+        await Task.WhenAll(Enumerable.Range(0, 19).Select(_ => Task.Run(service.RunAsync))); // all return at once (coalesced)
+        gate.SetResult();
+        await first;
         Assert.Equal(1, api.MaxConcurrent);
-        Assert.InRange(api.Pulls, 1, 2); // one run plus at most one coalesced re-run
+        Assert.Equal(2, api.Pulls); // the running pull plus exactly one coalesced re-run
     }
 
     // ---------------------------------------------------------------- 5 re-sign-in + shared refresh lock
@@ -743,6 +750,7 @@ public partial class SyncEdgeCaseTests
         private int _active;
         public Func<Exception>? Throw { get; init; }
         public TimeSpan Delay { get; init; }
+        public Task? HoldFirstPull { get; init; }
         public int Pulls;
         public int Pushes;
         public int MaxConcurrent;
@@ -759,11 +767,12 @@ public partial class SyncEdgeCaseTests
 
         public async Task<SyncPullResponse> PullAsync(SyncPullRequest request, CancellationToken cancellationToken)
         {
-            Interlocked.Increment(ref Pulls);
+            var number = Interlocked.Increment(ref Pulls);
             var now = Interlocked.Increment(ref _active);
             lock (this) MaxConcurrent = Math.Max(MaxConcurrent, now);
             try
             {
+                if (number == 1 && HoldFirstPull is not null) await HoldFirstPull.WaitAsync(cancellationToken);
                 await Task.Delay(Delay, cancellationToken);
                 if (Throw is not null) throw Throw();
                 return new SyncPullResponse([], [], [], [], "c", false, DateTimeOffset.UtcNow);
