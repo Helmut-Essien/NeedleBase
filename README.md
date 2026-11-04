@@ -250,7 +250,7 @@ Mobile may send `X-Auth-Token: Bearer …` instead of `Authorization` (mapped on
 
 **BusinessId tenancy:** `ApplicationDbContext` uses **global query filters** on `IBusinessScoped` entities when `CurrentBusinessId` is set from JWT by `BusinessTenancyMiddleware`. Auth/bootstrap paths clear the filter by leaving it null.
 
-**Migrations:** Development auto-applies `dotnet ef` migrations on Api startup. Prefer explicit `dotnet ef database update` in CI/Production.
+**Migrations:** Development auto-applies `dotnet ef` migrations on Api startup. Production never does: apply the idempotent script from `scripts/db-migrate.sh` as a deploy step ([docs/deployment.md](docs/deployment.md)). Production settings: [docs/production-config.md](docs/production-config.md); Android release (sideload APK now, Play AAB later): [docs/android-release.md](docs/android-release.md). CI/CD: [docs/ci-cd.md](docs/ci-cd.md).
 
 **Development seed:** On Api startup in Development (when `Seed:DevelopmentData` is true), sample Ama Stitches data is inserted if missing:
 

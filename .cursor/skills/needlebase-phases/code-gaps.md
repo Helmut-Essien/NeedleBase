@@ -32,11 +32,11 @@ Closed (Slice 8): per-row pending-sync badges on the phone's Orders/Customers li
 These are not to be implemented now (there is deliberately no ops/deployment skill; keep the notes here).
 
 ### G3: No CI
-- **Files:** there is no `.github/workflows/`.
-- **Later:** a GitHub Actions workflow that runs restore, `dotnet format --verify-no-changes`, builds Api + Web, and runs all 4 test projects against a Postgres service.
-- **Acceptance:** a PR shows a green check; a failing test turns it red.
+**Closed 3 Nov 2026 (code side):** `.github/workflows/ci.yml` (change detection via `.github/scripts/detect-changes.sh`, per-part build -warnaserror + tests with a Postgres service for the Api, Android Debug build, vulnerable-package check, single required "CI result" check) and `release.yml` (signed APK + AAB, migration SQL, GitHub Release + SHA256SUMS, approval-gated MonsterASP Web Deploy with App_Data kept and `/health/ready` check, optional Play internal upload). Setup, secrets, variables: `docs/ci-cd.md`.
+- **Still open (you):** create the `production` environment with required reviewers, the secrets/variables, `DEPLOY_ENABLED=true`, branch protection on "CI result"; first run on GitHub not yet seen green. `dotnet format --verify-no-changes` not added (format not yet enforced on the codebase).
 
 ### G7: Production config & publish hygiene
+**Closed 3 Nov 2026:** `.gitignore` covers `*.publishSettings`, `*.pubxml.user`, keystores (`*.jks`/`*.keystore`/`*.p12`/`*.pfx`/`*.pepk`), `*.aab`/`*.apk`, `App_Data/`; every setting is in `docs/production-config.md`; the Api fails fast outside Development/Testing (`Api/Configuration/ProductionConfigValidator.cs`); Production never migrates/seeds (idempotent script, `scripts/db-migrate.sh`, `docs/deployment.md`).
 - **Files:** `.gitignore` (only lower-case `*.publishsettings`); no documented production env var list.
 - **Later:** ignore `*.publishSettings`, `*.pubxml.user`, `*.keystore`; document the env vars; confirm Production never runs migrate/seed (today both are gated on Development).
 - **Acceptance:** `git check-ignore` ignores a `.publishSettings` and a `.keystore`; the Api starts in Production with only env vars set.
@@ -47,11 +47,13 @@ These are not to be implemented now (there is deliberately no ops/deployment ski
 - **Acceptance:** an Api log line carries traceId + BusinessId and no names or phones.
 
 ### G9: Android release signing
+**Closed 3 Nov 2026 (code side):** Release signing from `NEEDLEBASE_KEYSTORE_PATH`/`NEEDLEBASE_KEY_ALIAS` + `env:NEEDLEBASE_KEYSTORE_PASS`/`env:NEEDLEBASE_KEY_PASS`; Release Android stops with a clear error for a placeholder/non-https API URL, no keystore (unless `NeedleBaseAllowUnsignedRelease=true` for compile checks), bad version/versionCode, or target SDK < 35; AAB output; `scripts/android-release.sh`; `docs/android-release.md`. Unsigned Release publish verified (0 warnings, targetSdk 35). Still open: the keystore itself (owner) and a signed build.
 - **Files:** `src/NeedleBase.Mobile/NeedleBase.Mobile.csproj` has no Release signing properties.
 - **Later:** signing via MSBuild properties fed from env/CI secrets, with the keystore kept outside the repo.
 - **Acceptance:** a Release publish with the secrets set produces a signed AAB; without them it fails clearly.
 
 ### G11: Production proxy / multi-instance settings (from third audit, 21 Oct 2026)
+**Partly closed 3 Nov 2026:** both Api and Web read `ForwardedHeaders:KnownProxies`/`KnownNetworks` (bad entries stop start-up with the setting name). Open: the real proxy addresses (ask MonsterASP); multi-instance stores.
 - **Files:** `src/NeedleBase.Api/Program.cs` (ForwardedHeaders), `Infrastructure/Identity/LoginThrottle.cs` (in memory), `ApplicationDbContext` epoch bump guard (per process).
 - **Later:** set `ForwardedHeaders:KnownProxies`/`KnownNetworks` for the real proxy and the Web host; if the Api runs on more than one instance, move the login throttle to a shared store and the epoch-bump guard to a DB advisory lock.
 - **Acceptance:** behind the proxy, two clients on different IPs get separate auth limits; with 2 instances a throttled email+IP stays throttled on both.
@@ -240,3 +242,25 @@ Open / by design:
   work could be lost. Status/JWKS/pending-shop-id caches are per Api instance (30 s / 1 h / 30 min); with several
   instances a key change can take up to 30 s to show everywhere. Old phone app versions can't register (no key field)
   and see the generic register message.
+
+### Production readiness, code side (2026-11-03)
+
+- SQLitePCLRaw pinned to 2.1.14 via `SQLitePCLRaw.bundle_e_sqlite3` in Mobile.Data and Mobile.Tests (GHSA-2m69-gcr7-jv3q,
+  vulnerable <= 2.1.11). `dotnet list package --vulnerable --include-transitive`: no vulnerable packages in any project.
+  Remove the pin when EF Core Sqlite itself depends on >= 2.1.12.
+- Migrations: `scripts/db-migrate.sh script|bundle|list` (local tool manifest pins dotnet-ef 9.0.9). The script was applied
+  twice to an empty scratch database (second run a no-op, 15 history rows). In Production the Api logs Critical when
+  migrations are pending; it never applies them.
+- Start-up validation (Api): connection string, JWT key (>= 32, not the Development key), https FrontendBaseUrl,
+  Platform BaseUrl/IntegrationKey while RequireLicenseKey, half-set Email/WhatsApp, WhatsApp templates, proxy
+  entries, absolute DataProtection:KeysPath. Warnings: email/WhatsApp/webhook off, no TokenIssuer, RequireLicenseKey=false.
+- Web: `DataProtection:KeysPath` override (absolute), forwarded-header proxies from settings.
+- Open: no Web-side validator beyond Api:BaseUrl/proxies/keys path; migration bundle not exercised (script is the
+  documented path); MonsterASP specifics (env-var screen, proxy IPs, Postgres availability) to confirm with the host.
+
+- Review (2026-11-03): proxy IPs parsed strictly (no `10.1`/`1` shorthand, octal, ports, brackets) and `/0` networks
+  refused in Api and Web (`Web/Configuration/HostingSettings.cs`); invalid `Platform:RequireLicenseKey` is a clear error;
+  unwritable key folders give a clear error; Android guards run before compile (`BeforeBuild`) and only on publish (or
+  `-p:NeedleBaseReleaseGuards=true`), skipping design-time builds, so Release solution builds/tests are not blocked;
+  scripts validate inputs before building, never leave stale/partial outputs, work from paths with spaces. The
+  migration script is ONE transaction (docs corrected).

@@ -167,3 +167,13 @@ Tests: `LicensingApiTests`, `PlatformLicenseClientTests`, `LicensingRulesTests`,
 ## Out of scope until explicitly requested
 
 Multi-currency runtime, multi-business workspace switcher, full web offline parity, external payment-provider webhooks as source of truth, AI, Redis, Excel/PDF reporting suites, rewriting away from Clean Architecture / MVVM.
+
+Production readiness, code side (3 Nov 2026): SQLite native package patched; production migration script + deploy doc
+(`docs/deployment.md`); settings list + fail-fast start-up check (`docs/production-config.md`); Android Release AAB with
+env-based signing and release guards (`docs/android-release.md`). Still needed before launch: owner accounts/keys/hosting,
+legal placeholders, Platform `emailMatches`, device journeys (Slices 4–7). Details: code-gaps.md "Production readiness".
+
+CI/CD (3 Nov 2026, G3): GitHub Actions builds/tests only the affected parts with one required "CI result" check;
+tag `vX.Y.Z` releases a signed sideload APK + Play AAB, migration SQL and checksums, then deploys Api/Web to
+MonsterASP after approval (`docs/ci-cd.md`). Sideload now, Play internal-track upload ready but off.
+
