@@ -16,8 +16,11 @@ public class NeedleBaseApiFactory : WebApplicationFactory<Program>
             TestJwtKey);
         Environment.SetEnvironmentVariable(
             "ConnectionStrings__DefaultConnection",
-            Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Port=5435;Database=NeedleBase;Username=needlebase;Password=needlebase_dev");
+            TestDatabase.ConnectionString);
+
+        // Schema first, once for the whole run: the host's own Development migrate then finds nothing to do, and no
+        // request (or background service) can reach an empty database.
+        TestDatabase.EnsureMigrated();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -29,16 +32,14 @@ public class NeedleBaseApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Platform:RequireLicenseKey", "false");
         builder.UseSetting(
             "ConnectionStrings:DefaultConnection",
-            Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Host=localhost;Port=5435;Database=NeedleBase;Username=needlebase;Password=needlebase_dev");
+            TestDatabase.ConnectionString);
 
         builder.ConfigureAppConfiguration((_, config) =>
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] =
-                    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-                    ?? "Host=localhost;Port=5435;Database=NeedleBase;Username=needlebase;Password=needlebase_dev",
+                    TestDatabase.ConnectionString,
                 ["JwtSettings:SecurityKey"] = TestJwtKey,
                 ["JwtSettings:Issuer"] = "NeedleBaseApi",
                 ["JwtSettings:Audience"] = "NeedleBaseClient",
