@@ -26,6 +26,17 @@ public sealed class TombstoneCleanupService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // Shared hosting stops idle sites and starts them on the next request, so this also runs soon after most starts: wait a
+        // little so the purge never competes with the cold-start request that woke the site.
+        try
+        {
+            await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try

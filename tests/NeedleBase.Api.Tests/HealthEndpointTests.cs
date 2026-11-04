@@ -34,6 +34,17 @@ public class HealthEndpointTests : IClassFixture<NeedleBaseApiFactory>
         Assert.Equal("Healthy", payload.Status);
     }
 
+    [Theory]
+    [InlineData("/api/health/live")]
+    [InlineData("/api/health/ready")]
+    public async Task Health_IsAlsoServedUnderApiPrefix(string url)
+    {
+        // Same endpoints at the URL the single-site layout (Api = IIS sub-application /api) exposes.
+        var response = await _client.GetAsync(url);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public async Task Ping_ReturnsOk()
     {

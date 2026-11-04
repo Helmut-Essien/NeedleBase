@@ -44,6 +44,49 @@ public sealed class EmailQueueTests
     private static EmailMessage Msg(string to) => new(to, null, "s", "t", "<p>h</p>", "test");
 
     [Fact]
+    public async Task Shutdown_SendsWhatIsStillQueued_SkippingFailures()
+    {
+        var options = new Monitor(new EmailOptions { Host = "smtp.example.test", Username = "u@example.test", Password = "placeholder" });
+        var queue = new EmailQueue(options);
+        var transport = new FlakyTransport();
+        var worker = new EmailSendingService(queue, transport, options, NullLogger<EmailSendingService>.Instance);
+        Assert.True(queue.TryQueue(Msg("a@example.test")));
+        Assert.True(queue.TryQueue(Msg("bad@example.test")));
+        Assert.True(queue.TryQueue(Msg("b@example.test")));
+
+        await worker.StopAsync(CancellationToken.None); // never started: only the shutdown drain runs
+
+        Assert.Equal(["a@example.test", "b@example.test"], transport.Sent.Select(x => x.To));
+        Assert.Equal(1, transport.BadTries);
+        Assert.Equal(0, queue.Pending);
+    }
+
+    [Fact]
+    public async Task Shutdown_DrainStopsAtTheBudget()
+    {
+        var options = new Monitor(new EmailOptions { Host = "smtp.example.test", Username = "u@example.test", Password = "placeholder" });
+        var queue = new EmailQueue(options);
+        var worker = new EmailSendingService(queue, new HangingTransport(), options, NullLogger<EmailSendingService>.Instance)
+        {
+            DrainBudget = TimeSpan.FromMilliseconds(200)
+        };
+        Assert.True(queue.TryQueue(Msg("a@example.test")));
+        Assert.True(queue.TryQueue(Msg("b@example.test")));
+
+        var watch = Stopwatch.StartNew();
+        await worker.StopAsync(CancellationToken.None);
+
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5));
+        Assert.Equal(1, queue.Pending); // the first was being sent when time ran out; the rest are dropped
+    }
+
+    private sealed class HangingTransport : IEmailTransport
+    {
+        public Task SendAsync(EmailMessage message, CancellationToken cancellationToken) =>
+            Task.Delay(Timeout.Infinite, cancellationToken);
+    }
+
+    [Fact]
     public async Task FailingMessage_DoesNotHoldUpTheNext_AndIsRetriedThenDropped()
     {
         var options = new Monitor(new EmailOptions { Host = "smtp.example.test", Username = "u@example.test", Password = "placeholder" });

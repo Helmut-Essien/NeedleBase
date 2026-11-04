@@ -75,13 +75,7 @@ public static class DependencyInjection
         services.AddScoped<Licensing.LicenseService>();
         services.AddHostedService<Licensing.LicenseRecheckWorker>();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrWhiteSpace(connectionString))
-        {
-            throw new InvalidOperationException(
-                "ConnectionStrings:DefaultConnection is not configured. " +
-                "Set it via user secrets or environment (ConnectionStrings__DefaultConnection).");
-        }
+        var connectionString = DatabaseConnection.Build(configuration);
 
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(connectionString, npgsql =>

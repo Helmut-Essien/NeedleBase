@@ -86,14 +86,13 @@ builder.Services.AddHttpClient("NeedleBaseApi", client =>
     .AddHttpMessageHandler<UnauthorizedRedirectHandler>()
     .AddHttpMessageHandler<ForwardClientIpHandler>(); // the browser's IP for the activity log (Api trusts loopback/known proxies only)
 
-if (builder.Environment.IsProduction())
+// Cookie/antiforgery key ring. Must survive redeploys (or everyone is signed out): DataProtection:KeysPath (absolute,
+// outside the deploy folder is best) overrides the default App_Data/Keys. Back the folder up (docs/production-config.md).
+var webKeysPath = NeedleBase.Web.Configuration.HostingSettings.KeysPath(builder.Configuration);
+if (builder.Environment.IsProduction() || webKeysPath is not null)
 {
-    var keysPath = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "Keys");
-    var keysDirectory = new DirectoryInfo(keysPath);
-    if (!keysDirectory.Exists)
-    {
-        keysDirectory.Create();
-    }
+    var keysDirectory = NeedleBase.Web.Configuration.HostingSettings.EnsureKeysFolder(
+        webKeysPath ?? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "Keys"));
 
     builder.Services.AddDataProtection()
         .PersistKeysToFileSystem(keysDirectory)
@@ -136,10 +135,9 @@ var app = builder.Build();
 
 // First: behind a TLS-terminating proxy (loopback by default) the scheme/IP must be known before HSTS,
 // HTTPS redirection and cookie Secure flags run — otherwise the app sees http and redirect-loops.
-app.UseForwardedHeaders(new ForwardedHeadersOptions
-{
-    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-});
+// Trusted proxies: loopback (default) plus ForwardedHeaders:KnownProxies (IPs) / KnownNetworks (CIDR), comma-separated,
+// the same keys as the Api (docs/production-config.md).
+app.UseForwardedHeaders(NeedleBase.Web.Configuration.HostingSettings.ForwardedHeaders(app.Configuration));
 
 // The browser/web app hung up (navigated away, clicked again, closed the tab): the request's own token cancels the
 // work and an OperationCanceledException unwinds. That is normal, not an error: answer 499 quietly (nobody reads it)

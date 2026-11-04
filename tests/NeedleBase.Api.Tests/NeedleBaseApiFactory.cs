@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace NeedleBase.Api.Tests;
 
-public sealed class NeedleBaseApiFactory : WebApplicationFactory<Program>
+public class NeedleBaseApiFactory : WebApplicationFactory<Program>
 {
     private const string TestJwtKey = "NeedleBase-Test-SecurityKey-Min-32-Chars!!";
 

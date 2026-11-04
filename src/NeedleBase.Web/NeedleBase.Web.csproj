@@ -6,6 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>NeedleBase.Web</RootNamespace>
     <UserSecretsId>needlebase-web-dev-secrets</UserSecretsId>
+    <!-- Shared hosting (MonsterASP free: 256 MB per website): workstation GC keeps the heap small;
+         these apps serve small shops, so server GC's throughput is not needed. -->
+    <ServerGarbageCollector>false</ServerGarbageCollector>
   </PropertyGroup>
 
   <ItemGroup>

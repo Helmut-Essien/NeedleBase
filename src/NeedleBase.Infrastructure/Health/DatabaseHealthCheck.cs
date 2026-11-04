@@ -11,13 +11,8 @@ public sealed class DatabaseHealthCheck : IHealthCheck
 
     public DatabaseHealthCheck(IConfiguration configuration)
     {
-        var configured = configuration.GetConnectionString("DefaultConnection");
-        if (string.IsNullOrWhiteSpace(configured))
-        {
-            throw new InvalidOperationException("ConnectionStrings:DefaultConnection is not configured.");
-        }
-
-        _connectionString = configured;
+        // Same string as EF Core, so the probe borrows from the same (capped) pool instead of opening a second one.
+        _connectionString = NeedleBase.Infrastructure.Persistence.DatabaseConnection.Build(configuration);
     }
 
     public async Task<HealthCheckResult> CheckHealthAsync(

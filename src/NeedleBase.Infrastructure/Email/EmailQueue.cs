@@ -58,6 +58,9 @@ public sealed class EmailSendingService : BackgroundService
     /// <summary>Retry pauses (tests shorten them).</summary>
     internal TimeSpan[] Delays { get; set; } = RetryDelays;
 
+    /// <summary>How long shutdown may spend sending what is still queued (tests shorten it).</summary>
+    internal TimeSpan DrainBudget { get; set; } = TimeSpan.FromSeconds(10);
+
     public override Task StartAsync(CancellationToken cancellationToken)
     {
         var o = _options.CurrentValue;
@@ -78,9 +81,46 @@ public sealed class EmailSendingService : BackgroundService
     public override async Task StopAsync(CancellationToken cancellationToken)
     {
         await base.StopAsync(cancellationToken);
-        if (_queue.Pending > 0)
+        if (_queue.Pending == 0)
         {
-            _logger.LogWarning("Shutting down with {Count} unsent email(s); they are dropped (people can ask again).", _queue.Pending);
+            return;
+        }
+
+        // A deploy or app-pool recycle (frequent on shared hosting) should not silently eat a reset code queued a
+        // moment ago: one last try each, inside a short budget that also respects the host's shutdown token.
+        using var budget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        budget.CancelAfter(DrainBudget);
+        var sent = 0;
+        try
+        {
+            while (_queue.Reader.TryRead(out var item))
+            {
+                try
+                {
+                    await _transport.SendAsync(item.Message, budget.Token);
+                    sent++;
+                }
+                catch (OperationCanceledException) when (budget.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Shutdown send of {Kind} email to {To} failed: {Error} ({Type}).", item.Message.Kind, Mask(item.Message.ToAddress), ex.Message, ex.GetType().Name);
+                }
+            }
+        }
+        finally
+        {
+            if (sent > 0)
+            {
+                _logger.LogInformation("Sent {Count} queued email(s) while shutting down.", sent);
+            }
+
+            if (_queue.Pending > 0)
+            {
+                _logger.LogWarning("Shutting down with {Count} unsent email(s); they are dropped (people can ask again).", _queue.Pending);
+            }
         }
     }
 

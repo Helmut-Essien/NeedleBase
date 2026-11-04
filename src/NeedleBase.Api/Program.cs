@@ -5,12 +5,21 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using NeedleBase.Api.Configuration;
 using NeedleBase.Api.Middleware;
 using NeedleBase.Infrastructure;
 using NeedleBase.Infrastructure.Health;
 using NeedleBase.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Production/Staging: stop at start-up with one clear list of missing or wrong settings (docs/production-config.md).
+// Development and the "Testing" environment (integration tests) skip it.
+var configWarnings = new List<string>();
+if (ProductionConfigValidator.ShouldValidate(builder.Environment))
+{
+    ProductionConfigValidator.ThrowIfInvalid(builder.Configuration, configWarnings.Add);
+}
 
 var ghanaianCulture = new CultureInfo("en-GH");
 ghanaianCulture.NumberFormat.CurrencySymbol = "₵";
@@ -64,7 +73,19 @@ builder.Services.AddInfrastructure(builder.Configuration);
     var dataProtection = builder.Services.AddDataProtection().SetApplicationName("NeedleBase.Api");
     if (!string.IsNullOrWhiteSpace(keysPath))
     {
-        dataProtection.PersistKeysToFileSystem(Directory.CreateDirectory(keysPath));
+        DirectoryInfo keysDirectory;
+        try
+        {
+            keysDirectory = Directory.CreateDirectory(keysPath.Trim());
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            throw new InvalidOperationException(
+                $"Data Protection key folder can't be created or written ({ex.GetType().Name}). Give the app pool write access " +
+                "or set DataProtection__KeysPath to a writable absolute folder (docs/production-config.md).", ex);
+        }
+
+        dataProtection.PersistKeysToFileSystem(keysDirectory);
     }
 }
 
@@ -80,21 +101,7 @@ var registerPermitPer10Minutes = builder.Configuration.GetValue("RateLimits:Regi
 // loopback (default) plus ForwardedHeaders:KnownProxies (IPs) / KnownNetworks (CIDR), comma-separated.
 builder.Services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
-                               Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
-    options.ForwardLimit = 1;
-    foreach (var proxy in Split(builder.Configuration["ForwardedHeaders:KnownProxies"]))
-    {
-        options.KnownProxies.Add(System.Net.IPAddress.Parse(proxy));
-    }
-
-    foreach (var network in Split(builder.Configuration["ForwardedHeaders:KnownNetworks"]))
-    {
-        options.KnownNetworks.Add(Microsoft.AspNetCore.HttpOverrides.IPNetwork.Parse(network));
-    }
-
-    static IEnumerable<string> Split(string? value) =>
-        (value ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    ForwardedHeadersConfig.Apply(options, builder.Configuration);
 });
 
 builder.Services.AddRateLimiter(options =>
@@ -160,8 +167,48 @@ builder.Services.AddHealthChecks()
 
 var app = builder.Build();
 
-// First, so every later step (rate limits, login throttle, refresh-token IP) sees the real client IP.
+foreach (var warning in configWarnings)
+{
+    app.Logger.LogWarning("Configuration: {Warning}", warning);
+}
+
+// Api as the IIS sub-application /api of the Web site: keep "/api" in the path so routes match (ApiPathBase).
+app.Use((context, next) =>
+{
+    ApiPathBase.Restore(context.Request);
+    return next(context);
+});
+
+// Our own Web front end forwards the visitor's IP. If it reaches the Api from an address that is not trusted (on a
+// single shared site the call leaves and re-enters through the host's network), every web visitor shares that one
+// address in the per-IP limits: say so once, with the address to add to ForwardedHeaders__KnownProxies.
+{
+    var forwardedOptions = app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>>().Value;
+    var warnedUntrustedWebPeer = 0;
+    app.Use((context, next) =>
+    {
+        if (Volatile.Read(ref warnedUntrustedWebPeer) == 0 &&
+            context.Request.Headers.ContainsKey("X-Forwarded-For") &&
+            string.Equals(context.Request.Headers["X-NeedleBase-Client"], "web", StringComparison.Ordinal) &&
+            !ForwardedHeadersConfig.IsTrusted(forwardedOptions, context.Connection.RemoteIpAddress) &&
+            Interlocked.Exchange(ref warnedUntrustedWebPeer, 1) == 0)
+        {
+            app.Logger.LogWarning(
+                "The Web front end reaches the Api from {Peer}, which is not a trusted proxy, so all web visitors share that address in the " +
+                "sign-in rate limits. If it is this host's own address, add it to ForwardedHeaders__KnownProxies on the Api (docs/production-config.md).",
+                context.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+        }
+
+        return next(context);
+    });
+}
+
+// Next, so every later step (rate limits, login throttle, refresh-token IP) sees the real client IP.
 app.UseForwardedHeaders();
+
+// Explicit, so endpoints are matched AFTER ApiPathBase.Restore (the implicit UseRouting would run first and lose
+// every "api/..." controller route in the /api sub-application). Still ahead of everything else, as before.
+app.UseRouting();
 
 // The browser/web app hung up (navigated away, clicked again, closed the tab): the request's own token cancels the
 // work and an OperationCanceledException unwinds. That is normal, not an error: answer 499 quietly (nobody reads it)
@@ -212,17 +259,21 @@ app.UseAuthorization();
 // After authentication so sync limits can be per user.
 app.UseRateLimiter();
 
-app.MapHealthChecks("/health/live", new HealthCheckOptions
+// "/health/*" on a host of its own; "/api/health/*" when the Api is the /api sub-application of the Web site.
+foreach (var prefix in new[] { "", ApiPathBase.Segment })
 {
-    Predicate = check => check.Tags.Contains("live"),
-    ResponseWriter = WriteMinimalHealthResponse
-}).AllowAnonymous();
+    app.MapHealthChecks(prefix + "/health/live", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("live"),
+        ResponseWriter = WriteMinimalHealthResponse
+    }).AllowAnonymous();
 
-app.MapHealthChecks("/health/ready", new HealthCheckOptions
-{
-    Predicate = check => check.Tags.Contains("ready"),
-    ResponseWriter = WriteMinimalHealthResponse
-}).AllowAnonymous();
+    app.MapHealthChecks(prefix + "/health/ready", new HealthCheckOptions
+    {
+        Predicate = check => check.Tags.Contains("ready"),
+        ResponseWriter = WriteMinimalHealthResponse
+    }).AllowAnonymous();
+}
 
 app.MapControllers();
 
@@ -243,6 +294,27 @@ if (app.Environment.IsDevelopment())
         app.Logger.LogError(
             ex,
             "Development migrate/seed failed. Api is listening, but DB features will not work until PostgreSQL is reachable.");
+    }
+}
+else if (!app.Environment.IsEnvironment("Testing"))
+{
+    // Production never migrates itself (several instances / a half-applied deploy could race). The deploy step applies
+    // scripts/db-migrate.sh output first (docs/deployment.md); this only shouts if that step was skipped.
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var pending = (await db.Database.GetPendingMigrationsAsync()).ToList();
+        if (pending.Count > 0)
+        {
+            app.Logger.LogCritical(
+                "Database is {Count} migration(s) behind ({Latest}). Apply the idempotent migration script before using this release (docs/deployment.md).",
+                pending.Count, pending[^1]);
+        }
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Could not check pending database migrations (is PostgreSQL reachable?).");
     }
 }
 
