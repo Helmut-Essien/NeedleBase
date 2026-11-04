@@ -1,0 +1,639 @@
+# Release: signed Android APK (+ in-app update site on GitHub Pages) and optional AAB, server packages, migration SQL, GitHub Release, gated deploy to MonsterASP,
+# optional Google Play upload. Every secret and variable is listed in docs/ci-cd.md.
+#
+#   git tag v1.2.0 && git push origin v1.2.0      -> build, test, release, deploy (waits for approval)
+#   Actions > Release > Run workflow               -> same, with switches for deploy / GitHub Release / Play
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version x.y.z (must match the tag when run from a tag)
+        required: true
+      version_code:
+        description: Android versionCode (blank = run number + VERSION_CODE_OFFSET). Must be higher than the last build installed.
+        required: false
+        default: ""
+      github_release:
+        description: Create the GitHub Release (tag v<version>)
+        type: boolean
+        default: true
+      deploy:
+        description: Deploy Api + Web to MonsterASP (asks for approval; needs DEPLOY_ENABLED=true)
+        type: boolean
+        default: false
+      everything:
+        description: Build and deploy every part, not only what changed since the previous v* tag
+        type: boolean
+        default: false
+      play_upload:
+        description: Upload the AAB to Google Play (also needs PLAY_UPLOAD_ENABLED=true)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never two releases at once and never cancel one half-way (it may be deploying).
+  group: release
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  meta:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      code: ${{ steps.v.outputs.code }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+      base: ${{ steps.base.outputs.base }}
+      update_base: ${{ steps.updates.outputs.base }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # Only what changed since the previous release tag is built and deployed ('' = everything).
+      - id: base
+        env:
+          EVERYTHING: ${{ inputs.everything }}
+        run: |
+          prev=""
+          if [[ "$EVERYTHING" != "true" ]]; then
+            prev=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD^ 2>/dev/null || true)
+          fi
+          echo "Previous release: ${prev:-none (build everything)}" >> "$GITHUB_STEP_SUMMARY"
+          echo "base=$prev" >> "$GITHUB_OUTPUT"
+      - id: v
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_CODE: ${{ inputs.version_code }}
+          OFFSET: ${{ vars.VERSION_CODE_OFFSET }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            version="${REF_NAME#v}"
+          else
+            version="$INPUT_VERSION"
+            if [[ "$REF_TYPE" == "tag" && "$REF_NAME" != "v$version" ]]; then
+              echo "::error::Version $version does not match the selected tag $REF_NAME."; exit 1
+            fi
+          fi
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must look like 1.2.3 (got '$version')."; exit 1
+          fi
+          offset="${OFFSET:-0}"
+          [[ "$offset" =~ ^[0-9]{1,9}$ ]] || { echo "::error::VERSION_CODE_OFFSET must be a whole number."; exit 1; }
+          code="${INPUT_CODE:-$((GITHUB_RUN_NUMBER + 10#$offset))}"
+          if [[ ! "$code" =~ ^[1-9][0-9]{0,8}$ ]]; then
+            echo "::error::versionCode must be 1..999999999 (got '$code')."; exit 1
+          fi
+          prerelease=false; [[ "$version" == 0.* ]] && prerelease=true
+          { echo "version=$version"; echo "code=$code"; echo "prerelease=$prerelease"; } >> "$GITHUB_OUTPUT"
+          echo "### NeedleBase $version (versionCode $code)" >> "$GITHUB_STEP_SUMMARY"
+      # Where sideloaded apps read update.json (GitHub Pages; docs/android-release.md "Updates"). It is compiled
+      # into the APK, so changing it later needs one manual reinstall: set UPDATE_BASE_URL before the first release.
+      - id: updates
+        env:
+          UPDATE_BASE_URL: ${{ vars.UPDATE_BASE_URL }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          base="${UPDATE_BASE_URL:-https://${OWNER,,}.github.io/$REPO/}"
+          [[ "$base" == */ ]] || base="$base/"
+          if [[ ! "$base" =~ ^https://[^/[:space:]]+/([^[:space:]?#]*/)?$ || "$base" == *".invalid"* ]]; then
+            echo "::error::UPDATE_BASE_URL must be an https address such as https://updates.example.com/ (got '$base')."; exit 1
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "In-app updates: ${base}update.json" >> "$GITHUB_STEP_SUMMARY"
+
+  ci:
+    name: CI
+    needs: meta
+    uses: ./.github/workflows/ci.yml
+    with:
+      base: ${{ needs.meta.outputs.base }}
+
+  android:
+    name: Android (signed APK + optional AAB)
+    needs: [meta, ci]
+    if: needs.ci.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: microsoft
+          java-version: "17"
+      - uses: ./.github/actions/setup-dotnet-maui
+      - name: Restore upload keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE_BASE64" ]]; then echo "::error::ANDROID_KEYSTORE_BASE64 secret is missing."; exit 1; fi
+          umask 077
+          ks="$RUNNER_TEMP/needlebase-upload.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$ks"
+          echo "NEEDLEBASE_KEYSTORE_PATH=$ks" >> "$GITHUB_ENV"
+      - name: Build signed APK (sideload, in-app updates) and AAB (Play, no updater)
+        env:
+          NEEDLEBASE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          NEEDLEBASE_KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          NEEDLEBASE_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # The app calls relative "api/..." paths, so its base URL is the SITE ROOT (Api lives at /api).
+          SITE_URL: ${{ vars.SITE_URL }}
+          VERSION: ${{ needs.meta.outputs.version }}
+          CODE: ${{ needs.meta.outputs.code }}
+          UPDATE_BASE: ${{ needs.meta.outputs.update_base }}
+          # The Play bundle is a second build (it must not contain the updater or REQUEST_INSTALL_PACKAGES).
+          BUILD_AAB: ${{ vars.PLAY_UPLOAD_ENABLED == 'true' || vars.ANDROID_BUILD_AAB == 'true' }}
+        # Passwords reach MSBuild only through the environment (AndroidSigning*Pass = env:...), never argv.
+        run: |
+          set -euo pipefail
+          # Site ROOT only (https://host/); a path such as /api/ would make the app call /api/api/...
+          if [[ ! "$SITE_URL" =~ ^https://[^/[:space:]]+/?$ ]]; then
+            echo "::error::SITE_URL must be the site root, e.g. https://needlebase.example/ (got '$SITE_URL')."; exit 1
+          fi
+          scripts/android-release.sh --format apk --update-url "${UPDATE_BASE}update.json" "${SITE_URL%/}/" "$VERSION" "$CODE"
+          if [[ "$BUILD_AAB" == "true" ]]; then
+            scripts/android-release.sh --format aab "${SITE_URL%/}/" "$VERSION" "$CODE"
+          fi
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/needlebase-upload.jks"
+      - name: Rename for release
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+          CODE: ${{ needs.meta.outputs.code }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp artifacts/android/"$VERSION-$CODE"-apk/*-Signed.apk "dist/needlebase-$VERSION-$CODE.apk"
+          shopt -s nullglob
+          for f in artifacts/android/"$VERSION-$CODE"-aab/*-Signed.aab; do cp "$f" "dist/needlebase-$VERSION-$CODE.aab"; done
+      # update.json for the in-app updater: hash, size, signing certificate (read from the APK itself with apksigner,
+      # which also verifies the signature), minimum supported build and release notes (tag message).
+      - name: Update manifest
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+          CODE: ${{ needs.meta.outputs.code }}
+          MIN_CODE: ${{ vars.ANDROID_MIN_SUPPORTED_VERSION_CODE }}
+        run: |
+          set -euo pipefail
+          apk="dist/needlebase-$VERSION-$CODE.apk"
+          apksigner=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -mindepth 2 -maxdepth 2 -name apksigner 2>/dev/null | sort -V | tail -1 || true)
+          [[ -x "$apksigner" ]] || { echo "::error::apksigner not found in the Android SDK build-tools."; exit 1; }
+          "$apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/certs.txt"
+          mapfile -t certs < <(sed -n 's/^Signer #[0-9]* certificate SHA-256 digest: *//p' "$RUNNER_TEMP/certs.txt")
+          [[ ${#certs[@]} -gt 0 ]] || { echo "::error::No signing certificate found in $apk."; exit 1; }
+          git fetch --no-tags --depth=1 origin "+refs/tags/v$VERSION:refs/tags/v$VERSION" 2>/dev/null || true
+          git tag -l --format='%(contents)' "v$VERSION" | sed '/^-----BEGIN PGP SIGNATURE-----/,$d' > "$RUNNER_TEMP/notes.txt" || true
+          [[ -s "$RUNNER_TEMP/notes.txt" ]] && [[ -n "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes.txt")" ]] || echo "NeedleBase $VERSION" > "$RUNNER_TEMP/notes.txt"
+          cert_args=(); for c in "${certs[@]}"; do cert_args+=(--cert "$c"); done
+          mkdir -p update
+          bash .github/scripts/update-site.sh manifest --apk "$apk" --version "$VERSION" --code "$CODE" \
+            --min "${MIN_CODE:-0}" --notes "$RUNNER_TEMP/notes.txt" "${cert_args[@]}" --out update/update.json
+          cat update/update.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-update
+          path: update/update.json
+          if-no-files-found: error
+          retention-days: 30
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  server:
+    name: Server packages + migration SQL
+    needs: [meta, ci]
+    if: needs.ci.outputs.api == 'true' || needs.ci.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-dotnet-maui
+        with:
+          maui: "false"
+      - name: Publish Api and Web
+        # Framework-dependent, out-of-process (as AssetTag on MonsterASP). No secrets in the package: settings are
+        # environment variables on the site (docs/production-config.md).
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+          API: ${{ needs.ci.outputs.api }}
+          WEB: ${{ needs.ci.outputs.web }}
+        run: |
+          set -euo pipefail
+          apps=()
+          [[ "$API" == true ]] && apps+=(Api)
+          [[ "$WEB" == true ]] && apps+=(Web)
+          for app in "${apps[@]}"; do
+            out="artifacts/publish/${app,,}"
+            dotnet publish "src/NeedleBase.$app/NeedleBase.$app.csproj" -c Release -o "$out" \
+              -p:UseAppHost=false -p:AspNetCoreHostingModel=OutOfProcess -p:Version="$VERSION"
+            rm -f "$out/appsettings.Development.json"
+            rm -rf "$out/App_Data"
+          done
+      - name: Check SITE_URL before anyone is asked to approve
+        if: vars.DEPLOY_ENABLED == 'true'
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          if [[ ! "$SITE_URL" =~ ^https://[^/[:space:]]+/?$ ]]; then
+            echo "::error::SITE_URL must be the site root, e.g. https://needlebase.example/ (got '$SITE_URL')."; exit 1
+          fi
+      # Non-secret URLs from SITE_URL into each package's web.config (aspNetCore environmentVariables, inside the
+      # non-inheriting <location>): Web Api__BaseUrl and Api FrontendBaseUrl = the site root. Secrets never go here.
+      - name: Write site URLs into the packages
+        shell: pwsh
+        env:
+          API: ${{ needs.ci.outputs.api }}
+          WEB: ${{ needs.ci.outputs.web }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
+          if ([string]::IsNullOrWhiteSpace($env:SITE_URL)) {
+            Write-Host "::warning::SITE_URL is not set; Api__BaseUrl/FrontendBaseUrl are not written (set them on the server)."
+            exit 0
+          }
+          if ($env:API -eq 'true') { Set-PackageEnvironment -Path artifacts/publish/api -Variables (Get-SitePackageEnvironment -App Api -SiteUrl $env:SITE_URL) }
+          if ($env:WEB -eq 'true') { Set-PackageEnvironment -Path artifacts/publish/web -Variables (Get-SitePackageEnvironment -App Web -SiteUrl $env:SITE_URL) }
+      - name: Check packages for the single site (Web at /, Api at /api)
+        # Fails before anyone is asked to approve: web.config must not leak into child applications, no App_Data or
+        # development settings, and the Web must not contain anything named "api" (it would collide with /api).
+        shell: pwsh
+        env:
+          API: ${{ needs.ci.outputs.api }}
+          WEB: ${{ needs.ci.outputs.web }}
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
+          $site = -not [string]::IsNullOrWhiteSpace($env:SITE_URL)
+          $checks = @()
+          if ($env:API -eq 'true') { $checks += @{ Path = 'artifacts/publish/api'; Protect = ''; Env = $(if ($site) { Get-SitePackageEnvironment -App Api -SiteUrl $env:SITE_URL }) } }
+          if ($env:WEB -eq 'true') { $checks += @{ Path = 'artifacts/publish/web'; Protect = 'api'; Env = $(if ($site) { Get-SitePackageEnvironment -App Web -SiteUrl $env:SITE_URL }) } }
+          $bad = $false
+          foreach ($c in $checks) {
+            foreach ($p in Test-DeployPackage -Path $c.Path -ProtectSubApp $c.Protect -RequiredEnvironment $c.Env) { Write-Host "::error::$($c.Path): $p"; $bad = $true }
+          }
+          if ($bad) { exit 1 }
+      - name: Idempotent migration script
+        if: needs.ci.outputs.api == 'true'
+        run: scripts/db-migrate.sh script
+      - if: needs.ci.outputs.api == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: server-api
+          path: artifacts/publish/api
+          if-no-files-found: error
+          retention-days: 30
+      - if: needs.ci.outputs.web == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: server-web
+          path: artifacts/publish/web
+          if-no-files-found: error
+          retention-days: 30
+      - if: needs.ci.outputs.api == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: migrations
+          path: artifacts/migrations/needlebase-migrate.sql
+          if-no-files-found: error
+          retention-days: 90
+
+  github-release:
+    name: GitHub Release
+    needs: [meta, ci, android, server]
+    # Runs when at least one part was built and nothing failed (a skipped part simply has no files).
+    if: >-
+      always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+      && (needs.android.result == 'success' || needs.server.result == 'success')
+      && (github.event_name == 'push' || inputs.github_release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - if: needs.android.result == 'success'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: android
+          path: dist
+      - if: needs.ci.outputs.api == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: migrations
+          path: dist
+      - name: Checksums and notes
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+          CODE: ${{ needs.meta.outputs.code }}
+          API: ${{ needs.ci.outputs.api }}
+          WEB: ${{ needs.ci.outputs.web }}
+          MOBILE: ${{ needs.ci.outputs.mobile }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          if [[ -f dist/needlebase-migrate.sql ]]; then mv dist/needlebase-migrate.sql "dist/needlebase-$VERSION-migrate.sql"; fi
+          shopt -s nullglob
+          files=(dist/*)
+          if (( ${#files[@]} > 0 )); then (cd dist && sha256sum -- * > SHA256SUMS); fi
+          {
+            echo "NeedleBase $VERSION. Built in this release: Api=$API Web=$WEB Android=$MOBILE (a part that did not change since the previous tag keeps its earlier release)."
+            echo
+            if [[ "$MOBILE" == true ]]; then
+              echo "**Sideload (Android, versionCode $CODE):** download \`needlebase-$VERSION-$CODE.apk\` and run \`adb install -r needlebase-$VERSION-$CODE.apk\`, or copy it to the phone and open it (allow \"Install unknown apps\" for the app you open it with). It installs over the previous version and keeps the phone's data. Check the file with \`sha256sum -c SHA256SUMS --ignore-missing\`."
+              echo
+              if [[ -f "dist/needlebase-$VERSION-$CODE.aab" ]]; then
+                echo "**Google Play:** \`needlebase-$VERSION-$CODE.aab\` (same upload key, no in-app updater)."
+                echo
+              fi
+              echo "**Installed from the download page?** The app offers this version itself (More › Check for updates)."
+              echo
+            fi
+            if [[ "$API" == true ]]; then
+              echo "**Database:** \`needlebase-$VERSION-migrate.sql\` is idempotent (safe on any older database)."
+            fi
+          } > notes.md
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          tag_name: v${{ needs.meta.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: NeedleBase ${{ needs.meta.outputs.version }}
+          body_path: notes.md
+          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
+          files: |
+            dist/*.apk
+            dist/*.aab
+            dist/*.sql
+            dist/SHA256SUMS
+
+  # Download page + update.json + APK on GitHub Pages (the in-app updater's source). The site is replaced on each
+  # deploy, so the APK the live site offered until now is copied in too: phones holding a CDN-cached update.json
+  # (up to 10 minutes) can still finish their download.
+  pages:
+    name: Update site (GitHub Pages)
+    needs: [meta, android]
+    if: needs.android.result == 'success' && vars.UPDATES_PAGES_ENABLED != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts
+            src/NeedleBase.Mobile/Resources/Images/needlebase_logo.png
+          sparse-checkout-cone-mode: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: android
+          path: dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: android-update
+          path: update
+      - name: Build site
+        env:
+          VERSION: ${{ needs.meta.outputs.version }}
+          CODE: ${{ needs.meta.outputs.code }}
+          UPDATE_BASE: ${{ needs.meta.outputs.update_base }}
+        run: |
+          set -euo pipefail
+          mkdir -p site/apk
+          cp "dist/needlebase-$VERSION-$CODE.apk" site/apk/
+          cp update/update.json site/update.json
+          bash .github/scripts/update-site.sh previous --base "$UPDATE_BASE" --site site --code "$CODE"
+          bash .github/scripts/update-site.sh page --manifest site/update.json --site site \
+            --logo src/NeedleBase.Mobile/Resources/Images/needlebase_logo.png
+          ls -la site site/apk
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+      - name: Check the live manifest
+        env:
+          UPDATE_BASE: ${{ needs.meta.outputs.update_base }}
+          CODE: ${{ needs.meta.outputs.code }}
+        run: |
+          for _ in 1 2 3 4 5 6; do
+            live=$(curl -fsSL --max-time 20 "${UPDATE_BASE}update.json?t=$(date +%s)" | jq -r '.versionCode' 2>/dev/null || true)
+            if [[ "$live" == "$CODE" ]]; then echo "Live: ${UPDATE_BASE}update.json (versionCode $CODE)"; exit 0; fi
+            sleep 20
+          done
+          echo "::warning::${UPDATE_BASE}update.json does not show versionCode $CODE yet (CDN delay, or UPDATE_BASE_URL/custom domain not pointing at this Pages site)."
+
+  deploy:
+    name: Deploy to MonsterASP
+    needs: [meta, ci, server]
+    # DEPLOY_ENABLED must be true AND the production environment must have required reviewers (docs/ci-cd.md);
+    # without the variable a tag only builds and releases, so a missing environment can never deploy unreviewed.
+    if: vars.DEPLOY_ENABLED == 'true' && needs.server.result == 'success' && (github.event_name == 'push' || inputs.deploy)
+    runs-on: windows-latest
+    timeout-minutes: 60  # worst case: 2 deploys + 2 rollbacks with health checks of up to 9 min each; never cut a rollback short
+    # Required reviewers are set on this environment (docs/ci-cd.md); the job waits for approval.
+    environment:
+      name: production
+      url: ${{ vars.SITE_URL }}
+    env:
+      # One MonsterASP site: Web at the root, Api in the /api sub-application (docs/deployment.md).
+      MONSTER_SERVER: ${{ secrets.MONSTER_SERVER }}
+      MONSTER_SITE: ${{ secrets.MONSTER_SITE }}
+      MONSTER_USER: ${{ secrets.MONSTER_USER }}
+      MONSTER_PASSWORD: ${{ secrets.MONSTER_PASSWORD }}
+      MONSTER_ALLOW_UNTRUSTED: ${{ vars.MONSTER_ALLOW_UNTRUSTED }}
+      SITE_URL: ${{ vars.SITE_URL }}
+      # First deploy only: the free plan issues the certificate after the site is uploaded (docs/deployment.md).
+      # true = health checks become plain-http smoke checks that never fail or roll back. The apps themselves stay
+      # https-only (Secure cookies, https Api:BaseUrl, HSTS): sign-in does not work until HTTPS is on. Remove it then.
+      SITE_HTTPS_PENDING: ${{ vars.SITE_HTTPS_PENDING }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - if: needs.ci.outputs.api == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: server-api
+          path: pkg/api
+      - if: needs.ci.outputs.web == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: server-web
+          path: pkg/web
+      - if: needs.ci.outputs.api == 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: migrations
+          path: pkg/migrations
+      - name: Check settings
+        shell: pwsh
+        run: |
+          Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
+          foreach ($n in 'MONSTER_SERVER', 'MONSTER_SITE', 'MONSTER_USER', 'MONSTER_PASSWORD') {
+            Assert-MsDeployValue -Name $n -Value ([Environment]::GetEnvironmentVariable($n))
+          }
+          $null = Get-MsDeployEndpoint -Server $env:MONSTER_SERVER -Site $env:MONSTER_SITE
+          $null = Get-ApiHealthUrl -SiteUrl $env:SITE_URL
+          if ($env:SITE_HTTPS_PENDING -eq 'true') {
+            Write-Host "::warning::SITE_HTTPS_PENDING=true: post-deploy health checks are http smoke checks only and NOTHING is rolled back. Ask MonsterASP support to enable HTTPS, then delete the variable and re-run."
+          }
+
+      # 1. Database first: the new Api expects the new schema. Idempotent, one transaction, stops on first error.
+      #    Forward-only: a later rollback restores files, not the schema (restore the pre-release DB backup if needed).
+      - name: Apply migrations
+        if: needs.ci.outputs.api == 'true'
+        shell: pwsh
+        env:
+          DB_URL: ${{ secrets.PROD_DB_MIGRATION_CONNECTION_STRING }}
+          MIGRATIONS_MANUAL: ${{ vars.MIGRATIONS_MANUAL }}
+        run: |
+          $sql = 'pkg/migrations/needlebase-migrate.sql'
+          if ([string]::IsNullOrWhiteSpace($env:DB_URL)) {
+            if ($env:MIGRATIONS_MANUAL -eq 'true') {
+              Write-Host "::warning::PROD_DB_MIGRATION_CONNECTION_STRING not set; MIGRATIONS_MANUAL=true, so apply $sql by hand BEFORE approving."
+              exit 0
+            }
+            throw 'PROD_DB_MIGRATION_CONNECTION_STRING is not set (or set the MIGRATIONS_MANUAL variable to true and apply the SQL yourself).'
+          }
+          Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
+          # Npgsql string or postgres:// URI -> PG* variables: the connection never appears on a command line.
+          $pg = ConvertTo-PgEnvironment -Connection $env:DB_URL
+          foreach ($k in $pg.Keys) { if ($pg[$k]) { Set-Item -Path "env:$k" -Value $pg[$k] } }
+          $env:DB_URL = $null
+          $env:PGCONNECT_TIMEOUT = '20'
+          $candidates = @()
+          if ($env:PGBIN) { $candidates += Join-Path $env:PGBIN 'psql.exe' }
+          $onPath = Get-Command psql -ErrorAction SilentlyContinue
+          if ($onPath) { $candidates += $onPath.Source }
+          $candidates += @(Get-ChildItem 'C:\Program Files\PostgreSQL\*\bin\psql.exe' -ErrorAction SilentlyContinue |
+            Sort-Object { [int]($_.Directory.Parent.Name -replace '\D.*$', '') } -Descending | ForEach-Object FullName)
+          $psql = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+          if (-not $psql) { throw 'psql not found on the runner (PGBIN, PATH, C:\Program Files\PostgreSQL).' }
+          & $psql --no-psqlrc -v ON_ERROR_STOP=1 --quiet --file=$sql
+          if ($LASTEXITCODE -ne 0) { throw "Migration failed (exit $LASTEXITCODE); the transaction was rolled back, nothing was deployed." }
+
+      # 2. Api into /api. The current /api content is copied to the RUNNER first (never uploaded as an artifact: its
+      #    web.config may hold panel settings) so a failed deploy or health check is rolled back automatically.
+      #    A backup failure is a warning only (first deploy: /api does not exist yet).
+      - name: Back up current Api
+        id: api_backup
+        if: needs.ci.outputs.api == 'true'
+        continue-on-error: true
+        shell: pwsh
+        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Backup -Path "$env:RUNNER_TEMP/backup/api" -AppPath api
+      - name: Deploy Api to /api
+        id: api_deploy
+        if: needs.ci.outputs.api == 'true'
+        shell: pwsh
+        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Path pkg/api -AppPath api
+      - name: Api /api/health/ready
+        id: api_health
+        if: needs.ci.outputs.api == 'true'
+        continue-on-error: ${{ vars.SITE_HTTPS_PENDING == 'true' }}
+        shell: pwsh
+        run: |
+          Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
+          $url = Get-ApiHealthUrl -SiteUrl $env:SITE_URL
+          if ($env:SITE_HTTPS_PENDING -eq 'true') {
+            ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url ($url -replace '^https://', 'http://') -Attempts 6 -AllowHttp
+          } else {
+            ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url $url
+          }
+      - name: Roll back Api
+        if: failure() && steps.api_backup.outcome == 'success' && (steps.api_deploy.outcome == 'failure' || steps.api_health.outcome == 'failure')
+        shell: pwsh
+        run: |
+          ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Restore -Path "$env:RUNNER_TEMP/backup/api" -AppPath api
+          Write-Host "::error::Api rolled back to the previous files; the Web was NOT deployed. Migrations already applied stay applied."
+          Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
+          ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url (Get-ApiHealthUrl -SiteUrl $env:SITE_URL) -Attempts 6
+
+      # 3. Web at the site root, only once the Api is healthy (steps are skipped after any failure above).
+      #    -ProtectSubApp api: msdeploy never deletes or overwrites the /api folder.
+      - name: Back up current Web
+        id: web_backup
+        if: needs.ci.outputs.web == 'true'
+        continue-on-error: true
+        shell: pwsh
+        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Backup -Path "$env:RUNNER_TEMP/backup/web" -ProtectSubApp api
+      - name: Deploy Web to /
+        id: web_deploy
+        if: needs.ci.outputs.web == 'true'
+        shell: pwsh
+        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Path pkg/web -ProtectSubApp api
+      - name: Web responds
+        id: web_health
+        if: needs.ci.outputs.web == 'true'
+        continue-on-error: ${{ vars.SITE_HTTPS_PENDING == 'true' }}
+        shell: pwsh
+        run: |
+          if ($env:SITE_HTTPS_PENDING -eq 'true') {
+            ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url ($env:SITE_URL -replace '^https://', 'http://') -Attempts 6 -AllowHttp
+          } else {
+            ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url $env:SITE_URL
+          }
+      - name: Roll back Web
+        if: failure() && steps.web_backup.outcome == 'success' && (steps.web_deploy.outcome == 'failure' || steps.web_health.outcome == 'failure')
+        shell: pwsh
+        run: |
+          ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Restore -Path "$env:RUNNER_TEMP/backup/web" -ProtectSubApp api
+          Write-Host "::error::Web rolled back to the previous files; the new Api (if deployed) stays live."
+          ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url $env:SITE_URL -Attempts 6
+      - name: Remove server backups
+        if: always()
+        shell: pwsh
+        run: Remove-Item -LiteralPath "$env:RUNNER_TEMP/backup" -Recurse -Force -ErrorAction SilentlyContinue
+
+  play:
+    name: Google Play (internal track)
+    needs: [meta, android]
+    # Skipped when Android did not change (android job skipped). Off until PLAY_UPLOAD_ENABLED=true (repository variable); then on tags, or on manual runs that ask for it.
+    if: vars.PLAY_UPLOAD_ENABLED == 'true' && (github.event_name == 'push' || inputs.play_upload)
+    runs-on: ubuntu-latest
+    environment: play-store
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: android
+          path: dist
+      - uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.helmutcode.needlebase
+          releaseFiles: dist/needlebase-${{ needs.meta.outputs.version }}-${{ needs.meta.outputs.code }}.aab
+          releaseName: ${{ needs.meta.outputs.version }} (${{ needs.meta.outputs.code }})
+          track: ${{ vars.PLAY_TRACK || 'internal' }}
+          status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}

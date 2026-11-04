@@ -1,0 +1,41 @@
+name: Set up .NET 9 (+ maui-android)
+description: Installs the .NET 9 SDK into a cached folder, restores the NuGet cache and (optionally) the maui-android workload.
+inputs:
+  maui:
+    description: Install the maui-android workload (needed by anything that builds src/NeedleBase.Mobile).
+    default: "true"
+runs:
+  using: composite
+  steps:
+    # The SDK and its workloads live in one folder so a single cache entry restores both (the workload install
+    # is the slowest step of a cold run). The key changes when the SDK band or the workload list changes.
+    - name: Point the SDK at a cacheable folder
+      shell: bash
+      run: |
+        echo "DOTNET_INSTALL_DIR=$RUNNER_TOOL_CACHE/needlebase-dotnet" >> "$GITHUB_ENV"
+        echo "DOTNET_CLI_TELEMETRY_OPTOUT=1" >> "$GITHUB_ENV"
+        echo "DOTNET_NOLOGO=1" >> "$GITHUB_ENV"
+    - name: Cache SDK + workloads
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ runner.tool_cache }}/needlebase-dotnet
+        key: dotnet-${{ runner.os }}-9.0-maui${{ inputs.maui }}-v1
+    - name: Set up .NET SDK
+      uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+      with:
+        dotnet-version: 9.0.x
+    - name: Install maui-android workload
+      if: inputs.maui == 'true'
+      shell: bash
+      run: |
+        if dotnet workload list | grep -q '^maui-android'; then
+          echo "maui-android already installed (cache hit)."
+        else
+          dotnet workload install maui-android
+        fi
+    - name: Cache NuGet packages
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '.config/dotnet-tools.json') }}
+        restore-keys: nuget-${{ runner.os }}-

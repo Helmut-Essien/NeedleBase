@@ -1,0 +1,230 @@
+# Build + test only what a change touches (docs/ci-cd.md, "What builds when"). Also called by release.yml.
+# Branch protection: require ONLY the "CI result" check; it passes when every needed job passed or was skipped.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      base:
+        description: Commit to diff against ('' = build everything)
+        type: string
+        default: ""
+    outputs:
+      api:
+        value: ${{ jobs.changes.outputs.api }}
+      web:
+        value: ${{ jobs.changes.outputs.web }}
+      mobile:
+        value: ${{ jobs.changes.outputs.mobile }}
+
+permissions:
+  contents: read
+
+concurrency:
+  # A newer push to the same branch/PR cancels the older run. When release.yml calls this file, github.workflow
+  # is "Release", so the group differs and a release run is never cancelled by a push.
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.workflow == 'CI' }}
+
+env:
+  CONFIGURATION: Release
+
+jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.d.outputs.core }}
+      api: ${{ steps.d.outputs.api }}
+      web: ${{ steps.d.outputs.web }}
+      mobile: ${{ steps.d.outputs.mobile }}
+      any: ${{ steps.d.outputs.any }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Script checks (shellcheck + self-tests)
+        run: |
+          shellcheck scripts/*.sh .github/scripts/*.sh
+          .github/scripts/test-scripts.sh
+      - id: d
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          CALL_BASE: ${{ inputs.base }}
+        run: |
+          case "$EVENT" in
+            pull_request) base="$PR_BASE" ;;
+            push) base="$PUSH_BEFORE" ;;
+            *) base="$CALL_BASE" ;;   # workflow_dispatch -> '' -> everything
+          esac
+          # A called run reports the caller's event name, so trust inputs.base whenever it was given.
+          if [[ -n "$CALL_BASE" || "$GITHUB_WORKFLOW" != "CI" ]]; then base="$CALL_BASE"; fi
+          .github/scripts/detect-changes.sh "$base" HEAD | tee -a "$GITHUB_STEP_SUMMARY"
+
+  core:
+    name: Domain + Application tests
+    needs: changes
+    if: needs.changes.outputs.core == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-dotnet-maui
+        with:
+          maui: "false"
+      - name: Build + test (0 warnings allowed)
+        run: |
+          status=0
+          for p in Domain Application; do
+            proj="tests/NeedleBase.$p.Tests/NeedleBase.$p.Tests.csproj"
+            dotnet build "$proj" -c "$CONFIGURATION" --no-incremental -warnaserror || { status=1; continue; }
+            dotnet test "$proj" -c "$CONFIGURATION" --no-build --logger "trx;LogFileName=$p.trx" --results-directory TestResults || status=1
+          done
+          exit $status
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-core
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
+
+  api:
+    name: Api build + tests (Postgres)
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          # Throw-away CI database (same values as docker-compose.yml); not a secret.
+          POSTGRES_USER: needlebase
+          POSTGRES_PASSWORD: needlebase_dev
+          POSTGRES_DB: NeedleBase
+        ports: ["5435:5432"]
+        options: >-
+          --health-cmd "pg_isready -U needlebase -d NeedleBase"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5435;Database=NeedleBase;Username=needlebase;Password=needlebase_dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-dotnet-maui
+        with:
+          maui: "false"
+      - name: Build (0 warnings allowed)
+        run: dotnet build tests/NeedleBase.Api.Tests/NeedleBase.Api.Tests.csproj -c "$CONFIGURATION" --no-incremental -warnaserror
+      - name: Test
+        run: dotnet test tests/NeedleBase.Api.Tests/NeedleBase.Api.Tests.csproj -c "$CONFIGURATION" --no-build --logger "trx;LogFileName=Api.trx" --results-directory TestResults
+      - name: Migration script builds
+        run: scripts/db-migrate.sh script
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-api
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
+
+  web:
+    name: Web build + tests
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-dotnet-maui
+        with:
+          maui: "false"
+      - name: Build (0 warnings allowed)
+        run: dotnet build tests/NeedleBase.Web.Tests/NeedleBase.Web.Tests.csproj -c "$CONFIGURATION" --no-incremental -warnaserror
+      - name: Test
+        run: dotnet test tests/NeedleBase.Web.Tests/NeedleBase.Web.Tests.csproj -c "$CONFIGURATION" --no-build --logger "trx;LogFileName=Web.trx" --results-directory TestResults
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-web
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
+
+  mobile:
+    name: Mobile tests + Android Debug build
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: microsoft
+          java-version: "17"
+      - uses: ./.github/actions/setup-dotnet-maui
+      - name: Build tests (0 warnings allowed)
+        run: dotnet build tests/NeedleBase.Mobile.Tests/NeedleBase.Mobile.Tests.csproj -c "$CONFIGURATION" --no-incremental -warnaserror
+      - name: Test
+        run: dotnet test tests/NeedleBase.Mobile.Tests/NeedleBase.Mobile.Tests.csproj -c "$CONFIGURATION" --no-build --logger "trx;LogFileName=Mobile.trx" --results-directory TestResults
+      - name: Android Debug build (0 warnings allowed)
+        run: dotnet build src/NeedleBase.Mobile/NeedleBase.Mobile.csproj -f net9.0-android -c Debug -warnaserror
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-mobile
+          path: TestResults/*.trx
+          if-no-files-found: ignore
+          retention-days: 14
+
+  vulnerable:
+    name: Vulnerable packages
+    needs: changes
+    if: needs.changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-dotnet-maui
+      - name: Check
+        run: |
+          dotnet restore NeedleBase.sln
+          dotnet list NeedleBase.sln package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then
+            echo "::error::Vulnerable NuGet packages found (see the list above)."
+            exit 1
+          fi
+
+  result:
+    # The one check to mark "required" in branch protection. Skipped jobs (nothing changed there) count as
+    # passed; a failed or cancelled job fails this check.
+    name: CI result
+    needs: [changes, core, api, web, mobile, vulnerable]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Job results: $RESULTS"
+          for r in $RESULTS; do
+            case "$r" in success|skipped) ;; *) echo "::error::A CI job ended with '$r'."; exit 1 ;; esac
+          done

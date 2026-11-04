@@ -367,3 +367,19 @@ FodyWeavers.xsd
 .vscode/api-mobile.log
 .vscode/.adb-device
 .vscode/needlebase.local.env
+
+# NeedleBase release hygiene (G7/G9): publish profiles/settings, signing material, release outputs, key rings.
+*.publishSettings
+*.PublishSettings
+*.pubxml.user
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pepk
+*.aab
+*.apk
+*.idsig
+keystore.properties
+signing.properties
+App_Data/
