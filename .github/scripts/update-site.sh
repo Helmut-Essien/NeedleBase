@@ -4,6 +4,11 @@
 #
 #   update-site.sh manifest --apk F --version 1.2.0 --code 42 [--min 0] [--notes FILE] --cert SHA256 [--cert ...] --out update.json
 #       Writes update.json (schema 1). apkUrl is relative (apk/<file>), so a custom domain needs no rebuild.
+#   update-site.sh certs --apk F [--apksigner PATH]    (or: certs --from FILE, parse saved output only)
+#       Prints the APK's signing-certificate SHA-256 fingerprints (lowercase hex, one per line, de-duplicated).
+#       Reads `apksigner verify --print-certs` in every known wording (build-tools <=36 "Signer #1 certificate
+#       SHA-256 digest: ...", 37+ "V3.0 Signer: certificate SHA-256 digest: ...", rotation/v3.1 variants), falling back
+#       to `keytool -printcert -jarfile` ("SHA256: AB:CD:..."). Fails (exit 3) if the APK is unsigned or doesn't verify.
 #   update-site.sh previous --base https://owner.github.io/NeedleBase/ --site DIR --code 42
 #       Best effort: copies the APK the live site currently offers into DIR/apk/ (verified against its manifest),
 #       so phones that read the old, CDN-cached update.json can still download during the switch-over.
@@ -15,7 +20,7 @@ die() { echo "update-site: $*" >&2; exit 2; }
 need() { command -v "$1" >/dev/null 2>&1 || { echo "update-site: $1 not found" >&2; exit 127; }; }
 
 cmd="${1:-}"; [[ $# -gt 0 ]] && shift
-apk="" version="" code="" min="0" notes="" out="" base="" site="" manifest="" logo="" published=""
+apk="" version="" code="" min="0" notes="" out="" base="" site="" manifest="" logo="" published="" apksigner="" from=""
 certs=()
 while [[ $# -gt 0 ]]; do
   [[ $# -ge 2 ]] || die "missing value for $1"
@@ -23,10 +28,44 @@ while [[ $# -gt 0 ]]; do
     --apk) apk="$2" ;; --version) version="$2" ;; --code) code="$2" ;; --min) min="$2" ;;
     --notes) notes="$2" ;; --out) out="$2" ;; --base) base="$2" ;; --site) site="$2" ;;
     --manifest) manifest="$2" ;; --logo) logo="$2" ;; --cert) certs+=("$2") ;; --published) published="$2" ;;
+    --apksigner) apksigner="$2" ;; --from) from="$2" ;;
     *) die "unknown option $1" ;;
   esac
   shift 2
 done
+
+# SHA-256 fingerprints from apksigner/keytool text on stdin -> lowercase hex, unique, in first-seen order.
+parse_certs() {
+  sed -nE 's/.*SHA-?256( digest)?: *([0-9A-Fa-f: ]+).*/\2/Ip' | tr -d ': \r' | tr 'A-F' 'a-f' |
+    grep -E '^[0-9a-f]{64}$' | awk '!seen[$0]++' || true
+}
+
+if [[ "$cmd" == certs ]]; then
+  if [[ -n "$from" ]]; then
+    [[ -f "$from" ]] || die "--from file not found"
+    found=$(parse_certs < "$from")
+  else
+    [[ -f "$apk" ]] || die "--apk file not found"
+    if [[ -z "$apksigner" ]]; then
+      sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+      [[ -n "$sdk" ]] && apksigner=$(find "$sdk/build-tools" -mindepth 2 -maxdepth 2 -name apksigner 2>/dev/null | sort -V | tail -1 || true)
+    fi
+    [[ -n "$apksigner" && -x "$apksigner" ]] || die "apksigner not found (pass --apksigner or set ANDROID_HOME)"
+    if ! text=$("$apksigner" verify --print-certs "$apk" 2>&1); then
+      echo "$text" >&2
+      echo "update-site: $apk is not signed or its signature does not verify" >&2; exit 3
+    fi
+    found=$(parse_certs <<< "$text")
+    if [[ -z "$found" ]] && command -v keytool >/dev/null 2>&1; then
+      found=$(keytool -printcert -jarfile "$apk" 2>/dev/null | parse_certs)
+    fi
+    [[ -n "$found" ]] || echo "$text" >&2
+  fi
+  [[ -n "$found" ]] || { echo "update-site: no signing certificate found" >&2; exit 3; }
+  printf '%s\n' "$found"
+  exit 0
+fi
+
 need jq
 
 case "$cmd" in
@@ -152,5 +191,5 @@ $( [[ -n "$notes_html" ]] && printf '  <div class="card">\n    <h2>What'"'"'s ne
 HTML
     ;;
 
-  *) die "usage: $0 manifest|previous|page [options] (see the header of this file)" ;;
+  *) die "usage: $0 certs|manifest|previous|page [options] (see the header of this file)" ;;
 esac

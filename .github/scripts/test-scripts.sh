@@ -79,6 +79,25 @@ check "run+offset > max"  2 "$(code env GITHUB_RUN_NUMBER=999999999 NEEDLEBASE_V
 
 # update-site.sh (GitHub Pages update manifest, download page, previous APK). Needs jq (on GitHub's runners).
 site="$root/.github/scripts/update-site.sh"
+# certs: apksigner/keytool output (real wordings captured from build-tools 35 and 37 on a throw-away keystore).
+h="e8537298a34ed82ceeea3ebf4644bc2d9072c8a3be6259128220f1271a396eab"
+h2="$(printf '0%.0s' {1..63})1"
+ct=$(mktemp -d)
+printf 'Signer #1 certificate DN: CN=T\nSigner #1 certificate SHA-256 digest: %s\nSigner #1 certificate SHA-1 digest: 004713538334e732664a02977148878fd84a5115\n' "$h" > "$ct/bt35.txt"
+printf 'V3.0 Signer: certificate DN: CN=T\nV3.0 Signer: certificate SHA-256 digest: %s\nV3.0 Signer: certificate MD5 digest: 1611c6accf883aa3c56d348e3d2ad7de\n' "$h" > "$ct/bt37.txt"
+printf 'WARNING: META-INF/x not protected\nSigner (minSdkVersion=24, maxSdkVersion=32) certificate SHA-256 digest: %s\nSigner (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: %s\nV3.1 Signer: certificate SHA-256 digest: %s\r\n' "$h" "$h2" "$h2" > "$ct/rot.txt"
+printf 'Certificate fingerprints:\n\t SHA1: 00:47\n\t SHA256: %s\n' "$(echo "$h" | tr a-f A-F | sed 's/../&:/g; s/:$//')" > "$ct/keytool.txt"
+printf 'Verifies\nVerified using v2 scheme: true\n' > "$ct/none.txt"
+check "certs build-tools 35" "$h" "$(bash "$site" certs --from "$ct/bt35.txt")"
+check "certs build-tools 37" "$h" "$(bash "$site" certs --from "$ct/bt37.txt")"
+check "certs rotation unique" "$h $h2" "$(bash "$site" certs --from "$ct/rot.txt" | tr '\n' ' ' | sed 's/ $//')"
+check "certs keytool"        "$h" "$(bash "$site" certs --from "$ct/keytool.txt")"
+check "certs none"           3 "$(code bash "$site" certs --from "$ct/none.txt")"
+printf '#!/bin/sh\necho "DOES NOT VERIFY"; exit 1\n' > "$ct/apksigner"; chmod +x "$ct/apksigner"; printf 'x' > "$ct/u.apk"
+check "certs unsigned apk"   3 "$(code bash "$site" certs --apk "$ct/u.apk" --apksigner "$ct/apksigner")"
+printf '#!/bin/sh\ncat "%s"\n' "$ct/bt37.txt" > "$ct/apksigner"
+check "certs from apksigner" "$h" "$(bash "$site" certs --apk "$ct/u.apk" --apksigner "$ct/apksigner")"
+rm -rf "$ct"
 if command -v jq >/dev/null 2>&1; then
   t=$(mktemp -d)
   printf 'fake apk bytes' > "$t/a.apk"

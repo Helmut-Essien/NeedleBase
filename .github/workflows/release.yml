@@ -177,10 +177,11 @@ jobs:
         run: |
           set -euo pipefail
           apk="dist/needlebase-$VERSION-$CODE.apk"
-          apksigner=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -mindepth 2 -maxdepth 2 -name apksigner 2>/dev/null | sort -V | tail -1 || true)
-          [[ -x "$apksigner" ]] || { echo "::error::apksigner not found in the Android SDK build-tools."; exit 1; }
-          "$apksigner" verify --print-certs "$apk" > "$RUNNER_TEMP/certs.txt"
-          mapfile -t certs < <(sed -n 's/^Signer #[0-9]* certificate SHA-256 digest: *//p' "$RUNNER_TEMP/certs.txt")
+          # Any apksigner wording (build-tools 37 prints "V3.0 Signer: certificate SHA-256 digest"), keytool fallback;
+          # fails if the APK is unsigned or doesn't verify.
+          bash .github/scripts/update-site.sh certs --apk "$apk" > "$RUNNER_TEMP/certs.txt" ||
+            { echo "::error::$apk is unsigned, doesn't verify, or no signing certificate could be read (log above)."; exit 1; }
+          mapfile -t certs < "$RUNNER_TEMP/certs.txt"
           [[ ${#certs[@]} -gt 0 ]] || { echo "::error::No signing certificate found in $apk."; exit 1; }
           # Release notes = the pushed commit's message (the tag is created later, by the release job).
           git log -1 --format=%B > "$RUNNER_TEMP/notes.txt" || true
@@ -504,6 +505,7 @@ jobs:
           $psql = $candidates | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
           if (-not $psql) { throw 'psql not found on the runner (PGBIN, PATH, C:\Program Files\PostgreSQL).' }
           & $psql --no-psqlrc -v ON_ERROR_STOP=1 --quiet --file=$sql
+          if ($LASTEXITCODE -eq 2) { throw "Could not connect to the database (psql exit 2, e.g. timeout). Check that remote database access is enabled in the MonsterASP panel and that the connection string uses the PUBLIC host name (not a 10.x/private address); nothing was deployed." }
           if ($LASTEXITCODE -ne 0) { throw "Migration failed (exit $LASTEXITCODE); the transaction was rolled back, nothing was deployed." }
 
       # The Api's server settings go into its web.config here (never into the uploaded artifact): one database, so the
