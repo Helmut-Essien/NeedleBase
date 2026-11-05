@@ -14,9 +14,14 @@ Outside Development (and the `Testing` environment used by integration tests) th
 missing or wrong it stops with one message listing every problem (setting names only, never values). Optional
 features that are simply off (email, WhatsApp, token issuer) are logged as warnings at start-up.
 
-In the single-site layout ([deployment.md](deployment.md#one-site-web-at--api-at-api)) `Api:BaseUrl` is the **site root**
+In the single-site layout ([deployment.md](deployment.md#one-site-one-app-web-at--api-at-api)) `Api:BaseUrl` is the **site root**
 (`https://your-host/`): the Web's calls are relative `api/...` paths. The Web refuses to start without an https `Api:BaseUrl` outside Development, and with a bad
 `ForwardedHeaders:*` or relative `DataProtection:KeysPath`.
+
+On the server the Web hosts the Api in its own process (`Api:InProcess`, default `true` in the Web's
+`appsettings.json`; `false` in Development, where the Api runs on its own). Both read the **same** settings: the
+Web's `appsettings.json` (which carries the Api's defaults too) plus the site's `web.config` environment variables.
+So every setting below, Api and Web, goes into the one site.
 
 ## Api (`src/NeedleBase.Api`)
 
@@ -28,7 +33,7 @@ In the single-site layout ([deployment.md](deployment.md#one-site-web-at--api-at
 | `JwtSettings__SecurityKey` | **yes**, automatic | ≥ 32 characters. The release writes the `JWT_SECURITY_KEY` secret, or a key derived from the database secret when that is unset. Changing it signs everyone out. |
 | `JwtSettings__Issuer` / `JwtSettings__Audience` | no | Defaults `NeedleBaseApi` / `NeedleBaseClient`. |
 | `JwtSettings__AccessTokenExpirationMinutes` / `RefreshTokenExpirationDays` | no | Defaults 60 / 7. |
-| `FrontendBaseUrl` | **yes**, automatic | https address of the Web app (links in emails). The release writes it from `SITE_URL` into the Api package's `web.config`; set it yourself only for a manual deploy. |
+| `FrontendBaseUrl` | **yes**, automatic | https address of the Web app (links in emails). The release writes it from `SITE_URL` into the site's `web.config`; set it yourself only for a manual deploy. |
 | `GitHub__Owner` / `GitHub__Repository` | no | Defaults `Helmut-Essien` / `NeedleBase` (appsettings.json): where `GET /api/mobile/update` reads the Android `update.json` (newest GitHub Release, like AssetTag). |
 | `GitHub__Token` | no | Only for a private repository or if the 60-calls-an-hour anonymous GitHub limit is ever hit (answers are cached 5 minutes). A read-only fine-grained token (Contents: read). Set it on the panel; never commit it. |
 | `Platform__BaseUrl` | **yes**\* | https Platform licensing address (release: `PLATFORM_BASE_URL` variable). |
@@ -43,7 +48,7 @@ In the single-site layout ([deployment.md](deployment.md#one-site-web-at--api-at
 | `WhatsApp__BusinessAccountId`, `ApiVersion`, `TemplateLanguage`, `DelaySeconds`, `MaxPerBusinessPerHour` | no | Defaults in `WhatsAppOptions`. |
 | `ForwardedHeaders__KnownProxies` | if behind a proxy | Comma-separated proxy IPs (full form: `10.0.0.5`, not `10.5`, no ports) whose `X-Forwarded-For/-Proto` are trusted (loopback always is). Ask MonsterASP. Without it, every user looks like the proxy IP to the rate limits and login throttle. If the Api log says "The Web front end reaches the Api from X", add X here (the Web's calls re-enter through the host's network). |
 | `ForwardedHeaders__KnownNetworks` | if behind a proxy | Comma-separated CIDR ranges, e.g. `10.0.0.0/8`. `/0` (trust everyone) is refused: anyone could fake their IP and dodge rate limits. |
-| `DataProtection__KeysPath` | recommended | Absolute folder for the Api key ring (encrypts stored license keys). Default `<site>/App_Data/Keys/Api`. |
+| `DataProtection__KeysPath` | recommended | Absolute folder for the Api key ring (encrypts stored license keys). Default `<site>/App_Data/Keys/Api`. When the Api runs inside the Web, a set `DataProtection__KeysPath` is the Web's folder and the Api uses its `Api` subfolder. |
 | `RateLimits__AuthPermitPerMinute` / `RegisterPermitPer10Minutes` / `RefreshPermitPerMinute` | no | Defaults 30 / 10 / 300 per IP. |
 
 ## Web (`src/NeedleBase.Web`)
@@ -51,7 +56,8 @@ In the single-site layout ([deployment.md](deployment.md#one-site-web-at--api-at
 | Setting (env var) | Required | Notes |
 |---|---|---|
 | `ASPNETCORE_ENVIRONMENT` | yes | `Production`. |
-| `Api__BaseUrl` | **yes**, automatic | The **site root** (the Web calls `api/...` under it). The release writes it from `SITE_URL` into the Web package's `web.config`; set it yourself only for a manual deploy. |
+| `Api__BaseUrl` | **yes**, automatic | The **site root** (the Web calls `api/...` under it). The release writes it from `SITE_URL` into the site's `web.config`; set it yourself only for a manual deploy. |
+| `Api__InProcess` | no | Default `true` (Production): the Web serves the Api under `/api` in the same process. `false` only if the Api runs as its own app at `Api__BaseUrl`. |
 | `ForwardedHeaders__KnownProxies` / `KnownNetworks` | if behind a proxy | Same format as the Api. Needed so HTTPS redirect / Secure cookies see the real scheme. |
 | `DataProtection__KeysPath` | recommended | Absolute folder for the cookie/antiforgery key ring. Default `<site>/App_Data/Keys`. |
 
@@ -73,14 +79,13 @@ Rules:
    extra files on destination" / exclude `App_Data`).
 3. **Back it up** (download the folder) after the first start and after each 90-day key rotation. The files are
    secrets: keep backups private, never in git (`App_Data/` is git-ignored).
-4. Each app has its own folder; do not share one folder between the Api and Web.
+4. The Api and Web rings stay in separate folders (`Keys` and `Keys/Api`); do not point both at one folder.
 
 ## Precedence: web.config vs panel
 
-- The release writes the settings into each package's `web.config` as `<aspNetCore><environmentVariables>`, inside
-  `<location path="." inheritInChildApplications="false">` so the Web's values never leak into `/api`:
-  Web `Api__BaseUrl` and Api `FrontendBaseUrl` (from `SITE_URL`, at build time), and, only in the deploy job right
-  before upload, Api `ConnectionStrings__DefaultConnection`, `JwtSettings__SecurityKey` and `Platform__*`
+- The release writes the settings into the site package's `web.config` as `<aspNetCore><environmentVariables>`:
+  `Api__BaseUrl` and `FrontendBaseUrl` (from `SITE_URL`, at build time), and, only in the deploy job right
+  before upload, `ConnectionStrings__DefaultConnection`, `JwtSettings__SecurityKey` and `Platform__*`
   (from the secrets in [ci-cd.md](ci-cd.md)). Uploaded artifacts never contain a secret; only listed names are allowed.
 - `web.config` values win over the panel/app pool and over `appsettings.json`, and each deploy replaces
   `web.config`. So set nothing on the panel; change a secret or variable in GitHub and re-run the release.

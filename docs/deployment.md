@@ -2,32 +2,40 @@
 
 Settings: [production-config.md](production-config.md). Android: [android-release.md](android-release.md). Automated release/deploy: [ci-cd.md](ci-cd.md) (the steps below are what it does; use them by hand when needed).
 
-## One site: Web at `/`, Api at `/api`
+## One site, one app: Web at `/`, Api at `/api`
 
-Both apps live in **one** MonsterASP site (one hostname, one certificate, no CORS):
+NeedleBase runs as **one** ASP.NET Core application in **one** MonsterASP site (one hostname, one certificate, one
+app pool, no CORS, no IIS sub-application), like Platform:
 
-| URL | IIS | Folder | App pool |
-|---|---|---|---|
-| `https://your-host/` | site root application | `wwwroot` | the site's pool (Web) |
-| `https://your-host/api/...` | **application** `/api` | `wwwroot\api` | its **own** pool (Api) |
+| URL | Served by |
+|---|---|
+| `https://your-host/` | the Web (Blazor Server, cookie sign-in) |
+| `https://your-host/api/...` | the Api, hosted **inside the Web process** (`Api:InProcess=true`, JWT auth) |
 
 Panel setup, once:
 
 1. Create the site and bind the hostname + TLS.
-2. Create the folder `wwwroot\api`, then add an **application** (not just a virtual directory) with the alias
-   `api` pointing at it and its **own application pool** (No Managed Code). Without it `/api/health/ready` returns the
-   Web's 404 and the release rolls the Api back.
-3. Nothing to set on the panel: the release writes the Api's connection string (from
-   `PROD_DB_MIGRATION_CONNECTION_STRING`), JWT key and site URLs into each package's `web.config`
+2. **Do not** create an `/api` application. If one exists from the old two-app layout, remove it (Websites →
+   Applications); otherwise IIS would still route `/api` to that folder instead of the Web.
+3. Nothing to set on the panel: the release writes the connection string (from
+   `PROD_DB_MIGRATION_CONNECTION_STRING`), JWT key and site URLs into the site's `web.config`
    (see "Precedence" in production-config.md).
 4. Enable Web Deploy and put its server, site name and login into the GitHub secrets ([ci-cd.md](ci-cd.md)).
 
-How it fits together: the SDK writes each `web.config` with `<location path="." inheritInChildApplications="false">`,
-so the Web's ASP.NET Core handler is not inherited by `/api` (the release checks this). IIS hands the Api requests
-with `PathBase=/api`; the Api puts `/api` back into the path (`Configuration/ApiPathBase.cs`) because its routes
-already start with `api/`, so the same build works at a host root (development, tests) and under `/api`. Health:
-`/api/health/live`, `/api/health/ready` (and `/health/*` inside the Api). The Web deploy skips the `/api` folder,
-and every deploy keeps `App_Data`, `logs` and `data`.
+How it fits together: the Web project references the Api. On start the Web builds the Api as a second, separate
+`WebApplication` (`src/NeedleBase.Api/Hosting/EmbeddedApi.cs`) with the same environment, content root and
+settings, but its own services, authentication (JWT), exception handling, rate limits, CORS, health checks and
+background services. The first middleware of the Web hands every request whose path starts with the `/api` segment
+to it unchanged (until it has started: 503 + `Retry-After`). The Api project still runs on its own
+(`dotnet run --project src/NeedleBase.Api`, used in development and by the Api tests); Development keeps the two
+apart (`Api:InProcess=false`, `Api:BaseUrl` points at the standalone Api). Health: `/api/health/live`,
+`/api/health/ready`. Every deploy keeps `App_Data`, `logs` and `data`.
+
+Moving from the old two-app layout: the first one-app deploy deletes the old `wwwroot\api` files (except
+`wwwroot\api\App_Data`, which is kept). The Api's key ring moves from `wwwroot\api\App_Data\Keys\Api` to
+`wwwroot\App_Data\Keys\Api`; copy the old `*.xml` key files across in the file manager so stored license keys stay
+readable (otherwise the Owner re-enters the license key once; shops are never locked). After that the leftover
+`wwwroot\api` folder can be deleted.
 
 ## First deploy before HTTPS (free plan)
 
@@ -80,7 +88,7 @@ Each release:
 
    or paste it into the hosting panel's SQL tool. Alternative: `scripts/db-migrate.sh bundle win-x64` makes a
    self-contained `efbundle.exe` run as `efbundle.exe --connection "<owner connection string>"`.
-4. Deploy the Api, then the Web. Check `https://your-host/api/health/ready` and the start-up log (a **Critical** "migration(s) behind"
+4. Deploy the site. Check `https://your-host/api/health/ready` and the start-up log (a **Critical** "migration(s) behind"
    line means step 3 was skipped).
 
 Before a release whose migrations drop or rewrite columns/tables (search the script for `DROP` and `UPDATE`),
@@ -89,19 +97,18 @@ test the script on a restored copy of production first. `scripts/db-migrate.sh l
 ## Publish
 
 ```bash
-dotnet publish src/NeedleBase.Api -c Release -o artifacts/publish/api
-dotnet publish src/NeedleBase.Web -c Release -o artifacts/publish/web
+dotnet publish src/NeedleBase.Web -c Release -o artifacts/publish/site
 ```
 
-Upload `api` into `wwwroot\api` and `web` into `wwwroot` **without deleting `wwwroot\api`** (Web Deploy or FTP; by
-hand, with `Deploy-Site.ps1 -AppPath api` and `-ProtectSubApp api`, see ci-cd.md). Keep `App_Data` on the server
+The Web package contains the Api. Upload `site` into `wwwroot` (Web Deploy or FTP; by hand with `Deploy-Site.ps1`,
+see ci-cd.md). Keep `App_Data` on the server
 (see "Data Protection keys" in production-config.md). Publish profiles (`*.pubxml`, `*.publishSettings`) contain
 credentials and are git-ignored.
 
 ## Checklist
 
 - [ ] DNS + TLS for the site hostname on helmutcode.com (https only; HSTS is on in Production).
-- [ ] `/api` is an IIS application with its own app pool.
+- [ ] No `/api` IIS application on the site (one app serves `/` and `/api`).
 - [ ] Start-up log shows no configuration errors (settings come from the release).
 - [ ] Database backup before releases with migrations; migration script applied.
 - [ ] Data Protection key folders writable, outside/kept on deploy, backed up.

@@ -26,8 +26,9 @@ Try it: `.github/scripts/detect-changes.sh origin/main`.
 **Branch protection:** require only the **"CI result"** check. Skipped jobs count as passed, a failed or cancelled
 job fails it, so docs-only PRs can still merge.
 
-Each push to main builds/deploys only the parts changed since the last release tag: an Api-only push deploys the Api and applies
-migrations, leaves the Web alone and builds no APK. A manual run builds and deploys everything.
+Each push to main builds/deploys only the parts changed since the last release tag: an Api change applies
+migrations and redeploys the site (the Web hosts the Api, so it is rebuilt and tested too); a Web-only change
+redeploys the site without migrations; neither builds an APK. A manual run builds and deploys everything.
 
 ## One-time setup
 
@@ -56,7 +57,7 @@ Same shape as AssetTag's `main.yml`: one database, one secret for it, and nothin
 | `PLAY_SERVICE_ACCOUNT_JSON` | play-store | Play Console service-account JSON (later) |
 
 The deploy masks every value it writes. Optional extras (email, WhatsApp, proxies) are not wired: the deploy
-replaces `/api/web.config`, so add them to the workflow step *Write server settings* if you need them
+replaces the site `web.config`, so add them to the workflow step *Write server settings* if you need them
 ([production-config.md](production-config.md)).
 
 ### Variables
@@ -93,10 +94,10 @@ git push origin main
 
 Each push (back up the database first if it has migrations):
 
-1. CI (affected parts) → signed APK with in-app updates and/or Api/Web packages + migration SQL.
-2. Deploy: migration SQL (one transaction; nothing deployed if it fails) → server settings written into the Api
-   package → Api into `/api` → `/api/health/ready` must answer 200 → Web into `/` (the `/api` folder is skipped) →
-   `/` must answer 200. A failed step restores the previous files (see *Failure behaviour*).
+1. CI (affected parts) → signed APK with in-app updates and/or the site package (Web with the Api inside) +
+   migration SQL.
+2. Deploy: migration SQL (one transaction; nothing deployed if it fails) → server settings written into the site
+   package → site into `/` → `/api/health/ready` and `/` must answer 200. A failed step restores the previous files (see *Failure behaviour*).
 3. Tag `v<version>` + GitHub Release with the files and `SHA256SUMS` (0.x versions are pre-releases).
 4. Android changed → the release also carries `update.json` (APK address, SHA-256, size, signing certificate,
    minimum build). Installed apps ask their Api (`/api/mobile/update`), which serves the newest release's
@@ -108,29 +109,28 @@ version; from an old tag `v1.2.3` it redeploys that version (rollback).
 
 ### Server packages
 
-Framework-dependent, `UseAppHost=false`, out-of-process hosting. One site ([deployment.md](deployment.md#one-site-web-at--api-at-api)):
-Web at the root, Api in the `/api` sub-application. Web Deploy removes stale files (so old DLLs never linger) but
-**never touches `App_Data`** (Data Protection key rings), `logs`, `data` or search-engine verification files, and
-the Web deploy **never touches `/api`** (msdeploy skip rule). Checked before the deploy (job *server*): each
-`web.config` keeps `system.webServer` inside `<location path="." inheritInChildApplications="false">` (so the Web's
-handler never leaks into `/api`), no `App_Data` or `appsettings.Development.json`, and nothing named `api` in the
-Web package.
+Framework-dependent, `UseAppHost=false`, out-of-process hosting. One site, one app ([deployment.md](deployment.md#one-site-one-app-web-at--api-at-api)):
+the Web package (artifact `server-site`) contains the Api, which it serves under `/api` in the same process. Web
+Deploy removes stale files (so old DLLs, and the old `/api` sub-application files, never linger) but **never touches
+`App_Data`** (Data Protection key rings, also `api\App_Data` left by the old layout), `logs`, `data` or
+search-engine verification files. Checked before the deploy (job *server*): `web.config` keeps `system.webServer`
+inside `<location path="." inheritInChildApplications="false">`, carries the site URLs, and the package has no
+`App_Data` or `appsettings.Development.json`.
 
 ### Failure behaviour
 
 | Fails | Result |
 |---|---|
 | Migration | Transaction rolled back. Nothing deployed. |
-| Api deploy or `/api/health/ready` (18 tries, 20 s timeout, 10 s apart) | Previous `/api` files restored from the runner copy and re-checked; Web **not** deployed; job fails. Applied migrations stay (they are additive, so the old Api still runs; otherwise restore the DB backup). |
-| Web deploy or `/` check | Previous root files restored (without touching `/api`); the new Api stays live; job fails. |
-| Backup (e.g. first deploy, `/api` missing) | Warning only; that part then has no automatic rollback. |
+| Site deploy, `/api/health/ready` (18 tries, 20 s timeout, 10 s apart) or `/` | Previous site files restored from the runner copy and re-checked; job fails. Applied migrations stay (they are additive, so the old version still runs; otherwise restore the DB backup). |
+| Backup (e.g. first deploy) | Warning only; no automatic rollback then. |
 
 A failed msdeploy sync (after 3 retries; syncs are idempotent, so a retry finishes a partial copy) also deletes a
 leftover `app_offline.htm`; the restore removes it too. Two releases never overlap (concurrency group `release`,
 no cancelling); if several pushes are queued, GitHub keeps only the newest pending one (it still includes the
 skipped pushes' changes: the diff is against the last release tag).
 
-The runner copies are deleted at the end and never uploaded (the server `web.config` holds the Api settings).
+The runner copies are deleted at the end and never uploaded (the server `web.config` holds the settings).
 
 ### Manual rollback
 
@@ -141,7 +141,7 @@ The runner copies are deleted at the end and never uploaded (the server `web.con
 
 Kept from AssetTag: push to main = release + deploy (version from the csproj, tag and GitHub Release made by the workflow), one connection secret used for migrations and the running Api, app
 settings written by CI (nothing on the panel), change detection, signed APK as a GitHub Release asset.
-Different on purpose: one site (Web `/`, Api `/api`) instead of two, idempotent SQL via psql instead of
+Different on purpose: one site and one app (Web `/`, Api `/api` in the same process) instead of two sites, idempotent SQL via psql instead of
 `dotnet ef database update`, secrets written into `web.config` only in the deploy job (never in an uploaded
 artifact), health check with automatic rollback. In-app updates work like AssetTag (app → own Api → GitHub Releases), plus
 a signed `update.json` per release so the app verifies the APK's SHA-256 and signing certificate before installing.

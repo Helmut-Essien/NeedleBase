@@ -198,71 +198,49 @@ jobs:
       - uses: ./.github/actions/setup-dotnet-maui
         with:
           maui: "false"
-      - name: Publish Api and Web
-        # Framework-dependent, out-of-process (as AssetTag on MonsterASP). No secrets in the package: settings are
-        # environment variables on the site (docs/production-config.md).
+      - name: Publish the site (Web with the Api inside)
+        # ONE package for the one MonsterASP site, like Platform: the Web process hosts the Api under /api
+        # (Api:InProcess), so no IIS sub-application is needed. Framework-dependent, out-of-process (as AssetTag on
+        # MonsterASP). No secrets in the package: settings are environment variables on the site (docs/production-config.md).
         env:
           VERSION: ${{ needs.meta.outputs.version }}
-          API: ${{ needs.ci.outputs.api }}
-          WEB: ${{ needs.ci.outputs.web }}
         run: |
           set -euo pipefail
-          apps=()
-          [[ "$API" == true ]] && apps+=(Api)
-          [[ "$WEB" == true ]] && apps+=(Web)
-          for app in "${apps[@]}"; do
-            out="artifacts/publish/${app,,}"
-            dotnet publish "src/NeedleBase.$app/NeedleBase.$app.csproj" -c Release -o "$out" \
-              -p:UseAppHost=false -p:AspNetCoreHostingModel=OutOfProcess -p:Version="$VERSION"
-            rm -f "$out/appsettings.Development.json"
-            rm -rf "$out/App_Data"
-          done
-      # Non-secret URLs from SITE_URL into each package's web.config (aspNetCore environmentVariables, inside the
-      # non-inheriting <location>): Web Api__BaseUrl and Api FrontendBaseUrl = the site root. Secrets never go here.
-      - name: Write site URLs into the packages
+          out=artifacts/publish/site
+          dotnet publish src/NeedleBase.Web/NeedleBase.Web.csproj -c Release -o "$out" \
+            -p:UseAppHost=false -p:AspNetCoreHostingModel=OutOfProcess -p:Version="$VERSION"
+          rm -f "$out/appsettings.Development.json"
+          rm -rf "$out/App_Data"
+      # Non-secret URLs from SITE_URL into the package's web.config (aspNetCore environmentVariables, inside the
+      # non-inheriting <location>): Api__BaseUrl and FrontendBaseUrl = the site root. Secrets never go here.
+      - name: Write site URLs into the package
         shell: pwsh
         env:
-          API: ${{ needs.ci.outputs.api }}
-          WEB: ${{ needs.ci.outputs.web }}
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
           Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
           # Throws unless SITE_URL is an https site root such as https://needlebase.runasp.net/.
-          if ($env:API -eq 'true') { Set-PackageEnvironment -Path artifacts/publish/api -Variables (Get-SitePackageEnvironment -App Api -SiteUrl $env:SITE_URL) }
-          if ($env:WEB -eq 'true') { Set-PackageEnvironment -Path artifacts/publish/web -Variables (Get-SitePackageEnvironment -App Web -SiteUrl $env:SITE_URL) }
-      - name: Check packages for the single site (Web at /, Api at /api)
+          Set-PackageEnvironment -Path artifacts/publish/site -Variables (Get-SitePackageEnvironment -SiteUrl $env:SITE_URL)
+      - name: Check the site package
         # Fails before the deploy starts: web.config must not leak into child applications, no App_Data or
-        # development settings, and the Web must not contain anything named "api" (it would collide with /api).
+        # development settings, and the site URLs must be in place.
         shell: pwsh
         env:
-          API: ${{ needs.ci.outputs.api }}
-          WEB: ${{ needs.ci.outputs.web }}
           SITE_URL: ${{ vars.SITE_URL }}
         run: |
           Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
-          $checks = @()
-          if ($env:API -eq 'true') { $checks += @{ Path = 'artifacts/publish/api'; Protect = ''; Env = (Get-SitePackageEnvironment -App Api -SiteUrl $env:SITE_URL) } }
-          if ($env:WEB -eq 'true') { $checks += @{ Path = 'artifacts/publish/web'; Protect = 'api'; Env = (Get-SitePackageEnvironment -App Web -SiteUrl $env:SITE_URL) } }
           $bad = $false
-          foreach ($c in $checks) {
-            foreach ($p in Test-DeployPackage -Path $c.Path -ProtectSubApp $c.Protect -RequiredEnvironment $c.Env) { Write-Host "::error::$($c.Path): $p"; $bad = $true }
+          foreach ($p in Test-DeployPackage -Path artifacts/publish/site -RequiredEnvironment (Get-SitePackageEnvironment -SiteUrl $env:SITE_URL)) {
+            Write-Host "::error::artifacts/publish/site: $p"; $bad = $true
           }
           if ($bad) { exit 1 }
       - name: Idempotent migration script
         if: needs.ci.outputs.api == 'true'
         run: scripts/db-migrate.sh script
-      - if: needs.ci.outputs.api == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: server-api
-          path: artifacts/publish/api
-          if-no-files-found: error
-          retention-days: 30
-      - if: needs.ci.outputs.web == 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: server-web
-          path: artifacts/publish/web
+          name: server-site
+          path: artifacts/publish/site
           if-no-files-found: error
           retention-days: 30
       - if: needs.ci.outputs.api == 'true'
@@ -347,12 +325,12 @@ jobs:
     # "production" environment if you ever want one); the environment only holds the deploy and database secrets.
     if: needs.server.result == 'success'
     runs-on: windows-latest
-    timeout-minutes: 60  # worst case: 2 deploys + 2 rollbacks with health checks of up to 9 min each; never cut a rollback short
+    timeout-minutes: 45  # worst case: deploy + rollback with health checks of up to 9 min each; never cut a rollback short
     environment:
       name: production
       url: ${{ vars.SITE_URL }}
     env:
-      # One MonsterASP site: Web at the root, Api in the /api sub-application (docs/deployment.md).
+      # One MonsterASP site, one IIS application: the Web at the root hosts the Api under /api (docs/deployment.md).
       MONSTER_SERVER: ${{ secrets.MONSTER_SERVER }}
       MONSTER_SITE: ${{ secrets.MONSTER_SITE }}
       MONSTER_USER: ${{ secrets.MONSTER_USER }}
@@ -368,16 +346,10 @@ jobs:
         with:
           persist-credentials: false
           sparse-checkout: .github/scripts
-      - if: needs.ci.outputs.api == 'true'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          name: server-api
-          path: pkg/api
-      - if: needs.ci.outputs.web == 'true'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: server-web
-          path: pkg/web
+          name: server-site
+          path: pkg/site
       - if: needs.ci.outputs.api == 'true'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -424,12 +396,11 @@ jobs:
           if ($LASTEXITCODE -eq 2) { throw "Could not connect to the database (psql exit 2, e.g. timeout). Check that remote database access is enabled in the MonsterASP panel and that the connection string uses the PUBLIC host name (not a 10.x/private address); nothing was deployed." }
           if ($LASTEXITCODE -ne 0) { throw "Migration failed (exit $LASTEXITCODE); the transaction was rolled back, nothing was deployed." }
 
-      # The Api's server settings go into its web.config here (never into the uploaded artifact): one database, so the
-      # running app uses PROD_DB_MIGRATION_CONNECTION_STRING too. JWT key: JWT_SECURITY_KEY, or derived from the database
-      # secret (stable across deploys). Platform licensing only when PLATFORM_BASE_URL + PLATFORM_INTEGRATION_KEY are set.
-      # Values are masked before anything can print them.
-      - name: Write server settings into the Api package
-        if: needs.ci.outputs.api == 'true'
+      # The Api's server settings go into the site's web.config here (never into the uploaded artifact): one database,
+      # so the running app uses PROD_DB_MIGRATION_CONNECTION_STRING too. JWT key: JWT_SECURITY_KEY, or derived from the
+      # database secret (stable across deploys). Platform licensing only when PLATFORM_BASE_URL + PLATFORM_INTEGRATION_KEY
+      # are set. Values are masked before anything can print them. Every site deploy needs them (the Api is inside).
+      - name: Write server settings into the site package
         shell: pwsh
         env:
           DB_URL: ${{ secrets.PROD_DB_MIGRATION_CONNECTION_STRING }}
@@ -438,85 +409,54 @@ jobs:
           PLATFORM_BASE_URL: ${{ vars.PLATFORM_BASE_URL }}
           PLATFORM_TOKEN_ISSUER: ${{ vars.PLATFORM_TOKEN_ISSUER }}
         run: |
+          if ([string]::IsNullOrWhiteSpace($env:DB_URL)) { throw 'PROD_DB_MIGRATION_CONNECTION_STRING is not set (docs/ci-cd.md).' }
           Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
           $vars = Get-ApiServerEnvironment -DbConnection $env:DB_URL -JwtKey $env:JWT_SECURITY_KEY `
             -PlatformBaseUrl $env:PLATFORM_BASE_URL -PlatformKey $env:PLATFORM_INTEGRATION_KEY -PlatformIssuer $env:PLATFORM_TOKEN_ISSUER
           foreach ($n in 'ConnectionStrings__DefaultConnection', 'JwtSettings__SecurityKey', 'Platform__IntegrationKey') {
             if ($vars.Contains($n)) { Write-Host "::add-mask::$($vars[$n])" }
           }
-          Set-PackageEnvironment -Path pkg/api -Variables $vars
+          Set-PackageEnvironment -Path pkg/site -Variables $vars
           if ($vars['Platform__RequireLicenseKey'] -eq 'false') {
             Write-Host "::warning::PLATFORM_BASE_URL / PLATFORM_INTEGRATION_KEY not set: license keys are off (shops register without one)."
           }
-          Write-Host "Api settings written: $($vars.Keys -join ', ')"
+          Write-Host "Server settings written: $($vars.Keys -join ', ')"
 
-      # 2. Api into /api. The current /api content is copied to the RUNNER first (never uploaded as an artifact: its
-      #    web.config may hold panel settings) so a failed deploy or health check is rolled back automatically.
-      #    A backup failure is a warning only (first deploy: /api does not exist yet).
-      - name: Back up current Api
-        id: api_backup
-        if: needs.ci.outputs.api == 'true'
+      # 2. The site (Web + Api) at the root. The current site is copied to the RUNNER first (never uploaded as an
+      #    artifact: its web.config may hold panel settings) so a failed deploy or health check is rolled back
+      #    automatically. A backup failure is a warning only (first deploy). msdeploy syncs the root, so the folder
+      #    "api" left by the old two-application layout is removed (except api/App_Data: key rings are never deleted).
+      - name: Back up current site
+        id: site_backup
         continue-on-error: true
         shell: pwsh
-        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Backup -Path "$env:RUNNER_TEMP/backup/api" -AppPath api
-      - name: Deploy Api to /api
-        id: api_deploy
-        if: needs.ci.outputs.api == 'true'
+        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Backup -Path "$env:RUNNER_TEMP/backup/site"
+      - name: Deploy site to /
+        id: site_deploy
         shell: pwsh
-        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Path pkg/api -AppPath api
-      - name: Api /api/health/ready
-        id: api_health
-        if: needs.ci.outputs.api == 'true'
+        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Path pkg/site
+      - name: Api /api/health/ready and the Web
+        id: site_health
         continue-on-error: ${{ vars.SITE_HTTPS_PENDING == 'true' }}
         shell: pwsh
         run: |
           Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
-          $url = Get-ApiHealthUrl -SiteUrl $env:SITE_URL
-          if ($env:SITE_HTTPS_PENDING -eq 'true') {
-            ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url ($url -replace '^https://', 'http://') -Attempts 6 -AllowHttp
-          } else {
-            ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url $url
+          $urls = @((Get-ApiHealthUrl -SiteUrl $env:SITE_URL), $env:SITE_URL)
+          foreach ($url in $urls) {
+            if ($env:SITE_HTTPS_PENDING -eq 'true') {
+              ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url ($url -replace '^https://', 'http://') -Attempts 6 -AllowHttp
+            } else {
+              ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url $url
+            }
           }
-      - name: Roll back Api
-        if: failure() && steps.api_backup.outcome == 'success' && (steps.api_deploy.outcome == 'failure' || steps.api_health.outcome == 'failure')
+      - name: Roll back site
+        if: failure() && steps.site_backup.outcome == 'success' && (steps.site_deploy.outcome == 'failure' || steps.site_health.outcome == 'failure')
         shell: pwsh
         run: |
-          ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Restore -Path "$env:RUNNER_TEMP/backup/api" -AppPath api
-          Write-Host "::error::Api rolled back to the previous files; the Web was NOT deployed. Migrations already applied stay applied."
+          ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Restore -Path "$env:RUNNER_TEMP/backup/site"
+          Write-Host "::error::Site rolled back to the previous files. Migrations already applied stay applied."
           Import-Module ./.github/scripts/iis-deploy/WebDeploy.psm1
           ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url (Get-ApiHealthUrl -SiteUrl $env:SITE_URL) -Attempts 6
-
-      # 3. Web at the site root, only once the Api is healthy (steps are skipped after any failure above).
-      #    -ProtectSubApp api: msdeploy never deletes or overwrites the /api folder.
-      - name: Back up current Web
-        id: web_backup
-        if: needs.ci.outputs.web == 'true'
-        continue-on-error: true
-        shell: pwsh
-        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Backup -Path "$env:RUNNER_TEMP/backup/web" -ProtectSubApp api
-      - name: Deploy Web to /
-        id: web_deploy
-        if: needs.ci.outputs.web == 'true'
-        shell: pwsh
-        run: ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Path pkg/web -ProtectSubApp api
-      - name: Web responds
-        id: web_health
-        if: needs.ci.outputs.web == 'true'
-        continue-on-error: ${{ vars.SITE_HTTPS_PENDING == 'true' }}
-        shell: pwsh
-        run: |
-          if ($env:SITE_HTTPS_PENDING -eq 'true') {
-            ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url ($env:SITE_URL -replace '^https://', 'http://') -Attempts 6 -AllowHttp
-          } else {
-            ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url $env:SITE_URL
-          }
-      - name: Roll back Web
-        if: failure() && steps.web_backup.outcome == 'success' && (steps.web_deploy.outcome == 'failure' || steps.web_health.outcome == 'failure')
-        shell: pwsh
-        run: |
-          ./.github/scripts/iis-deploy/Deploy-Site.ps1 -Mode Restore -Path "$env:RUNNER_TEMP/backup/web" -ProtectSubApp api
-          Write-Host "::error::Web rolled back to the previous files; the new Api (if deployed) stays live."
-          ./.github/scripts/iis-deploy/Wait-Healthy.ps1 -Url $env:SITE_URL -Attempts 6
       - name: Remove server backups
         if: always()
         shell: pwsh

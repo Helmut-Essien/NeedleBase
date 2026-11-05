@@ -24,26 +24,20 @@ Check 'special chars ok' { -not (Throws { Assert-MsDeployValue 'MONSTER_PASSWORD
 Check 'plain ok' { -not (Throws { Assert-MsDeployValue 'MONSTER_SITE' 'site1' }) }
 
 # Content paths
-Check 'root content path' { (Get-ContentPath 'site1' '') -eq 'site1' }
-Check 'sub-app content path' { (Get-ContentPath 'site1/' '/api/') -eq 'site1/api' }
-Check 'nested app refused' { Throws { Get-ContentPath 'site1' 'api/../x' } }
+Check 'root content path' { (Get-ContentPath 'site1') -eq 'site1' }
+Check 'content path trimmed' { (Get-ContentPath ' site1/ ') -eq 'site1' }
 
-# Skip rules: protected folders always, the sub-application only when asked
-$root = Get-MsDeploySkipArgs -ProtectSubApp 'api'
+# Skip rules: protected server folders only; the old /api folder is replaced like any other content
 $sub = Get-MsDeploySkipArgs
 function Skipped([string[]]$rules, [string]$kind, [string]$path) {
     foreach ($r in $rules) { if ($r -match "objectName=$kind,absolutePath=(.*)$" -and $path -match $Matches[1]) { return $true } }
     return $false
 }
-Check 'web skips api dir' { Skipped $root 'dirPath' 'C:\home\site1\wwwroot\api' }
-Check 'web skips api file' { Skipped $root 'filePath' 'C:\home\site1\wwwroot\api\NeedleBase.Api.dll' }
-Check 'web skips API (case)' { Skipped $root 'filePath' 'C:\home\site1\wwwroot\API\web.config' }
-Check 'web does not skip apifoo' { -not (Skipped $root 'filePath' 'C:\home\site1\wwwroot\apifoo.js') }
-Check 'web does not skip web.config' { -not (Skipped $root 'filePath' 'C:\home\site1\wwwroot\web.config') }
-Check 'api deploy does not skip api' { -not (Skipped $sub 'filePath' 'C:\home\site1\wwwroot\api\NeedleBase.Api.dll') }
-Check 'App_Data kept' { (Skipped $sub 'dirPath' 'C:\s\api\App_Data') -and (Skipped $sub 'filePath' 'C:\s\api\App_Data\keys\key-1.xml') }
+Check 'old api folder not skipped' { -not (Skipped $sub 'filePath' 'C:\home\site1\wwwroot\api\NeedleBase.Api.dll') -and -not (Skipped $sub 'dirPath' 'C:\home\site1\wwwroot\api') }
+Check 'web.config not skipped' { -not (Skipped $sub 'filePath' 'C:\home\site1\wwwroot\web.config') }
+Check 'App_Data kept' { (Skipped $sub 'dirPath' 'C:\s\App_Data') -and (Skipped $sub 'filePath' 'C:\s\App_Data\Keys\key-1.xml') }
+Check 'old api App_Data kept' { (Skipped $sub 'dirPath' 'C:\s\api\App_Data') -and (Skipped $sub 'filePath' 'C:\s\api\App_Data\Keys\Api\key-1.xml') }
 Check 'logs kept' { Skipped $sub 'filePath' 'C:\s\logs\stdout_1.log' }
-Check 'bad sub-app name' { Throws { Get-MsDeploySkipArgs -ProtectSubApp 'a|b' } }
 
 # Package checks
 $tmp = Join-Path ([IO.Path]::GetTempPath()) "iisdeploy-$([guid]::NewGuid().ToString('N'))"
@@ -55,32 +49,31 @@ function NewPackage([string]$config) {
 $good = '<?xml version="1.0"?><configuration><location path="." inheritInChildApplications="false"><system.webServer><handlers><add name="aspNetCore" path="*" verb="*" modules="AspNetCoreModuleV2" resourceType="Unspecified" /></handlers><aspNetCore processPath="dotnet" arguments=".\x.dll" hostingModel="outofprocess" /></system.webServer></location></configuration>'
 $inheriting = '<?xml version="1.0"?><configuration><system.webServer><aspNetCore processPath="dotnet" /></system.webServer></configuration>'
 try {
-    Check 'good package' { @(Test-DeployPackage (NewPackage $good) -ProtectSubApp 'api').Count -eq 0 }
+    Check 'good package' { @(Test-DeployPackage (NewPackage $good)).Count -eq 0 }
     Check 'no web.config' { @(Test-DeployPackage (NewPackage '')).Count -eq 1 }
     Check 'inheriting web.config' { @(Test-DeployPackage (NewPackage $inheriting)).Count -ge 1 }
     Check 'App_Data refused' { $d = NewPackage $good; New-Item -ItemType Directory (Join-Path $d 'App_Data') | Out-Null; @(Test-DeployPackage $d).Count -eq 1 }
     Check 'dev settings refused' { $d = NewPackage $good; Set-Content (Join-Path $d 'appsettings.Development.json') '{}'; @(Test-DeployPackage $d).Count -eq 1 }
-    Check 'nested api in web refused' { $d = NewPackage $good; New-Item -ItemType Directory (Join-Path $d 'wwwroot/Api') -Force | Out-Null; @(Test-DeployPackage $d -ProtectSubApp 'api').Count -eq 1 }
     Check 'nested logs refused' { $d = NewPackage $good; New-Item -ItemType Directory (Join-Path $d 'wwwroot/lib/logs') -Force | Out-Null; @(Test-DeployPackage $d).Count -eq 1 }
     Check 'data folder refused' { $d = NewPackage $good; New-Item -ItemType Directory (Join-Path $d 'Data') | Out-Null; @(Test-DeployPackage $d).Count -eq 1 }
     Check 'data file allowed' { $d = NewPackage $good; Set-Content (Join-Path $d 'data.json') '{}'; @(Test-DeployPackage $d).Count -eq 0 }
-    Check 'api folder fine for api package' { $d = NewPackage $good; New-Item -ItemType Directory (Join-Path $d 'wwwroot/api') -Force | Out-Null; @(Test-DeployPackage $d).Count -eq 0 }
+    Check 'api folder allowed' { $d = NewPackage $good; New-Item -ItemType Directory (Join-Path $d 'wwwroot/api') -Force | Out-Null; @(Test-DeployPackage $d).Count -eq 0 }
 
     # SITE_URL -> package environment (non-secret URLs only), kept inside the non-inheriting <location>
     $site = 'https://needlebase.runasp.net/'
-    $webEnv = Get-SitePackageEnvironment -App Web -SiteUrl 'https://needlebase.runasp.net'
-    $apiEnv = Get-SitePackageEnvironment -App Api -SiteUrl ' https://needlebase.runasp.net// '
-    Check 'web env from SITE_URL' { $webEnv.Count -eq 1 -and $webEnv['Api__BaseUrl'] -ceq $site }
-    Check 'api env from SITE_URL' { $apiEnv.Count -eq 1 -and $apiEnv['FrontendBaseUrl'] -ceq $site }
+    $webEnv = Get-SitePackageEnvironment -SiteUrl 'https://needlebase.runasp.net'
+    $apiEnv = Get-SitePackageEnvironment -SiteUrl ' https://needlebase.runasp.net// '
+    Check 'site env from SITE_URL' { $webEnv.Count -eq 2 -and $webEnv['Api__BaseUrl'] -ceq $site -and $webEnv['FrontendBaseUrl'] -ceq $site }
+    Check 'site env normalised' { $apiEnv.Count -eq 2 -and $apiEnv['FrontendBaseUrl'] -ceq $site -and $apiEnv['Api__BaseUrl'] -ceq $site }
     $w = NewPackage $good
     Set-PackageEnvironment -Path $w -Variables $webEnv
     Check 'env written' { (Get-PackageEnvironment $w)['Api__BaseUrl'] -ceq $site }
-    Check 'env keeps location rules' { @(Test-DeployPackage $w -ProtectSubApp 'api' -RequiredEnvironment $webEnv).Count -eq 0 }
+    Check 'env keeps location rules' { @(Test-DeployPackage $w -RequiredEnvironment $webEnv).Count -eq 0 }
     Check 'env inside location' { ([xml](Get-Content -Raw (Join-Path $w 'web.config'))).SelectNodes("/configuration/location[@path='.' and @inheritInChildApplications='false']/system.webServer/aspNetCore/environmentVariables/environmentVariable[@name='Api__BaseUrl']").Count -eq 1 }
     Set-PackageEnvironment -Path $w -Variables ([ordered]@{ Api__BaseUrl = 'https://other.example/' })
-    Check 'env replaced, not duplicated' { $e = Get-PackageEnvironment $w; $e.Count -eq 1 -and $e['Api__BaseUrl'] -eq 'https://other.example/' }
+    Check 'env replaced, not duplicated' { $e = Get-PackageEnvironment $w; $e.Count -eq 2 -and $e['Api__BaseUrl'] -eq 'https://other.example/' }
     Check 'wrong env value reported' { @(Test-DeployPackage $w -RequiredEnvironment $webEnv).Count -eq 1 }
-    Check 'missing env reported' { @(Test-DeployPackage (NewPackage $good) -RequiredEnvironment $apiEnv).Count -eq 1 }
+    Check 'missing env reported' { @(Test-DeployPackage (NewPackage $good) -RequiredEnvironment $apiEnv).Count -eq 2 }
     $existing = $good.Replace('hostingModel="outofprocess" />', 'hostingModel="outofprocess"><environmentVariables><environmentVariable name="ASPNETCORE_ENVIRONMENT" value="Production" /></environmentVariables></aspNetCore>')
     $a = NewPackage $existing
     Set-PackageEnvironment -Path $a -Variables $apiEnv
@@ -128,7 +121,7 @@ Check 'explicit jwt + platform' { $se['JwtSettings__SecurityKey'] -eq ('k' * 40)
 Check 'short jwt refused' { Throws { Get-ApiServerEnvironment -DbConnection 'Host=h;Database=d;Username=u' -JwtKey 'short' } }
 Check 'half platform refused' { Throws { Get-ApiServerEnvironment -DbConnection 'Host=h;Database=d;Username=u' -PlatformKey 'pk' } }
 
-# Health URL of the sub-application
+# Health URL of the Api (in the Web process, under /api)
 Check 'health url' { (Get-ApiHealthUrl 'https://site.example/') -eq 'https://site.example/api/health/ready' }
 Check 'health url no slash' { (Get-ApiHealthUrl 'https://site.example') -eq 'https://site.example/api/health/ready' }
 Check 'site url with path refused' { Throws { Get-ApiHealthUrl 'https://site.example/app/' } }

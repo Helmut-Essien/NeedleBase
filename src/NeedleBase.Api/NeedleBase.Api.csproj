@@ -19,6 +19,14 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- The Web references this project and hosts the Api in its own process on the production site (docs/deployment.md).
+       The Api's appsettings*.json must not flow into the Web's output/publish folder (the Web's appsettings.json holds
+       the merged settings there). Running the Api on its own (dotnet run, integration tests) reads them from this
+       project folder (content root), so nothing is lost. -->
+  <ItemGroup>
+    <Content Update="appsettings*.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\NeedleBase.Application\NeedleBase.Application.csproj" />
     <ProjectReference Include="..\NeedleBase.Infrastructure\NeedleBase.Infrastructure.csproj" />

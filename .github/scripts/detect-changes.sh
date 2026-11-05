@@ -5,7 +5,7 @@
 #
 # Prints (and appends to $GITHUB_OUTPUT when set): core, api, web, mobile, any = true|false.
 #   core   Domain + Application (+ their tests)       -> also turns on api, web and mobile (all depend on them)
-#   api    Api + Infrastructure (+ Api.Tests)
+#   api    Api + Infrastructure (+ Api.Tests)             -> also turns on web (the Web hosts the Api on the site)
 #   web    Web (+ Web.Tests)
 #   mobile Mobile + Mobile.Data (+ Mobile.Tests)
 #   docs-only changes (docs/, *.md, .cursor/) turn nothing on.
@@ -40,6 +40,8 @@ fi
 
 if [[ "$all" == true ]]; then core=true; fi
 if [[ "$core" == true ]]; then api=true web=true mobile=true; fi
+# One site package: the Web process hosts the Api, so an Api change rebuilds, tests and deploys the Web too.
+if [[ "$api" == true ]]; then web=true; fi
 any=false
 if [[ "$api" == true || "$web" == true || "$mobile" == true ]]; then any=true; fi
 

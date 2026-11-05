@@ -1,14 +1,13 @@
-# Helpers for deploying NeedleBase to ONE MonsterASP/IIS site (docs/deployment.md, docs/ci-cd.md):
-#   site root  = Web           (IIS application "/")
-#   /api       = Api           (IIS sub-application "/api" with its own application pool)
+# Helpers for deploying NeedleBase to ONE MonsterASP/IIS site (docs/deployment.md, docs/ci-cd.md): one package, one
+# IIS application at the site root. The Web process hosts the Api under /api (Api:InProcess), like Platform, so
+# there is no IIS sub-application to create.
 # Pure functions (no network) so .github/scripts/test-iis-deploy.ps1 can test them; Deploy-Site.ps1 runs msdeploy.
 Set-StrictMode -Version Latest
 
 # Server folders a deploy must never delete or overwrite: Data Protection key rings, logs, host data, search-engine
-# verification files. With -ProtectSubApp the whole sub-application folder (the Api under the Web) is skipped too.
+# verification files (any folder of that name, e.g. api\App_Data left by the old /api sub-application).
 function Get-MsDeploySkipArgs {
-    param([string]$ProtectSubApp = '')
-    $skips = @(
+    return @(
         '-skip:objectName=dirPath,absolutePath=\\App_Data$',
         '-skip:objectName=filePath,absolutePath=\\App_Data\\',
         '-skip:objectName=dirPath,absolutePath=\\logs$',
@@ -18,12 +17,6 @@ function Get-MsDeploySkipArgs {
         '-skip:objectName=filePath,absolutePath=google[^\\]*\.html$',
         '-skip:objectName=filePath,absolutePath=BingSiteAuth\.xml$'
     )
-    if ($ProtectSubApp) {
-        if ($ProtectSubApp -notmatch '^[A-Za-z0-9_-]+$') { throw "Sub-application name '$ProtectSubApp' must be one plain folder name." }
-        $skips += "-skip:objectName=dirPath,absolutePath=(?i)\\$ProtectSubApp$"
-        $skips += "-skip:objectName=filePath,absolutePath=(?i)\\$ProtectSubApp\\"
-    }
-    return $skips
 }
 
 # Accept a bare host ("site123.siteasp.net"), host:port or a full https://host:8172/msdeploy.axd URL (as Platform).
@@ -46,19 +39,16 @@ function Assert-MsDeployValue {
     if ($Value -match '[\r\n]') { throw "$Name contains a line break (pasted with a trailing newline?)." }
 }
 
-# IIS content path of the target: "site" for the root app, "site/api" for the sub-application.
+# IIS content path of the site root (the one application).
 function Get-ContentPath {
-    param([Parameter(Mandatory)][string]$Site, [string]$AppPath = '')
-    $site = $Site.Trim().TrimEnd('/')
-    $app = $AppPath.Trim().Trim('/')
-    if ($app -and $app -notmatch '^[A-Za-z0-9_-]+$') { throw "App path '$AppPath' must be one plain folder name." }
-    if ($app) { return "$site/$app" } else { return $site }
+    param([Parameter(Mandatory)][string]$Site)
+    return $Site.Trim().TrimEnd('/')
 }
 
 # A package must be a dotnet publish output whose web.config does not leak into child applications, and must not
-# carry anything that would replace server state or collide with the sub-application.
+# carry anything that would replace server state.
 function Test-DeployPackage {
-    param([Parameter(Mandatory)][string]$Path, [string]$ProtectSubApp = '', [System.Collections.IDictionary]$RequiredEnvironment)
+    param([Parameter(Mandatory)][string]$Path, [System.Collections.IDictionary]$RequiredEnvironment)
     $problems = @()
     if ($RequiredEnvironment) {
         $actual = Get-PackageEnvironment -Path $Path
@@ -74,7 +64,7 @@ function Test-DeployPackage {
         [xml]$xml = Get-Content -Raw -LiteralPath $webConfig
         $loc = $xml.SelectSingleNode("/configuration/location[@path='.' and @inheritInChildApplications='false']")
         if (-not $loc -or -not $loc.SelectSingleNode('system.webServer/aspNetCore')) {
-            $problems += "web.config must wrap system.webServer in <location path=`".`" inheritInChildApplications=`"false`"> so the root app's handler never leaks into /api"
+            $problems += "web.config must wrap system.webServer in <location path=`".`" inheritInChildApplications=`"false`"> so the site's handler never leaks into a child application"
         }
         if ($xml.SelectSingleNode('/configuration/system.webServer')) {
             $problems += 'web.config has a system.webServer section outside the non-inheriting <location>'
@@ -87,9 +77,6 @@ function Test-DeployPackage {
     $protected = @($all | Where-Object { $_.PSIsContainer -and ($_.Name -ieq 'logs' -or $_.Name -ieq 'data') })
     if ($protected) { $problems += "contains folder(s) named logs/data, which deploys always skip: $(($protected | ForEach-Object { $_.FullName.Substring($Path.Length) }) -join ', ')" }
     if ($all | Where-Object { -not $_.PSIsContainer -and $_.Name -ieq 'appsettings.Development.json' }) { $problems += 'contains appsettings.Development.json' }
-    if ($ProtectSubApp -and ($all | Where-Object { $_.Name -ieq $ProtectSubApp })) {
-        $problems += "contains a file or folder named '$ProtectSubApp', which would collide with the /$ProtectSubApp sub-application"
-    }
     return $problems
 }
 
@@ -190,7 +177,7 @@ function Get-ApiServerEnvironment {
     return $result
 }
 
-# Health URL of the Api sub-application from the site URL.
+# Health URL of the Api (hosted by the Web under /api) from the site URL.
 function Get-ApiHealthUrl {
     param([Parameter(Mandatory)][string]$SiteUrl, [string]$AppPath = 'api')
     if ($SiteUrl -notmatch '^https://[^/\s]+/?$') { throw "SITE_URL must look like https://host/ (got '$SiteUrl')." }
@@ -214,13 +201,12 @@ $script:PackageEnvironmentAllowList = @('Api__BaseUrl', 'FrontendBaseUrl',
     'ConnectionStrings__DefaultConnection', 'JwtSettings__SecurityKey',
     'Platform__RequireLicenseKey', 'Platform__BaseUrl', 'Platform__IntegrationKey', 'Platform__TokenIssuer')
 
-# The package settings each app gets from SITE_URL (single site: Web at /, Api at /api; the Web and the Android app
-# call "api/..." relative to the site root, so both values are the root).
+# The settings the site package gets from SITE_URL: the Web calls "api/..." and the Api builds e-mail links relative
+# to the site root, so both values are the root (Web at /, Api at /api in the same process).
 function Get-SitePackageEnvironment {
-    param([Parameter(Mandatory)][ValidateSet('Api', 'Web')][string]$App, [Parameter(Mandatory)][AllowEmptyString()][string]$SiteUrl)
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$SiteUrl)
     $root = Get-SiteRootUrl -SiteUrl $SiteUrl
-    if ($App -eq 'Web') { return [ordered]@{ Api__BaseUrl = $root } }
-    return [ordered]@{ FrontendBaseUrl = $root }
+    return [ordered]@{ Api__BaseUrl = $root; FrontendBaseUrl = $root }
 }
 
 function Get-AspNetCoreElement([xml]$Xml) {

@@ -1,20 +1,17 @@
-# Web Deploy (msdeploy) to the ONE MonsterASP.NET site that hosts both apps (docs/ci-cd.md, docs/deployment.md):
-#   -AppPath ''   -ProtectSubApp api  -> Web at the site root; the /api folder is never touched
-#   -AppPath api                      -> Api in the /api sub-application
+# Web Deploy (msdeploy) of the site package (the Web, which hosts the Api under /api) to the root of the ONE
+# MonsterASP.NET site (docs/ci-cd.md, docs/deployment.md).
 # Direct msdeploy call as in Platform's deploy-monsterasp.yml (endpoint normalisation, comma check, retries,
 # app_offline, masked password), plus: package checks, protected server folders, opt-in -allowUntrusted, and
 # -Mode Backup/Restore so the workflow can roll a failed deploy back.
 #
 #   env: MONSTER_SERVER, MONSTER_SITE, MONSTER_USER, MONSTER_PASSWORD, optional MONSTER_ALLOW_UNTRUSTED=true
-#   pwsh Deploy-Site.ps1 -Mode Deploy  -Path pkg/api -AppPath api
-#   pwsh Deploy-Site.ps1 -Mode Backup  -Path backup/api -AppPath api     (server -> runner)
-#   pwsh Deploy-Site.ps1 -Mode Restore -Path backup/api -AppPath api     (runner -> server)
+#   pwsh Deploy-Site.ps1 -Mode Deploy  -Path pkg/site
+#   pwsh Deploy-Site.ps1 -Mode Backup  -Path backup/site     (server -> runner)
+#   pwsh Deploy-Site.ps1 -Mode Restore -Path backup/site     (runner -> server)
 [CmdletBinding()]
 param(
     [ValidateSet('Deploy', 'Backup', 'Restore')][string]$Mode = 'Deploy',
-    [Parameter(Mandatory)][string]$Path,
-    [string]$AppPath = '',
-    [string]$ProtectSubApp = ''
+    [Parameter(Mandatory)][string]$Path
 )
 $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'WebDeploy.psm1') -Force
@@ -22,15 +19,14 @@ Import-Module (Join-Path $PSScriptRoot 'WebDeploy.psm1') -Force
 foreach ($name in 'MONSTER_SERVER', 'MONSTER_SITE', 'MONSTER_USER', 'MONSTER_PASSWORD') {
     Assert-MsDeployValue -Name $name -Value ([Environment]::GetEnvironmentVariable($name))
 }
-if ($AppPath -and $ProtectSubApp) { throw 'Use -ProtectSubApp only for the root application.' }
 $endpoint = Get-MsDeployEndpoint -Server $env:MONSTER_SERVER -Site $env:MONSTER_SITE
-$contentPath = Get-ContentPath -Site $env:MONSTER_SITE -AppPath $AppPath
+$contentPath = Get-ContentPath -Site $env:MONSTER_SITE
 $remote = "contentPath=$contentPath,computerName=$endpoint,userName=$($env:MONSTER_USER),password=$($env:MONSTER_PASSWORD),authType=Basic"
 
 switch ($Mode) {
     'Deploy' {
         $local = (Resolve-Path -LiteralPath $Path).Path
-        $problems = @(Test-DeployPackage -Path $local -ProtectSubApp $ProtectSubApp)
+        $problems = @(Test-DeployPackage -Path $local)
         if ($problems.Count) { throw "Refusing to deploy ${local}: $($problems -join '; ')." }
         $source = "-source:contentPath=$local"; $dest = "-dest:$remote"
     }
@@ -51,12 +47,12 @@ $msdeploy = @("$env:ProgramFiles\IIS\Microsoft Web Deploy V3\msdeploy.exe",
     "${env:ProgramFiles(x86)}\IIS\Microsoft Web Deploy V3\msdeploy.exe") | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
 if (-not $msdeploy) { throw 'msdeploy.exe (Web Deploy V3) not found; use a windows runner.' }
 
-$msArgs = @('-verb:sync', $source, $dest) + (Get-MsDeploySkipArgs -ProtectSubApp $ProtectSubApp) +
+$msArgs = @('-verb:sync', $source, $dest) + (Get-MsDeploySkipArgs) +
     @('-retryAttempts:3', '-retryInterval:3000')
 if ($Mode -ne 'Backup') { $msArgs += '-enableRule:AppOffline' }
 if ($env:MONSTER_ALLOW_UNTRUSTED -eq 'true') { $msArgs += '-allowUntrusted' }
 
-Write-Host "$Mode $contentPath via $endpoint$(if ($ProtectSubApp) { " (skipping /$ProtectSubApp)" })"
+Write-Host "$Mode $contentPath via $endpoint"
 function Invoke-MsDeploy([string[]]$arguments) {
     $output = & $msdeploy @arguments 2>&1
     $exit = $LASTEXITCODE

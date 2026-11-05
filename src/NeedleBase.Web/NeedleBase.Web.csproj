@@ -13,6 +13,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\NeedleBase.Application\NeedleBase.Application.csproj" />
+    <!-- One site, one process: the Web hosts the Api under /api (Api:InProcess, docs/deployment.md). -->
+    <ProjectReference Include="..\NeedleBase.Api\NeedleBase.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>

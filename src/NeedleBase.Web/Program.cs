@@ -131,7 +131,27 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AllowAnonymousToPage("/Privacy");
 });
 
+// One site, one process (docs/deployment.md): the Api runs inside the Web under /api with its own DI container, JWT
+// auth, key ring, rate limits and background services. Off in Development (the Api runs on its own there) and in
+// the Web's page tests.
+var hostApi = builder.Configuration.GetValue("Api:InProcess", false);
+if (hostApi)
+{
+    builder.Services.AddSingleton<NeedleBase.Web.Hosting.EmbeddedApiHostedService>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<NeedleBase.Web.Hosting.EmbeddedApiHostedService>());
+}
+
 var app = builder.Build();
+
+// Before anything of the Web's (forwarded headers, HTTPS redirection, cookies, antiforgery, error pages): "/api/..."
+// goes to the Api's own pipeline unchanged; it applies its own forwarded headers, HSTS and ProblemDetails errors.
+if (hostApi)
+{
+    var embeddedApi = app.Services.GetRequiredService<NeedleBase.Web.Hosting.EmbeddedApiHostedService>();
+    app.Use((context, next) => NeedleBase.Api.Hosting.EmbeddedApi.IsApiRequest(context.Request)
+        ? embeddedApi.HandleAsync(context)
+        : next(context));
+}
 
 // First: behind a TLS-terminating proxy (loopback by default) the scheme/IP must be known before HSTS,
 // HTTPS redirection and cookie Secure flags run — otherwise the app sees http and redirect-loops.
