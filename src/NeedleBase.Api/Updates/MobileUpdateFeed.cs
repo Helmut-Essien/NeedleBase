@@ -109,14 +109,27 @@ public sealed class MobileUpdateFeed
             // The asset API (Accept: octet-stream) works for private repositories too when a token is set.
             using var get = Request(assetUrl, "application/octet-stream");
             using var response = await client.SendAsync(get, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
-            if (!response.IsSuccessStatusCode || response.Content.Headers.ContentLength > MaxManifestBytes)
+            if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("In-app updates: {Asset} download answered {Status}", ManifestAssetName, (int)response.StatusCode);
                 return null;
             }
 
-            var json = await response.Content.ReadAsStringAsync(timeout.Token);
-            if (json.Length > MaxManifestBytes || !LooksLikeManifest(json))
+            // Cap even when Content-Length is missing (a wrong redirect or HTML error page must not be buffered whole).
+            if (response.Content.Headers.ContentLength > MaxManifestBytes)
+            {
+                _logger.LogWarning("In-app updates: {Asset} is larger than {Max} bytes", ManifestAssetName, MaxManifestBytes);
+                return null;
+            }
+
+            var json = await ReadAtMostAsync(response.Content, MaxManifestBytes, timeout.Token);
+            if (json is null)
+            {
+                _logger.LogWarning("In-app updates: {Asset} is larger than {Max} bytes", ManifestAssetName, MaxManifestBytes);
+                return null;
+            }
+
+            if (!LooksLikeManifest(json))
             {
                 _logger.LogWarning("In-app updates: {Asset} is not a valid manifest", ManifestAssetName);
                 return null;
@@ -170,6 +183,26 @@ public sealed class MobileUpdateFeed
             .OrderByDescending(r => r.Published)
             .Select(r => r.Url)
             .FirstOrDefault();
+    }
+
+    /// <summary>Reads at most <paramref name="maxBytes"/> UTF-8 bytes; null if the body is larger.</summary>
+    private static async Task<string?> ReadAtMostAsync(HttpContent content, int maxBytes, CancellationToken ct)
+    {
+        await using var stream = await content.ReadAsStreamAsync(ct);
+        var buffer = new byte[maxBytes + 1];
+        var total = 0;
+        while (total < buffer.Length)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(total, buffer.Length - total), ct);
+            if (read == 0)
+            {
+                break;
+            }
+
+            total += read;
+        }
+
+        return total > maxBytes ? null : System.Text.Encoding.UTF8.GetString(buffer, 0, total);
     }
 
     private static bool LooksLikeManifest(string json)

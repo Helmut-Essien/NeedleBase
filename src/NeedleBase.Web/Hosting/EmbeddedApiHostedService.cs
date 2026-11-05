@@ -13,26 +13,45 @@ public sealed class EmbeddedApiHostedService(
     ILogger<EmbeddedApiHostedService> logger) : IHostedService
 {
     private volatile EmbeddedApi? _api;
+    private CancellationTokenSource? _afterStart;
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         var api = EmbeddedApi.Create(environment, configuration);
-        await api.StartAsync(cancellationToken);
+        try
+        {
+            await api.StartAsync(cancellationToken);
+        }
+        catch
+        {
+            // Create built a WebApplication: free it if StartAsync fails, otherwise the host's DI and background
+            // services stay alive after the Web itself refuses to start.
+            await api.DisposeAsync();
+            throw;
+        }
+
         _api = api;
         logger.LogInformation("Api hosted in this process at /api.");
 
         // Like the standalone Api: answer first, then Development migrate/seed or the pending-migrations warning.
+        _afterStart = new CancellationTokenSource();
+        var afterStart = _afterStart.Token;
         _ = Task.Run(async () =>
         {
             try
             {
+                afterStart.ThrowIfCancellationRequested();
                 await api.AfterStartAsync();
+            }
+            catch (OperationCanceledException) when (afterStart.IsCancellationRequested)
+            {
+                // Shutting down before the check finished.
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Api start-up checks failed.");
             }
-        }, CancellationToken.None);
+        }, afterStart);
     }
 
     /// <summary>Runs the request through the Api; 503 (Retry-After) while it is starting or stopping.</summary>
@@ -51,6 +70,13 @@ public sealed class EmbeddedApiHostedService(
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
+        var afterStart = Interlocked.Exchange(ref _afterStart, null);
+        if (afterStart is not null)
+        {
+            await afterStart.CancelAsync();
+            afterStart.Dispose();
+        }
+
         var api = _api;
         _api = null;
         if (api is not null)

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using NeedleBase.Web.Handlers;
+using NeedleBase.Web.Hosting;
 using NeedleBase.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -62,6 +63,10 @@ if (!builder.Environment.IsDevelopment() && parsedApiBase.Scheme != Uri.UriSchem
 
 var apiBaseUri = new Uri(apiBaseUrl.EndsWith('/') ? apiBaseUrl : apiBaseUrl + "/");
 
+// One site, one process (docs/deployment.md): the Api runs inside the Web under /api. Off in Development (the Api
+// runs on its own there) and in the Web's page tests. Known before the HttpClients so they can short-circuit in-process.
+var hostApi = builder.Configuration.GetValue("Api:InProcess", false);
+
 builder.Services.AddHttpClient("AuthApi", client =>
 {
     client.BaseAddress = apiBaseUri;
@@ -71,7 +76,8 @@ builder.Services.AddHttpClient("AuthApi", client =>
     client.DefaultRequestHeaders.Add("X-NeedleBase-Client", "web"); // activity log label only
     client.Timeout = TimeSpan.FromSeconds(30);
 })
-    .AddHttpMessageHandler<ForwardClientIpHandler>();
+    .AddHttpMessageHandler<ForwardClientIpHandler>()
+    .AddInProcessApiHandler(hostApi);
 
 builder.Services.AddHttpClient("NeedleBaseApi", client =>
 {
@@ -84,7 +90,8 @@ builder.Services.AddHttpClient("NeedleBaseApi", client =>
 })
     .AddHttpMessageHandler<TokenRefreshHandler>()
     .AddHttpMessageHandler<UnauthorizedRedirectHandler>()
-    .AddHttpMessageHandler<ForwardClientIpHandler>(); // the browser's IP for the activity log (Api trusts loopback/known proxies only)
+    .AddHttpMessageHandler<ForwardClientIpHandler>() // the browser's IP for the activity log (Api trusts loopback/known proxies only)
+    .AddInProcessApiHandler(hostApi);
 
 // Cookie/antiforgery key ring. Must survive redeploys (or everyone is signed out): DataProtection:KeysPath (absolute,
 // outside the deploy folder is best) overrides the default App_Data/Keys. Back the folder up (docs/production-config.md).
@@ -131,10 +138,6 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AllowAnonymousToPage("/Privacy");
 });
 
-// One site, one process (docs/deployment.md): the Api runs inside the Web under /api with its own DI container, JWT
-// auth, key ring, rate limits and background services. Off in Development (the Api runs on its own there) and in
-// the Web's page tests.
-var hostApi = builder.Configuration.GetValue("Api:InProcess", false);
 if (hostApi)
 {
     builder.Services.AddSingleton<NeedleBase.Web.Hosting.EmbeddedApiHostedService>();
@@ -148,9 +151,28 @@ var app = builder.Build();
 if (hostApi)
 {
     var embeddedApi = app.Services.GetRequiredService<NeedleBase.Web.Hosting.EmbeddedApiHostedService>();
-    app.Use((context, next) => NeedleBase.Api.Hosting.EmbeddedApi.IsApiRequest(context.Request)
-        ? embeddedApi.HandleAsync(context)
-        : next(context));
+    // Terminal branch: never falls through to the Web's cookies/antiforgery. Catch client disconnects here because
+    // the Web's 499 middleware below never sees /api requests.
+    app.Use(async (context, next) =>
+    {
+        if (!NeedleBase.Api.Hosting.EmbeddedApi.IsApiRequest(context.Request))
+        {
+            await next(context);
+            return;
+        }
+
+        try
+        {
+            await embeddedApi.HandleAsync(context);
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            if (!context.Response.HasStarted)
+            {
+                context.Response.StatusCode = 499;
+            }
+        }
+    });
 }
 
 // First: behind a TLS-terminating proxy (loopback by default) the scheme/IP must be known before HSTS,

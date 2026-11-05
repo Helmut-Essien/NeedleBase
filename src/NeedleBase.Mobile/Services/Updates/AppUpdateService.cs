@@ -203,7 +203,13 @@ public sealed class AppUpdateService
                 return (null, null, "The update information is too large.");
             }
 
-            var json = await response.Content.ReadAsStringAsync(timeout.Token);
+            // Cap even when Content-Length is missing so a wrong response cannot fill memory.
+            var json = await ReadAtMostAsync(response.Content, 64 * 1024, timeout.Token);
+            if (json is null)
+            {
+                return (null, null, "The update information is too large.");
+            }
+
             var parsed = UpdateManifestParser.Parse(json, _manifestUrl!, _installer.PackageName);
             return parsed.Ok
                 ? (parsed.Manifest, json, null)
@@ -217,6 +223,25 @@ public sealed class AppUpdateService
         {
             return (null, null, "Couldn't reach the update server. Try again later.");
         }
+    }
+
+    private static async Task<string?> ReadAtMostAsync(HttpContent content, int maxBytes, CancellationToken ct)
+    {
+        await using var stream = await content.ReadAsStreamAsync(ct);
+        var buffer = new byte[maxBytes + 1];
+        var total = 0;
+        while (total < buffer.Length)
+        {
+            var read = await stream.ReadAsync(buffer.AsMemory(total, buffer.Length - total), ct);
+            if (read == 0)
+            {
+                break;
+            }
+
+            total += read;
+        }
+
+        return total > maxBytes ? null : System.Text.Encoding.UTF8.GetString(buffer, 0, total);
     }
 
     private UpdateManifest? ReadCachedManifest()

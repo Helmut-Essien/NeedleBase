@@ -184,7 +184,7 @@ public static class ApiApplication
             app.Logger.LogWarning("Configuration: {Warning}", warning);
         }
 
-        // Api as the IIS sub-application /api of the Web site: keep "/api" in the path so routes match (ApiPathBase).
+        // Keep "/api" in the path when IIS (or a reverse proxy) stripped it as a PathBase, so routes match (ApiPathBase).
         app.Use((context, next) =>
         {
             ApiPathBase.Restore(context.Request);
@@ -271,7 +271,7 @@ public static class ApiApplication
         // After authentication so sync limits can be per user.
         app.UseRateLimiter();
 
-        // "/health/*" on a host of its own; "/api/health/*" when the Api is the /api sub-application of the Web site.
+        // "/health/*" when the Api is the host root; "/api/health/*" when it is served under /api (embedded or PathBase).
         foreach (var prefix in new[] { "", ApiPathBase.Segment })
         {
             app.MapHealthChecks(prefix + "/health/live", new HealthCheckOptions

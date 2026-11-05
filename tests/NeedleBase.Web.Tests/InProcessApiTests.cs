@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace NeedleBase.Web.Tests;
@@ -29,10 +30,12 @@ public class InProcessApiTests : IClassFixture<InProcessApiTests.Factory>
         }
     }
 
+    private readonly Factory _factory;
     private readonly HttpClient _client;
 
     public InProcessApiTests(Factory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             BaseAddress = new Uri("https://localhost/"),
@@ -88,6 +91,37 @@ public class InProcessApiTests : IClassFixture<InProcessApiTests.Factory>
         using var response = await _client.GetAsync("/apiary");
 
         Assert.NotEqual("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Web_http_client_reaches_the_api_in_process_not_over_the_network()
+    {
+        // Api:BaseUrl is https://127.0.0.1:1/ — nothing listens there. With Api:InProcess the handler must answer
+        // without going out to the network (otherwise this would hang/fail on connection refused).
+        using var scope = _factory.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("AuthApi");
+        using var response = await client.GetAsync("api/health/live");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = JsonNode.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("Healthy", body?["status"]?.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task In_process_api_post_forwards_body_and_bearer_token()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var client = scope.ServiceProvider.GetRequiredService<IHttpClientFactory>().CreateClient("NeedleBaseApi");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/login")
+        {
+            Content = new StringContent("""{"email":"a@b.co","password":"x"}""", System.Text.Encoding.UTF8, "application/json")
+        };
+        request.Headers.TryAddWithoutValidation("Authorization", "Bearer not-a-real-token");
+        using var response = await client.SendAsync(request);
+
+        // Reached the Api (validation/auth error JSON), not a network failure to :1 and not a Web HTML page.
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
 
     /// <summary>The Web's appsettings.json carries the Api's defaults (the Api's own file is not deployed).</summary>

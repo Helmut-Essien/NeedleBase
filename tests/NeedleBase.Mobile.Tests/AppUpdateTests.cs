@@ -225,6 +225,7 @@ public sealed class AppUpdateTests : IDisposable
         Assert.True(await UpdateDownloader.HashMatchesAsync(file, hex.ToUpperInvariant(), default));
         Assert.True(await UpdateDownloader.HashMatchesAsync(file, hex.ToLowerInvariant(), default));
         Assert.False(await UpdateDownloader.HashMatchesAsync(file, new string('0', 64), default));
+        Assert.False(await UpdateDownloader.HashMatchesAsync(file, "abc", default)); // wrong length must not throw
     }
 
     // ---------- APK checks ----------
@@ -294,6 +295,16 @@ public sealed class AppUpdateTests : IDisposable
         var down = await svc.CheckAsync(manual: true);
         Assert.Equal(UpdateKind.Required, down.Kind);
         Assert.NotNull(down.Error);
+    }
+
+    [Fact]
+    public async Task Service_OversizedManifestWithoutContentLength_IsRejected()
+    {
+        var huge = new StreamContent(new MemoryStream(new byte[65 * 1024])); // no Content-Length
+        var server = new CustomManifestServer(huge);
+        var result = await Service(server, new FakeInstaller()).CheckAsync(manual: true);
+        Assert.Equal(UpdateKind.None, result.Kind);
+        Assert.Contains("too large", result.Error);
     }
 
     [Fact]
@@ -454,6 +465,12 @@ public sealed class AppUpdateTests : IDisposable
             await Task.Delay(Timeout.Infinite, cancellationToken);
             return 0;
         }
+    }
+
+    private sealed class CustomManifestServer(HttpContent content) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
     }
 
     private sealed class ManifestServer(string json) : HttpMessageHandler

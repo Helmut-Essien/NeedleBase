@@ -23,12 +23,20 @@ public class MobileUpdateFeedTests(NeedleBaseApiFactory factory) : IClassFixture
         public HttpStatusCode Status = HttpStatusCode.OK;
         public readonly List<string> Calls = [];
         public readonly Dictionary<string, string> Assets = new() { ["1"] = Manifest };
+        /// <summary>When set, asset downloads use this stream and omit Content-Length (oversized-body test).</summary>
+        public Stream? AssetStreamWithoutLength;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             var url = request.RequestUri!.ToString();
             lock (Calls) Calls.Add(url + " " + request.Headers.Accept + " " + request.Headers.Authorization);
             if (Status != HttpStatusCode.OK) return Task.FromResult(new HttpResponseMessage(Status));
+            if (!url.Contains("/releases?") && AssetStreamWithoutLength is not null)
+            {
+                var content = new StreamContent(AssetStreamWithoutLength);
+                content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream");
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
+            }
             var body = url.Contains("/releases?") ? ReleasesJson : Assets.GetValueOrDefault(url[(url.LastIndexOf('/') + 1)..]) ?? "";
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
         }
@@ -98,6 +106,15 @@ public class MobileUpdateFeedTests(NeedleBaseApiFactory factory) : IClassFixture
         var anon = new FakeGitHub();
         await Feed(anon, () => DateTimeOffset.UtcNow).GetManifestJsonAsync(default);
         Assert.All(anon.Calls, c => Assert.DoesNotContain("Bearer", c));
+    }
+
+    [Fact]
+    public async Task Oversized_manifest_without_content_length_is_rejected()
+    {
+        var huge = new MemoryStream(new byte[65 * 1024]); // 1 byte over the 64 KiB cap
+        var gh = new FakeGitHub { AssetStreamWithoutLength = huge };
+        Assert.Null(await Feed(gh, () => DateTimeOffset.UtcNow).GetManifestJsonAsync(default));
+        Assert.Contains(gh.Calls, c => c.Contains("application/octet-stream"));
     }
 
     [Fact]

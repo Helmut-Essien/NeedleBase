@@ -167,9 +167,16 @@ public sealed class UpdateDownloader(HttpClient http, TimeSpan? stallTimeout = n
     public static async Task<bool> HashMatchesAsync(string path, string expectedSha256Hex, CancellationToken ct)
     {
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, useAsync: true);
-        var actual = Convert.ToHexString(await SHA256.HashDataAsync(stream, ct));
+        var actual = Convert.ToHexString(await SHA256.HashDataAsync(stream, ct)).ToLowerInvariant();
+        var expected = expectedSha256Hex.Trim().ToLowerInvariant();
+        // FixedTimeEquals throws when lengths differ; a truncated/garbage hex must just fail the check.
+        if (actual.Length != expected.Length)
+        {
+            return false;
+        }
+
         return CryptographicOperations.FixedTimeEquals(
-            System.Text.Encoding.ASCII.GetBytes(actual.ToLowerInvariant()),
-            System.Text.Encoding.ASCII.GetBytes(expectedSha256Hex.Trim().ToLowerInvariant()));
+            System.Text.Encoding.ASCII.GetBytes(actual),
+            System.Text.Encoding.ASCII.GetBytes(expected));
     }
 }
