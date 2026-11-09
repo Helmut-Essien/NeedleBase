@@ -37,16 +37,23 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         using var response = await _anon.GetAsync("/");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Sew more. Chase less paperwork.", html);
+        Assert.Contains("Sew more.", html);
+        Assert.Contains("Chase less paperwork.", html);
+        Assert.Contains("How it works", html);
+        Assert.Contains("Example", html);
+        Assert.Contains("not real data", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("<html lang=\"en-GH\">", html);
         Assert.Contains("rel=\"canonical\" href=\"https://needlebase.example/\"", html);
         Assert.Contains("property=\"og:title\"", html);
         Assert.Contains("name=\"twitter:card\" content=\"summary_large_image\"", html);
         Assert.True(html.Contains("application/ld+json", StringComparison.Ordinal) || html.Contains("application/ld&#x2B;json", StringComparison.Ordinal), "JSON-LD script type missing");
         Assert.Contains("SoftwareApplication", html);
+        Assert.Contains("WebSite", html);
+        Assert.Contains("MobileApplication", html);
         Assert.Contains("FAQPage", html);
         Assert.Contains("/images/og-needlebase.png", html);
-        Assert.Contains("/images/needlebase-logo-clear", html);
+        Assert.Contains("/images/needlebase-logo-nav", html);
+        Assert.Contains("/images/needlebase-logo-clear", html); // JSON-LD / original stacked asset
         Assert.Contains("lp-brand", html);
         Assert.DoesNotContain("needlebase-mark-on-dark", html);
         Assert.Contains("Account/Register", html);

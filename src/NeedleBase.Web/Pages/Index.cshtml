@@ -2,8 +2,8 @@
 @model NeedleBase.Web.Pages.IndexModel
 @{
     Layout = "_LayoutLanding";
-    ViewData["Title"] = "NeedleBase — Design, Measure, Sew, Grow | Tailoring software for Ghana";
-    ViewData["MetaDescription"] = "Offline-first tailoring business software for Ghanaian workshops. Track orders, customer measurements, payments and staff on the web and on Android — even when the network drops.";
+    ViewData["Title"] = "NeedleBase — Offline-first tailoring software for Ghanaian workshops";
+    ViewData["MetaDescription"] = "NeedleBase: orders, customer measurements, payments and staff on the web, plus an offline Android app that syncs when data returns. For Ghanaian and West African tailoring shops — en-GH, GHS, +233 phones.";
     ViewData["Canonical"] = Model.CanonicalUrl;
     ViewData["OgImage"] = Model.OgImageUrl;
     ViewData["CspNonce"] = Model.CspNonce;
@@ -13,10 +13,12 @@
 <header class="lp-nav" role="banner">
     <a class="lp-nav__brand" href="#top" aria-label="NeedleBase home">
         <span class="lp-brand">
-            <img class="lp-brand__logo" src="~/images/needlebase-logo-clear.png" asp-append-version="true" width="120" height="85" alt="" decoding="async" fetchpriority="high" />
+            <img class="lp-brand__logo" src="~/images/needlebase-logo-nav.png" asp-append-version="true"
+                 width="1223" height="256" alt="" decoding="async" fetchpriority="high" />
         </span>
     </a>
     <nav class="lp-nav__links" aria-label="Landing">
+        <a href="#how">How it works</a>
         <a href="#features">Features</a>
         <a href="#android">Android</a>
         <a href="#faq">FAQ</a>
@@ -29,6 +31,7 @@
 </header>
 <div id="lp-drawer" class="lp-drawer" hidden>
     <nav aria-label="Mobile">
+        <a href="#how" data-lp-close>How it works</a>
         <a href="#features" data-lp-close>Features</a>
         <a href="#android" data-lp-close>Android</a>
         <a href="#faq" data-lp-close>FAQ</a>
@@ -39,20 +42,21 @@
 
 <main id="main">
     <section id="top" class="lp-hero" aria-labelledby="hero-title">
+        <div class="lp-hero__glow" aria-hidden="true"></div>
         <div class="lp-hero__copy">
-            <p class="lp-kicker">Built for Ghanaian / West African workshops</p>
-            <h1 id="hero-title">Sew more. Chase less paperwork.</h1>
+            <p class="lp-kicker"><span class="lp-kicker__dot" aria-hidden="true"></span> For Ghanaian &amp; West African workshops</p>
+            <h1 id="hero-title">Sew more.<br /><span class="lp-hero__accent">Chase less paperwork.</span></h1>
             <p class="lp-lead">
-                NeedleBase keeps your customers, measurements, orders, payments and tailors in one place —
-                on the web for owners, and on Android phones that keep working when the network does not.
+                One place for customers, measurements, orders, payments and staff —
+                on the web for owners, and on Android phones that keep working when the network drops.
             </p>
             <div class="lp-hero__cta">
                 <a class="lp-btn lp-btn--primary lp-btn--lg" asp-page="/Account/Register">Register your business</a>
                 <a class="lp-btn lp-btn--ghost lp-btn--lg" href="@apk" rel="noopener" target="_blank">Download Android APK</a>
             </div>
             <p class="lp-fine">
-                New shops need a <strong>NeedleBase licence key from Platform</strong>, issued to the owner’s email.
-                Staff join with an invite — no key required.
+                New shops need a <strong>NeedleBase licence key from Platform</strong> (owner’s email).
+                Staff join by invite — no key.
                 <a asp-page="/Account/Register">Start registration</a>
                 ·
                 <a asp-page="/Account/Login">Sign in</a>
@@ -63,7 +67,8 @@
                 <div class="lp-stage__room" data-lp-parallax>
                     <div class="lp-fabric lp-fabric--a"></div>
                     <div class="lp-fabric lp-fabric--b"></div>
-                    <div class="lp-tape">
+                    <div class="lp-tape" data-lp-float>
+                        <span class="lp-tape__mark"></span>
                         <span class="lp-tape__mark"></span>
                         <span class="lp-tape__mark"></span>
                         <span class="lp-tape__mark"></span>
@@ -73,8 +78,24 @@
                         <span class="lp-needle__eye"></span>
                         <span class="lp-thread"></span>
                     </div>
+                    <div class="lp-phone-hero">
+                        <div class="lp-phone-hero__bezel">
+                            <p class="lp-phone-hero__brand">NeedleBase</p>
+                            <p class="lp-phone-hero__status"><span class="lp-pulse-dot"></span> Offline · sync queued</p>
+                            <div class="lp-phone-hero__card">
+                                <span>ORD-1042</span>
+                                <strong>Kente suit · Ama</strong>
+                                <em>Sewing</em>
+                            </div>
+                            <div class="lp-phone-hero__card is-dim">
+                                <span>ORD-1038</span>
+                                <strong>Shirt · Kwesi</strong>
+                                <em>Cutting</em>
+                            </div>
+                        </div>
+                    </div>
                     <div class="lp-card3d">
-                        <p class="lp-card3d__label">Order</p>
+                        <p class="lp-card3d__label">Order timeline</p>
                         <p class="lp-card3d__title">ORD-1042 · Kente suit</p>
                         <ol class="lp-timeline" data-lp-demo>
                             <li class="is-done">New</li>
@@ -86,65 +107,116 @@
                     </div>
                 </div>
             </div>
-<p class="lp-stage__caption">Design · Measure · Sew · Grow</p>
+            <p class="lp-stage__caption">Design · Measure · Sew · Grow</p>
         </div>
     </section>
 
-    <section id="features" class="lp-section" aria-labelledby="features-title">
-        <h2 id="features-title">Everything a busy shop juggles — in one system</h2>
-        <p class="lp-section__lead">Real NeedleBase features from the product you run today. No filler.</p>
-        <div class="lp-grid">
-            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+    <section class="lp-strip" aria-label="What NeedleBase includes">
+        <ul class="lp-strip__list">
+            <li>Web console for owners</li>
+            <li>Offline Android + sync</li>
+            <li>Orders &amp; production</li>
+            <li>Measurements</li>
+            <li>Payments &amp; staff roles</li>
+            <li>Platform licence key</li>
+        </ul>
+    </section>
+
+    <section id="how" class="lp-section" aria-labelledby="how-title">
+        <div class="lp-section__head" data-lp-reveal>
+            <p class="lp-eyebrow">How it works</p>
+            <h2 id="how-title">From fitting to finish — without the notebook chase</h2>
+            <p class="lp-section__lead">Three steps that match how NeedleBase actually runs in a shop.</p>
+        </div>
+        <ol class="lp-steps">
+            <li class="lp-step" data-lp-reveal data-lp-tilt>
+                <span class="lp-step__num" aria-hidden="true">01</span>
+                <h3>Register the shop</h3>
+                <p>Owner creates the business with a Platform licence key. Managers and tailors join later with an invite — they never need a key.</p>
+            </li>
+            <li class="lp-step" data-lp-reveal data-lp-tilt>
+                <span class="lp-step__num" aria-hidden="true">02</span>
+                <h3>Capture work where it happens</h3>
+                <p>Take customers, measurements and orders on Android in the workroom, even offline. Owners manage payments, staff and production on the web.</p>
+            </li>
+            <li class="lp-step" data-lp-reveal data-lp-tilt>
+                <span class="lp-step__num" aria-hidden="true">03</span>
+                <h3>Sync when data returns</h3>
+                <p>The phone queues changes in SQLite, then syncs with the Api. Same roles and licence rules on every device.</p>
+            </li>
+        </ol>
+    </section>
+
+    <section id="features" class="lp-section lp-section--features" aria-labelledby="features-title">
+        <div class="lp-section__head" data-lp-reveal>
+            <p class="lp-eyebrow">Features</p>
+            <h2 id="features-title">Everything a busy shop already juggles</h2>
+            <p class="lp-section__lead">Only capabilities that exist in NeedleBase today — web pages and the Android app.</p>
+        </div>
+        <div class="lp-bento">
+            <article class="lp-bento__item lp-bento__item--wide" data-lp-reveal data-lp-tilt>
+                <div class="lp-bento__icon" aria-hidden="true">◇</div>
                 <h3>Orders &amp; production</h3>
-                <p>Follow each job from new to collected. See overdue work, assign tailors, and move status without losing the trail.</p>
+                <p>Track each job from new through cutting, sewing, finishing, ready and collected. See overdue work, assign tailors, and move status without losing the trail — on Production and Orders.</p>
             </article>
-            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+            <article class="lp-bento__item" data-lp-reveal data-lp-tilt>
+                <div class="lp-bento__icon" aria-hidden="true">◎</div>
                 <h3>Customers &amp; measurements</h3>
-                <p>Keep phone numbers and measurement cards with the customer — ready the next time they order, on the phone or the web.</p>
+                <p>Phone numbers and measurement cards stay with the customer, ready for the next order on phone or web.</p>
             </article>
-            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+            <article class="lp-bento__item" data-lp-reveal data-lp-tilt>
+                <div class="lp-bento__icon" aria-hidden="true">₵</div>
                 <h3>Payments</h3>
-                <p>Record deposits and balances against orders. Owners and managers see money; tailors stay focused on the workroom.</p>
+                <p>Record deposits and balances against orders. Owners and managers see money; tailors stay on the workroom.</p>
             </article>
-            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+            <article class="lp-bento__item" data-lp-reveal data-lp-tilt>
+                <div class="lp-bento__icon" aria-hidden="true">☰</div>
                 <h3>Staff &amp; roles</h3>
-                <p>Invite managers and tailors. Roles control who sees payments, staff, and activity — the same rules on web and Android.</p>
+                <p>Invite managers and tailors. Roles gate payments, staff and activity the same way on web and Android.</p>
             </article>
-            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+            <article class="lp-bento__item lp-bento__item--accent" data-lp-reveal data-lp-tilt>
+                <div class="lp-bento__icon" aria-hidden="true">⇄</div>
                 <h3>Offline Android + sync</h3>
-                <p>Take orders and measurements in the shop without waiting on data. When the network returns, the phone syncs with the Api.</p>
+                <p>SQLite on the phone. Capture work without waiting on data; sync orders, customers, measurements and payments when the network returns.</p>
             </article>
-            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+            <article class="lp-bento__item" data-lp-reveal data-lp-tilt>
+                <div class="lp-bento__icon" aria-hidden="true">⌁</div>
                 <h3>Licensed for your shop</h3>
-                <p>Each business registers with a Platform licence key tied to the owner’s email. One key, one shop — staff join by invite.</p>
+                <p>One Platform licence key per business, tied to the owner’s email. Staff never need a key — only an invite.</p>
             </article>
         </div>
     </section>
 
     <section class="lp-section lp-section--demo" aria-labelledby="demo-title">
-        <h2 id="demo-title">Peek at a measurement card</h2>
-        <p class="lp-section__lead">Interactive sample — numbers are placeholders, the fields match what NeedleBase stores.</p>
-        <div class="lp-measure" data-lp-reveal data-lp-measure>
-            <header>
-                <h3>Sample customer</h3>
-                <p>Tap a field to highlight it on the silhouette</p>
-            </header>
-            <div class="lp-measure__body">
-                <svg class="lp-silhouette" viewBox="0 0 120 200" role="img" aria-label="Simple body outline for measurement points">
-                    <title>Measurement guide</title>
-                    <ellipse cx="60" cy="28" rx="16" ry="18" />
-                    <path d="M40 48 C40 48 28 70 30 110 L36 170 L50 170 L54 120 L66 120 L70 170 L84 170 L90 110 C92 70 80 48 80 48 Z" />
-                    <circle data-pt="chest" cx="60" cy="78" r="4" />
-                    <circle data-pt="waist" cx="60" cy="108" r="4" />
-                    <circle data-pt="hip" cx="60" cy="128" r="4" />
-                    <circle data-pt="inseam" cx="52" cy="155" r="4" />
-                </svg>
-                <ul class="lp-measure__list">
-                    <li><button type="button" data-measure="chest">Chest <span>42"</span></button></li>
-                    <li><button type="button" data-measure="waist">Waist <span>34"</span></button></li>
-                    <li><button type="button" data-measure="hip">Hip <span>40"</span></button></li>
-                    <li><button type="button" data-measure="inseam">Inseam <span>32"</span></button></li>
-                </ul>
+        <div class="lp-demo" data-lp-reveal>
+            <div class="lp-demo__copy">
+                <p class="lp-eyebrow">Interactive example</p>
+                <h2 id="demo-title">Peek at a measurement card</h2>
+                <p class="lp-section__lead">This is an <strong>example only</strong> — not a real customer. Tap a field to highlight it. The field names match what NeedleBase stores; the inch values are placeholders.</p>
+            </div>
+            <div class="lp-measure" data-lp-measure>
+                <header>
+                    <span class="lp-badge-example">Example</span>
+                    <h3>Sample customer (not real data)</h3>
+                    <p>Chest, waist, hip, inseam</p>
+                </header>
+                <div class="lp-measure__body">
+                    <svg class="lp-silhouette" viewBox="0 0 120 200" role="img" aria-label="Body outline showing measurement points">
+                        <title>Measurement guide</title>
+                        <ellipse cx="60" cy="28" rx="16" ry="18" />
+                        <path d="M40 48 C40 48 28 70 30 110 L36 170 L50 170 L54 120 L66 120 L70 170 L84 170 L90 110 C92 70 80 48 80 48 Z" />
+                        <circle data-pt="chest" cx="60" cy="78" r="4" />
+                        <circle data-pt="waist" cx="60" cy="108" r="4" />
+                        <circle data-pt="hip" cx="60" cy="128" r="4" />
+                        <circle data-pt="inseam" cx="52" cy="155" r="4" />
+                    </svg>
+                    <ul class="lp-measure__list">
+                        <li><button type="button" data-measure="chest">Chest <span>42″</span></button></li>
+                        <li><button type="button" data-measure="waist">Waist <span>34″</span></button></li>
+                        <li><button type="button" data-measure="hip">Hip <span>40″</span></button></li>
+                        <li><button type="button" data-measure="inseam">Inseam <span>32″</span></button></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </section>
@@ -152,10 +224,11 @@
     <section id="android" class="lp-section lp-section--android" aria-labelledby="android-title">
         <div class="lp-android" data-lp-reveal>
             <div>
-                <h2 id="android-title">Android that keeps sewing when data drops</h2>
+                <p class="lp-eyebrow">Android</p>
+                <h2 id="android-title">Keeps sewing when data drops</h2>
                 <p>
-                    Sideload the signed APK from our GitHub Releases. In-app update checks use your shop’s Api
-                    (the newest release’s update.json) — like AssetTag — so you are not stuck on an old build.
+                    Sideload the signed APK from GitHub Releases. In-app updates read <code>update.json</code> from the
+                    newest release through your shop’s Api — so you are not stuck on an old build.
                 </p>
                 <ul class="lp-checks">
                     <li>Works offline with SQLite on the phone</li>
@@ -164,19 +237,23 @@
                 </ul>
                 <a class="lp-btn lp-btn--primary" href="@apk" rel="noopener" target="_blank">Get the latest APK on GitHub</a>
             </div>
-            <div class="lp-phone" aria-hidden="true">
+            <div class="lp-phone" aria-hidden="true" data-lp-tilt>
                 <div class="lp-phone__screen">
                     <p class="lp-phone__app">NeedleBase</p>
-                    <p class="lp-phone__line is-on">● Sync ready</p>
+                    <p class="lp-phone__line is-on"><span class="lp-pulse-dot"></span> Sync ready</p>
                     <p class="lp-phone__line">3 open orders</p>
                     <p class="lp-phone__line">Due tomorrow · Ama</p>
+                    <p class="lp-phone__line">ORD-1042 · Sewing</p>
                 </div>
             </div>
         </div>
     </section>
 
     <section id="faq" class="lp-section" aria-labelledby="faq-title">
-        <h2 id="faq-title">Questions owners ask</h2>
+        <div class="lp-section__head" data-lp-reveal>
+            <p class="lp-eyebrow">FAQ</p>
+            <h2 id="faq-title">Questions owners ask</h2>
+        </div>
         <div class="lp-faq">
             <details data-lp-reveal>
                 <summary>Do I need a licence key?</summary>
@@ -192,7 +269,7 @@
             </details>
             <details data-lp-reveal>
                 <summary>Where do I download the Android app?</summary>
-                <p>From the latest GitHub Release for NeedleBase (signed APK). Open <a href="@apk" rel="noopener" target="_blank">github.com/Helmut-Essien/NeedleBase/releases/latest</a>.</p>
+                <p>From the latest GitHub Release for NeedleBase at <a href="@apk" rel="noopener" target="_blank">github.com/Helmut-Essien/NeedleBase/releases/latest</a>.</p>
             </details>
             <details data-lp-reveal>
                 <summary>Who is NeedleBase for?</summary>
@@ -201,12 +278,14 @@
         </div>
     </section>
 
-    <section class="lp-cta" aria-labelledby="cta-title">
-        <h2 id="cta-title">Ready when your next fitting walks in</h2>
-        <p>Register with your Platform licence key, invite your team, put Android in the workroom.</p>
-        <div class="lp-hero__cta">
-            <a class="lp-btn lp-btn--primary lp-btn--lg" asp-page="/Account/Register">Get started</a>
-            <a class="lp-btn lp-btn--ghost lp-btn--lg" asp-page="/Account/Login">Sign in</a>
+    <section class="lp-cta" aria-labelledby="cta-title" data-lp-reveal>
+        <div class="lp-cta__inner">
+            <h2 id="cta-title">Ready when your next fitting walks in</h2>
+            <p>Register with your Platform licence key, invite your team, put Android in the workroom.</p>
+            <div class="lp-hero__cta">
+                <a class="lp-btn lp-btn--primary lp-btn--lg" asp-page="/Account/Register">Get started</a>
+                <a class="lp-btn lp-btn--ghost lp-btn--lg" asp-page="/Account/Login">Sign in</a>
+            </div>
         </div>
     </section>
 </main>
@@ -214,7 +293,8 @@
 <footer class="lp-footer">
     <div class="lp-footer__brand">
         <span class="lp-brand lp-brand--footer">
-            <img class="lp-brand__logo" src="~/images/needlebase-logo-clear.png" asp-append-version="true" width="96" height="68" alt="NeedleBase" decoding="async" />
+            <img class="lp-brand__logo" src="~/images/needlebase-logo-nav.png" asp-append-version="true"
+                 width="1223" height="256" alt="NeedleBase" decoding="async" loading="lazy" />
         </span>
     </div>
     <p>© 2026 NeedleBase (HelmutCode) · Design · Measure · Sew · Grow</p>
@@ -238,6 +318,12 @@
       "parentOrganization": { "@@type": "Organization", "name": "HelmutCode" }
     },
     {
+      "@@type": "WebSite",
+      "name": "NeedleBase",
+      "url": "@origin",
+      "description": "Offline-first tailoring business software for Ghanaian and West African workshops."
+    },
+    {
       "@@type": "SoftwareApplication",
       "name": "NeedleBase",
       "applicationCategory": "BusinessApplication",
@@ -250,6 +336,14 @@
       },
       "downloadUrl": "@apk",
       "url": "@origin"
+    },
+    {
+      "@@type": "MobileApplication",
+      "name": "NeedleBase",
+      "operatingSystem": "Android",
+      "applicationCategory": "BusinessApplication",
+      "downloadUrl": "@apk",
+      "description": "Offline-first Android app for NeedleBase shops: orders, customers, measurements, payments and sync."
     },
     {
       "@@type": "FAQPage",
