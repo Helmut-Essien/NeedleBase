@@ -40,10 +40,21 @@ check "mobile data"       "core=false api=false web=false mobile=true any=true "
 check "api + mobile"      "core=false api=true web=true mobile=true any=true " "$(changes src/NeedleBase.Api/x.cs src/NeedleBase.Mobile/y.cs)"
 check "domain -> all"     "$all" "$(changes src/NeedleBase.Domain/x.cs)"
 check "application -> all" "$all" "$(changes src/NeedleBase.Application/x.cs)"
-check "workflow -> all"   "$all" "$(changes .github/workflows/ci.yml)"
-check "script -> all"     "$all" "$(changes scripts/db-migrate.sh)"
+server="core=false api=true web=true mobile=false any=true "
+appo="core=false api=false web=false mobile=true any=true "
+check "workflow -> server, no APK"  "$server" "$(changes .github/workflows/ci.yml .github/workflows/release.yml)"
+check "ci script -> server"       "$server" "$(changes .github/scripts/detect-changes.sh .github/scripts/test-scripts.sh)"
+check "db-migrate -> server"      "$server" "$(changes scripts/db-migrate.sh)"
+check "iis-deploy -> web only"    "core=false api=false web=true mobile=false any=true " "$(changes .github/scripts/iis-deploy/WebDeploy.psm1 .github/scripts/test-iis-deploy.ps1)"
+check "landing -> web only"       "core=false api=false web=true mobile=false any=true " "$(changes src/NeedleBase.Web/wwwroot/css/landing.css)"
+check "android-release -> app"    "$appo" "$(changes scripts/android-release.sh)"
+check "manifest script -> app"    "$appo" "$(changes .github/scripts/update-manifest.sh)"
+check "next-version -> app"       "$appo" "$(changes .github/scripts/next-version.sh)"
+check "mobile csproj -> app"      "$appo" "$(changes src/NeedleBase.Mobile/NeedleBase.Mobile.csproj)"
+check "setup action -> app+server" "core=false api=true web=true mobile=true any=true " "$(changes .github/actions/setup-dotnet-maui/action.yml)"
 check "sln -> all"        "$all" "$(changes NeedleBase.sln)"
-check "unknown -> all"    "$all" "$(changes something/new.txt)"
+check "build props -> all" "$all" "$(changes Directory.Build.props)"
+check "unknown -> server" "$server" "$(changes something/new.txt)"
 check "no base -> all"    "$all" "$(GITHUB_OUTPUT='' "$detect" '' 2>/dev/null | tr '\n' ' ')"
 check "zero base -> all"  "$all" "$(GITHUB_OUTPUT='' "$detect" 0000000000000000000000000000000000000000 2>/dev/null | tr '\n' ' ')"
 check "bad base -> all"   "$all" "$(cd "$root" && GITHUB_OUTPUT='' "$detect" ffffffffffffffffffffffffffffffffffffffff 2>/dev/null | tr '\n' ' ')"
@@ -101,12 +112,12 @@ check "certs from apksigner" "$h" "$(bash "$site" certs --apk "$ct/u.apk" --apks
 rm -rf "$ct"
 if command -v jq >/dev/null 2>&1; then
   t=$(mktemp -d)
-  u="https://github.com/o/r/releases/download/v1.2.0/needlebase-1.2.0-42.apk"
+  u="https://github.com/o/r/releases/download/mobile-v1.2.0/needlebase-1.2.0-42.apk"
   printf 'fake apk bytes' > "$t/a.apk"
   printf 'Faster sync\n<script>alert(1)</script> & more' > "$t/notes.txt"
   cert="AA:BB:$(printf 'c%.0s' {1..60})"
   check "manifest ok" 0 "$(code bash "$site" manifest --apk-url "$u" --apk "$t/a.apk" --version 1.2.0 --code 42 --min 40 --notes "$t/notes.txt" --cert "$cert" --published 2026-11-04T10:00:00Z --out "$t/update.json")"
-  check "manifest fields" "1 com.helmutcode.needlebase 1.2.0 42 40 https://github.com/o/r/releases/download/v1.2.0/needlebase-1.2.0-42.apk 14" \
+  check "manifest fields" "1 com.helmutcode.needlebase 1.2.0 42 40 https://github.com/o/r/releases/download/mobile-v1.2.0/needlebase-1.2.0-42.apk 14" \
     "$(jq -r '[.schema,.packageName,.versionName,.versionCode,.minSupportedVersionCode,.apkUrl,.size]|join(" ")' "$t/update.json")"
   check "manifest sha" "$(sha256sum "$t/a.apk" | cut -d' ' -f1)" "$(jq -r .sha256 "$t/update.json")"
   check "manifest cert normalised" "aabb$(printf 'c%.0s' {1..60})" "$(jq -r '.signingCertSha256[0]' "$t/update.json")"
@@ -128,22 +139,31 @@ fi
 
 # next-version: version from the csproj, patch raised past existing tags.
 nextver() { # csproj-version tags...
-  local d; d=$(mktemp -d)
+  local d rc=0; d=$(mktemp -d)
   (
     cd "$d"; git init -q
     printf '<Project><NeedleBaseVersion Condition="x">%s</NeedleBaseVersion></Project>\n' "$1" > app.csproj
     git add -A; git -c user.name=t -c user.email=t@t commit -q -m c
     shift; for t in "$@"; do git tag "$t"; done
     "$root/.github/scripts/next-version.sh" app.csproj 2>&1
-  )
+  ) || rc=$?
   rm -rf "$d"
+  return "$rc"
 }
-check "version: first release"    "0.1.0" "$(nextver 0.1.0)"
-check "version: patch bumped"     "0.1.3" "$(nextver 0.1.0 v0.1.0 v0.1.2 v0.1.1)"
-check "version: 10 after 9"       "0.1.10" "$(nextver 0.1.0 v0.1.9)"
-check "version: new minor"        "0.2.0" "$(nextver 0.2.0 v0.1.7)"
-check "version: csproj ahead"     "0.1.5" "$(nextver 0.1.5 v0.1.2)"
-check "version: other tags ignored" "1.0.0" "$(nextver 1.0.0 v1.0.0-rc v10.0.4 mobile-v1.0.0)"
+check "version: first release"      "0.1.0" "$(nextver 0.1.0)"
+check "version: old v* tags continue" "0.1.3" "$(nextver 0.1.0 v0.1.0 v0.1.2 v0.1.1)"
+check "version: 10 after 9"          "0.1.10" "$(nextver 0.1.0 v0.1.9)"
+check "version: mobile-v wins over v" "0.1.8" "$(nextver 0.1.0 v0.1.9 mobile-v0.1.7)"
+check "version: csproj new minor"    "0.2.0" "$(nextver 0.2.0 mobile-v0.1.7)"
+check "version: csproj ahead exact"  "0.1.5" "$(nextver 0.1.5 mobile-v0.1.2)"
+check "version: csproj equal -> bump" "0.1.3" "$(nextver 0.1.2 mobile-v0.1.2)"
+check "version: other tags ignored"  "1.0.1" "$(nextver 1.0.0 v1.0.0-rc v1.0.0 mobile-v1.0.0-beta x-mobile-v9.9.9)"
+check "version: numeric sort"        "0.10.1" "$(nextver 0.10.0 mobile-v0.9.5 mobile-v0.10.0)"
+check "version: bump minor"          "0.2.0" "$(BUMP=minor nextver 0.1.0 mobile-v0.1.7)"
+check "version: bump major"          "1.0.0" "$(BUMP=major nextver 0.1.0 mobile-v0.1.7)"
+check "version: csproj beats bump"   "0.3.0" "$(BUMP=major nextver 0.3.0 mobile-v0.1.7)"
+check "version: never backwards"     "1" "$(nextver 0.1.0 mobile-v0.2.3 >/dev/null 2>&1; echo $?)"
+check "version: bad bump"            "1" "$(BUMP=huge nextver 0.1.0 >/dev/null 2>&1; echo $?)"
 echo "script tests: $pass passed, $fail failed"
 
 # --- iis-deploy PowerShell helpers (single-site Web + /api deploy). pwsh ships on GitHub's ubuntu runners;

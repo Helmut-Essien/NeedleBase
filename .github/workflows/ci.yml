@@ -10,9 +10,18 @@ on:
     branches-ignore: [main]
   workflow_dispatch:
   workflow_call:
+    # release.yml decides what changed (previous push, or a manual run) and passes the parts here.
     inputs:
-      base:
-        description: Commit to diff against ('' = build everything)
+      core:
+        type: string
+        default: ""
+      api:
+        type: string
+        default: ""
+      web:
+        type: string
+        default: ""
+      mobile:
         type: string
         default: ""
     outputs:
@@ -59,15 +68,25 @@ jobs:
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BEFORE: ${{ github.event.before }}
-          CALL_BASE: ${{ inputs.base }}
+          IN_CORE: ${{ inputs.core }}
+          IN_API: ${{ inputs.api }}
+          IN_WEB: ${{ inputs.web }}
+          IN_MOBILE: ${{ inputs.mobile }}
         run: |
+          set -euo pipefail
+          # Called by release.yml (a called run reports the caller's event name): use the parts it decided.
+          if [[ "$GITHUB_WORKFLOW" != "CI" ]]; then
+            any=false
+            [[ "$IN_API" == true || "$IN_WEB" == true || "$IN_MOBILE" == true ]] && any=true
+            printf 'core=%s\napi=%s\nweb=%s\nmobile=%s\nany=%s\n' "${IN_CORE:-false}" "${IN_API:-false}" \
+              "${IN_WEB:-false}" "${IN_MOBILE:-false}" "$any" | tee -a "$GITHUB_STEP_SUMMARY" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           case "$EVENT" in
             pull_request) base="$PR_BASE" ;;
             push) base="$PUSH_BEFORE" ;;
-            *) base="$CALL_BASE" ;;   # workflow_dispatch -> '' -> everything
+            *) base="" ;;   # workflow_dispatch -> everything
           esac
-          # A called run reports the caller's event name, so trust inputs.base whenever it was given.
-          if [[ -n "$CALL_BASE" || "$GITHUB_WORKFLOW" != "CI" ]]; then base="$CALL_BASE"; fi
           .github/scripts/detect-changes.sh "$base" HEAD | tee -a "$GITHUB_STEP_SUMMARY"
 
   core:

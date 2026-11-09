@@ -11,6 +11,14 @@ Package id `com.helmutcode.needlebase`. Release builds are a signed **universal 
 | `NeedleBaseVersion` | `versionName` users see | `major.minor.patch`, e.g. `1.0.0` |
 | `NeedleBaseVersionCode` | `versionCode` | Whole number that must **go up for every build anyone installs** (Android refuses to update over a higher one; Play refuses a repeat). CI uses the run number + `VERSION_CODE_OFFSET`; by hand, give it explicitly. |
 
+CI builds an APK **only when the app or code it uses changed** (Mobile, Mobile.Data, Domain, Application, the mobile
+build scripts; [ci-cd.md](ci-cd.md#what-builds-when)) or when a manual run ticks *build_android*. The version is
+then the last `mobile-v*` tag + patch; to release a new **minor or major** version, set `NeedleBaseVersion` in
+`src/NeedleBase.Mobile/NeedleBase.Mobile.csproj` (e.g. `0.2.0`, `1.0.0`) and push, or run the workflow with
+*build_android* and *bump* = minor/major. The csproj may never be behind the last tag's major.minor (the run fails).
+Each build becomes tag `mobile-v<version>` and a GitHub **pre-release**; promote it on GitHub when tested
+(Edit → untick *Set as a pre-release*).
+
 ## Upload keystore (once, kept by you)
 
 ```bash
@@ -62,8 +70,8 @@ enabled) in GitHub Actions and attach it, with `update.json`, to the GitHub Rele
 **How it works (like AssetTag).** Each release attaches `needlebase-<version>-<code>.apk` and `update.json` to the
 GitHub Release. The app asks its own Api, `GET /api/mobile/update` (anonymous); the Api reads the repository's
 releases from the GitHub API (`GitHub:Owner` / `GitHub:Repository` in the Api's appsettings, optional
-`GitHub:Token`), takes the newest non-draft release that has an `update.json` (pre-releases included, as 0.x
-versions are pre-releases) and returns it. It caches the answer for 5 minutes (GitHub allows 60 anonymous calls an
+`GitHub:Token`), takes the newest non-draft release that has an `update.json` (pre-releases included: every CI
+release starts as one; old `v*` releases count too) and returns it. It caches the answer for 5 minutes (GitHub allows 60 anonymous calls an
 hour) and keeps serving the last good answer for up to an hour if GitHub is unreachable; with nothing to serve it
 answers 503 and the app keeps its last copy. The app (More › *Check for updates*, and automatically when it comes to the foreground,
 5 s after start, at most every 6 h):
@@ -103,8 +111,8 @@ different key (see below).
    Google then signs with the same key and Play updates install over sideloaded builds. Exported `*.pepk` files
    are git-ignored; delete them after upload.
 2. Upload the first `.aab` by hand (Play requires the first release of a new app in the Console).
-3. Then set `PLAY_UPLOAD_ENABLED=true` and the `PLAY_SERVICE_ACCOUNT_JSON` secret (ci-cd.md); every tag uploads to
-   the internal track. Promote in the Console.
+3. Then set `PLAY_UPLOAD_ENABLED=true` and the `PLAY_SERVICE_ACCOUNT_JSON` secret (ci-cd.md); every app release
+   (`mobile-v*`) uploads to the internal track. Promote in the Console.
 
 The Release build stops with a clear message when:
 

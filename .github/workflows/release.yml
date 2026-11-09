@@ -1,13 +1,18 @@
-# Release, AssetTag style: every push to main builds, releases and deploys what changed. Nobody types a version or a
-# tag: the version comes from NeedleBaseVersion in src/NeedleBase.Mobile/NeedleBase.Mobile.csproj (patch raised
-# automatically, .github/scripts/next-version.sh), versionCode = run number + VERSION_CODE_OFFSET, and the workflow
-# creates tag v<version> + the GitHub Release itself (after a successful deploy). Tags made with GITHUB_TOKEN never
-# start workflows, and this one does not run on tags, so there is no loop. CI runs inside this workflow (ci.yml no
-# longer runs on pushes to main), so nothing runs twice.
+# Release, AssetTag style: every push to main builds and deploys what changed since the PREVIOUS PUSH. Nobody types a
+# tag. The Android app ships (version bump, signed APK, update.json, tag mobile-v<version>, GitHub PRE-release) ONLY
+# when the app or code it depends on changed: Mobile, Mobile.Data, Domain, Application, the mobile build scripts or
+# shared build settings (.github/scripts/detect-changes.sh). Api/Web/Infrastructure/landing/workflow-only pushes run
+# CI, migrate and deploy the site, and create no tag and no release. Releases are pre-releases: promote one by hand
+# on GitHub (Edit > untick "Set as a pre-release"); the in-app updater offers pre-releases too.
 #
-#   git push origin main                                   -> CI, APK, release, deploy (changed parts)
-#   Actions > Release > Run workflow (from main)           -> same with everything rebuilt and redeployed
-#   Actions > Release > Run workflow (from tag v1.2.3)     -> redeploy that old version (rollback)
+# Version (.github/scripts/next-version.sh): highest mobile-v* tag (old v* tags if none) + patch, or NeedleBaseVersion
+# from src/NeedleBase.Mobile/NeedleBase.Mobile.csproj when that is higher; never backwards. versionCode = run number +
+# VERSION_CODE_OFFSET (always increases). Tags made with GITHUB_TOKEN never start workflows: no loops.
+#
+#   git push origin main                                   -> CI + deploy of the changed server parts; APK if the app changed
+#   Actions > Release > Run workflow (from main)           -> rebuild + redeploy the site; tick build_android for an APK
+#                                                             (bump: patch | minor | major)
+#   Actions > Release > Run workflow (from an older commit/tag) -> roll the site back to that code (no APK unless ticked)
 # Secrets and variables: docs/ci-cd.md.
 name: Release
 
@@ -16,6 +21,16 @@ on:
     branches: [main]
     paths-ignore: ["docs/**", "**/*.md", ".cursor/**"]
   workflow_dispatch:
+    inputs:
+      build_android:
+        description: Also build and release a new Android APK (mobile-v tag, pre-release)
+        type: boolean
+        default: false
+      bump:
+        description: Version bump for that APK (ignored when NeedleBaseVersion in the csproj is already higher)
+        type: choice
+        options: [patch, minor, major]
+        default: patch
 
 permissions:
   contents: read
@@ -31,43 +46,69 @@ env:
 
 jobs:
   meta:
-    name: Version
+    name: Changes + version
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read   # last successful Release run (diff base)
     outputs:
+      core: ${{ steps.changes.outputs.core }}
+      api: ${{ steps.changes.outputs.api }}
+      web: ${{ steps.changes.outputs.web }}
+      mobile: ${{ steps.changes.outputs.mobile }}
       version: ${{ steps.v.outputs.version }}
       code: ${{ steps.v.outputs.code }}
-      prerelease: ${{ steps.v.outputs.prerelease }}
-      base: ${{ steps.base.outputs.base }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 0
-      # Only what changed since the previous release tag is built and deployed ('' = everything).
-      - id: base
+          fetch-depth: 0   # history + all tags (diff base, next version)
+      # Push: diff against the previous push (github.event.before), or further back to the last SUCCESSFUL Release
+      # run on main when that is older, so a failed run or a queued push that GitHub skipped (concurrency keeps only
+      # the newest pending run) is retried. A new branch, a force push (base not in the history) or a zero sha
+      # builds everything. Manual run: the whole site; the app only when build_android is ticked.
+      - id: changes
         env:
-          # Manual runs build and deploy everything (redeploy, or roll back by running an older tag).
-          EVERYTHING: ${{ github.event_name == 'workflow_dispatch' }}
-        run: |
-          prev=""
-          if [[ "$EVERYTHING" != "true" ]]; then
-            # Last release reachable from this commit (the release of a failed deploy has no tag, so its changes
-            # are included again next time).
-            prev=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD 2>/dev/null || true)
-          fi
-          echo "Previous release: ${prev:-none (build everything)}" >> "$GITHUB_STEP_SUMMARY"
-          echo "base=$prev" >> "$GITHUB_OUTPUT"
-      - id: v
-        env:
-          OFFSET: ${{ vars.VERSION_CODE_OFFSET }}
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          BUILD_ANDROID: ${{ inputs.build_android }}
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [[ "$REF_TYPE" == "tag" ]]; then
-            version="${REF_NAME#v}"          # manual run from an old tag: redeploy that version
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            mobile=false; [[ "$BUILD_ANDROID" == "true" ]] && mobile=true
+            out=$(printf 'core=true\napi=true\nweb=true\nmobile=%s' "$mobile")
+            echo "Manual run: site rebuilt and redeployed; Android: $mobile" >> "$GITHUB_STEP_SUMMARY"
           else
-            version=$(.github/scripts/next-version.sh)
+            usable() { [[ -n "$1" && ! "$1" =~ ^0+$ ]] && git merge-base --is-ancestor "$1" HEAD 2>/dev/null; }
+            base="$BEFORE"
+            good=$(gh run list -R "$REPO" --workflow release.yml --branch main --event push --status success \
+              --limit 1 --json headSha -q '.[0].headSha' 2>/dev/null || true)
+            if usable "$good" && { ! usable "$base" || git merge-base --is-ancestor "$good" "$base"; }; then
+              [[ "$good" != "$base" ]] && echo "Including changes since the last successful release run ${good:0:7}." >> "$GITHUB_STEP_SUMMARY"
+              base="$good"
+            fi
+            if ! usable "$base"; then
+              echo "No usable previous push ('${base:-none}'): building everything." >> "$GITHUB_STEP_SUMMARY"
+              base=""
+            fi
+            out=$(GITHUB_OUTPUT='' .github/scripts/detect-changes.sh "$base" HEAD | grep -E '^(core|api|web|mobile)=')
+          fi
+          echo "$out" | tee -a "$GITHUB_STEP_SUMMARY" >> "$GITHUB_OUTPUT"
+      - id: v
+        if: steps.changes.outputs.mobile == 'true'
+        env:
+          OFFSET: ${{ vars.VERSION_CODE_OFFSET }}
+          BUMP: ${{ inputs.bump || 'patch' }}
+        run: |
+          set -euo pipefail
+          # Rerun-safe: this commit already got a mobile-v tag (earlier attempt of this run) -> reuse that version.
+          existing=$(git tag --points-at HEAD -l 'mobile-v*' | sed -n 's/^mobile-v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$/\1/p' | sort -V | tail -n 1)
+          if [[ -n "$existing" ]]; then
+            version="$existing"
+          elif ! version=$(.github/scripts/next-version.sh 2>"$RUNNER_TEMP/version.err"); then
+            echo "::error::$(cat "$RUNNER_TEMP/version.err")"; exit 1
           fi
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Version must look like 1.2.3 (got '$version')."; exit 1
@@ -78,16 +119,18 @@ jobs:
           if [[ ! "$code" =~ ^[1-9][0-9]{0,8}$ ]]; then
             echo "::error::versionCode must be 1..999999999 (got '$code')."; exit 1
           fi
-          prerelease=false; [[ "$version" == 0.* ]] && prerelease=true
-          { echo "version=$version"; echo "code=$code"; echo "prerelease=$prerelease"; } >> "$GITHUB_OUTPUT"
-          echo "### NeedleBase $version (versionCode $code)" >> "$GITHUB_STEP_SUMMARY"
+          { echo "version=$version"; echo "code=$code"; } >> "$GITHUB_OUTPUT"
+          echo "### NeedleBase Android $version (versionCode $code), tag mobile-v$version" >> "$GITHUB_STEP_SUMMARY"
 
   ci:
     name: CI
     needs: meta
     uses: ./.github/workflows/ci.yml
     with:
-      base: ${{ needs.meta.outputs.base }}
+      core: ${{ needs.meta.outputs.core }}
+      api: ${{ needs.meta.outputs.api }}
+      web: ${{ needs.meta.outputs.web }}
+      mobile: ${{ needs.meta.outputs.mobile }}
 
   android:
     name: Android (signed APK + optional AAB)
@@ -173,8 +216,8 @@ jobs:
           git log -1 --format=%B > "$RUNNER_TEMP/notes.txt" || true
           [[ -s "$RUNNER_TEMP/notes.txt" ]] && [[ -n "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes.txt")" ]] || echo "NeedleBase $VERSION" > "$RUNNER_TEMP/notes.txt"
           cert_args=(); for c in "${certs[@]}"; do cert_args+=(--cert "$c"); done
-          # The release (tag v$VERSION) is created by the github-release job with this exact file name.
-          apk_url="https://github.com/$REPOSITORY/releases/download/v$VERSION/needlebase-$VERSION-$CODE.apk"
+          # The release (tag mobile-v$VERSION) is created by the github-release job with this exact file name.
+          apk_url="https://github.com/$REPOSITORY/releases/download/mobile-v$VERSION/needlebase-$VERSION-$CODE.apk"
           bash .github/scripts/update-manifest.sh manifest --apk "$apk" --apk-url "$apk_url" --version "$VERSION" --code "$CODE" \
             --min "${MIN_CODE:-0}" --notes "$RUNNER_TEMP/notes.txt" "${cert_args[@]}" --out dist/update.json
           cat dist/update.json
@@ -203,12 +246,14 @@ jobs:
         # (Api:InProcess), so no IIS sub-application is needed. Framework-dependent, out-of-process (as AssetTag on
         # MonsterASP). No secrets in the package: settings are environment variables on the site (docs/production-config.md).
         env:
+          # Set only when this push also ships an APK; a server-only deploy keeps the project's default version.
           VERSION: ${{ needs.meta.outputs.version }}
         run: |
           set -euo pipefail
           out=artifacts/publish/site
+          ver=(); [[ -n "$VERSION" ]] && ver=(-p:Version="$VERSION")
           dotnet publish src/NeedleBase.Web/NeedleBase.Web.csproj -c Release -o "$out" \
-            -p:UseAppHost=false -p:AspNetCoreHostingModel=OutOfProcess -p:Version="$VERSION"
+            -p:UseAppHost=false -p:AspNetCoreHostingModel=OutOfProcess "${ver[@]}"
           rm -f "$out/appsettings.Development.json"
           rm -rf "$out/App_Data"
       # Non-secret URLs from SITE_URL into the package's web.config (aspNetCore environmentVariables, inside the
@@ -254,17 +299,18 @@ jobs:
   github-release:
     name: GitHub Release
     needs: [meta, ci, android, server, deploy]
-    # Creates tag v<version> + the release once at least one part was built and nothing failed, deploy included
-    # (so a failed deploy leaves no tag and the next push retries those changes).
+    # Only when an APK was built: tag mobile-v<version> + a PRE-release (promote it by hand on GitHub). Waits for the
+    # deploy when the same push also changed the server, and is skipped if anything failed. Server-only pushes
+    # create no tag and no release. Rerun-safe: a rerun reuses the version already tagged on this commit and the
+    # release action updates the existing release instead of making a second one.
     if: >-
-      always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
-      && (needs.android.result == 'success' || needs.server.result == 'success')
+      always() && needs.android.result == 'success'
+      && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - if: needs.android.result == 'success'
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: android
           path: dist
@@ -288,7 +334,7 @@ jobs:
           files=(dist/*)
           if (( ${#files[@]} > 0 )); then (cd dist && sha256sum -- * > SHA256SUMS); fi
           {
-            echo "NeedleBase $VERSION. Built in this release: Api=$API Web=$WEB Android=$MOBILE (a part that did not change since the previous tag keeps its earlier release)."
+            echo "NeedleBase Android $VERSION (pre-release; promote it on GitHub when tested). Same push also deployed: Api=$API Web=$WEB."
             echo
             if [[ "$MOBILE" == true ]]; then
               echo "**Sideload (Android, versionCode $CODE):** download \`needlebase-$VERSION-$CODE.apk\` and run \`adb install -r needlebase-$VERSION-$CODE.apk\`, or copy it to the phone and open it (allow \"Install unknown apps\" for the app you open it with). It installs over the previous version and keeps the phone's data. Check the file with \`sha256sum -c SHA256SUMS --ignore-missing\`."
@@ -306,11 +352,12 @@ jobs:
           } > notes.md
       - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          tag_name: v${{ needs.meta.outputs.version }}
+          tag_name: mobile-v${{ needs.meta.outputs.version }}
           target_commitish: ${{ github.sha }}
-          name: NeedleBase ${{ needs.meta.outputs.version }}
+          name: NeedleBase Android ${{ needs.meta.outputs.version }}
           body_path: notes.md
-          prerelease: ${{ needs.meta.outputs.prerelease == 'true' }}
+          prerelease: true
+          make_latest: false
           files: |
             dist/*.apk
             dist/*.aab

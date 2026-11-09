@@ -3,7 +3,7 @@
 # release.yml attaches it to the GitHub Release next to the APK; the Api (GET api/mobile/update) serves the newest
 # release's copy to the app. No GitHub Pages. Needs bash, jq, sha256sum. Tested by test-scripts.sh.
 #
-#   update-manifest.sh manifest --apk F --apk-url https://github.com/O/R/releases/download/vX/F.apk --version 1.2.0
+#   update-manifest.sh manifest --apk F --apk-url https://github.com/O/R/releases/download/mobile-vX/F.apk --version 1.2.0
 #                      --code 42 [--min 0] [--notes FILE] --cert SHA256 [--cert ...] --out update.json
 #       Writes update.json (schema 1) with the APK's SHA-256, size and signing certificates.
 #   update-manifest.sh certs --apk F [--apksigner PATH]    (or: certs --from FILE, parse saved output only)

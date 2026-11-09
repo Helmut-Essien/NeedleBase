@@ -5,12 +5,15 @@
 #
 # Prints (and appends to $GITHUB_OUTPUT when set): core, api, web, mobile, any = true|false.
 #   core   Domain + Application (+ their tests)       -> also turns on api, web and mobile (all depend on them)
-#   api    Api + Infrastructure (+ Api.Tests)             -> also turns on web (the Web hosts the Api on the site)
-#   web    Web (+ Web.Tests)
-#   mobile Mobile + Mobile.Data (+ Mobile.Tests)
+#   api    Api + Infrastructure (+ Api.Tests), scripts/db-migrate.sh  -> also turns on web (the Web hosts the Api)
+#   web    Web (+ Web.Tests, landing page), .github/scripts/iis-deploy/, test-iis-deploy.ps1
+#   mobile Mobile + Mobile.Data (+ Mobile.Tests) and the mobile build/version plumbing: scripts/android-release.sh,
+#          .github/actions/ (MAUI setup), .github/scripts/update-manifest.sh, .github/scripts/next-version.sh
 #   docs-only changes (docs/, *.md, .cursor/) turn nothing on.
-#   CI/build plumbing (.github/, scripts/, *.sln, Directory.Build.*, .config/, NuGet.config, global.json),
-#   an empty/unknown base, a failed diff or any file not listed below turns EVERYTHING on (safe default).
+#   Shared build settings (*.sln, Directory.Build.*, Directory.Packages.props, global.json, .config/, NuGet.config),
+#   an empty/unknown base or a failed diff turn EVERYTHING on (safe default).
+#   Other CI plumbing (.github/workflows/, the other .github/scripts) and unknown files rebuild and redeploy the
+#   SERVER only: they never ship a new APK (force one with Release > Run workflow > build_android).
 set -euo pipefail
 
 base="${1:-}"
@@ -28,12 +31,15 @@ else
     [[ -z "$f" ]] && continue
     case "$f" in
       docs/*|*.md|.cursor/*|LICENSE*|.gitignore|.gitattributes|.editorconfig) ;;
-      .github/*|scripts/*|*.sln|Directory.Build.*|Directory.Packages.props|global.json|.config/*|[Nn]u[Gg]et.config) all=true ;;
+      *.sln|Directory.Build.*|Directory.Packages.props|global.json|.config/*|[Nn]u[Gg]et.config) all=true ;;
       src/NeedleBase.Domain/*|src/NeedleBase.Application/*|tests/NeedleBase.Domain.Tests/*|tests/NeedleBase.Application.Tests/*) core=true ;;
-      src/NeedleBase.Api/*|src/NeedleBase.Infrastructure/*|tests/NeedleBase.Api.Tests/*|docker-compose.yml) api=true ;;
-      src/NeedleBase.Web/*|tests/NeedleBase.Web.Tests/*) web=true ;;
       src/NeedleBase.Mobile/*|src/NeedleBase.Mobile.Data/*|tests/NeedleBase.Mobile.Tests/*) mobile=true ;;
-      *) echo "Unclassified path '$f': building everything." >&2; all=true ;;
+      scripts/android-release.sh|.github/scripts/update-manifest.sh|.github/scripts/next-version.sh) mobile=true ;;
+      .github/actions/*) mobile=true api=true ;;   # .NET/MAUI setup: used by the APK and the server build
+      src/NeedleBase.Api/*|src/NeedleBase.Infrastructure/*|tests/NeedleBase.Api.Tests/*|docker-compose.yml|scripts/db-migrate.sh) api=true ;;
+      src/NeedleBase.Web/*|tests/NeedleBase.Web.Tests/*|.github/scripts/iis-deploy/*|.github/scripts/test-iis-deploy.ps1) web=true ;;
+      .github/*|scripts/*) api=true ;;
+      *) echo "Unclassified path '$f': rebuilding the server (not the app)." >&2; api=true ;;
     esac
   done <<< "$files"
 fi

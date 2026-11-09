@@ -3,32 +3,39 @@
 | File | What |
 |---|---|
 | `.github/workflows/ci.yml` | Every PR and push to other branches (main runs it inside Release): detect changes, build + test only the affected parts, Android Debug build, vulnerable-package check. |
-| `.github/workflows/release.yml` | Every push to main (or manual run): auto version + tag, CI, signed APK + update site, Api/Web packages, idempotent migration SQL, GitHub Release, deploy to MonsterASP, optional Google Play upload. |
+| `.github/workflows/release.yml` | Every push to main (or manual run): CI, site package + idempotent migration SQL, deploy to MonsterASP; **only when the app changed**: auto version, signed APK + `update.json`, tag `mobile-v<version>` + GitHub pre-release, optional Google Play upload. |
 | `.github/scripts/detect-changes.sh` | The one rule set for "what changed" (used by both workflows; runnable locally). |
 | `.github/actions/setup-dotnet-maui` | .NET 9 SDK + maui-android workload + NuGet, cached. |
 | `.github/scripts/iis-deploy/` | Web Deploy to the one MonsterASP site: `Deploy-Site.ps1` (direct msdeploy: deploy, backup, restore), `WebDeploy.psm1` (package checks, skip rules, endpoint and connection parsing), `Wait-Healthy.ps1`. Tests: `.github/scripts/test-iis-deploy.ps1`, run by `test-scripts.sh`. |
 
 ## What builds when
 
-`detect-changes.sh <base>` compares with the PR base, the previous push, or (releases) the previous `v*` tag:
+`detect-changes.sh <base>` compares with the PR base or, on main, the previous push (`github.event.before`; further
+back to the last successful Release run when that is older, so failed or skipped runs are retried; a new branch,
+force push or zero sha builds everything):
 
-| Changed | core (Domain+Application tests) | api | web | mobile |
+| Changed | core (Domain+Application tests) | api | web | mobile (APK) |
 |---|---|---|---|---|
 | `src/NeedleBase.Domain`, `src/NeedleBase.Application` (+ their tests) | yes | yes | yes | yes |
-| `src/NeedleBase.Api`, `src/NeedleBase.Infrastructure`, `tests/NeedleBase.Api.Tests`, `docker-compose.yml` | | yes | | |
-| `src/NeedleBase.Web`, `tests/NeedleBase.Web.Tests` | | | yes | |
-| `src/NeedleBase.Mobile`, `src/NeedleBase.Mobile.Data`, `tests/NeedleBase.Mobile.Tests` | | | | yes |
-| `.github/`, `scripts/`, `*.sln`, `Directory.Build.*`, `.config/`, NuGet config, `global.json`, any unlisted file, unknown base | yes | yes | yes | yes |
+| `src/NeedleBase.Mobile`, `src/NeedleBase.Mobile.Data`, `tests/NeedleBase.Mobile.Tests` (incl. the csproj/version) | | | | yes |
+| `scripts/android-release.sh`, `.github/scripts/update-manifest.sh`, `.github/scripts/next-version.sh` | | | | yes |
+| `.github/actions/` (.NET/MAUI setup) | | yes | yes | yes |
+| `src/NeedleBase.Api`, `src/NeedleBase.Infrastructure`, `tests/NeedleBase.Api.Tests`, `docker-compose.yml`, `scripts/db-migrate.sh` | | yes | yes | |
+| `src/NeedleBase.Web` (landing page included), `tests/NeedleBase.Web.Tests`, `.github/scripts/iis-deploy/`, `test-iis-deploy.ps1` | | | yes | |
+| `.github/workflows/`, other `.github/` and `scripts/` files, any unlisted file | | yes | yes | |
+| `*.sln`, `Directory.Build.*`, `Directory.Packages.props`, `.config/`, NuGet config, `global.json`, no usable base | yes | yes | yes | yes |
 | `docs/`, `*.md`, `.cursor/` only | | | | |
+
+Workflow-only and server-only changes never ship an APK; force one with *Run workflow → build_android*.
 
 Try it: `.github/scripts/detect-changes.sh origin/main`.
 
 **Branch protection:** require only the **"CI result"** check. Skipped jobs count as passed, a failed or cancelled
 job fails it, so docs-only PRs can still merge.
 
-Each push to main builds/deploys only the parts changed since the last release tag: an Api change applies
-migrations and redeploys the site (the Web hosts the Api, so it is rebuilt and tested too); a Web-only change
-redeploys the site without migrations; neither builds an APK. A manual run builds and deploys everything.
+Each push to main builds/deploys only what changed: an Api change applies migrations and redeploys the site (the
+Web hosts the Api, so it is rebuilt and tested too); a Web-only change redeploys the site without migrations;
+neither builds an APK, creates a tag or a release. A manual run rebuilds and redeploys the site (APK only if ticked).
 
 ## One-time setup
 
@@ -83,29 +90,48 @@ Like AssetTag: **push to `main`, that's it.** No `git tag`, no version typing.
 git push origin main
 ```
 
-- **Version:** `NeedleBaseVersion` in `src/NeedleBase.Mobile/NeedleBase.Mobile.csproj` (now `0.1.0`). The first
-  release uses it; after that the patch goes up by itself (`0.1.1`, `0.1.2`, ...; `.github/scripts/next-version.sh`).
-  Edit the csproj only to jump major/minor (e.g. `1.0.0`). versionCode = run number + `VERSION_CODE_OFFSET`.
-- **Tag + GitHub Release:** created by the workflow (`v<version>`, at the pushed commit) after the deploy succeeded.
-  A failed run leaves no tag, so the next push includes those changes again. Workflow-made tags never start a
-  workflow, and Release doesn't run on tags: no loops.
+- **Server-only push** (Api, Web, Infrastructure, landing page, workflows): CI → migration SQL + site deploy. No
+  version bump, no APK, **no tag, no GitHub Release**. The run itself (Actions tab) is the record of the deploy.
+- **App push** (Mobile, Mobile.Data, Domain, Application, mobile build scripts, shared build settings): additionally
+  a new version, signed APK + `update.json`, tag **`mobile-v<version>`** and a GitHub **pre-release**. When the same
+  push also changed the server, the release is made only after the deploy succeeded.
+- **Pre-releases:** every CI release is a pre-release. When you have tested it, open it on GitHub → *Edit* → untick
+  *Set as a pre-release* → *Update release*. Installed apps are offered pre-releases too (the Api takes the newest
+  non-draft release with an `update.json`, pre-release or not; old `v*` releases still count).
 - **One run per push:** CI runs inside the Release workflow; `ci.yml` runs only for pull requests and other branches.
-  Pushes that touch only `docs/`, `*.md` or `.cursor/` start nothing.
+  Pushes that touch only `docs/`, `*.md` or `.cursor/` start nothing. Workflow-made tags never start a workflow.
 
-Each push (back up the database first if it has migrations):
+### Versions (app only)
 
-1. CI (affected parts) → signed APK with in-app updates and/or the site package (Web with the Api inside) +
-   migration SQL.
-2. Deploy: migration SQL (one transaction; nothing deployed if it fails) → server settings written into the site
-   package → site into `/` → `/api/health/ready` and `/` must answer 200. A failed step restores the previous files (see *Failure behaviour*).
-3. Tag `v<version>` + GitHub Release with the files and `SHA256SUMS` (0.x versions are pre-releases).
-4. Android changed → the release also carries `update.json` (APK address, SHA-256, size, signing certificate,
-   minimum build). Installed apps ask their Api (`/api/mobile/update`), which serves the newest release's
-   `update.json` from the GitHub Releases API (like AssetTag), and offer the update. The commit message becomes the
-   release notes. Play upload if enabled.
+`.github/scripts/next-version.sh`, run only when an APK ships. `last` = highest `mobile-v*` tag (the old `v*` tags
+when there is none yet); `csproj` = `NeedleBaseVersion` in `src/NeedleBase.Mobile/NeedleBase.Mobile.csproj`.
 
-Manual run (Actions → Release → Run workflow): from `main` it rebuilds and redeploys **everything** as a new
-version; from an old tag `v1.2.3` it redeploys that version (rollback).
+| Situation | Next version |
+|---|---|
+| No tag yet | `csproj` |
+| Normal push | `last` + patch (`0.1.4` → `0.1.5`) |
+| `csproj` higher than `last` | exactly `csproj` (**minor/major release: edit the csproj**, e.g. `0.2.0` or `1.0.0`, and push) |
+| Manual run with *build_android* + *bump* `minor` / `major` | `0.1.4` → `0.2.0` / `1.0.0` (ignored when `csproj` is already higher) |
+| `csproj` major.minor lower than `last` | **run fails**: versions never go back; raise the csproj |
+
+versionCode = run number + `VERSION_CODE_OFFSET` (always increases, also across the old `v*` releases). A rerun of
+the same run reuses the version already tagged on that commit and updates the existing release (no duplicates).
+
+### Each run
+
+1. CI (affected parts) → site package (Web with the Api inside) + migration SQL, and/or the signed APK.
+2. Deploy (site changed): migration SQL (one transaction; nothing deployed if it fails) → server settings written
+   into the site package → site into `/` → `/api/health/ready` and `/` must answer 200. A failed step restores
+   the previous files (see *Failure behaviour*).
+3. App changed: tag `mobile-v<version>` + GitHub pre-release with the APK, `update.json` (APK address, SHA-256,
+   size, signing certificate, minimum build), the migration SQL if the Api changed too, and `SHA256SUMS`. Installed
+   apps ask their Api (`/api/mobile/update`), which serves the newest release's `update.json`. The commit message
+   becomes the release notes. Play upload if enabled.
+
+Manual run (Actions → Release → Run workflow): inputs *build_android* (default off) and *bump*
+(patch/minor/major). From `main` it rebuilds and redeploys the site; from an older commit or tag it **rolls the site
+back** to that code. The app is built only when *build_android* is ticked (it then gets a new, higher version even
+from an old ref, so phones can install it).
 
 ### Server packages
 
@@ -128,18 +154,20 @@ inside `<location path="." inheritInChildApplications="false">`, carries the sit
 A failed msdeploy sync (after 3 retries; syncs are idempotent, so a retry finishes a partial copy) also deletes a
 leftover `app_offline.htm`; the restore removes it too. Two releases never overlap (concurrency group `release`,
 no cancelling); if several pushes are queued, GitHub keeps only the newest pending one (it still includes the
-skipped pushes' changes: the diff is against the last release tag).
+skipped pushes' changes: the diff reaches back to the last successful Release run). A failed run is retried the
+same way by the next push.
 
 The runner copies are deleted at the end and never uploaded (the server `web.config` holds the settings).
 
 ### Manual rollback
 
-- App: Actions → Release → Run workflow, "Use workflow from" the previous tag `v…` (it redeploys everything). Key rings are untouched, so sign-ins survive.
+- Site: Actions → Release → Run workflow, "Use workflow from" an older tag/commit (leave *build_android* off). The site is rebuilt from that code and redeployed. Key rings are untouched, so sign-ins survive. The next push that changes the server deploys main again.
+- App: phones never install a lower versionCode. To undo a bad app release, revert the code and push (a new, higher version ships), and delete or mark the bad GitHub release as draft so the updater stops offering it.
 - Database: migrations are forward-only; restore the backup taken before the release, or write a new migration.
 
 ### Compared with AssetTag
 
-Kept from AssetTag: push to main = release + deploy (version from the csproj, tag and GitHub Release made by the workflow), one connection secret used for migrations and the running Api, app
+Kept from AssetTag: push to main = deploy, and an app release (`mobile-v*` tag, pre-release) only when the app changed, one connection secret used for migrations and the running Api, app
 settings written by CI (nothing on the panel), change detection, signed APK as a GitHub Release asset.
 Different on purpose: one site and one app (Web `/`, Api `/api` in the same process) instead of two sites, idempotent SQL via psql instead of
 `dotnet ef database update`, secrets written into `web.config` only in the deploy job (never in an uploaded
@@ -151,7 +179,7 @@ a signed `update.json` per release so the app verifies the APK's SHA-256 and sig
 ```bash
 /tmp/actionlint .github/workflows/*.yml        # github.com/rhysd/actionlint
 shellcheck scripts/*.sh .github/scripts/*.sh
-.github/scripts/test-scripts.sh                 # detect-changes + android-release + iis-deploy (needs pwsh; PWSH=/path)
+.github/scripts/test-scripts.sh                 # detect-changes + next-version + android-release + iis-deploy (needs pwsh; PWSH=/path)
 ```
 
 Action versions are pinned to commit SHAs (comment shows the tag); update them deliberately.

@@ -69,6 +69,24 @@ public class MobileUpdateFeedTests(NeedleBaseApiFactory factory) : IClassFixture
     }
 
     [Fact]
+    public async Task Prereleases_count_mobile_v_and_old_v_tags_alike()
+    {
+        // CI publishes mobile-v* releases as pre-releases (promoted by hand); older v* releases stay valid.
+        var gh = new FakeGitHub
+        {
+            ReleasesJson = "[" +
+                """{"tag_name":"v0.1.4","prerelease":true,"draft":false,"published_at":"2026-11-01T10:00:00Z","assets":[{"name":"update.json","url":"https://api.github.com/repos/o/r/releases/assets/1"}]},""" +
+                """{"tag_name":"mobile-v0.1.5","prerelease":true,"draft":false,"published_at":"2026-11-07T10:00:00Z","assets":[{"name":"update.json","url":"https://api.github.com/repos/o/r/releases/assets/2"}]},""" +
+                """{"tag_name":"mobile-v0.1.6","prerelease":true,"draft":true,"published_at":"2026-11-08T10:00:00Z","assets":[{"name":"update.json","url":"https://api.github.com/repos/o/r/releases/assets/3"}]}""" +
+                "]",
+        };
+        gh.Assets["2"] = Manifest.Replace("42", "44");
+        gh.Assets["3"] = Manifest.Replace("42", "45");
+        var json = await Feed(gh, () => DateTimeOffset.UtcNow).GetManifestJsonAsync(default);
+        Assert.Contains("\"versionCode\":44", json);
+    }
+
+    [Fact]
     public async Task Caches_for_five_minutes_then_serves_the_last_good_answer_while_GitHub_is_down_for_up_to_an_hour()
     {
         var gh = new FakeGitHub();
