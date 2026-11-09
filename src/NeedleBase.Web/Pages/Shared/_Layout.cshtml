@@ -26,7 +26,7 @@
                 <svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
             </a>
         }
-        <a class="nb-appbar__brand" asp-page="/Index"><img src="~/images/needlebase-logo-clear.png" asp-append-version="true" alt="NeedleBase home" width="68" height="48" /></a>
+        <a class="nb-appbar__brand" asp-page="/Dashboard/Index"><img src="~/images/needlebase-logo-clear.png" asp-append-version="true" alt="NeedleBase home" width="68" height="48" /></a>
     </header>
     <div class="nb-shell">
         @if (signedIn)
@@ -35,7 +35,7 @@
                 <a class="nb-iconbtn nb-drawer-close" href="#" role="button" data-nb-drawer-close aria-label="Close menu">
                     <svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" /></svg>
                 </a>
-                <a class="nb-sidebar__brand" asp-page="/Index"><img src="~/images/needlebase-logo-clear.png" asp-append-version="true" alt="NeedleBase home" width="104" height="73" /></a>
+                <a class="nb-sidebar__brand" asp-page="/Dashboard/Index"><img src="~/images/needlebase-logo-clear.png" asp-append-version="true" alt="NeedleBase home" width="104" height="73" /></a>
                 <span class="nb-sidebar__business">Business<b>@User.BusinessName()</b></span>
                 <nav aria-label="Main"><partial name="_NavLinks" /></nav>
                 <div class="nb-nav-foot">

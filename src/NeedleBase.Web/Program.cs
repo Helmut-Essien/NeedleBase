@@ -136,6 +136,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AllowAnonymousToPage("/Error");
     options.Conventions.AllowAnonymousToPage("/Terms");
     options.Conventions.AllowAnonymousToPage("/Privacy");
+    options.Conventions.AllowAnonymousToPage("/Index"); // public marketing landing
 });
 
 if (hostApi)
@@ -218,11 +219,14 @@ app.UseAuthorization();
 // Pages only: CSS/JS keep their long-lived cache (low-end phones, mobile data).
 // Content-Security-Policy + basic hardening headers on every response. Everything is served from this site
 // (no CDN, no inline script/style), so 'self' is enough. Development adds ws: for browser hot-reload.
-var csp = "default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; font-src 'self'; " +
-          "connect-src 'self'" + (app.Environment.IsDevelopment() ? " ws: wss:" : "") +
-          "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
+// Per-request nonce so the landing page can ship JSON-LD (and only that) under a strict script-src.
 app.Use(async (context, next) =>
 {
+    var nonce = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+    context.Items["CspNonce"] = nonce;
+    var connect = "connect-src 'self'" + (app.Environment.IsDevelopment() ? " ws: wss:" : "");
+    var csp = "default-src 'self'; img-src 'self' data:; script-src 'self' 'nonce-" + nonce + "'; style-src 'self'; font-src 'self'; " +
+              connect + "; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'";
     context.Response.OnStarting(() =>
     {
         var h = context.Response.Headers;
@@ -252,6 +256,9 @@ app.Use(async (context, next) =>
 });
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
+
+// Public SEO files (anonymous). Sitemap lists only marketing/legal URLs — never app data routes.
+NeedleBase.Web.Hosting.SeoEndpoints.Map(app);
 
 app.Run();
 

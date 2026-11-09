@@ -1,11 +1,11 @@
 @using NeedleBase.Web.Services
 @{
     var path = Context.Request.Path.Value ?? "/";
-    string Current(string prefix) => (prefix == "/" ? path == "/" || path.Equals("/Index", StringComparison.OrdinalIgnoreCase) : path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ? "page" : null!;
+    string Current(string prefix) => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? "page" : null!;
 }
 @* Reports, Settings and Measurements aren't built yet (Slice 8+): not shown rather than faked. *@
 <ul class="nb-nav">
-    <li><a asp-page="/Index" aria-current="@Current("/")"><svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg>Dashboard</a></li>
+    <li><a asp-page="/Dashboard/Index" aria-current="@Current("/Dashboard")"><svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/></svg>Dashboard</a></li>
     <li><a asp-page="/Production/Index" aria-current="@Current("/Production")"><svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h4v12H4zM10 6h4v8h-4zM16 6h4v5h-4z"/></svg>Production</a></li>
     <li><a asp-page="/Orders/Index" aria-current="@Current("/Orders")"><svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 3h10l2 3v15H5V6z"/><path d="M9 10h6M9 14h6M9 18h4"/></svg>Orders</a></li>
     <li><a asp-page="/Customers/Index" aria-current="@Current("/Customers")"><svg class="nb-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.8c1.8.8 3 2.6 3.5 5.2"/></svg>Customers</a></li>

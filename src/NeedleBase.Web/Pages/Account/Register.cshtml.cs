@@ -110,7 +110,7 @@ public class RegisterModel : PageModel
             }
 
             await AuthCookieSignIn.SignInAsync(HttpContext, session, rememberMe: false, _logger);
-            return RedirectToPage("/Index");
+            return RedirectToPage("/Dashboard/Index");
         }
         catch (Exception ex)
         {

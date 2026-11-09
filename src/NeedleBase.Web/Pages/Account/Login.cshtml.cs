@@ -84,6 +84,6 @@ public class LoginModel : PageModel
             return Redirect(returnUrl);
         }
 
-        return RedirectToPage("/Index");
+        return RedirectToPage("/Dashboard/Index");
     }
 }

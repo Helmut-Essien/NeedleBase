@@ -1,117 +1,286 @@
 @page
-@model IndexModel
-@using NeedleBase.Web.Services
+@model NeedleBase.Web.Pages.IndexModel
 @{
-    ViewData["Title"] = "Dashboard";
+    Layout = "_LayoutLanding";
+    ViewData["Title"] = "NeedleBase — Design, Measure, Sew, Grow | Tailoring software for Ghana";
+    ViewData["MetaDescription"] = "Offline-first tailoring business software for Ghanaian workshops. Track orders, customer measurements, payments and staff on the web and on Android — even when the network drops.";
+    ViewData["Canonical"] = Model.CanonicalUrl;
+    ViewData["OgImage"] = Model.OgImageUrl;
+    ViewData["CspNonce"] = Model.CspNonce;
+    var origin = Model.SiteOrigin ?? "";
+    var apk = IndexModel.AndroidLatestReleaseUrl;
 }
-<h1 class="nb-page-title">Dashboard</h1>
-<p class="nb-meta">@User.BusinessName()@(Model.Summary is null ? "" : " · " + Model.Summary.Today.ToString("dddd d MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GH")))</p>
-<partial name="_PageState" model="Model" />
+<header class="lp-nav" role="banner">
+    <a class="lp-nav__brand" href="#top" aria-label="NeedleBase home">
+        <span class="lp-brand">
+            <img class="lp-brand__logo" src="~/images/needlebase-logo-clear.png" asp-append-version="true" width="120" height="85" alt="" decoding="async" fetchpriority="high" />
+        </span>
+    </a>
+    <nav class="lp-nav__links" aria-label="Landing">
+        <a href="#features">Features</a>
+        <a href="#android">Android</a>
+        <a href="#faq">FAQ</a>
+        <a class="lp-btn lp-btn--ghost" asp-page="/Account/Login">Sign in</a>
+        <a class="lp-btn lp-btn--primary" asp-page="/Account/Register">Get started</a>
+    </nav>
+    <button type="button" class="lp-nav__menu" data-lp-menu aria-expanded="false" aria-controls="lp-drawer" aria-label="Open menu">
+        <span></span><span></span><span></span>
+    </button>
+</header>
+<div id="lp-drawer" class="lp-drawer" hidden>
+    <nav aria-label="Mobile">
+        <a href="#features" data-lp-close>Features</a>
+        <a href="#android" data-lp-close>Android</a>
+        <a href="#faq" data-lp-close>FAQ</a>
+        <a asp-page="/Account/Login" data-lp-close>Sign in</a>
+        <a class="lp-btn lp-btn--primary" asp-page="/Account/Register" data-lp-close>Get started</a>
+    </nav>
+</div>
 
-@if (Model.Summary is { } s)
-{
-    var statusTotal = s.ByStatus.Sum(c => c.Count);
-    <section aria-labelledby="work-heading" class="nb-section">
-        <h2 id="work-heading" class="visually-hidden">Workload</h2>
-        <div class="nb-stats">
-            <a class="nb-stat" asp-page="/Orders/Index" asp-route-status="open">
-                <span class="nb-stat__icon" aria-hidden="true"><svg class="nb-icon" viewBox="0 0 24 24" focusable="false"><path d="M7 3h10l2 3v15H5V6z"/><path d="M9 10h6M9 14h6"/></svg></span><span><span class="nb-stat__value">@s.ActiveOrders</span><span class="nb-stat__label">Active orders</span></span>
-            </a>
-            <a class="nb-stat @(s.Overdue > 0 ? "nb-stat--warn" : "")" asp-page="/Production/Index">
-                <span class="nb-stat__icon" aria-hidden="true"><svg class="nb-icon" viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span><span class="nb-stat__value">@s.Overdue</span><span class="nb-stat__label">Overdue</span></span>
-            </a>
-            <div class="nb-stat"><span class="nb-stat__icon" aria-hidden="true"><svg class="nb-icon" viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><span><span class="nb-stat__value">@s.DueNext7Days</span><span class="nb-stat__label">Due in 7 days</span></span></div>
-            <div class="nb-stat"><span class="nb-stat__icon" aria-hidden="true"><svg class="nb-icon" viewBox="0 0 24 24" focusable="false"><path d="M12 3a2 2 0 0 0-2 2c0 1 1 1.5 2 2v1L3 15h18l-9-7"/></svg></span><span><span class="nb-stat__value">@s.FittingsNext7Days</span><span class="nb-stat__label">Fittings in 7 days</span></span></div>
+<main id="main">
+    <section id="top" class="lp-hero" aria-labelledby="hero-title">
+        <div class="lp-hero__copy">
+            <p class="lp-kicker">Built for Ghanaian / West African workshops</p>
+            <h1 id="hero-title">Sew more. Chase less paperwork.</h1>
+            <p class="lp-lead">
+                NeedleBase keeps your customers, measurements, orders, payments and tailors in one place —
+                on the web for owners, and on Android phones that keep working when the network does not.
+            </p>
+            <div class="lp-hero__cta">
+                <a class="lp-btn lp-btn--primary lp-btn--lg" asp-page="/Account/Register">Register your business</a>
+                <a class="lp-btn lp-btn--ghost lp-btn--lg" href="@apk" rel="noopener" target="_blank">Download Android APK</a>
+            </div>
+            <p class="lp-fine">
+                New shops need a <strong>NeedleBase licence key from Platform</strong>, issued to the owner’s email.
+                Staff join with an invite — no key required.
+                <a asp-page="/Account/Register">Start registration</a>
+                ·
+                <a asp-page="/Account/Login">Sign in</a>
+            </p>
+        </div>
+        <div class="lp-hero__stage" aria-hidden="true">
+            <div class="lp-stage" data-lp-stage>
+                <div class="lp-stage__room" data-lp-parallax>
+                    <div class="lp-fabric lp-fabric--a"></div>
+                    <div class="lp-fabric lp-fabric--b"></div>
+                    <div class="lp-tape">
+                        <span class="lp-tape__mark"></span>
+                        <span class="lp-tape__mark"></span>
+                        <span class="lp-tape__mark"></span>
+                    </div>
+                    <div class="lp-needle" data-lp-needle>
+                        <span class="lp-needle__shaft"></span>
+                        <span class="lp-needle__eye"></span>
+                        <span class="lp-thread"></span>
+                    </div>
+                    <div class="lp-card3d">
+                        <p class="lp-card3d__label">Order</p>
+                        <p class="lp-card3d__title">ORD-1042 · Kente suit</p>
+                        <ol class="lp-timeline" data-lp-demo>
+                            <li class="is-done">New</li>
+                            <li class="is-done">Cutting</li>
+                            <li class="is-now">Sewing</li>
+                            <li>Finishing</li>
+                            <li>Ready</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+<p class="lp-stage__caption">Design · Measure · Sew · Grow</p>
         </div>
     </section>
 
-    @if (Model.ShowMoney && s.Money is { } m)
-    {
-        <section aria-labelledby="money-heading" class="nb-section">
-            <h2 id="money-heading" class="nb-section-title">Money</h2>
-            <div class="nb-money-grid">
-                <a class="nb-hero" asp-page="/Payments/Index">
-                    <span class="nb-hero__label">Left to collect</span>
-                    <span class="nb-hero__value nb-money">@m.OutstandingDisplay</span>
-                    <span class="nb-hero__foot"><span>@m.OrdersWithBalance @(m.OrdersWithBalance == 1 ? "order" : "orders") with a balance</span><span>View payments <span aria-hidden="true">→</span></span></span>
-                </a>
-                <div class="nb-stat nb-money-card"><span class="nb-stat__label">Recorded today</span><span class="nb-stat__value nb-money">@m.ReceivedTodayDisplay</span></div>
-                <div class="nb-stat nb-money-card"><span class="nb-stat__label">Last 7 days</span><span class="nb-stat__value nb-money">@m.ReceivedLast7DaysDisplay</span></div>
-            </div>
-        </section>
-    }
-
-    <div class="nb-dash-cols">
-        <section aria-labelledby="due-heading">
-            <h2 id="due-heading" class="nb-section-title">Due next</h2>
-            @if (Model.DueNext.Count == 0)
-            {
-                <div class="nb-empty"><span class="nb-empty__icon" aria-hidden="true"><svg class="nb-icon" viewBox="0 0 24 24" focusable="false"><path d="M7 3h10l2 3v15H5V6z"/><path d="M9 12l2 2 4-4"/></svg></span><strong>No open orders</strong>New orders from the app show here.</div>
-            }
-            else
-            {
-                <ul class="nb-list">
-                    @foreach (var o in Model.DueNext)
-                    {
-                        <li>
-                            <a class="nb-list__row" asp-page="/Orders/Details" asp-route-id="@o.Id">
-                                <span class="nb-list__body"><strong>#@o.DisplayRef</strong> · @o.CustomerName<br /><span class="nb-meta">@o.DueDateDisplay</span></span>
-                                <span class="text-end"><partial name="_StatusChip" model="(o.Status, o.IsOverdue)" /></span>
-                            </a>
-                        </li>
-                    }
-                </ul>
-            }
-        </section>
-        <div>
-            <section class="nb-card" aria-labelledby="status-heading">
-                <h2 id="status-heading" class="nb-section-title">By status</h2>
-                @if (statusTotal > 0)
-                {
-                    @* Segment widths as SVG geometry (attributes, not inline styles) so the strict CSP holds. *@
-                    var x = 0;
-                    <div class="nb-statusbar" aria-hidden="true">
-                        <svg viewBox="0 0 @statusTotal 1" preserveAspectRatio="none" focusable="false">
-                            @foreach (var c in s.ByStatus.Where(c => c.Count > 0))
-                            {
-                                <rect class="nb-seg--@c.Status.ToLowerInvariant()" x="@x" y="0" width="@c.Count" height="1" />
-                                x += c.Count;
-                            }
-                        </svg>
-                    </div>
-                }
-                <ul class="nb-status-list">
-                    @foreach (var c in s.ByStatus)
-                    {
-                        <li class="@(c.Count > 0 ? "is-nonzero" : "")"><a asp-page="/Orders/Index" asp-route-status="@c.Status"><span class="nb-dot nb-dot--@c.Status.ToLowerInvariant()" aria-hidden="true"></span>@c.StatusDisplay<span class="nb-num">@c.Count</span></a></li>
-                    }
-                </ul>
-            </section>
-            @if (Model.ShowMoney)
-            {
-                <section class="nb-card mt-4" aria-labelledby="recent-heading">
-                    <h2 id="recent-heading" class="nb-section-title">Recent payments</h2>
-                    @if (Model.RecentPayments.Count == 0)
-                    {
-                        <p class="nb-empty">No payments recorded yet.</p>
-                    }
-                    else
-                    {
-                        <ul class="nb-list">
-                            @foreach (var p in Model.RecentPayments)
-                            {
-                                <li>
-                                    <a class="nb-list__row" asp-page="/Orders/Details" asp-route-id="@p.OrderId">
-                                        <span class="nb-list__lead" aria-hidden="true"><svg class="nb-icon" viewBox="0 0 24 24" focusable="false"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg></span>
-                                        <span class="nb-list__body">@p.CustomerName · #@p.OrderDisplayRef<br /><span class="nb-meta">@p.Method · @p.RecordedDisplay</span></span>
-                                        <span class="nb-money @(p.IsVoided ? "nb-voided" : "")">@p.AmountDisplay@(p.IsVoided ? " (voided)" : "")</span>
-                                    </a>
-                                </li>
-                            }
-                        </ul>
-                    }
-                </section>
-            }
+    <section id="features" class="lp-section" aria-labelledby="features-title">
+        <h2 id="features-title">Everything a busy shop juggles — in one system</h2>
+        <p class="lp-section__lead">Real NeedleBase features from the product you run today. No filler.</p>
+        <div class="lp-grid">
+            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+                <h3>Orders &amp; production</h3>
+                <p>Follow each job from new to collected. See overdue work, assign tailors, and move status without losing the trail.</p>
+            </article>
+            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+                <h3>Customers &amp; measurements</h3>
+                <p>Keep phone numbers and measurement cards with the customer — ready the next time they order, on the phone or the web.</p>
+            </article>
+            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+                <h3>Payments</h3>
+                <p>Record deposits and balances against orders. Owners and managers see money; tailors stay focused on the workroom.</p>
+            </article>
+            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+                <h3>Staff &amp; roles</h3>
+                <p>Invite managers and tailors. Roles control who sees payments, staff, and activity — the same rules on web and Android.</p>
+            </article>
+            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+                <h3>Offline Android + sync</h3>
+                <p>Take orders and measurements in the shop without waiting on data. When the network returns, the phone syncs with the Api.</p>
+            </article>
+            <article class="lp-feature" data-lp-reveal data-lp-tilt>
+                <h3>Licensed for your shop</h3>
+                <p>Each business registers with a Platform licence key tied to the owner’s email. One key, one shop — staff join by invite.</p>
+            </article>
         </div>
+    </section>
+
+    <section class="lp-section lp-section--demo" aria-labelledby="demo-title">
+        <h2 id="demo-title">Peek at a measurement card</h2>
+        <p class="lp-section__lead">Interactive sample — numbers are placeholders, the fields match what NeedleBase stores.</p>
+        <div class="lp-measure" data-lp-reveal data-lp-measure>
+            <header>
+                <h3>Sample customer</h3>
+                <p>Tap a field to highlight it on the silhouette</p>
+            </header>
+            <div class="lp-measure__body">
+                <svg class="lp-silhouette" viewBox="0 0 120 200" role="img" aria-label="Simple body outline for measurement points">
+                    <title>Measurement guide</title>
+                    <ellipse cx="60" cy="28" rx="16" ry="18" />
+                    <path d="M40 48 C40 48 28 70 30 110 L36 170 L50 170 L54 120 L66 120 L70 170 L84 170 L90 110 C92 70 80 48 80 48 Z" />
+                    <circle data-pt="chest" cx="60" cy="78" r="4" />
+                    <circle data-pt="waist" cx="60" cy="108" r="4" />
+                    <circle data-pt="hip" cx="60" cy="128" r="4" />
+                    <circle data-pt="inseam" cx="52" cy="155" r="4" />
+                </svg>
+                <ul class="lp-measure__list">
+                    <li><button type="button" data-measure="chest">Chest <span>42"</span></button></li>
+                    <li><button type="button" data-measure="waist">Waist <span>34"</span></button></li>
+                    <li><button type="button" data-measure="hip">Hip <span>40"</span></button></li>
+                    <li><button type="button" data-measure="inseam">Inseam <span>32"</span></button></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section id="android" class="lp-section lp-section--android" aria-labelledby="android-title">
+        <div class="lp-android" data-lp-reveal>
+            <div>
+                <h2 id="android-title">Android that keeps sewing when data drops</h2>
+                <p>
+                    Sideload the signed APK from our GitHub Releases. In-app update checks use your shop’s Api
+                    (the newest release’s update.json) — like AssetTag — so you are not stuck on an old build.
+                </p>
+                <ul class="lp-checks">
+                    <li>Works offline with SQLite on the phone</li>
+                    <li>Syncs orders, customers, measurements and payments</li>
+                    <li>Same licence and roles as the web console</li>
+                </ul>
+                <a class="lp-btn lp-btn--primary" href="@apk" rel="noopener" target="_blank">Get the latest APK on GitHub</a>
+            </div>
+            <div class="lp-phone" aria-hidden="true">
+                <div class="lp-phone__screen">
+                    <p class="lp-phone__app">NeedleBase</p>
+                    <p class="lp-phone__line is-on">● Sync ready</p>
+                    <p class="lp-phone__line">3 open orders</p>
+                    <p class="lp-phone__line">Due tomorrow · Ama</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="faq" class="lp-section" aria-labelledby="faq-title">
+        <h2 id="faq-title">Questions owners ask</h2>
+        <div class="lp-faq">
+            <details data-lp-reveal>
+                <summary>Do I need a licence key?</summary>
+                <p>Yes for a new shop when Platform licensing is on. The key must match the owner’s email. Staff never need a key — they accept an invite.</p>
+            </details>
+            <details data-lp-reveal>
+                <summary>Does the phone need internet all day?</summary>
+                <p>No. The Android app is offline-first. Capture work in the shop, then sync when you have a connection.</p>
+            </details>
+            <details data-lp-reveal>
+                <summary>Is WhatsApp messaging included?</summary>
+                <p>Automatic WhatsApp order updates are not offered as a live feature right now. Focus is the web console, Android sync, orders, measurements, payments and staff.</p>
+            </details>
+            <details data-lp-reveal>
+                <summary>Where do I download the Android app?</summary>
+                <p>From the latest GitHub Release for NeedleBase (signed APK). Open <a href="@apk" rel="noopener" target="_blank">github.com/Helmut-Essien/NeedleBase/releases/latest</a>.</p>
+            </details>
+            <details data-lp-reveal>
+                <summary>Who is NeedleBase for?</summary>
+                <p>Tailoring and garment workshops — especially in Ghana and West Africa — that need reliable order and measurement tracking without depending on constant internet.</p>
+            </details>
+        </div>
+    </section>
+
+    <section class="lp-cta" aria-labelledby="cta-title">
+        <h2 id="cta-title">Ready when your next fitting walks in</h2>
+        <p>Register with your Platform licence key, invite your team, put Android in the workroom.</p>
+        <div class="lp-hero__cta">
+            <a class="lp-btn lp-btn--primary lp-btn--lg" asp-page="/Account/Register">Get started</a>
+            <a class="lp-btn lp-btn--ghost lp-btn--lg" asp-page="/Account/Login">Sign in</a>
+        </div>
+    </section>
+</main>
+
+<footer class="lp-footer">
+    <div class="lp-footer__brand">
+        <span class="lp-brand lp-brand--footer">
+            <img class="lp-brand__logo" src="~/images/needlebase-logo-clear.png" asp-append-version="true" width="96" height="68" alt="NeedleBase" decoding="async" />
+        </span>
     </div>
+    <p>© 2026 NeedleBase (HelmutCode) · Design · Measure · Sew · Grow</p>
+    <nav aria-label="Legal">
+        <a asp-page="/Terms">Terms</a>
+        <a asp-page="/Privacy">Privacy</a>
+        <a href="@apk" rel="noopener" target="_blank">Android APK</a>
+    </nav>
+</footer>
+
+@{ var ldType = "application/ld+json"; }
+<script type="@ldType" nonce="@Model.CspNonce">
+{
+  "@@context": "https://schema.org",
+  "@@graph": [
+    {
+      "@@type": "Organization",
+      "name": "NeedleBase",
+      "url": "@origin",
+      "logo": "@(string.IsNullOrEmpty(origin) ? "/images/needlebase-logo-clear.png" : origin.TrimEnd('/') + "/images/needlebase-logo-clear.png")",
+      "parentOrganization": { "@@type": "Organization", "name": "HelmutCode" }
+    },
+    {
+      "@@type": "SoftwareApplication",
+      "name": "NeedleBase",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Android, Web",
+      "description": "Offline-first tailoring business management for Ghanaian and West African workshops.",
+      "offers": {
+        "@@type": "Offer",
+        "availability": "https://schema.org/OnlineOnly",
+        "description": "Requires a NeedleBase licence key from Platform to register a shop."
+      },
+      "downloadUrl": "@apk",
+      "url": "@origin"
+    },
+    {
+      "@@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@@type": "Question",
+          "name": "Do I need a licence key?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "Yes for a new shop when Platform licensing is on. The key must match the owner's email. Staff never need a key — they accept an invite." }
+        },
+        {
+          "@@type": "Question",
+          "name": "Does the phone need internet all day?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "No. The Android app is offline-first. Capture work in the shop, then sync when you have a connection." }
+        },
+        {
+          "@@type": "Question",
+          "name": "Is WhatsApp messaging included?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "Automatic WhatsApp order updates are not offered as a live feature right now." }
+        },
+        {
+          "@@type": "Question",
+          "name": "Where do I download the Android app?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "From the latest GitHub Release for NeedleBase at https://github.com/Helmut-Essien/NeedleBase/releases/latest" }
+        },
+        {
+          "@@type": "Question",
+          "name": "Who is NeedleBase for?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "Tailoring and garment workshops — especially in Ghana and West Africa — that need reliable order and measurement tracking without depending on constant internet." }
+        }
+      ]
+    }
+  ]
 }
+</script>

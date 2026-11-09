@@ -1,0 +1,44 @@
+@using NeedleBase.Web.Hosting
+@{
+    var title = ViewData["Title"] as string ?? "NeedleBase";
+    var description = ViewData["MetaDescription"] as string
+        ?? "NeedleBase — offline-first tailoring software for Ghanaian workshops. Orders, measurements, payments, staff and Android sync.";
+    var canonical = ViewData["Canonical"] as string ?? "/";
+    var ogImage = ViewData["OgImage"] as string ?? "/images/og-needlebase.png";
+    var nonce = ViewData["CspNonce"] as string ?? "";
+    var pageUrl = canonical;
+}
+<!DOCTYPE html>
+<html lang="en-GH">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@title</title>
+    <meta name="description" content="@description" />
+    <meta name="theme-color" content="#202A32" />
+    <link rel="canonical" href="@canonical" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="en_GH" />
+    <meta property="og:site_name" content="NeedleBase" />
+    <meta property="og:title" content="@title" />
+    <meta property="og:description" content="@description" />
+    <meta property="og:url" content="@pageUrl" />
+    <meta property="og:image" content="@ogImage" />
+    <meta property="og:image:alt" content="NeedleBase — Design, Measure, Sew, Grow" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="@title" />
+    <meta name="twitter:description" content="@description" />
+    <meta name="twitter:image" content="@ogImage" />
+    <link rel="icon" href="~/favicon.ico" asp-append-version="true" sizes="16x16 32x32 48x48" />
+    <link rel="apple-touch-icon" href="~/images/apple-touch-icon.png" asp-append-version="true" />
+    <link rel="preload" href="~/images/needlebase-logo-clear.png" as="image" asp-append-version="true" />
+    <link rel="preload" href="~/css/landing.css" as="style" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
+</head>
+<body class="lp">
+    <a class="lp-skip" href="#main">Skip to main content</a>
+    @RenderBody()
+    <script src="~/js/landing.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

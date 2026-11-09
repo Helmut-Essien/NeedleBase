@@ -8,7 +8,7 @@ using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Contracts.Staff;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Web.Services;
-using Dashboard = NeedleBase.Web.Pages.IndexModel;
+using Dashboard = NeedleBase.Web.Pages.Dashboard.IndexModel;
 using Details = NeedleBase.Web.Pages.Orders.DetailsModel;
 using OrdersIndex = NeedleBase.Web.Pages.Orders.IndexModel;
 using Production = NeedleBase.Web.Pages.Production.IndexModel;

@@ -86,8 +86,15 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
         return (response.StatusCode, await response.Content.ReadAsStringAsync());
     }
 
+    [Fact]
+    public async Task Signed_in_home_redirects_to_dashboard()
+    {
+        var (status, _) = await GetAsync("/", BusinessRole.Owner);
+        Assert.Equal(HttpStatusCode.Redirect, status);
+    }
+
     [Theory]
-    [InlineData("/")]
+    [InlineData("/Dashboard")]
     [InlineData("/Production")]
     [InlineData("/Orders")]
     [InlineData("/Orders?status=open&search=ama&p=2")]
@@ -119,10 +126,10 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
                 Message = "Add your NeedleBase license key to keep using the shop."
             });
             cache.Remove("nb-sub:u1");
-            var (_, owner) = await GetAsync("/", BusinessRole.Owner);
+            var (_, owner) = await GetAsync("/Dashboard", BusinessRole.Owner);
             Assert.Contains("nb-license-banner", owner);
             Assert.Contains("/Settings/License", owner);
-            var (_, tailor) = await GetAsync("/", BusinessRole.Tailor);
+            var (_, tailor) = await GetAsync("/Dashboard", BusinessRole.Tailor);
             Assert.DoesNotContain("nb-license-banner", tailor);
             Assert.DoesNotContain("/Settings/License", tailor);
             var (status, page) = await GetAsync("/Settings/License", BusinessRole.Owner);
@@ -139,7 +146,7 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
     [Fact]
     public async Task Tailor_has_no_staff_link()
     {
-        var (_, html) = await GetAsync("/", BusinessRole.Tailor);
+        var (_, html) = await GetAsync("/Dashboard", BusinessRole.Tailor);
         Assert.DoesNotContain(">Staff</a>", html);
     }
 
@@ -169,7 +176,7 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
     }
 
     [Theory]
-    [InlineData("/")]
+    [InlineData("/Dashboard")]
     [InlineData("/Production")]
     [InlineData("/Orders/Details/o1")]
     public async Task Tailor_sees_no_payments_anywhere(string url)
@@ -298,7 +305,7 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
     }
 
     [Theory]
-    [InlineData("/")]
+    [InlineData("/Dashboard")]
     [InlineData("/Orders")]
     [InlineData("/Orders/Details/o1")]
     public async Task Shell_has_accessible_drawer_and_no_inline_styles_or_bootstrap_js(string url)
