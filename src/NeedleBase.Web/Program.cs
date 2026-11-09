@@ -129,6 +129,20 @@ builder.Services.AddAntiforgery(options =>
     options.Cookie.SameSite = SameSiteMode.Strict;
 });
 
+builder.Services.AddResponseCompression(options =>
+{
+    // Static assets only. Never text/html (BREACH when antiforgery/session secrets appear in
+    // HTTPS HTML) and never application/json (embedded /api and /api/mobile/update must stay
+    // untouched). Safe to enable over HTTPS for these mime types.
+    options.EnableForHttps = true;
+    options.MimeTypes = new[]
+    {
+        "text/css",
+        "application/javascript",
+        "text/javascript",
+        "image/svg+xml",
+    };
+});
 builder.Services.AddRazorPages(options =>
 {
     options.Conventions.AuthorizeFolder("/");
@@ -146,6 +160,11 @@ if (hostApi)
 }
 
 var app = builder.Build();
+// Compress only the mime types registered above; skip the embedded Api branch entirely so
+// /api and /api/mobile/update never pass through the compressor (even if mime types change later).
+app.UseWhen(
+    ctx => !NeedleBase.Api.Hosting.EmbeddedApi.IsApiRequest(ctx.Request),
+    branch => branch.UseResponseCompression());
 
 // Before anything of the Web's (forwarded headers, HTTPS redirection, cookies, antiforgery, error pages): "/api/..."
 // goes to the Api's own pipeline unchanged; it applies its own forwarded headers, HSTS and ProblemDetails errors.
