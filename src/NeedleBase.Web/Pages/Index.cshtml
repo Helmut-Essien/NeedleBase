@@ -1,42 +1,51 @@
 @page
 @model NeedleBase.Web.Pages.IndexModel
+@using NeedleBase.Web.Marketing
 @{
     Layout = "_LayoutLanding";
-    ViewData["Title"] = "NeedleBase — Offline-first tailoring software for Ghanaian workshops";
-    ViewData["MetaDescription"] = "NeedleBase: orders, customer measurements, payments and staff on the web, plus an offline Android app that syncs when data returns. For Ghanaian and West African tailoring shops — en-GH, GHS, +233 phones.";
+    ViewData["Title"] = "NeedleBase — Tailoring shop software for Ghana & West Africa";
+    ViewData["MetaDescription"] = "NeedleBase is tailoring shop software for tailors, seamstresses, dressmakers and fashion workshop owners in Ghana and West Africa. Keep customers, measurements, orders and payments in one place — on the phone even without internet. Message us on WhatsApp.";
     ViewData["Canonical"] = Model.CanonicalUrl;
     ViewData["OgImage"] = Model.OgImageUrl;
     ViewData["CspNonce"] = Model.CspNonce;
     var origin = Model.SiteOrigin ?? "";
     var apk = IndexModel.AndroidLatestReleaseUrl;
+    var wa = Model.WhatsAppUrl;
+    var mail = Model.MailtoUrl;
 }
 <header class="lp-nav" role="banner">
-    <a class="lp-nav__brand" href="#top" aria-label="NeedleBase home">
+    <a class="lp-nav__brand" href="#top" aria-label="NeedleBase home — software for tailors and fashion workshops">
         <span class="lp-brand">
-            <img class="lp-brand__logo" src="~/images/needlebase-logo-nav.png" asp-append-version="true"
-                 width="1223" height="256" alt="" decoding="async" fetchpriority="high" />
+            <picture>
+                <source type="image/webp" srcset="/images/needlebase-logo-nav.webp" />
+                <img class="lp-brand__logo" src="~/images/needlebase-logo-nav.png" asp-append-version="true"
+                     width="390" height="82" alt="NeedleBase — tailor and fashion workshop software" decoding="async" fetchpriority="high" />
+            </picture>
         </span>
     </a>
     <nav class="lp-nav__links" aria-label="Landing">
-        <a href="#how">How it works</a>
-        <a href="#features">Features</a>
-        <a href="#android">Android</a>
-        <a href="#faq">FAQ</a>
+        <a href="#problems" data-lp-nav-link>Why NeedleBase</a>
+        <a href="#how" data-lp-nav-link>How it works</a>
+        <a href="#pricing" data-lp-nav-link>Pricing</a>
+        <a href="#contact" data-lp-nav-link>Contact</a>
+        <a href="@apk" rel="noopener" target="_blank">Download app</a>
         <a class="lp-btn lp-btn--ghost" asp-page="/Account/Login">Sign in</a>
-        <a class="lp-btn lp-btn--primary" asp-page="/Account/Register">Get started</a>
+        <a class="lp-btn lp-btn--ghost lp-nav__cta" data-lp-nav-cta href="#pricing">Get started</a>
     </nav>
     <button type="button" class="lp-nav__menu" data-lp-menu aria-expanded="false" aria-controls="lp-drawer" aria-label="Open menu">
         <span></span><span></span><span></span>
     </button>
 </header>
+<div id="lp-drawer-backdrop" class="lp-drawer-backdrop" hidden data-lp-close-backdrop></div>
 <div id="lp-drawer" class="lp-drawer" hidden>
     <nav aria-label="Mobile">
-        <a href="#how" data-lp-close>How it works</a>
-        <a href="#features" data-lp-close>Features</a>
-        <a href="#android" data-lp-close>Android</a>
-        <a href="#faq" data-lp-close>FAQ</a>
+        <a href="#problems" data-lp-close data-lp-nav-link>Why NeedleBase</a>
+        <a href="#how" data-lp-close data-lp-nav-link>How it works</a>
+        <a href="#pricing" data-lp-close data-lp-nav-link>Pricing</a>
+        <a href="#contact" data-lp-close data-lp-nav-link>Contact</a>
+        <a href="@apk" rel="noopener" target="_blank" data-lp-close>Download app</a>
         <a asp-page="/Account/Login" data-lp-close>Sign in</a>
-        <a class="lp-btn lp-btn--primary" asp-page="/Account/Register" data-lp-close>Get started</a>
+        <a class="lp-btn lp-btn--ghost lp-nav__cta" data-lp-nav-cta href="#pricing" data-lp-close>Get started</a>
     </nav>
 </div>
 
@@ -44,23 +53,35 @@
     <section id="top" class="lp-hero" aria-labelledby="hero-title">
         <div class="lp-hero__glow" aria-hidden="true"></div>
         <div class="lp-hero__copy">
-            <p class="lp-kicker"><span class="lp-kicker__dot" aria-hidden="true"></span> For Ghanaian &amp; West African workshops</p>
-            <h1 id="hero-title">Sew more.<br /><span class="lp-hero__accent">Chase less paperwork.</span></h1>
+            <p class="lp-kicker"><span class="lp-kicker__dot" aria-hidden="true"></span> For tailors, seamstresses &amp; fashion workshops</p>
+            <h1 id="hero-title">Stop chasing notebooks.<br /><span class="lp-hero__accent">Run the fashion shop from one place.</span></h1>
             <p class="lp-lead">
-                One place for customers, measurements, orders, payments and staff —
-                on the web for owners, and on Android phones that keep working when the network drops.
+                Built for tailoring and fashion shop owners in Ghana and West Africa —
+                including dressmakers and clothing workshops. NeedleBase keeps customers, measurements,
+                orders and payments together on your phone in the workroom (even with no internet),
+                and on the computer for the owner.
             </p>
             <div class="lp-hero__cta">
-                <a class="lp-btn lp-btn--primary lp-btn--lg" asp-page="/Account/Register">Register your business</a>
-                <a class="lp-btn lp-btn--ghost lp-btn--lg" href="@apk" rel="noopener" target="_blank">Download Android APK</a>
+                <a class="lp-btn lp-btn--primary lp-btn--xl" data-lp-hero-cta href="@wa" rel="noopener" target="_blank"
+                   aria-label="Get NeedleBase for your shop — opens a WhatsApp chat with us">
+                    Get NeedleBase for your shop
+                    <span class="lp-btn__arrow" aria-hidden="true">→</span>
+                </a>
             </div>
-            <p class="lp-fine">
-                New shops need a <strong>NeedleBase licence key from Platform</strong> (owner’s email).
-                Staff join by invite — no key.
-                <a asp-page="/Account/Register">Start registration</a>
-                ·
-                <a asp-page="/Account/Login">Sign in</a>
+            <p class="lp-fine lp-fine--wa">
+                <span class="lp-wa-hint">
+                    <svg class="lp-wa-hint__icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.39-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24zM8.68 7.53c-.16-.36-.34-.37-.49-.37h-.42c-.15 0-.38.05-.58.29-.2.24-.76.74-.76 1.81s.78 2.1.89 2.24c.1.15 1.52 2.43 3.76 3.31 1.87.73 2.25.58 2.66.55.4-.04 1.31-.54 1.5-1.05.18-.52.18-.96.13-1.05-.05-.1-.19-.15-.4-.26-.2-.12-1.31-.65-1.51-.72-.2-.08-.35-.11-.5.12-.15.22-.57.72-.7.87-.13.15-.26.16-.47.05-.2-.1-.87-.32-1.65-1.02-.61-.54-1.02-1.21-1.14-1.41-.12-.2-.01-.31.09-.41.09-.09.2-.24.3-.36.1-.12.13-.2.2-.34.06-.13.03-.25-.02-.35-.05-.1-.5-1.2-.68-1.64z"/>
+                    </svg>
+                    Opens a WhatsApp chat with us — we'll set you up and email your licence key.
+                </span>
+                <span class="lp-fine__signin">Already have a key? <a class="lp-text-link" asp-page="/Account/Register">Register your shop</a> · <a class="lp-text-link" asp-page="/Account/Login">Sign in</a></span>
             </p>
+            <ul class="lp-trust" aria-label="What you get">
+                <li>Phone keeps working with no internet</li>
+                <li>Staff join only when you invite them</li>
+                <li>See who is sewing which order</li>
+            </ul>
         </div>
         <div class="lp-hero__stage" aria-hidden="true">
             <div class="lp-stage" data-lp-stage>
@@ -81,7 +102,7 @@
                     <div class="lp-phone-hero">
                         <div class="lp-phone-hero__bezel">
                             <p class="lp-phone-hero__brand">NeedleBase</p>
-                            <p class="lp-phone-hero__status"><span class="lp-pulse-dot"></span> Offline · sync queued</p>
+                            <p class="lp-phone-hero__status"><span class="lp-pulse-dot"></span> No internet · saved on phone</p>
                             <div class="lp-phone-hero__card">
                                 <span>ORD-1042</span>
                                 <strong>Kente suit · Ama</strong>
@@ -95,7 +116,7 @@
                         </div>
                     </div>
                     <div class="lp-card3d">
-                        <p class="lp-card3d__label">Order timeline</p>
+                        <p class="lp-card3d__label">Order progress</p>
                         <p class="lp-card3d__title">ORD-1042 · Kente suit</p>
                         <ol class="lp-timeline" data-lp-demo>
                             <li class="is-done">New</li>
@@ -107,201 +128,202 @@
                     </div>
                 </div>
             </div>
-            <p class="lp-stage__caption">Design · Measure · Sew · Grow</p>
+            <p class="lp-stage__caption">Measure · Cut · Sew · Deliver</p>
         </div>
     </section>
 
-    <section class="lp-strip" aria-label="What NeedleBase includes">
-        <ul class="lp-strip__list">
-            <li>Web console for owners</li>
-            <li>Offline Android + sync</li>
-            <li>Orders &amp; production</li>
-            <li>Measurements</li>
-            <li>Payments &amp; staff roles</li>
-            <li>Platform licence key</li>
+    <section id="problems" class="lp-section lp-section--problems" aria-labelledby="problems-title">
+        <div class="lp-section__head" data-lp-reveal>
+            <p class="lp-eyebrow">Sound familiar?</p>
+            <h2 id="problems-title">The everyday headaches of a busy fashion workshop</h2>
+            <p class="lp-section__lead">If you run a tailor shop, seamstress bench or clothing workshop and any of these make you nod, NeedleBase was built for you.</p>
+        </div>
+        <ul class="lp-pain" data-lp-reveal>
+            <li>
+                <h3>Measurement books go missing</h3>
+                <p>A notebook walks off, pages tear, or nobody can read the last fitting — and you measure the customer again.</p>
+            </li>
+            <li>
+                <h3>Collection dates slip</h3>
+                <p>Promised Friday, remembered Monday. Customers call, you dig through scraps of paper to find the order.</p>
+            </li>
+            <li>
+                <h3>Balances are unclear</h3>
+                <p>Deposit here, part-payment there — you're not sure what is left on a job until the customer is at the counter.</p>
+            </li>
+            <li>
+                <h3>Who is sewing what?</h3>
+                <p>Workroom is busy, but you can't see which tailor has which order, or whether cutting is done.</p>
+            </li>
         </ul>
     </section>
 
-    <section id="how" class="lp-section" aria-labelledby="how-title">
+    <section id="benefits" class="lp-section lp-section--features" aria-labelledby="benefits-title">
         <div class="lp-section__head" data-lp-reveal>
-            <p class="lp-eyebrow">How it works</p>
-            <h2 id="how-title">From fitting to finish — without the notebook chase</h2>
-            <p class="lp-section__lead">Three steps that match how NeedleBase actually runs in a shop.</p>
-        </div>
-        <ol class="lp-steps">
-            <li class="lp-step" data-lp-reveal data-lp-tilt>
-                <span class="lp-step__num" aria-hidden="true">01</span>
-                <h3>Register the shop</h3>
-                <p>Owner creates the business with a Platform licence key. Managers and tailors join later with an invite — they never need a key.</p>
-            </li>
-            <li class="lp-step" data-lp-reveal data-lp-tilt>
-                <span class="lp-step__num" aria-hidden="true">02</span>
-                <h3>Capture work where it happens</h3>
-                <p>Take customers, measurements and orders on Android in the workroom, even offline. Owners manage payments, staff and production on the web.</p>
-            </li>
-            <li class="lp-step" data-lp-reveal data-lp-tilt>
-                <span class="lp-step__num" aria-hidden="true">03</span>
-                <h3>Sync when data returns</h3>
-                <p>The phone queues changes in SQLite, then syncs with the Api. Same roles and licence rules on every device.</p>
-            </li>
-        </ol>
-    </section>
-
-    <section id="features" class="lp-section lp-section--features" aria-labelledby="features-title">
-        <div class="lp-section__head" data-lp-reveal>
-            <p class="lp-eyebrow">Features</p>
-            <h2 id="features-title">Everything a busy shop already juggles</h2>
-            <p class="lp-section__lead">Only capabilities that exist in NeedleBase today — web pages and the Android app.</p>
+            <p class="lp-eyebrow">What changes</p>
+            <h2 id="benefits-title">One place for the work that already fills your day</h2>
+            <p class="lp-section__lead">Real tools that match how a tailor or fashion workshop runs — not fancy jargon.</p>
         </div>
         <div class="lp-bento">
             <article class="lp-bento__item lp-bento__item--wide" data-lp-reveal data-lp-tilt>
                 <div class="lp-bento__icon" aria-hidden="true">◇</div>
-                <h3>Orders &amp; production</h3>
-                <p>Track each job from new through cutting, sewing, finishing, ready and collected. See overdue work, assign tailors, and move status without losing the trail — on Production and Orders.</p>
+                <h3>Know every order's stage</h3>
+                <p>Follow a job from new → cutting → sewing → finishing → ready → collected. See what's late and who it's assigned to.</p>
             </article>
             <article class="lp-bento__item" data-lp-reveal data-lp-tilt>
                 <div class="lp-bento__icon" aria-hidden="true">◎</div>
-                <h3>Customers &amp; measurements</h3>
-                <p>Phone numbers and measurement cards stay with the customer, ready for the next order on phone or web.</p>
+                <h3>Measurements stay with the customer</h3>
+                <p>Open their card next time they walk in — phone number and sizes ready on the phone or computer.</p>
             </article>
             <article class="lp-bento__item" data-lp-reveal data-lp-tilt>
                 <div class="lp-bento__icon" aria-hidden="true">₵</div>
-                <h3>Payments</h3>
-                <p>Record deposits and balances against orders. Owners and managers see money; tailors stay on the workroom.</p>
-            </article>
-            <article class="lp-bento__item" data-lp-reveal data-lp-tilt>
-                <div class="lp-bento__icon" aria-hidden="true">☰</div>
-                <h3>Staff &amp; roles</h3>
-                <p>Invite managers and tailors. Roles gate payments, staff and activity the same way on web and Android.</p>
+                <h3>Clear money on each job</h3>
+                <p>Record deposits and balances against the order. Owners and managers see payments; tailors stay on the workroom.</p>
             </article>
             <article class="lp-bento__item lp-bento__item--accent" data-lp-reveal data-lp-tilt>
                 <div class="lp-bento__icon" aria-hidden="true">⇄</div>
-                <h3>Offline Android + sync</h3>
-                <p>SQLite on the phone. Capture work without waiting on data; sync orders, customers, measurements and payments when the network returns.</p>
-            </article>
-            <article class="lp-bento__item" data-lp-reveal data-lp-tilt>
-                <div class="lp-bento__icon" aria-hidden="true">⌁</div>
-                <h3>Licensed for your shop</h3>
-                <p>One Platform licence key per business, tied to the owner’s email. Staff never need a key — only an invite.</p>
+                <h3>Phone works when data drops</h3>
+                <p>Keep taking orders and measurements offline. When you're back online, the phone updates the shop so nothing is left behind.</p>
             </article>
         </div>
     </section>
 
-    <section class="lp-section lp-section--demo" aria-labelledby="demo-title">
-        <div class="lp-demo" data-lp-reveal>
-            <div class="lp-demo__copy">
-                <p class="lp-eyebrow">Interactive example</p>
-                <h2 id="demo-title">Peek at a measurement card</h2>
-                <p class="lp-section__lead">This is an <strong>example only</strong> — not a real customer. Tap a field to highlight it. The field names match what NeedleBase stores; the inch values are placeholders.</p>
-            </div>
-            <div class="lp-measure" data-lp-measure>
-                <header>
-                    <span class="lp-badge-example">Example</span>
-                    <h3>Sample customer (not real data)</h3>
-                    <p>Chest, waist, hip, inseam</p>
-                </header>
-                <div class="lp-measure__body">
-                    <svg class="lp-silhouette" viewBox="0 0 120 200" role="img" aria-label="Body outline showing measurement points">
-                        <title>Measurement guide</title>
-                        <ellipse cx="60" cy="28" rx="16" ry="18" />
-                        <path d="M40 48 C40 48 28 70 30 110 L36 170 L50 170 L54 120 L66 120 L70 170 L84 170 L90 110 C92 70 80 48 80 48 Z" />
-                        <circle data-pt="chest" cx="60" cy="78" r="4" />
-                        <circle data-pt="waist" cx="60" cy="108" r="4" />
-                        <circle data-pt="hip" cx="60" cy="128" r="4" />
-                        <circle data-pt="inseam" cx="52" cy="155" r="4" />
-                    </svg>
-                    <ul class="lp-measure__list">
-                        <li><button type="button" data-measure="chest">Chest <span>42″</span></button></li>
-                        <li><button type="button" data-measure="waist">Waist <span>34″</span></button></li>
-                        <li><button type="button" data-measure="hip">Hip <span>40″</span></button></li>
-                        <li><button type="button" data-measure="inseam">Inseam <span>32″</span></button></li>
+
+    <section id="how" class="lp-section" aria-labelledby="how-title">
+        <div class="lp-section__head" data-lp-reveal>
+            <p class="lp-eyebrow">How to get started</p>
+            <h2 id="how-title">Three clear steps</h2>
+            <p class="lp-section__lead">No complicated signup form first — talk to us about your tailor or fashion shop, then we unlock NeedleBase for you.</p>
+        </div>
+        <ol class="lp-steps">
+            <li class="lp-step" data-lp-reveal data-lp-tilt>
+                <span class="lp-step__num" aria-hidden="true">01</span>
+                <h3>Message us</h3>
+                <p>WhatsApp <a class="lp-text-link" href="@wa" rel="noopener" target="_blank">@Model.WhatsAppDisplay</a> or email <a class="lp-text-link" href="@mail">@Model.Email</a>. Tell us about your tailor shop or fashion workshop and which plan you want.</p>
+            </li>
+            <li class="lp-step" data-lp-reveal data-lp-tilt>
+                <span class="lp-step__num" aria-hidden="true">02</span>
+                <h3>Get your licence key</h3>
+                <p>We send your licence key by email. Use that same email when you register the shop.</p>
+            </li>
+            <li class="lp-step" data-lp-reveal data-lp-tilt>
+                <span class="lp-step__num" aria-hidden="true">03</span>
+                <h3>Register, invite, download</h3>
+                <p><a class="lp-text-link" asp-page="/Account/Register">Register your shop</a>, invite your managers and tailors, and <a class="lp-text-link" href="@apk" rel="noopener" target="_blank">download the Android app</a> for the workroom.</p>
+            </li>
+        </ol>
+    </section>
+
+    <section id="pricing" class="lp-section lp-section--pricing" aria-labelledby="pricing-title">
+        <div class="lp-section__head" data-lp-reveal>
+            <p class="lp-eyebrow">Pricing</p>
+            <h2 id="pricing-title">Simple plans for fashion workshops in Ghana cedis</h2>
+            <p class="lp-section__lead">Sample pricing for tailor shops and clothing workshops. Message us to confirm your plan. Pay yearly and save two months.</p>
+        </div>
+        <div class="lp-pricing" data-lp-reveal>
+            @foreach (var plan in Model.Plans)
+            {
+                var planWa = LandingSalesInfo.WhatsAppUrlForPlan(plan.Name);
+                <article class="lp-plan@(plan.Featured ? " lp-plan--featured" : "")">
+                    <h3>@plan.Name</h3>
+                    <p class="lp-plan__tag">@plan.Tagline</p>
+                    <p class="lp-plan__price">
+                        <span class="lp-plan__amount">GH₵ @plan.MonthlyGhs.ToString("N0")</span>
+                        <span class="lp-plan__per">/ month</span>
+                    </p>
+                    <p class="lp-plan__yearly">or GH₵ @plan.YearlyGhs.ToString("N0") / year (save GH₵ @plan.YearlySavingGhs.ToString("N0"))</p>
+                    <ul class="lp-plan__list">
+                        @foreach (var h in plan.Highlights)
+                        {
+                            <li>@h</li>
+                        }
                     </ul>
-                </div>
-            </div>
+                    <a class="lp-btn @(plan.Featured ? "lp-btn--primary" : "lp-btn--ghost") lp-btn--lg"
+                       href="@planWa" rel="noopener" target="_blank"
+                       title="Opens WhatsApp so we can confirm the @plan.Name plan"
+                       aria-label="Choose @plan.Name — opens WhatsApp to confirm and set you up">
+                        Choose @plan.Name
+                    </a>
+                </article>
+            }
         </div>
-    </section>
-
-    <section id="android" class="lp-section lp-section--android" aria-labelledby="android-title">
-        <div class="lp-android" data-lp-reveal>
-            <div>
-                <p class="lp-eyebrow">Android</p>
-                <h2 id="android-title">Keeps sewing when data drops</h2>
-                <p>
-                    Sideload the signed APK from GitHub Releases. In-app updates read <code>update.json</code> from the
-                    newest release through your shop’s Api — so you are not stuck on an old build.
-                </p>
-                <ul class="lp-checks">
-                    <li>Works offline with SQLite on the phone</li>
-                    <li>Syncs orders, customers, measurements and payments</li>
-                    <li>Same licence and roles as the web console</li>
-                </ul>
-                <a class="lp-btn lp-btn--primary" href="@apk" rel="noopener" target="_blank">Get the latest APK on GitHub</a>
-            </div>
-            <div class="lp-phone" aria-hidden="true" data-lp-tilt>
-                <div class="lp-phone__screen">
-                    <p class="lp-phone__app">NeedleBase</p>
-                    <p class="lp-phone__line is-on"><span class="lp-pulse-dot"></span> Sync ready</p>
-                    <p class="lp-phone__line">3 open orders</p>
-                    <p class="lp-phone__line">Due tomorrow · Ama</p>
-                    <p class="lp-phone__line">ORD-1042 · Sewing</p>
-                </div>
-            </div>
-        </div>
+        <p class="lp-pricing__note" data-lp-reveal>
+            Choosing a plan opens WhatsApp so we can confirm and set you up.
+            Sample prices — we confirm the amount when you message us.
+            Or email <a class="lp-text-link" href="@mail">@Model.Email</a>.
+        </p>
     </section>
 
     <section id="faq" class="lp-section" aria-labelledby="faq-title">
         <div class="lp-section__head" data-lp-reveal>
-            <p class="lp-eyebrow">FAQ</p>
-            <h2 id="faq-title">Questions owners ask</h2>
+            <p class="lp-eyebrow">Questions</p>
+            <h2 id="faq-title">Before you message us</h2>
         </div>
         <div class="lp-faq">
             <details data-lp-reveal>
-                <summary>Do I need a licence key?</summary>
-                <p>Yes for a new shop when Platform licensing is on. The key must match the owner’s email. Staff never need a key — they accept an invite.</p>
+                <summary>Who is NeedleBase for?</summary>
+                <p>Tailors, seamstresses, dressmakers and clothing or fashion workshop owners — especially in Ghana and West Africa — who want one place for customers, measurements, orders and payments.</p>
+            </details>
+            <details data-lp-reveal>
+                <summary>How do I get a licence key?</summary>
+                <p>Message Helmut on WhatsApp or email. After you agree on a plan, we send your licence key by email. Use that same email when you register the shop.</p>
+            </details>
+            <details data-lp-reveal>
+                <summary>How much does NeedleBase cost?</summary>
+                <p>See the Pricing section for sample Ghana cedi plans (Starter, Workshop, Production). Message us to confirm the plan that fits your shop — the numbers on this page are placeholders until we finalise with you.</p>
             </details>
             <details data-lp-reveal>
                 <summary>Does the phone need internet all day?</summary>
-                <p>No. The Android app is offline-first. Capture work in the shop, then sync when you have a connection.</p>
+                <p>No. Save customers, measurements and orders on the phone even with no internet. When you're back online, the phone updates the shop.</p>
             </details>
             <details data-lp-reveal>
-                <summary>Is WhatsApp messaging included?</summary>
-                <p>Automatic WhatsApp order updates are not offered as a live feature right now. Focus is the web console, Android sync, orders, measurements, payments and staff.</p>
+                <summary>Do my staff need a licence key?</summary>
+                <p>No. Only the shop owner registers with the key. Managers and tailors join with an invite you send.</p>
             </details>
             <details data-lp-reveal>
-                <summary>Where do I download the Android app?</summary>
-                <p>From the latest GitHub Release for NeedleBase at <a href="@apk" rel="noopener" target="_blank">github.com/Helmut-Essien/NeedleBase/releases/latest</a>.</p>
+                <summary>Where do I get the Android app?</summary>
+                <p>Use Download app at the top of this page, or the same link in the footer, after your shop is registered.</p>
             </details>
             <details data-lp-reveal>
-                <summary>Who is NeedleBase for?</summary>
-                <p>Tailoring and garment workshops — especially in Ghana and West Africa — that need reliable order and measurement tracking without depending on constant internet.</p>
+                <summary>How do I contact you?</summary>
+                <p>WhatsApp <a class="lp-text-link" href="@wa" rel="noopener" target="_blank">@Model.WhatsAppDisplay</a> or email <a class="lp-text-link" href="@mail">@Model.Email</a>.</p>
             </details>
         </div>
     </section>
 
-    <section class="lp-cta" aria-labelledby="cta-title" data-lp-reveal>
+    <section id="contact" class="lp-cta" aria-labelledby="cta-title" data-lp-reveal>
         <div class="lp-cta__inner">
-            <h2 id="cta-title">Ready when your next fitting walks in</h2>
-            <p>Register with your Platform licence key, invite your team, put Android in the workroom.</p>
+            <h2 id="cta-title">Ready to organise your fashion shop?</h2>
+            <p>Message us on WhatsApp or email if you run a tailor shop, seamstress bench or clothing workshop. We'll send your licence key, then you register and invite your team.</p>
             <div class="lp-hero__cta">
-                <a class="lp-btn lp-btn--primary lp-btn--lg" asp-page="/Account/Register">Get started</a>
-                <a class="lp-btn lp-btn--ghost lp-btn--lg" asp-page="/Account/Login">Sign in</a>
+                <a class="lp-btn lp-btn--primary lp-btn--lg" href="@wa" rel="noopener" target="_blank"
+                   aria-label="Chat with us on WhatsApp">Chat with us on WhatsApp</a>
+                <a class="lp-btn lp-btn--ghost lp-btn--lg" href="@mail">Email us</a>
             </div>
+            <p class="lp-fine lp-fine--center">
+                WhatsApp <a class="lp-text-link" href="@wa" rel="noopener" target="_blank">@Model.WhatsAppDisplay</a>
+                · <a class="lp-text-link" href="@mail">@Model.Email</a><br />
+                Already have a licence key? <a class="lp-text-link" asp-page="/Account/Register">Register your shop</a>
+                · <a class="lp-text-link" asp-page="/Account/Login">Sign in</a>
+            </p>
         </div>
     </section>
 </main>
 
 <footer class="lp-footer">
-    <div class="lp-footer__brand">
-        <span class="lp-brand lp-brand--footer">
-            <img class="lp-brand__logo" src="~/images/needlebase-logo-nav.png" asp-append-version="true"
-                 width="1223" height="256" alt="NeedleBase" decoding="async" loading="lazy" />
-        </span>
-    </div>
-    <p>© 2026 NeedleBase (HelmutCode) · Design · Measure · Sew · Grow</p>
-    <nav aria-label="Legal">
-        <a asp-page="/Terms">Terms</a>
-        <a asp-page="/Privacy">Privacy</a>
-        <a href="@apk" rel="noopener" target="_blank">Android APK</a>
+    <p class="lp-footer__brand-text">NeedleBase by HelmutCode</p>
+    <p>Tailoring shop software for Ghana &amp; West Africa · Measure · Cut · Sew · Deliver</p>
+    <p>© 2026 NeedleBase</p>
+    <nav aria-label="Footer">
+        <a class="lp-footer__link" href="#pricing">Pricing</a>
+        <a class="lp-footer__link" href="#contact">Contact</a>
+        <a class="lp-footer__link" href="@wa" rel="noopener" target="_blank">WhatsApp</a>
+        <a class="lp-footer__link" href="@mail">Email</a>
+        <a class="lp-footer__link" href="@apk" rel="noopener" target="_blank">Download app</a>
+        <a class="lp-footer__link" asp-page="/Account/Register">Register</a>
+        <a class="lp-footer__link" asp-page="/Account/Login">Sign in</a>
+        <a class="lp-footer__link" asp-page="/Terms">Terms</a>
+        <a class="lp-footer__link" asp-page="/Privacy">Privacy</a>
     </nav>
 </footer>
 
@@ -315,24 +337,34 @@
       "name": "NeedleBase",
       "url": "@origin",
       "logo": "@(string.IsNullOrEmpty(origin) ? "/images/needlebase-logo-clear.png" : origin.TrimEnd('/') + "/images/needlebase-logo-clear.png")",
+      "email": "@Model.Email",
+      "telephone": "+@LandingSalesInfo.WhatsAppE164",
+      "contactPoint": [{
+        "@@type": "ContactPoint",
+        "contactType": "sales",
+        "email": "@Model.Email",
+        "telephone": "+@LandingSalesInfo.WhatsAppE164",
+        "areaServed": ["GH", "West Africa"],
+        "availableLanguage": ["en"]
+      }],
       "parentOrganization": { "@@type": "Organization", "name": "HelmutCode" }
     },
     {
       "@@type": "WebSite",
       "name": "NeedleBase",
       "url": "@origin",
-      "description": "Offline-first tailoring business software for Ghanaian and West African workshops."
+      "description": "Tailoring shop software for tailors, seamstresses, dressmakers and fashion workshop owners in Ghana and West Africa — customers, measurements, orders and payments on phone and computer."
     },
     {
       "@@type": "SoftwareApplication",
       "name": "NeedleBase",
       "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Tailoring shop software",
       "operatingSystem": "Android, Web",
-      "description": "Offline-first tailoring business management for Ghanaian and West African workshops.",
-      "offers": {
-        "@@type": "Offer",
-        "availability": "https://schema.org/OnlineOnly",
-        "description": "Requires a NeedleBase licence key from Platform to register a shop."
+      "description": "Tailor app and fashion workshop software for Ghana and West Africa: customers, measurements, orders, payments and a phone app that works without internet.",
+      "audience": {
+        "@@type": "Audience",
+        "audienceType": "Tailors, seamstresses, dressmakers and clothing or fashion workshop owners"
       },
       "downloadUrl": "@apk",
       "url": "@origin"
@@ -343,35 +375,45 @@
       "operatingSystem": "Android",
       "applicationCategory": "BusinessApplication",
       "downloadUrl": "@apk",
-      "description": "Offline-first Android app for NeedleBase shops: orders, customers, measurements, payments and sync."
+      "description": "Android tailor app for NeedleBase fashion workshops: orders, customers, measurements and payments — works without internet and updates the shop when you are back online."
     },
     {
       "@@type": "FAQPage",
       "mainEntity": [
         {
           "@@type": "Question",
-          "name": "Do I need a licence key?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "Yes for a new shop when Platform licensing is on. The key must match the owner's email. Staff never need a key — they accept an invite." }
+          "name": "Who is NeedleBase for?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "Tailors, seamstresses, dressmakers and clothing or fashion workshop owners — especially in Ghana and West Africa — who want one place for customers, measurements, orders and payments." }
+        },
+        {
+          "@@type": "Question",
+          "name": "How do I get a licence key?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "Message Helmut on WhatsApp or email. After you agree on a plan, we send your licence key by email. Use that same email when you register the shop." }
+        },
+        {
+          "@@type": "Question",
+          "name": "How much does NeedleBase cost?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "See the Pricing section for sample Ghana cedi plans (Starter, Workshop, Production). Message us to confirm the plan that fits your shop — the numbers on this page are placeholders until we finalise with you." }
         },
         {
           "@@type": "Question",
           "name": "Does the phone need internet all day?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "No. The Android app is offline-first. Capture work in the shop, then sync when you have a connection." }
+          "acceptedAnswer": { "@@type": "Answer", "text": "No. Save customers, measurements and orders on the phone even with no internet. When you're back online, the phone updates the shop." }
         },
         {
           "@@type": "Question",
-          "name": "Is WhatsApp messaging included?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "Automatic WhatsApp order updates are not offered as a live feature right now." }
+          "name": "Do my staff need a licence key?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "No. Only the shop owner registers with the key. Managers and tailors join with an invite you send." }
         },
         {
           "@@type": "Question",
-          "name": "Where do I download the Android app?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "From the latest GitHub Release for NeedleBase at https://github.com/Helmut-Essien/NeedleBase/releases/latest" }
+          "name": "Where do I get the Android app?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "Use Download app at the top of this page, or the same link in the footer, after your shop is registered." }
         },
         {
           "@@type": "Question",
-          "name": "Who is NeedleBase for?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "Tailoring and garment workshops — especially in Ghana and West Africa — that need reliable order and measurement tracking without depending on constant internet." }
+          "name": "How do I contact you?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "WhatsApp @Model.WhatsAppDisplay or email @Model.Email." }
         }
       ]
     }

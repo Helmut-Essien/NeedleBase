@@ -3,14 +3,95 @@
 
   const menu = document.querySelector('[data-lp-menu]');
   const drawer = document.getElementById('lp-drawer');
+  const backdrop = document.getElementById('lp-drawer-backdrop');
   if (menu && drawer) {
+    let lastFocus = null;
+    const focusables = () =>
+      [...drawer.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+
     const setOpen = (open) => {
       drawer.hidden = !open;
+      if (backdrop) backdrop.hidden = !open;
       menu.setAttribute('aria-expanded', open ? 'true' : 'false');
       menu.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+      document.body.classList.toggle('lp-nav-open', open);
+      if (open) {
+        lastFocus = document.activeElement;
+        const first = focusables()[0] || drawer;
+        requestAnimationFrame(() => first.focus());
+      } else if (lastFocus && typeof lastFocus.focus === 'function') {
+        lastFocus.focus();
+        lastFocus = null;
+      }
     };
+
     menu.addEventListener('click', () => setOpen(drawer.hidden));
-    drawer.querySelectorAll('[data-lp-close]').forEach((a) => a.addEventListener('click', () => setOpen(false)));
+    backdrop?.addEventListener('click', () => setOpen(false));
+    drawer.querySelectorAll('[data-lp-close]').forEach((a) =>
+      a.addEventListener('click', () => setOpen(false)));
+
+    document.addEventListener('keydown', (e) => {
+      if (drawer.hidden) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      } else if (!drawer.contains(document.activeElement) && !menu.contains(document.activeElement)) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
+  }
+
+  // Highlight the nav link for the section currently in view
+  const sectionLinks = [...document.querySelectorAll('[data-lp-nav-link]')];
+  if (sectionLinks.length && 'IntersectionObserver' in window) {
+    const linkById = new Map();
+    sectionLinks.forEach((a) => {
+      const id = (a.getAttribute('href') || '').replace(/^#/, '');
+      if (id) {
+        if (!linkById.has(id)) linkById.set(id, []);
+        linkById.get(id).push(a);
+      }
+    });
+    const sections = [...linkById.keys()]
+      .map((id) => document.getElementById(id))
+      .filter(Boolean);
+    const setActive = (id) => {
+      sectionLinks.forEach((a) => {
+        const on = (a.getAttribute('href') || '') === '#' + id;
+        a.classList.toggle('is-active', on);
+        if (on) a.setAttribute('aria-current', 'location');
+        else a.removeAttribute('aria-current');
+      });
+    };
+    if (sections.length) {
+      const pick = () => {
+        const marker = Math.max(72, (document.querySelector('.lp-nav')?.getBoundingClientRect().bottom || 64) + 8);
+        let best = sections[0].id;
+        // Last section whose top has reached / passed the marker (classic scroll-spy)
+        sections.forEach((s) => {
+          if (s.getBoundingClientRect().top <= marker + 12) best = s.id;
+        });
+        setActive(best);
+      };
+      pick();
+      window.addEventListener('scroll', pick, { passive: true });
+      window.addEventListener('resize', pick);
+    }
   }
 
   const nav = document.querySelector('.lp-nav');
@@ -18,6 +99,26 @@
     const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 8);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
+  }
+
+  // Header "Get started": outline while hero CTA is on screen; filled after it scrolls away.
+  // Without IntersectionObserver / JS, it stays the outline (ghost) style from CSS.
+  const heroCta = document.querySelector('[data-lp-hero-cta]');
+  const navCtas = [...document.querySelectorAll('[data-lp-nav-cta]')];
+  const setNavCtaSolid = (solid) => {
+    navCtas.forEach((el) => el.classList.toggle('is-solid', solid));
+    document.documentElement.classList.toggle('lp-nav-cta-solid', solid);
+  };
+  if (heroCta && navCtas.length) {
+    if ('IntersectionObserver' in window) {
+      const ioNav = new IntersectionObserver((entries) => {
+        const e = entries[0];
+        setNavCtaSolid(!(e && e.isIntersecting));
+      }, { threshold: 0, rootMargin: '-64px 0px 0px 0px' });
+      ioNav.observe(heroCta);
+    } else {
+      setNavCtaSolid(false);
+    }
   }
 
   // Progressive reveal: mark anything already in (or near) the viewport first, THEN enable hiding.
