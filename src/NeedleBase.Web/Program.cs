@@ -2,6 +2,7 @@ using System.Globalization;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.StaticFiles;
 using NeedleBase.Web.Handlers;
 using NeedleBase.Web.Hosting;
 using NeedleBase.Web.Services;
@@ -159,6 +160,13 @@ if (hostApi)
     builder.Services.AddHostedService(sp => sp.GetRequiredService<NeedleBase.Web.Hosting.EmbeddedApiHostedService>());
 }
 
+builder.Services.Configure<StaticFileOptions>(options =>
+{
+    var provider = new FileExtensionContentTypeProvider();
+    provider.Mappings[".avif"] = "image/avif";
+    options.ContentTypeProvider = provider;
+});
+
 var app = builder.Build();
 // Compress only the mime types registered above; skip the embedded Api branch entirely so
 // /api and /api/mobile/update never pass through the compressor (even if mime types change later).
@@ -273,6 +281,22 @@ app.Use(async (context, next) =>
     });
     await next();
 });
+// MapStaticAssets does not honour StaticFileOptions content-type mappings for .avif
+// (it would otherwise be served as application/octet-stream). Set the type before headers go out.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.Value is string path &&
+        path.EndsWith(".avif", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.OnStarting(() =>
+        {
+            context.Response.ContentType = "image/avif";
+            return Task.CompletedTask;
+        });
+    }
+    await next();
+});
+
 app.MapStaticAssets();
 app.MapRazorPages().WithStaticAssets();
 

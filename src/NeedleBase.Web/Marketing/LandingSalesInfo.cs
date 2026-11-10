@@ -41,25 +41,25 @@ public static class LandingSalesInfo
             YearlyGhs: 1_490,
             Highlights:
             [
-                "Owner + up to 2 staff",
-                "1 shop",
-                "Phone app + computer",
+                "Owner plus a helper",
+                "Up to 2 staff",
+                "Phone and computer",
                 "Orders, measurements, payments"
             ],
             Featured: false),
         new LandingPlan(
             Id: "workshop",
             Name: "Workshop",
-            Tagline: "Most busy sewing shops",
+            Tagline: "Busy tailor and fashion workshops",
             MonthlyGhs: 349,
             YearlyGhs: 3_490,
             Highlights:
             [
-                "Owner + up to 8 staff",
-                "1 shop",
-                "Phone app + computer",
-                "Orders, measurements, payments",
-                "Invite managers and tailors"
+                "A busy tailor or fashion workshop",
+                "Up to 8 staff",
+                "Invite managers and tailors",
+                "Phone and computer",
+                "Orders, measurements, payments"
             ],
             Featured: true),
         new LandingPlan(
@@ -70,11 +70,11 @@ public static class LandingSalesInfo
             YearlyGhs: 6_490,
             Highlights:
             [
-                "Owner + up to 20 staff",
-                "1 shop",
-                "Phone app + computer",
-                "Orders, measurements, payments",
-                "Invite managers and tailors"
+                "A larger workroom",
+                "Up to 20 staff",
+                "Invite managers and tailors",
+                "Phone and computer",
+                "Orders, measurements, payments"
             ],
             Featured: false)
     ];

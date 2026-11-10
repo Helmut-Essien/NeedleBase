@@ -15,7 +15,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@title</title>
     <meta name="description" content="@description" />
-    <meta name="theme-color" content="#202A32" />
+    <meta name="theme-color" content="#15241C" />
     <link rel="canonical" href="@canonical" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="en_GH" />
@@ -32,7 +32,18 @@
     <meta name="twitter:image:alt" content="NeedleBase — tailoring shop software for Ghana and West Africa" />
     <link rel="icon" href="~/favicon.ico" asp-append-version="true" sizes="16x16 32x32 48x48" />
     <link rel="apple-touch-icon" href="~/images/apple-touch-icon.png" asp-append-version="true" />
+    <link rel="preload" href="/fonts/fraunces-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/images/needlebase-logo-nav.webp" as="image" type="image/webp" />
+    <link rel="preload" as="image" type="image/avif"
+          media="(max-width: 899px) and (orientation: portrait)"
+          href="/img/landing/hero-takoradi-mobile-768.avif"
+          imagesrcset="/img/landing/hero-takoradi-mobile-480.avif 480w, /img/landing/hero-takoradi-mobile-768.avif 768w, /img/landing/hero-takoradi-mobile-960.avif 960w, /img/landing/hero-takoradi-mobile-1280.avif 1280w"
+          imagesizes="100vw" />
+    <link rel="preload" as="image" type="image/avif"
+          media="(min-width: 900px), (orientation: landscape)"
+          href="/img/landing/hero-takoradi-1280.avif"
+          imagesrcset="/img/landing/hero-takoradi-640.avif 640w, /img/landing/hero-takoradi-960.avif 960w, /img/landing/hero-takoradi-1280.avif 1280w, /img/landing/hero-takoradi-1600.avif 1600w, /img/landing/hero-takoradi-1920.avif 1920w, /img/landing/hero-takoradi-2560.avif 2560w"
+          imagesizes="100vw" />
     <link rel="preload" href="~/css/landing.css" as="style" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
 </head>

@@ -11,8 +11,25 @@
         .filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
 
     const setOpen = (open) => {
-      drawer.hidden = !open;
-      if (backdrop) backdrop.hidden = !open;
+      if (open) {
+        drawer.hidden = false;
+        if (backdrop) backdrop.hidden = false;
+        requestAnimationFrame(() => {
+          drawer.classList.add('is-open');
+          backdrop?.classList.add('is-open');
+        });
+      } else {
+        drawer.classList.remove('is-open');
+        backdrop?.classList.remove('is-open');
+        const hide = () => {
+          drawer.hidden = true;
+          if (backdrop) backdrop.hidden = true;
+          drawer.removeEventListener('transitionend', hide);
+        };
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) hide();
+        else drawer.addEventListener('transitionend', hide, { once: true });
+        setTimeout(hide, 320);
+      }
       menu.setAttribute('aria-expanded', open ? 'true' : 'false');
       menu.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
       document.body.classList.toggle('lp-nav-open', open);
@@ -81,8 +98,9 @@
     if (sections.length) {
       const pick = () => {
         const marker = Math.max(72, (document.querySelector('.lp-nav')?.getBoundingClientRect().bottom || 64) + 8);
-        let best = sections[0].id;
-        // Last section whose top has reached / passed the marker (classic scroll-spy)
+        let best = '';
+        // Last section whose top has reached / passed the marker (classic scroll-spy).
+        // While the hero is still in view and no section has reached the marker, clear current.
         sections.forEach((s) => {
           if (s.getBoundingClientRect().top <= marker + 12) best = s.id;
         });
@@ -170,57 +188,11 @@
     bootReveal();
   }
 
-  const measure = document.querySelector('[data-lp-measure]');
-  if (measure) {
-    const buttons = measure.querySelectorAll('[data-measure]');
-    const points = measure.querySelectorAll('.lp-silhouette circle[data-pt]');
-    const activate = (name) => {
-      buttons.forEach((b) => b.classList.toggle('is-on', b.getAttribute('data-measure') === name));
-      points.forEach((p) => p.classList.toggle('is-on', p.getAttribute('data-pt') === name));
-    };
-    buttons.forEach((b) => b.addEventListener('click', () => activate(b.getAttribute('data-measure'))));
-    activate('chest');
-  }
-
   let motionOn = false;
   const enableMotion = () => {
     if (motionOn || reduce) return;
     motionOn = true;
     document.documentElement.classList.add('lp-motion-on');
-
-    const demo = document.querySelector('[data-lp-demo]');
-    if (demo) {
-      const steps = [...demo.children];
-      let i = 2;
-      let timer = 0;
-      const tick = () => {
-        i = (i + 1) % steps.length;
-        steps.forEach((li, idx) => {
-          li.classList.toggle('is-done', idx < i);
-          li.classList.toggle('is-now', idx === i);
-        });
-      };
-      const start = () => { if (!timer) timer = window.setInterval(tick, 2200); };
-      const stop = () => { window.clearInterval(timer); timer = 0; };
-      if ('IntersectionObserver' in window) {
-        new IntersectionObserver((entries) => {
-          entries.forEach((e) => (e.isIntersecting ? start() : stop()));
-        }, { threshold: 0.2 }).observe(demo);
-      }
-    }
-
-    const stage = document.querySelector('[data-lp-stage]');
-    const room = document.querySelector('[data-lp-parallax]');
-    if (stage && room) {
-      const onMove = (clientX, clientY) => {
-        const r = stage.getBoundingClientRect();
-        const x = (clientX - r.left) / r.width - 0.5;
-        const y = (clientY - r.top) / r.height - 0.5;
-        room.style.transform = `rotateX(${10 - y * 9}deg) rotateY(${-14 + x * 12}deg)`;
-      };
-      stage.addEventListener('pointermove', (e) => onMove(e.clientX, e.clientY));
-      stage.addEventListener('pointerleave', () => { room.style.transform = ''; });
-    }
 
     document.querySelectorAll('[data-lp-tilt]').forEach((el) => {
       el.addEventListener('pointermove', (e) => {
@@ -246,4 +218,124 @@
     window.addEventListener('keydown', once);
     window.addEventListener('scroll', once, { passive: true });
   }
+
+  // Gentle hero parallax (off under reduced motion / low-power via `reduce`).
+  const heroMedia = document.querySelector('[data-lp-parallax-y]');
+  if (heroMedia && !reduce && !window.matchMedia('(update: slow)').matches) {
+    let ticking = false;
+    const apply = () => {
+      ticking = false;
+      const y = window.scrollY;
+      if (y > 1200) return;
+      heroMedia.style.transform = 'translate3d(0, ' + (y * 0.18).toFixed(1) + 'px, 0) scale(1.06)';
+    };
+    window.addEventListener('scroll', () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(apply);
+      }
+    }, { passive: true });
+  }
+
+
+  // Benefits card deck: native scrollbar / keyboard / touch only.
+  // Cards stay fully opaque; depth is transform + shadow + a dim overlay.
+  // Desktop deals vertically; viewports <=768px swipe the next card in from the left.
+  // No scroll hijacking, no aria-live.
+  const deckRoot = document.querySelector('[data-lp-deck]');
+  if (deckRoot) {
+    const deckCards = [...deckRoot.querySelectorAll('[data-lp-deck-card]')];
+    const deckPos = deckRoot.querySelector('[data-lp-deck-pos]');
+    const deckN = deckCards.length;
+    const deckReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const deckSwipe = window.matchMedia('(max-width: 768px)');
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+    const ease = (t) => t * t * (3 - 2 * t);
+    let deckTicking = false;
+    let deckBound = false;
+    const renderDeck = () => {
+      deckTicking = false;
+      if (deckReduce.matches || !deckRoot.classList.contains('is-js')) return;
+      const rect = deckRoot.getBoundingClientRect();
+      const total = Math.max(1, deckRoot.offsetHeight - window.innerHeight);
+      const scrolled = clamp(-rect.top, 0, total);
+      const p = scrolled / total;
+      const scaled = p * (deckN - 1);
+      const swipe = deckSwipe.matches;
+      deckCards.forEach((card, i) => {
+        const local = i === 0 ? 1 : clamp(scaled - (i - 1), 0, 1);
+        const e = ease(local);
+        const stack = Math.min(Math.max(0, scaled - i), 3);
+        const nextE = ease(i < deckN - 1 ? clamp(scaled - i, 0, 1) : 0);
+        if (e < 1) {
+          if (swipe) {
+            const tx = (1 - e) * -112;
+            const rot = (1 - e) * -7;
+            card.style.setProperty('--card-t', 'translateX(' + tx + '%) rotate(' + rot + 'deg)');
+          } else {
+            const ty = (1 - e) * 108;
+            const rot = (1 - e) * 6;
+            const sc = 0.97 + 0.03 * e;
+            card.style.setProperty('--card-t', 'translateY(' + ty + '%) rotate(' + rot + 'deg) scale(' + sc + ')');
+          }
+          card.style.setProperty('--card-dim', '0');
+          card.classList.toggle('is-top', e > 0.55);
+        } else if (swipe) {
+          const peekX = stack * 16 + nextE * 22;
+          const peekRot = stack * 2.4 + nextE * 4;
+          const sc = 1 - stack * 0.055 - nextE * 0.03;
+          card.style.setProperty('--card-t', 'translateX(' + peekX + 'px) rotate(' + peekRot + 'deg) scale(' + sc + ')');
+          card.style.setProperty('--card-dim', String(Math.min(0.5, stack * 0.2 + nextE * 0.22)));
+          card.classList.toggle('is-top', stack < 0.2 && nextE < 0.45);
+        } else {
+          const stackY = -stack * 34;
+          const stackRot = -stack * 2.8;
+          const stackScale = 1 - stack * 0.065;
+          card.style.setProperty('--card-t', 'translateY(' + stackY + 'px) rotate(' + stackRot + 'deg) scale(' + stackScale + ')');
+          card.style.setProperty('--card-dim', String(Math.min(0.48, stack * 0.24)));
+          card.classList.toggle('is-top', stack < 0.2);
+        }
+        card.style.setProperty('--card-z', String(20 + i));
+      });
+      const current = clamp(Math.floor(scaled + 1.001), 1, deckN);
+      if (deckPos) deckPos.textContent = String(current);
+      deckRoot.dataset.step = String(current);
+    };
+    const onDeckScroll = () => {
+      if (!deckTicking) {
+        deckTicking = true;
+        requestAnimationFrame(renderDeck);
+      }
+    };
+    const armDeck = () => {
+      if (deckReduce.matches || deckN === 0) {
+        deckRoot.classList.add('is-static');
+        deckRoot.classList.remove('is-js');
+        deckCards.forEach((card) => {
+          card.style.removeProperty('--card-t');
+          card.style.removeProperty('--card-z');
+          card.style.removeProperty('--card-dim');
+          card.classList.remove('is-top');
+        });
+        return;
+      }
+      deckRoot.classList.remove('is-static');
+      deckRoot.classList.add('is-js');
+      if (!deckBound) {
+        window.addEventListener('scroll', onDeckScroll, { passive: true });
+        window.addEventListener('resize', onDeckScroll, { passive: true });
+        deckBound = true;
+      }
+      renderDeck();
+    };
+    armDeck();
+    if (typeof deckReduce.addEventListener === 'function') {
+      deckReduce.addEventListener('change', armDeck);
+    }
+    if (typeof deckSwipe.addEventListener === 'function') {
+      deckSwipe.addEventListener('change', onDeckScroll);
+    }
+  }
+
+
 })();

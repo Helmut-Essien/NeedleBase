@@ -41,7 +41,10 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
 
         Assert.Contains("Stop chasing notebooks.", html);
         Assert.Contains("For tailors, seamstresses", html);
-        Assert.Contains("Built for tailoring and fashion shop owners", html);
+        Assert.Contains("Built for tailors, seamstresses and fashion workshop owners", html);
+        Assert.Contains("Get set up for my workshop", html);
+        Assert.Contains("Busy tailor and fashion workshops", html);
+        Assert.DoesNotContain("sewing shops", html);
         Assert.Contains("Who is NeedleBase for?", html);
         Assert.Contains("Tailoring shop software for Ghana", html);
         Assert.Contains("How it works", html);
@@ -78,14 +81,15 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.DoesNotContain("\"@@type\": \"Offer\"", html);
 
         // Single primary hero CTA
-        Assert.Contains("Get NeedleBase for your shop", html);
+        Assert.Contains("Get set up for my workshop", html);
         Assert.Contains("Chat with us on WhatsApp", html);
         Assert.Contains("data-lp-hero-cta", html);
         var heroStart = html.IndexOf("id=\"top\"", StringComparison.Ordinal);
         var heroEnd = html.IndexOf("id=\"problems\"", heroStart >= 0 ? heroStart : 0, StringComparison.Ordinal);
         Assert.True(heroStart >= 0 && heroEnd > heroStart, "hero bounds");
         var hero = html[heroStart..heroEnd];
-        Assert.Contains("Get NeedleBase for your shop", hero);
+        Assert.Contains("Get set up for my workshop", hero);
+        Assert.Contains("Run your fashion workshop from one place.", hero);
         Assert.Contains("Opens a WhatsApp chat with us", hero);
         Assert.DoesNotContain("Get NeedleBase on WhatsApp", hero);
         Assert.Contains("Already have a key?", hero);
@@ -112,7 +116,10 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("subject=", html);
         Assert.Contains("Choose Starter", html);
         Assert.Contains("Choose Workshop", html);
-        Assert.Contains("Choosing a plan opens WhatsApp", html);
+        Assert.Contains("Choosing a plan opens WhatsApp so we can set you up", html);
+        Assert.Contains("The headaches of a busy fashion workshop", html);
+        Assert.Contains("Three steps to get NeedleBase", html);
+        Assert.Contains("Ready to organise your fashion workshop?", html);
         Assert.DoesNotContain("Get NeedleBase on WhatsApp", html);
         Assert.Contains("Sample prices", html);
     }
