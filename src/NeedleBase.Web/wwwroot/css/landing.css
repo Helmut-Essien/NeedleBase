@@ -1,4 +1,4 @@
-/* Public landing v17 — opaque stacked deck (mobile L→R swipe); art-directed mobile hero photo. CSP-safe (no inline). */
+/* Public landing v18 — hero phone shows the MAUI Home screen (sample data). CSP-safe (no inline). */
 :root {
   /* App tokens (Colors.xaml / site.css), polished for marketing */
   --lp-cream: #f4f2ec;            /* warm off-white derived from AppBackground #F4F6F5 */
@@ -484,6 +484,8 @@ body.lp-nav-open { overflow: hidden; }
   overflow: hidden;
   background: #14131c;
   position: relative;
+  container-type: size;
+  container-name: lp-bezel;
 }
 .lp-device__notch {
   position: absolute;
@@ -539,6 +541,375 @@ body.lp-nav-open { overflow: hidden; }
 .lp-ui__list strong { font-size: 0.86rem; }
 .lp-ui__list span { color: var(--lp-muted); }
 .lp-ui__list b { color: var(--lp-terracotta-deep); font-size: 0.78rem; }
+
+/* —— Hero phone: faithful MAUI HomePage (HomePage.xaml). Sizes scale with the bezel. —— */
+.lp-home {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #F4F6F5;
+  color: #202A32;
+  font-family: var(--lp-font);
+  font-size: 3.61cqw; /* 13px at a 360-wide logical screen */
+  line-height: 1.25;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+.lp-home__chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2.1cqh 4.44cqw 0;
+  min-height: 7.2cqh;
+  color: #202A32;
+  flex-shrink: 0;
+}
+.lp-home__time {
+  font-size: 1.08em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding-left: 0.4em;
+}
+.lp-home__sys {
+  display: flex;
+  align-items: center;
+  gap: 0.28em;
+  padding-right: 0.2em;
+}
+.lp-home__sys .lp-home__ico {
+  width: 1.15em;
+  height: 1.15em;
+  display: block;
+}
+.lp-home__ico--battery { width: 1em; height: 1.35em; }
+.lp-home__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  padding: 1.2cqw 4.44cqw 2.2cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 4.44cqw;
+}
+.lp-home__header {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 3.33cqw;
+  align-items: center;
+}
+.lp-home__avatar {
+  width: 13.33cqw;
+  height: 13.33cqw;
+  border-radius: 50%;
+  background: #2E9E36;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.23em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.lp-home__who {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08em;
+  min-width: 0;
+}
+.lp-home__greet {
+  font-size: 1em;
+  color: #5B656B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lp-home__biz {
+  font-size: 1.38em;
+  font-weight: 700;
+  color: #202A32;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lp-home__sync {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 3.33cqw;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #DDE3DF;
+  border-radius: 3.33cqw;
+  padding: 3.6cqw 3.89cqw;
+}
+.lp-home__dot {
+  width: 3.33cqw;
+  height: 3.33cqw;
+  border-radius: 50%;
+  background: #2E7D32;
+  flex-shrink: 0;
+}
+.lp-home__sync-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08em;
+  min-width: 0;
+}
+.lp-home__sync-title {
+  font-size: 1.15em;
+  font-weight: 700;
+  color: #202A32;
+}
+.lp-home__sync-detail {
+  font-size: 1em;
+  color: #5B656B;
+}
+.lp-home__kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 3.33cqw;
+}
+.lp-home__kpi {
+  background: #fff;
+  border: 1px solid #DDE3DF;
+  border-radius: 3.33cqw;
+  padding: 3.6cqw 3.89cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+}
+.lp-home__kpi--ready {
+  background: #202A32;
+  border-color: transparent;
+}
+.lp-home__kpi-label {
+  font-size: 0.85em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5B656B;
+}
+.lp-home__kpi--ready .lp-home__kpi-label,
+.lp-home__kpi--ready .lp-home__kpi-cap { color: #C5CDC8; }
+.lp-home__kpi--ready .lp-home__kpi-num { color: #fff; }
+.lp-home__kpi-num {
+  font-size: 2.15em;
+  font-weight: 700;
+  color: #202A32;
+  line-height: 1.05;
+}
+.lp-home__kpi-cap {
+  font-size: 0.92em;
+  color: #5B656B;
+}
+.lp-home__h {
+  margin: 1.1cqw 0 0;
+  font-size: 1.31em;
+  font-weight: 700;
+  color: #202A32;
+}
+.lp-home__h--inline { margin: 0; font-size: 1.23em; }
+.lp-home__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  column-gap: 2.78cqw;
+  margin-top: -1.6cqw;
+}
+.lp-home__action {
+  background: #fff;
+  border: 1px solid #DDE3DF;
+  border-radius: 3.33cqw;
+  min-height: 25.56cqw;
+  padding: 2.4cqw 0.8cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5cqw;
+  text-align: center;
+  color: #202A32;
+  font-size: 0.92em;
+  line-height: 1.15;
+}
+.lp-home__action .lp-home__ico {
+  width: 5.8cqw;
+  height: 5.8cqw;
+  color: #247A2B;
+  display: block;
+  flex-shrink: 0;
+}
+.lp-home__card {
+  background: #fff;
+  border: 1px solid #DDE3DF;
+  border-radius: 3.33cqw;
+  padding: 4.44cqw;
+  display: flex;
+  flex-direction: column;
+  gap: 3.33cqw;
+}
+.lp-home__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5cqw;
+}
+.lp-home__link {
+  color: #247A2B;
+  font-weight: 700;
+  font-size: 1em;
+  flex-shrink: 0;
+}
+.lp-home__stage {
+  display: grid;
+  grid-template-columns: 20cqw 1fr auto;
+  column-gap: 2.78cqw;
+  align-items: center;
+}
+.lp-home__stage-name {
+  font-size: 1em;
+  font-weight: 700;
+  color: #202A32;
+}
+.lp-home__bar {
+  display: block;
+  height: 2.22cqw;
+  min-height: 4px;
+  background: #E8ECEA;
+  border-radius: 99px;
+  overflow: hidden;
+}
+.lp-home__bar-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+}
+.lp-home__bar--0 .lp-home__bar-fill { width: 0; }
+.lp-home__bar--1of6 .lp-home__bar-fill { width: 16.666%; }
+.lp-home__bar--2of6 .lp-home__bar-fill { width: 33.333%; }
+.lp-home__bar-fill--new { background: #5B656B; }
+.lp-home__bar-fill--cutting { background: #2563EB; }
+.lp-home__bar-fill--sewing { background: #247A2B; }
+.lp-home__bar-fill--fitting { background: #D97706; }
+.lp-home__bar-fill--ready { background: #247A2B; }
+.lp-home__count {
+  background: #F4F6F5;
+  border-radius: 2.78cqw;
+  padding: 0.4em 0.7em;
+  font-size: 0.92em;
+  font-weight: 700;
+  color: #202A32;
+  min-width: 2.1em;
+  text-align: center;
+}
+.lp-home__attn {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  column-gap: 3.33cqw;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #DDE3DF;
+  border-radius: 3.33cqw;
+  padding: 3.33cqw;
+}
+.lp-home__attn-av {
+  width: 11.67cqw;
+  height: 11.67cqw;
+  border-radius: 50%;
+  background: #E8F5E9;
+  color: #247A2B;
+  font-weight: 700;
+  font-size: 1.08em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.lp-home__attn-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  min-width: 0;
+}
+.lp-home__attn-name {
+  font-size: 1.15em;
+  font-weight: 700;
+  color: #202A32;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lp-home__attn-detail {
+  font-size: 1em;
+  color: #5B656B;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lp-home__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  border-radius: 2.78cqw;
+  padding: 0.35em 0.6em;
+  font-size: 0.85em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.lp-home__badge .lp-home__ico {
+  width: 3.89cqw;
+  height: 3.89cqw;
+  flex-shrink: 0;
+  display: block;
+}
+.lp-home__badge--overdue { background: #FEE2E2; color: #B91C1C; }
+.lp-home__badge--ready { background: #247A2B; color: #fff; }
+.lp-home__signout {
+  margin-top: 2.2cqw;
+  background: #fff;
+  border: 1.5px solid #DDE3DF;
+  border-radius: 2.78cqw;
+  min-height: 13.33cqw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15em;
+  font-weight: 600;
+  color: #202A32;
+}
+.lp-home__tabs {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: #fff;
+  border-top: 1px solid #E8ECEA;
+  padding: 1.4cqw 0 2.6cqw;
+}
+.lp-home__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25em;
+  /* Gray600, not Gray500: AA contrast at the mock's reduced size (axe sees decorative text). */
+  color: #5B656B;
+  font-size: 0.77em;
+  font-weight: 700;
+  padding: 0.8cqw 0.2cqw;
+  min-width: 0;
+}
+.lp-home__tab .lp-home__ico {
+  width: 6.11cqw;
+  height: 6.11cqw;
+  display: block;
+}
+/* PrimaryDark rather than Primary so the selected label meets 4.5:1 on white. */
+.lp-home__tab.is-active { color: #247A2B; }
+.lp-home__badge--ready .lp-home__badge-text,
+.lp-home__badge--ready span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .lp-device__cap {
   margin: 0.7rem 0 0;
   font-size: 0.75rem;

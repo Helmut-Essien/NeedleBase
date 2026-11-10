@@ -112,29 +112,105 @@
                     <div class="lp-device lp-device--phone" data-lp-tilt aria-hidden="true">
                         <div class="lp-device__bezel">
                             <div class="lp-device__notch"></div>
-                            <div class="lp-ui">
-                                <div class="lp-ui__bar">
-                                    <span class="lp-ui__brand">NeedleBase</span>
-                                    <span class="lp-ui__pill">Sample</span>
+                            <!-- Recreated from NeedleBase.Mobile/Views/HomePage.xaml + HomeViewModel (sample data, not a live shop). -->
+                            <div class="lp-home">
+                                <div class="lp-home__chrome">
+                                    <span class="lp-home__time">9:41</span>
+                                    <span class="lp-home__sys">
+                                        <svg class="lp-home__ico lp-home__ico--signal" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M2 22h4V10H2v12zm6 0h4V2H8v20zm6 0h4V14h-4v8zm6 0h4V6h-4v16z"/></svg><svg class="lp-home__ico lp-home__ico--wifi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg><svg class="lp-home__ico lp-home__ico--battery" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M17 5.33C17 4.6 16.4 4 15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V15h10V5.33zM7 16v3.67C7 20.4 7.6 21 8.33 21h7.33c.74 0 1.34-.6 1.34-1.33V16H7z"/></svg>
+                                    </span>
                                 </div>
-                                <p class="lp-ui__k">Today in the workroom</p>
-                                <ul class="lp-ui__list">
-                                    <li>
-                                        <strong>Kaba &amp; slit</strong>
-                                        <span>Cutting · due Fri</span>
-                                        <b>GH₵80 left</b>
-                                    </li>
-                                    <li>
-                                        <strong>Suit</strong>
-                                        <span>Sewing · due Sat</span>
-                                        <b>Paid</b>
-                                    </li>
-                                    <li>
-                                        <strong>Dress</strong>
-                                        <span>Ready · collect today</span>
-                                        <b>GH₵40 left</b>
-                                    </li>
-                                </ul>
+                                <div class="lp-home__scroll">
+                                    <div class="lp-home__header">
+                                        <span class="lp-home__avatar">A</span>
+                                        <span class="lp-home__who">
+                                            <span class="lp-home__greet">Good morning, Ama</span>
+                                            <span class="lp-home__biz">Ama's Workshop</span>
+                                        </span>
+                                    </div>
+                                    <div class="lp-home__sync">
+                                        <span class="lp-home__dot"></span>
+                                        <span class="lp-home__sync-copy">
+                                            <span class="lp-home__sync-title">Synced</span>
+                                            <span class="lp-home__sync-detail">Up to date</span>
+                                        </span>
+                                    </div>
+                                    <div class="lp-home__kpis">
+                                        <div class="lp-home__kpi">
+                                            <span class="lp-home__kpi-label">ACTIVE ORDERS</span>
+                                            <span class="lp-home__kpi-num">6</span>
+                                            <span class="lp-home__kpi-cap">New to Ready</span>
+                                        </div>
+                                        <div class="lp-home__kpi lp-home__kpi--ready">
+                                            <span class="lp-home__kpi-label">READY TO COLLECT</span>
+                                            <span class="lp-home__kpi-num">2</span>
+                                            <span class="lp-home__kpi-cap">Waiting for pickup</span>
+                                        </div>
+                                    </div>
+                                    <p class="lp-home__h">Quick actions</p>
+                                    <div class="lp-home__actions">
+                                        <div class="lp-home__action"><svg class="lp-home__ico lp-home__ico--person-add" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span>Add customer</span></div>
+                                        <div class="lp-home__action"><svg class="lp-home__ico lp-home__ico--receipt" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19.5 3.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2v14H3v3c0 1.66 1.34 3 3 3h12c1.66 0 3-1.34 3-3V2l-1.5 1.5zM15 20H6c-.55 0-1-.45-1-1v-1h10v2zm4-1c0 .55-.45 1-1 1s-1-.45-1-1v-3H8V5h11v14z"/></svg><span>New order</span></div>
+                                        <div class="lp-home__action"><svg class="lp-home__ico lp-home__ico--payments" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19 14V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-9-1c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-6v11c0 1.1-.9 2-2 2H4v-2h17V7h2z"/></svg><span>Payment</span></div>
+                                        <div class="lp-home__action"><svg class="lp-home__ico lp-home__ico--straighten" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2v8z"/></svg><span>Measure</span></div>
+                                    </div>
+                                    <div class="lp-home__card">
+                                        <div class="lp-home__card-head">
+                                            <p class="lp-home__h lp-home__h--inline">Orders in progress</p>
+                                            <span class="lp-home__link">View all</span>
+                                        </div>
+                                        <div class="lp-home__stage">
+                                            <span class="lp-home__stage-name">New</span>
+                                            <span class="lp-home__bar lp-home__bar--1of6"><span class="lp-home__bar-fill lp-home__bar-fill--new"></span></span>
+                                            <span class="lp-home__count">1</span>
+                                        </div>
+                                        <div class="lp-home__stage">
+                                            <span class="lp-home__stage-name">Cutting</span>
+                                            <span class="lp-home__bar lp-home__bar--1of6"><span class="lp-home__bar-fill lp-home__bar-fill--cutting"></span></span>
+                                            <span class="lp-home__count">1</span>
+                                        </div>
+                                        <div class="lp-home__stage">
+                                            <span class="lp-home__stage-name">Sewing</span>
+                                            <span class="lp-home__bar lp-home__bar--2of6"><span class="lp-home__bar-fill lp-home__bar-fill--sewing"></span></span>
+                                            <span class="lp-home__count">2</span>
+                                        </div>
+                                        <div class="lp-home__stage">
+                                            <span class="lp-home__stage-name">Fitting</span>
+                                            <span class="lp-home__bar lp-home__bar--0"><span class="lp-home__bar-fill lp-home__bar-fill--fitting"></span></span>
+                                            <span class="lp-home__count">0</span>
+                                        </div>
+                                        <div class="lp-home__stage">
+                                            <span class="lp-home__stage-name">Ready</span>
+                                            <span class="lp-home__bar lp-home__bar--2of6"><span class="lp-home__bar-fill lp-home__bar-fill--ready"></span></span>
+                                            <span class="lp-home__count">2</span>
+                                        </div>
+                                    </div>
+                                    <p class="lp-home__h">Needs attention</p>
+                                    <div class="lp-home__attn">
+                                        <span class="lp-home__attn-av">A</span>
+                                        <span class="lp-home__attn-copy">
+                                            <span class="lp-home__attn-name">Ama</span>
+                                            <span class="lp-home__attn-detail">#7N3K2P8H · 07 Nov 2026</span>
+                                        </span>
+                                        <span class="lp-home__badge lp-home__badge--overdue"><svg class="lp-home__ico lp-home__ico--schedule" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg><span>Overdue</span></span>
+                                    </div>
+                                    <div class="lp-home__attn">
+                                        <span class="lp-home__attn-av">K</span>
+                                        <span class="lp-home__attn-copy">
+                                            <span class="lp-home__attn-name">Kofi</span>
+                                            <span class="lp-home__attn-detail">#C4Q9M2TW · 10 Nov 2026</span>
+                                        </span>
+                                        <span class="lp-home__badge lp-home__badge--ready"><svg class="lp-home__ico lp-home__ico--check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><span>Ready to collect</span></span>
+                                    </div>
+                                    <div class="lp-home__signout">Sign out</div>
+                                </div>
+                                <div class="lp-home__tabs">
+                                    <span class="lp-home__tab is-active"><svg class="lp-home__ico lp-home__ico--home" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></span>
+                                    <span class="lp-home__tab"><svg class="lp-home__ico lp-home__ico--people" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg><span>Customers</span></span>
+                                    <span class="lp-home__tab"><svg class="lp-home__ico lp-home__ico--receipt" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19.5 3.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2v14H3v3c0 1.66 1.34 3 3 3h12c1.66 0 3-1.34 3-3V2l-1.5 1.5zM15 20H6c-.55 0-1-.45-1-1v-1h10v2zm4-1c0 .55-.45 1-1 1s-1-.45-1-1v-3H8V5h11v14z"/></svg><span>Orders</span></span>
+                                    <span class="lp-home__tab"><svg class="lp-home__ico lp-home__ico--payments" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19 14V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-9-1c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-6v11c0 1.1-.9 2-2 2H4v-2h17V7h2z"/></svg><span>Payments</span></span>
+                                    <span class="lp-home__tab"><svg class="lp-home__ico lp-home__ico--menu" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg><span>More</span></span>
+                                </div>
                             </div>
                         </div>
                     </div>
