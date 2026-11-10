@@ -1,4 +1,4 @@
-/* Public landing v18 — hero phone shows the MAUI Home screen (sample data). CSP-safe (no inline). */
+/* Public landing v20 — mobile benefits deck is a stacked Tinder-style swipe pile; desktop keeps the vertical deal. CSP-safe (no inline). */
 :root {
   /* App tokens (Colors.xaml / site.css), polished for marketing */
   --lp-cream: #f4f2ec;            /* warm off-white derived from AppBackground #F4F6F5 */
@@ -1135,7 +1135,7 @@ body.lp-nav-open { overflow: hidden; }
   margin-top: 1.1rem;
 }
 
-/* —— Benefits: card deck (v17) —— */
+/* —— Benefits: card deck (v20: stacked swipe on mobile, vertical deal on desktop) —— */
 .lp-deck {
   --lp-deck-n: 4;
   position: relative;
@@ -1172,12 +1172,19 @@ body.lp-nav-open { overflow: hidden; }
   text-wrap: balance;
 }
 .lp-deck__head .lp-section__lead { margin: 0.45rem 0 0; }
-.lp-deck__stage {
+.lp-deck__hint--hand { display: none; }
+.lp-deck__stage-wrap {
   position: relative;
   width: min(920px, 100%);
   margin: 0 auto;
   flex: 1 1 auto;
-  min-height: 0; /* shrink inside the 100svh sticky stage so cards aren't clipped */
+  min-height: 0;
+}
+.lp-deck__stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   overflow-x: clip;
 }
@@ -1315,24 +1322,69 @@ body.lp-nav-open { overflow: hidden; }
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.35rem 0.55rem;
   margin-top: 0.85rem;
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--lp-ink-soft);
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .lp-deck__hud p { margin: 0; }
-.lp-deck__dots { display: flex; gap: 0.35rem; }
-.lp-deck__dots i {
-  width: 0.5rem; height: 0.5rem; border-radius: 50%;
-  background: rgba(36, 122, 43, 0.22);
+.lp-deck__dots { display: flex; align-items: center; justify-content: center; }
+.lp-deck__dots button {
+  appearance: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: inherit;
+}
+.lp-deck__dots button::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: rgba(36, 122, 43, 0.28);
   display: block;
 }
-.lp-deck[data-step="1"] .lp-deck__dots i:nth-child(1),
-.lp-deck[data-step="2"] .lp-deck__dots i:nth-child(2),
-.lp-deck[data-step="3"] .lp-deck__dots i:nth-child(3),
-.lp-deck[data-step="4"] .lp-deck__dots i:nth-child(4) { background: var(--lp-primary-dark); }
+.lp-deck[data-step="1"] .lp-deck__dots button:nth-child(1)::after,
+.lp-deck[data-step="2"] .lp-deck__dots button:nth-child(2)::after,
+.lp-deck[data-step="3"] .lp-deck__dots button:nth-child(3)::after,
+.lp-deck[data-step="4"] .lp-deck__dots button:nth-child(4)::after,
+.lp-deck__dots button[aria-current="true"]::after { background: var(--lp-primary-dark); }
+.lp-deck__dots button:focus-visible,
+.lp-deck__arrow:focus-visible {
+  outline: none;
+  box-shadow: var(--lp-focus);
+}
+.lp-deck__arrow {
+  appearance: none;
+  display: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(26, 61, 40, 0.14);
+  border-radius: 50%;
+  background: var(--lp-paper);
+  color: var(--lp-primary-dark);
+  cursor: pointer;
+  place-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(14, 23, 18, 0.06);
+}
+.lp-deck__arrow svg { display: block; }
+.lp-deck__arrow:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
 .lp-deck__nudge {
   text-align: center;
   margin: 0.55rem 0 0;
@@ -1340,6 +1392,7 @@ body.lp-nav-open { overflow: hidden; }
   font-weight: 600;
   flex-shrink: 0;
 }
+.lp-deck__swipe-hint { display: none; }
 .lp-sr-only {
   position: absolute;
   width: 1px; height: 1px;
@@ -1358,31 +1411,148 @@ body.lp-nav-open { overflow: hidden; }
   .lp-deck__copy { padding: 1.4rem 1.5rem 1.35rem; justify-content: center; overflow: visible; }
 }
 
+/* Mobile: normal-height section, stacked Tinder-style deck (pointer swipes). */
 @media (max-width: 768px) {
-  .lp-deck.is-js .lp-deck__card:not(:first-child) { --card-t: translateX(-112%); }
-  .lp-deck__card { transform-origin: 80% 60%; }
+  .lp-deck {
+    height: auto;
+    overflow-x: clip;
+  }
+  .lp-deck__sticky {
+    position: static;
+    height: auto;
+    overflow: visible;
+    padding-top: clamp(3.25rem, 8vw, 5.5rem);
+    padding-bottom: 2.75rem;
+  }
+  .lp-deck__hint--desk { display: none; }
+  .lp-deck__hint--hand { display: inline; }
+  .lp-deck__stage-wrap {
+    width: 100%;
+    max-width: 24rem;
+    margin-inline: auto;
+    flex: 0 0 auto;
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+  /* Without JS: a simple vertical list. With JS (.is-stack): a single pile. */
+  .lp-deck__stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    height: auto;
+    overflow: visible;
+  }
+  .lp-deck.is-js .lp-deck__card:not(:first-child) { --card-t: none; }
+  .lp-deck.is-stack .lp-deck__stage {
+    display: grid;
+    justify-items: center;
+    align-items: stretch;
+    gap: 0;
+    padding-bottom: 1.7rem;
+    touch-action: pan-y;
+    overflow: visible;
+  }
+  .lp-deck__card {
+    position: relative;
+    inset: auto;
+    width: min(92%, 22.5rem);
+    max-width: 22.5rem;
+    margin-inline: auto;
+    transform-origin: 50% 80%;
+    pointer-events: auto;
+    will-change: transform;
+    grid-template-columns: 1fr;
+    grid-template-rows: 9.25rem 1fr;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .lp-deck.is-stack .lp-deck__card {
+    grid-area: 1 / 1;
+    margin-inline: 0;
+    width: min(92%, 22.5rem);
+    height: 100%;
+    min-height: 100%;
+    align-self: stretch;
+    pointer-events: none;
+    transition: transform 0.5s var(--lp-ease);
+  }
+  .lp-deck.is-stack .lp-deck__card.is-top {
+    pointer-events: auto;
+    touch-action: pan-y;
+    cursor: grab;
+  }
+  .lp-deck.is-stack.is-dragging .lp-deck__card {
+    transition: none;
+    cursor: grabbing;
+  }
+  .lp-deck__media,
+  .lp-deck__media img { min-height: 0; height: 9.25rem; }
+  .lp-deck__arrow { display: grid; }
+  .lp-deck__hud {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+    grid-template-areas:
+      "prev dots next"
+      "prev label next";
+    align-items: center;
+    justify-items: center;
+    column-gap: 0.2rem;
+    row-gap: 0;
+    width: 100%;
+    max-width: 24rem;
+    margin-inline: auto;
+  }
+  .lp-deck__hud [data-lp-deck-prev] { grid-area: prev; }
+  .lp-deck__hud [data-lp-deck-next] { grid-area: next; }
+  .lp-deck__dots { grid-area: dots; }
+  .lp-deck__hud > p { grid-area: label; margin: 0; }
+  .lp-deck__swipe-hint {
+    display: inline-flex;
+    position: absolute;
+    left: 50%;
+    bottom: 2.4rem;
+    transform: translateX(-50%);
+    z-index: 60;
+    pointer-events: none;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(14, 23, 18, 0.86);
+    color: #f4f2ec;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 1;
+    transition: opacity 0.4s var(--lp-ease), visibility 0.4s var(--lp-ease);
+  }
+  .lp-deck__swipe-hint.is-gone {
+    opacity: 0;
+    visibility: hidden;
+  }
 }
 @media (max-width: 599px) {
-  .lp-deck__sticky { padding-top: calc(var(--lp-nav-h) + 0.85rem); padding-bottom: 0.8rem; }
   .lp-deck__head { margin-bottom: 0.55rem; }
   .lp-deck__head h2 { font-size: clamp(1.4rem, 6.2vw, 1.7rem); }
   .lp-deck__head .lp-section__lead { font-size: 0.95rem; }
   .lp-deck__copy { padding: 0.55rem 0.9rem 0.65rem; gap: 0.2rem; }
   .lp-deck__copy h3 { font-size: 1.12rem; }
-  .lp-deck__card { grid-template-rows: minmax(5rem, 32%) minmax(0, 1fr); }
-  .lp-deck__media, .lp-deck__media img { min-height: 0; height: 100%; }
-  .lp-deck__hud { margin-top: 0.45rem; }
-  .lp-deck__nudge { margin-top: 0.3rem; font-size: 0.88rem; }
+  .lp-deck__hud { margin-top: 0.55rem; }
+  .lp-deck__nudge { margin-top: 0.45rem; font-size: 0.88rem; }
   .lp-deck__mini { padding: 0.5rem 0.6rem; }
   .lp-deck__stages { flex-wrap: wrap; overflow: visible; }
   .lp-mini__meta { margin-top: 0.25rem; }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@media (prefers-reduced-motion: reduce) and (min-width: 769px) {
   .lp-deck,
   .lp-deck.is-static { height: auto !important; }
   .lp-deck__sticky { position: static; height: auto; overflow: visible; padding-top: clamp(3.5rem, 8vw, 6rem); padding-bottom: 3rem; }
-  .lp-deck__stage { position: static; height: auto; display: grid; gap: 1.25rem; }
+  .lp-deck__stage-wrap { flex: 0 0 auto; width: min(920px, 100%); }
+  .lp-deck__stage { position: static; height: auto; display: grid; gap: 1.25rem; overflow: visible; }
   .lp-deck__card {
     position: relative !important;
     inset: auto;
@@ -1393,9 +1563,53 @@ body.lp-nav-open { overflow: hidden; }
     --card-dim: 0;
   }
   .lp-deck__card::after { display: none; }
-  .lp-deck, .lp-deck__sticky, .lp-deck__stage { overflow: visible; }
+  .lp-deck, .lp-deck__sticky, .lp-deck__stage-wrap, .lp-deck__stage { overflow: visible; }
   .lp-deck__hud,
   .lp-deck__nudge { display: none; }
+  .lp-deck__swipe-hint { display: none !important; }
+}
+
+/* Mobile + reduced motion: keep the stacked pile, but skip fly/spring motion. */
+@media (prefers-reduced-motion: reduce) and (max-width: 768px) {
+  .lp-deck { overflow-x: clip; }
+  .lp-deck__sticky {
+    padding-top: clamp(3.25rem, 8vw, 5.5rem);
+    padding-bottom: 2.75rem;
+  }
+  .lp-deck__stage-wrap {
+    width: 100%;
+    max-width: 24rem;
+    margin-inline: auto;
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+  .lp-deck.is-stack .lp-deck__stage {
+    display: grid;
+    justify-items: center;
+    padding-bottom: 1.7rem;
+    touch-action: pan-y;
+  }
+  .lp-deck.is-stack .lp-deck__card {
+    grid-area: 1 / 1;
+    width: min(92%, 22.5rem);
+    grid-template-columns: 1fr;
+    grid-template-rows: 9.25rem 1fr;
+    transition: none !important;
+    will-change: auto;
+  }
+  .lp-deck__card::after { transition: none; }
+  .lp-deck__media,
+  .lp-deck__media img { min-height: 0; height: 9.25rem; }
+  .lp-deck__hud { display: grid; }
+  .lp-deck__nudge { display: block; }
+  .lp-deck__arrow { display: grid; }
+  .lp-deck__swipe-hint {
+    display: inline-flex !important;
+    transition: none;
+  }
+  .lp-deck__swipe-hint.is-gone {
+    display: none !important;
+  }
 }
 
 /* Body links inside later sections: stay inline so sentences don't break around 44px flex links. */

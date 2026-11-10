@@ -122,6 +122,19 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("Ready to organise your fashion workshop?", html);
         Assert.DoesNotContain("Get NeedleBase on WhatsApp", html);
         Assert.Contains("Sample prices", html);
+
+        // Benefits deck: four cards, HUD, mobile swipe hint (behaviour is CSS/JS).
+        Assert.Contains("id=\"benefits\"", html);
+        Assert.Contains("One place for the work that fills your day", html);
+        Assert.Contains("data-lp-deck-stage", html);
+        Assert.Contains("data-lp-deck-dot", html);
+        Assert.Contains("data-lp-deck-pos", html);
+        Assert.Contains("Swipe to see the next card.", html);
+        Assert.Contains("Scroll to deal the next card.", html);
+        Assert.Contains("data-lp-deck-hint", html);
+        Assert.Contains("Previous card", html);
+        Assert.Contains("Next card", html);
+        Assert.Equal(4, Regex.Matches(html, "data-lp-deck-card").Count);
     }
 
     [Fact]

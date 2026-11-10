@@ -266,11 +266,13 @@
             <div class="lp-deck__head">
                 <p class="lp-eyebrow">What changes</p>
                 <h2 id="benefits-title">One place for the work that fills your day</h2>
-                <p class="lp-section__lead">Tools that match how a tailor or fashion workshop actually runs. <span class="lp-deck__hint">Scroll to deal the next card.</span></p>
-                <p class="lp-sr-only">Four features follow as a stack of cards. Scroll to bring each card to the front, or read them in order. If you prefer reduced motion, they appear as a list.</p>
+                <p class="lp-section__lead">Tools that match how a tailor or fashion workshop actually runs. <span class="lp-deck__hint lp-deck__hint--desk">Scroll to deal the next card.</span><span class="lp-deck__hint lp-deck__hint--hand">Swipe to see the next card.</span></p>
+                <p class="lp-sr-only">Four features follow as cards. On a large screen, scroll to bring each card to the front. On a phone, swipe left or right between cards, or use the card buttons. If you prefer reduced motion, you can still move between cards without animated motion.</p>
             </div>
-            <div class="lp-deck__stage">
-                <article class="lp-deck__card" data-lp-deck-card>
+            <div class="lp-deck__stage-wrap">
+            <p class="lp-deck__swipe-hint" data-lp-deck-hint aria-hidden="true"><span>Swipe</span></p>
+            <div class="lp-deck__stage" data-lp-deck-stage>
+                <div class="lp-deck__card" data-lp-deck-card>
                     <div class="lp-deck__media">
                         <picture>
                             <source type="image/avif" srcset="@Srcset("split-workshop", "avif", 640, 960, 1280)" sizes="(min-width: 860px) 50vw, 100vw" />
@@ -305,9 +307,9 @@
                             <p class="lp-mini__meta">Due Friday · sample of an order's stages — not a live shop.</p>
                         </div>
                     </div>
-                </article>
+                </div>
 
-                <article class="lp-deck__card" data-lp-deck-card>
+                <div class="lp-deck__card" data-lp-deck-card>
                     <div class="lp-deck__media">
                         <picture>
                             <source type="image/avif" srcset="@Srcset("split-measure", "avif", 640, 960, 1152)" sizes="(min-width: 860px) 50vw, 100vw" />
@@ -338,9 +340,9 @@
                             </dl>
                         </div>
                     </div>
-                </article>
+                </div>
 
-                <article class="lp-deck__card" data-lp-deck-card>
+                <div class="lp-deck__card" data-lp-deck-card>
                     <div class="lp-deck__media">
                         <picture>
                             <source type="image/avif" srcset="@Srcset("split-fabric", "avif", 640, 960, 1280)" sizes="(min-width: 860px) 50vw, 100vw" />
@@ -370,9 +372,9 @@
                             </ul>
                         </div>
                     </div>
-                </article>
+                </div>
 
-                <article class="lp-deck__card" data-lp-deck-card>
+                <div class="lp-deck__card" data-lp-deck-card>
                     <div class="lp-deck__media">
                         <picture>
                             <source type="image/avif" srcset="@Srcset("split-owner", "avif", 640, 960, 1152)" sizes="(min-width: 860px) 50vw, 100vw" />
@@ -399,11 +401,23 @@
                             <p class="lp-mini__meta">Updates the shop when you're back online · sample — not a live shop.</p>
                         </div>
                     </div>
-                </article>
+                </div>
             </div>
-            <div class="lp-deck__hud" aria-hidden="true">
-                <span class="lp-deck__dots"><i></i><i></i><i></i><i></i></span>
+            </div>
+            <div class="lp-deck__hud">
+                <button type="button" class="lp-deck__arrow" data-lp-deck-prev aria-label="Previous card">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+                </button>
+                <div class="lp-deck__dots" data-lp-deck-dots>
+                    <button type="button" data-lp-deck-dot="1" aria-label="Card 1 of 4" aria-current="true"></button>
+                    <button type="button" data-lp-deck-dot="2" aria-label="Card 2 of 4"></button>
+                    <button type="button" data-lp-deck-dot="3" aria-label="Card 3 of 4"></button>
+                    <button type="button" data-lp-deck-dot="4" aria-label="Card 4 of 4"></button>
+                </div>
                 <p>Card <span data-lp-deck-pos>1</span> of 4</p>
+                <button type="button" class="lp-deck__arrow" data-lp-deck-next aria-label="Next card">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                </button>
             </div>
             <p class="lp-deck__nudge">
                 Ready to try it in your workshop? <a class="lp-text-link" href="@wa" rel="noopener" target="_blank">Message us for a licence key</a>
