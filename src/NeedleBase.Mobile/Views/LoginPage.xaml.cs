@@ -58,4 +58,24 @@ public partial class LoginPage : ContentPage
 
         await Shell.Current.GoToAsync("//ForgotPasswordPage");
     }
+
+    private async void OnTermsClicked(object? sender, EventArgs e)
+    {
+        if (BindingContext is LoginViewModel vm && !vm.CanSubmit)
+        {
+            return;
+        }
+
+        await Shell.Current.GoToAsync(nameof(TermsPage));
+    }
+
+    private async void OnPrivacyClicked(object? sender, EventArgs e)
+    {
+        if (BindingContext is LoginViewModel vm && !vm.CanSubmit)
+        {
+            return;
+        }
+
+        await Shell.Current.GoToAsync(nameof(PrivacyPage));
+    }
 }

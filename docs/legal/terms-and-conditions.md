@@ -1,29 +1,33 @@
 # NeedleBase Terms and Conditions
 
-**Operator:** HelmutCode [full legal name of operator to be inserted] ("**HelmutCode**", "**we**", "**us**"), operator of NeedleBase.
-**Registered/business address:** [registered address in Ghana to be inserted]
-**Contact:** [contact email to be inserted]
-**Last updated:** 19 October 2026
+**Operator:** HelmutCode Solutions ("**HelmutCode**", "**we**", "**us**"), operator of NeedleBase.
 
-> Draft for review by a qualified Ghanaian lawyer. It is not legal advice.
+**Registered/business address:** YN13 Flask Street, Ghana
+
+**Contact:** email [helmutessien@gmail.com](mailto:helmutessien@gmail.com); WhatsApp [+233 50 078 5153](https://wa.me/233500785153)
+
+**Effective date:** 1 January 2027
+
+**Last updated:** 12 November 2026
 
 ## 1. Definitions
 
-- **NeedleBase / the Service**: the NeedleBase software-as-a-service (SaaS) application for tailoring businesses, including the Android app, the web console, and the application programming interface (API) that syncs them.
-- **Business**: a tailoring or fashion business that registers for NeedleBase.
+- **NeedleBase / the Service**: the NeedleBase software for tailors, seamstresses, dressmakers and fashion workshop owners, including the Android app, the website, and the application programming interface (API) that syncs them.
+- **Business**: a tailoring or fashion workshop that registers for NeedleBase.
 - **Owner**: the person who registers a Business and controls its account. **Staff**: people the Business authorises under roles such as Owner, Manager or Tailor.
 - **Business Data**: information entered by or for a Business, including customer records, body measurements, sewing orders and payment records.
+- **Licence key**: a key issued for a Business that allows it to use the Service, and that may carry a plan, a trial or complimentary period, or an expiry date.
 - **Personal data** has the meaning in the Data Protection Act, 2012 (Act 843): data about an individual who can be identified from that data, or from that data and other information.
 
 ## 2. The Service
 
 2.1 NeedleBase helps a Business manage customers, measurements, sewing orders (from new order through cutting, sewing, fitting and readiness to collection) and records of payments made to the Business.
 
-2.2 The Service is **offline-first**. The mobile app can store Business Data on the device (in a local database) and sync it to our API and database when an internet connection is available. Syncing may be delayed by connectivity, device or service problems; the Business should check important orders and payments after reconnecting.
+2.2 The Service is **offline-first**. The mobile app can store Business Data on the device in a local database (SQLite). That on-device copy is **not encrypted at rest by the app**. Data is synced to our API and hosted database when an internet connection is available. Syncing may be delayed by connectivity, device or service problems; the Business should check important orders and payments after reconnecting, protect phones with a screen lock, and keep its own backups of anything that has not yet synced. A lost, stolen or reset phone may still hold unsynced records that exist only on that device.
 
 2.3 We will use reasonable efforts to keep the Service available and secure, but we do not guarantee uninterrupted or error-free availability. Features may change as the Service develops, and some planned features (including any export tool) are not promised unless we state in writing that they are available.
 
-2.4 Electronic acceptance: an agreement may be formed electronically. The Electronic Transactions Act, 2008 (Act 772) recognises electronic records and agreements (including sections 5 to 8 on electronic records and retention, section 17 on automated transactions and section 23 on formation and validity of agreements). By ticking the acceptance box and creating an account you agree to these Terms; please save or print a copy for your records (see Act 772, section 47 on information to be provided in electronic transactions, where it applies).
+2.4 Electronic acceptance: an agreement may be formed electronically. The Electronic Transactions Act, 2008 (Act 772) recognises electronic records and agreements (including sections 5 to 8 on electronic records and retention, section 17 on automated transactions and section 23 on formation and validity of agreements). By ticking the acceptance box and creating an account you agree to these Terms and to the Privacy Policy; please save or print a copy for your records (see Act 772, section 47 on information to be provided in electronic transactions, where it applies).
 
 ## 3. Eligibility and accounts
 
@@ -31,15 +35,21 @@
 
 3.2 The Owner controls Staff accounts and roles. Owners and Managers must only give access to people who need it, must keep passwords private, and must remove access promptly when a person leaves the Business. Tailor accounts, as designed, have narrower access; role settings do not replace the Business's own supervision.
 
-3.3 You are responsible for activity under your Business's accounts, and must notify us promptly at [contact email] if you suspect unauthorised access.
+3.3 You are responsible for activity under your Business's accounts, and must notify us promptly at helmutessien@gmail.com or on WhatsApp +233 50 078 5153 if you suspect unauthorised access.
 
-## 4. Fees and subscriptions
+## 4. Fees, sample prices and licence keys
 
-4.1 NeedleBase is currently made available without a subscription charge on the terms on which it is offered at registration. There is **no billing system in the current product and no price is promised in these Terms**.
+4.1 There is **no in-app billing** in the current product. NeedleBase does not take card, mobile money or bank payments for a subscription inside the app or the website.
 
-4.2 We may introduce paid plans, trials or charges in future. If we do, we will give reasonable prior notice (normally at least 30 days) of the price, what it covers and when it starts, and a paid plan will not start for your Business until you accept it. Taxes or charges imposed by law, if applicable to a future paid plan, will be shown as required by law.
+4.2 The public website may show **sample plan prices** (for example monthly and yearly figures in Ghana cedis). Those figures are illustrations only until we confirm them to you in writing. They are not an offer, and they are not a price promised in these Terms.
 
-4.3 A Business remains responsible for its own taxes, invoices, receipts and filings with the Ghana Revenue Authority and other authorities. Payment records in NeedleBase are business records; they are not tax invoices unless the Business separately issues a valid invoice.
+4.3 Access to the Service for a Business is granted with a **licence key**. New shops must normally enter a licence key when they register. Keys are agreed and issued **off the app**, after you contact us by WhatsApp or email, and are then entered in NeedleBase. The server stores the key in a protected (encrypted) form and may check the key's status with NeedleBase's licensing service. A key may have a plan, a trial period, a complimentary period, or an expiry date. If a key is no longer valid, the Business may have a short grace period (currently seven days after the licensing service first says the key is not valid) before access is limited.
+
+4.4 The fee for a key or plan, and any refund, are **as agreed in writing when the key is issued** (for example in our WhatsApp or email messages with you). These Terms do not add a separate refund percentage or cooling-off period. Nothing in this clause takes away any right that Ghana law says you cannot give up.
+
+4.5 If we later add paid plans or in-app billing, we will give reasonable prior notice (normally at least 30 days) of the price, what it covers and when it starts. A paid plan will not start for your Business until you accept it. Taxes or charges imposed by law, if they apply, will be shown as required.
+
+4.6 A Business remains responsible for its own taxes, invoices, receipts and filings with the Ghana Revenue Authority and other authorities. Payment records in NeedleBase are business records; they are not tax invoices unless the Business separately issues a valid invoice.
 
 ## 5. Payment records — NeedleBase is not a payment service provider
 
@@ -47,27 +57,27 @@
 
 5.2 Under the Payment Systems and Services Act, 2019 (Act 987), a body corporate must hold a Bank of Ghana payment system licence before operating as a payment service provider (see section 7). NeedleBase as described in these Terms does not carry on that licensed activity. MoMo providers, banks and other payment providers are third parties with their own terms; disputes about an actual transfer of money are between the Business, its customer and that provider.
 
-5.3 If NeedleBase ever adds collection, payout or other payment services, those features would require separate terms and, where applicable, Bank of Ghana licensing/authorisation before launch.
+5.3 If NeedleBase ever adds collection, payout or other payment services, those features would require separate terms and, where applicable, Bank of Ghana licensing or authorisation before launch.
 
 ## 6. Business Data and ownership
 
-6.1 As between the parties, the Business owns its Business Data. You grant HelmutCode a limited licence to host, copy, transmit, display and process Business Data **only** to provide, secure, maintain and improve the Service, and as otherwise described in the Privacy Policy.
+6.1 As between the parties, the Business owns its Business Data. You grant HelmutCode Solutions a limited licence to host, copy, transmit, display and process Business Data **only** to provide, secure and maintain the Service, and as otherwise described in the Privacy Policy.
 
 6.2 You are responsible for the accuracy and lawfulness of Business Data, for having the right to enter customer information, and for keeping your own backups where you need them. Do not enter information the Business has no right to record.
 
-## 7. Data protection roles (Act 843)
+## 7. Data protection (Act 843)
 
-7.1 For customer and Staff personal data entered by a Business: the **Business is the data controller** (it decides why and how the data is used) and **HelmutCode is a data processor / service provider** acting on the Business's instructions. This reflects Act 843, including section 29 (a processor must process only with the controller's knowledge/authorisation and keep data confidential) and section 30 (controller–processor processing should be governed by a written contract with confidentiality and security measures). These Terms, with the Privacy Policy, form that written arrangement for the Service.
+7.1 For customer and Staff personal data entered by a Business: the **Business is the data controller** (it decides why and how the data is used) and **HelmutCode Solutions is a data processor / service provider** acting on the Business's instructions. This reflects Act 843, including section 29 (a processor must process only with the controller's knowledge or authorisation and keep data confidential) and section 30 (controller–processor processing should be governed by a written contract with confidentiality and security measures). These Terms, with the Privacy Policy, form that written arrangement for the Service.
 
-7.2 **Registration.** A data controller who intends to process personal data must register with the Data Protection Commission (Act 843, sections 27, 46 and 53; registration is renewed every two years under section 50, and processing without registration is prohibited). Each Business must assess and, where required, complete its own registration. HelmutCode will assess and, where required for its own processing (for example account-holder data for which it is controller, and any processor-related registration or administrative requirement confirmed by the Commission), register and keep that registration current. Registration numbers/status: [DPC registration status/number to be inserted].
+7.2 **Registration.** A data controller who intends to process personal data must register with the Data Protection Commission (Act 843, sections 27, 46 and 53; registration is renewed every two years under section 50). Each Business must assess and, where required, complete its own registration. HelmutCode Solutions is not registered with the Data Protection Commission. A person may complain to the Commission about the handling of their personal data (see [dataprotection.org.gh](https://dataprotection.org.gh) / [dpc.gov.gh](https://dpc.gov.gh)).
 
-7.3 **Safeguards.** Each party will apply appropriate, reasonable technical and organisational measures consistent with Act 843, section 28 (security measures) and section 30 — including access controls by role, passwords/secure sign-in, and keeping safeguards under review.
+7.3 **Safeguards.** Each party will apply appropriate, reasonable technical and organisational measures consistent with Act 843, section 28 (security measures) and section 30 — including access controls by role, hashed passwords and secure sign-in, a protected licence key, and keeping safeguards under review. The copy of Business Data on a phone is not encrypted by the app itself (see clause 2.2).
 
-7.4 **Security incidents.** Act 843, section 31 requires notification to the Commission and affected data subjects, as soon as reasonably practicable, where there are reasonable grounds to believe personal data has been accessed or acquired by an unauthorised person. If HelmutCode becomes aware of such an incident affecting Business Data, we will notify the affected Business (normally the Owner) without undue delay, cooperate on investigation and restoration, and the Business (as controller) remains responsible for notifying the Commission and customers where the law requires it. Businesses must promptly pass to us any relevant incident they discover on their own devices. The Cybersecurity Act, 2020 (Act 1038) imposes additional incident duties on owners of designated critical information infrastructure and certain institutions (see sections 39 and 47); NeedleBase is not designated as critical information infrastructure at the date of these Terms, and we will comply with any cybersecurity duty that applies to us.
+7.4 **Security incidents.** Act 843, section 31 requires notification to the Commission and affected data subjects, as soon as reasonably practicable, where there are reasonable grounds to believe personal data has been accessed or acquired by an unauthorised person. If HelmutCode Solutions becomes aware of such an incident affecting Business Data, we will notify the affected Business (normally the Owner) without undue delay and cooperate on investigation and restoration, and the Business (as controller) remains responsible for notifying the Commission and customers where the law requires it. Businesses must promptly pass to us any relevant incident they discover on their own devices. The Cybersecurity Act, 2020 (Act 1038) imposes additional incident duties on owners of designated critical information infrastructure and certain institutions (see sections 39 and 47); NeedleBase is not designated as critical information infrastructure at the date of these Terms, and we will comply with any cybersecurity duty that applies to us.
 
-7.5 **Data subject requests.** Customers may exercise rights under Act 843 (including access and correction under sections 32, 33 and 35, objection under section 20, and the right to require a controller to stop processing that causes unwarranted damage or distress under section 39). The Business, as controller, must answer those requests; we will provide reasonable assistance (for example by making the relevant records available through the Service or, on a verified Owner request, correcting/deleting records we hold as processor) so the Business can respond in time.
+7.5 **Data subject requests.** Customers may exercise rights under Act 843 (including access and correction under sections 32, 33 and 35, objection under section 20, and the right to require a controller to stop processing that causes unwarranted damage or distress under section 39). The Business, as controller, must answer those requests; we will provide reasonable assistance (for example by making the relevant records available through the Service or, on a verified Owner request, correcting or deleting records we hold as processor) so the Business can respond in time.
 
-7.6 **Where data is processed.** Business Data may be stored on the user's device and synced to hosting used for the API/database. Hosting locations and sub-processors may change; where personal data is processed outside Ghana we will take reasonable steps consistent with Act 843 (including section 30(4) for processors not domiciled in Ghana and the registration particulars contemplated by section 47(1)(g)) and will describe hosting/sub-processors in general terms in the Privacy Policy or on request.
+7.6 **Where data is processed.** Business Data may be stored on the user's device and synced to hosting used for the API and database. The website, API and database are hosted with MonsterASP.NET in Europe, and the public site is at [https://needlebase.runasp.net/](https://needlebase.runasp.net/). Personal data held on the hosted service is therefore stored in Europe and is transferred outside Ghana. Hosting and other sub-processors are described in the Privacy Policy.
 
 ## 8. Acceptable use
 
@@ -75,31 +85,39 @@ You must not: use the Service unlawfully or for another person's business withou
 
 ## 9. Intellectual property
 
-9.1 HelmutCode (and its licensors) own the NeedleBase software, brand, documentation and all intellectual property in the Service, except Business Data. Subject to these Terms, we grant the Business a non-exclusive, non-transferable, revocable licence to use the Service for its internal business while its account is active.
+9.1 HelmutCode Solutions (and its licensors) own the NeedleBase software, brand, documentation and all intellectual property in the Service, except Business Data. Subject to these Terms, we grant the Business a non-exclusive, non-transferable, revocable licence to use the Service for its internal business while its account is active and its licence key remains valid (including any applicable grace period).
 
 9.2 If you send ideas or feedback, we may use it without payment or attribution to improve the Service, provided we do not disclose your Business Data as part of doing so.
 
 ## 10. Third-party services
 
-The Service works alongside third parties the Business chooses — device makers, internet providers, MoMo providers, banks, app stores and hosting providers. We are not responsible for their services, charges, outages or terms. Links or references do not imply endorsement.
+The Service works alongside third parties, including: device makers; internet providers; MoMo providers and banks (for money the Business collects itself); app stores; the hosting provider (MonsterASP.NET, in Europe); NeedleBase's licensing service, for licence-key checks; **Gmail SMTP** or **Resend**, which we use to send email (password-reset and optional staff-invite messages); and **Meta** (WhatsApp Cloud API) when a Business turns on WhatsApp order notices and a customer has opted in — in that case the customer's number and the notice can be processed by Meta under Meta's own terms. The public website may also offer a WhatsApp "click to chat" link so you can message us; that is a link you choose to open.
+
+We are not responsible for those third parties' services, charges, outages or terms. Links or references do not imply endorsement.
 
 ## 11. Disclaimers and limitation of liability
 
 11.1 The Service is provided "as is" and "as available". To the fullest extent permitted by Ghana law, we exclude implied warranties that the Service will be uninterrupted, error-free or fit for a particular purpose. Nothing in these Terms excludes or limits: liability for fraud or wilful misconduct; liability for death or personal injury caused by negligence; a data subject's rights or compensation under Act 843 (including section 43); or any consumer right that cannot be excluded (see Act 772, section 54, where it applies). A clause excluding such rights would be void to that extent.
 
-11.2 Subject to clause 11.1, neither party is liable for indirect or consequential loss, loss of profit, loss of goodwill or loss caused by incorrect Business Data, a lost device, failure to sync, or a third-party payment failure. Each Business should verify measurements, orders and payments before relying on them.
+11.2 Subject to clause 11.1, neither party is liable for indirect or consequential loss, loss of profit, loss of goodwill, or loss caused by incorrect Business Data, a lost device, failure to sync, or a third-party payment failure. Each Business should verify measurements, orders and payments before relying on them.
+
+11.3 Subject to clause 11.1, our total liability to you for claims arising out of these Terms or the Service is limited to the licence fees you paid us in the 12 months before the claim, except where Ghana law does not allow that limit.
 
 ## 12. Suspension, termination and what happens to data
 
-12.1 The Owner may stop using the Service at any time. We may suspend or terminate access where an account is used unlawfully, creates a security risk, or materially breaches these Terms; where practicable we will give notice and a chance to remedy first.
+12.1 The Owner may stop using the Service at any time. We may suspend or terminate access where an account is used unlawfully, creates a security risk, or materially breaches these Terms, or where the licence key is no longer valid and any grace period has ended; where practicable we will give notice and a chance to remedy first.
 
-12.2 On termination, access may end. Business Data remains available through the Service while the account is active. **The current product has no self-service export tool**, so we do not promise an export format. On a verified written request from the Owner we will, within a reasonable period (normally within 30 days), make Business Data held in our systems available in a reasonable manner or delete/de-identify it, except where retention is required or authorised by law (for example record-retention duties; Act 772, section 8 addresses retention of electronic records where a law requires retention), or reasonably needed to resolve disputes or enforce these Terms. Data stored only on a Business's own device remains the Business's responsibility.
+12.2 The current product has **no in-app or self-service button** to export or delete a whole shop account. An Owner (or a staff member, about their own sign-in account) may ask us by email or WhatsApp to delete the account and the associated data we hold. After we have verified the request, we will normally action it within 30 days, except where the law requires or allows us to keep something, or the data is reasonably needed to resolve a dispute or enforce these Terms.
 
-12.3 Clauses that by their nature should survive termination (ownership, data protection, liability, governing law) survive.
+12.3 If a Business simply stops using the Service without asking us to delete the account, we keep the Business Data we hold on the hosted service for **one year** after use stops, and then we delete it, except where the law requires or allows us to keep something. The server **audit log** is deleted after **730 days** (two years) by default, which is a separate period and may run longer or shorter than the one-year shop-data period. Data stored only on a Business's own device remains the Business's responsibility.
+
+12.4 On a verified written request from the Owner we will also, within a reasonable period (normally within 30 days), make Business Data held in our systems available in a reasonable manner, except where the law does not allow that. We do not promise a particular export format. Act 772, section 8 addresses retention of electronic records where a law requires retention.
+
+12.5 Clauses that by their nature should survive termination (ownership, data protection, liability, governing law) survive.
 
 ## 13. Changes to these Terms
 
-We may update these Terms as the Service or the law changes. We will post the updated version with a new "Last updated" date and give reasonable notice of material changes through the Service or by email. Continued use after the effective date is acceptance of the updated Terms; if a Business does not accept a material change, it may stop using the Service before that date.
+We may update these Terms as the Service or the law changes. We will post the updated version with a new "Last updated" date and give reasonable notice of material changes through the Service or by email. Continued use after the effective date of the update is acceptance of the updated Terms; if a Business does not accept a material change, it may stop using the Service before that date.
 
 ## 14. Governing law and disputes
 
@@ -109,8 +127,10 @@ We may update these Terms as the Service or the law changes. We will post the up
 
 ## 15. General and contact
 
-15.1 If a clause is unenforceable, the rest continue in force. Failure to enforce a clause is not a waiver. You may not transfer your account without our written consent; we may transfer our rights/obligations in connection with a reorganisation of the operator, with notice.
+15.1 If a clause is unenforceable, the rest continue in force. Failure to enforce a clause is not a waiver. You may not transfer your account without our written consent; we may transfer our rights or obligations in connection with a reorganisation of the operator, with notice.
 
-15.2 Questions about these Terms: HelmutCode, [registered address in Ghana], [contact email]. Data-protection contact: [contact email / Data Protection Supervisor if appointed].
+15.2 Questions about these Terms, or requests to delete an account or a copy of the data we hold, should be sent to HelmutCode Solutions, YN13 Flask Street, Ghana. Email: [helmutessien@gmail.com](mailto:helmutessien@gmail.com). WhatsApp: [+233 50 078 5153](https://wa.me/233500785153). The same contacts are the data-protection contact for HelmutCode Solutions.
 
-15.3 Operator status: HelmutCode is the brand/operator name used in the app. Its full legal form (for example registered company or business name under Ghana law, including under the Companies Act, 2019 (Act 992) if incorporated) is: [full legal name, registration number if any, to be inserted]. Do not rely on the brand name alone as the legal contracting party once that information is inserted.
+15.3 HelmutCode is the brand name used in the app. The legal operator is **HelmutCode Solutions**.
+
+The Privacy Policy is at [https://needlebase.runasp.net/Privacy](https://needlebase.runasp.net/Privacy) and in the NeedleBase phone app.

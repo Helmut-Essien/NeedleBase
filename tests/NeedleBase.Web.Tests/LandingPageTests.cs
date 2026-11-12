@@ -105,6 +105,8 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("Contact", footer);
         Assert.Contains("WhatsApp", footer);
         Assert.Contains("mailto:helmutessien@gmail.com", footer);
+        Assert.Contains("href=\"/Terms\"", footer);
+        Assert.Contains("href=\"/Privacy\"", footer);
         Assert.DoesNotContain("lp-brand", footer);
         Assert.DoesNotContain("<img", footer);
 

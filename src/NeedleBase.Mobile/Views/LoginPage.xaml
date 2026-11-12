@@ -153,6 +153,29 @@
                     SemanticProperties.Description="Join a business with an invite code"
                     AutomationId="LoginJoinInvite" />
 
+            <HorizontalStackLayout HorizontalOptions="Center" Spacing="4" Margin="0,8,0,0">
+                <Button Text="Terms and Conditions"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource PrimaryDark}"
+                        FontAttributes="Bold"
+                        FontSize="14"
+                        HeightRequest="48"
+                        Padding="8,0"
+                        Clicked="OnTermsClicked"
+                        SemanticProperties.Description="Open Terms and Conditions"
+                        AutomationId="LoginTermsLink" />
+                <Button Text="Privacy Policy"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource PrimaryDark}"
+                        FontAttributes="Bold"
+                        FontSize="14"
+                        HeightRequest="48"
+                        Padding="8,0"
+                        Clicked="OnPrivacyClicked"
+                        SemanticProperties.Description="Open Privacy Policy"
+                        AutomationId="LoginPrivacyLink" />
+            </HorizontalStackLayout>
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

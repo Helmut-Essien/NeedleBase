@@ -23,7 +23,11 @@
             </div>
             @RenderBody()
         </div>
-
+        <nav class="nb-auth-legal" aria-label="Legal">
+            <a asp-page="/Terms">Terms and Conditions</a>
+            <span aria-hidden="true"> · </span>
+            <a asp-page="/Privacy">Privacy Policy</a>
+        </nav>
     </main>
     <script src="~/js/site.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)

@@ -1,79 +1,126 @@
 # NeedleBase Privacy Policy
 
-**Operator:** HelmutCode [full legal name of operator to be inserted] ("**HelmutCode**", "**we**"), operator of NeedleBase.
-**Contact / data-protection contact:** [contact email to be inserted]
-**Last updated:** 19 October 2026
+**Operator:** HelmutCode Solutions ("**HelmutCode**", "**we**"), operator of NeedleBase.
 
-> Draft for review by a qualified Ghanaian lawyer. It is not legal advice.
+**Registered/business address:** YN13 Flask Street, Ghana
 
-NeedleBase is an offline-first tailoring-business app for Ghanaian and West African workshops. This Policy explains, in plain language, what personal data is involved, why, and the rights people have under the Data Protection Act, 2012 (Act 843).
+**Contact / data-protection contact:** HelmutCode Solutions, by email [helmutessien@gmail.com](mailto:helmutessien@gmail.com) or WhatsApp [+233 50 078 5153](https://wa.me/233500785153)
 
-## 1. Roles: who decides what
+**Effective date:** 1 January 2027
 
-- A tailoring **Business** (and its Owner) decides why customer and Staff information is entered into NeedleBase. For that information the Business is the **data controller** under Act 843.
-- **HelmutCode/NeedleBase is mainly a data processor / service provider**: we host, store and sync that information on the Business's instructions (see Act 843, sections 29 and 30). These arrangements are recorded in the Terms and Conditions.
-- HelmutCode is a **data controller** for a narrower set of data we decide about ourselves: Business account registration, Owner/Staff sign-in, support communications and keeping the Service secure.
+**Last updated:** 12 November 2026
 
-## 2. Personal data involved
+NeedleBase is an offline-first app for tailors, seamstresses, dressmakers and fashion workshop owners in Ghana and West Africa. This Policy explains, in plain language, what personal data is involved, why it is used, and the rights people have under Ghana's Data Protection Act, 2012 (Act 843).
 
-- **Account and Staff data**: names, email addresses, roles (Owner/Manager/Tailor), Business name and phone, and sign-in credentials handled by the sign-in system (passwords are not visible to other users).
-- **Customer data entered by a Business**: customer names and contact details, **body measurements** and order-related notes. Measurements are personal data because they relate to an identified customer; a Business should only record measurements needed for an order and should not record health or other sensitive information in measurement or notes fields.
-- **Order data**: garments, order progress (new, cutting, sewing, fitting, ready, collected), dates, prices and staff assignments, where linked to a customer.
-- **Payment records**: amounts in GHS, method recorded (cash, MoMo or bank), dates and the order they relate to. NeedleBase records that a Business says a payment happened; it does not process the MoMo/bank transfer and does not store MoMo PINs or bank passwords. Do not enter anyone's PIN or full bank credentials.
-- **Technical data**: device/app sync and diagnostic information reasonably needed to run and secure the Service.
+## 1. Who decides what happens to the data
 
-## 3. Purposes and lawful grounds (Act 843)
+- A **workshop** (the Business, and its Owner) decides why customer and staff information is entered into NeedleBase. For that information, the workshop is the **data controller** under Act 843.
+- **HelmutCode Solutions / NeedleBase is mainly a data processor / service provider**: we host, store and sync that information on the workshop's instructions (see Act 843, sections 29 and 30). That arrangement is also set out in the Terms and Conditions.
+- HelmutCode Solutions is a **data controller** only for a narrower set of data we decide about ourselves: shop account registration, owner and staff sign-in, licence checks, support messages you send us, and keeping the service secure.
 
-Act 843, section 17 sets principles including accountability, lawfulness, purpose specification, quality, openness, security safeguards and data subject participation. Section 20 provides that personal data is processed with the data subject's consent **unless** processing is necessary for a contract with the data subject, authorised or required by law, to protect a legitimate interest of the data subject, for a statutory duty, or to pursue a legitimate interest of the controller or a third party to whom data is supplied.
+## 2. What information NeedleBase handles
 
-We and Businesses use the data above to: create and secure accounts; record customers, measurements and orders; track production; record payments; sync devices; provide support; and keep the Service safe. The main grounds relied on are performance of the Business's contract with its customer (and our contract with the Business), legitimate interests in running and securing a workshop system, legal obligations where they apply, and consent where a Business or person has given it (for example for optional communications). A person may object to processing under section 20; a Business as controller must handle objections that apply to its customer data.
+This list comes from how the product is built today. We do not invent extra types of data.
 
-Keeping data **accurate, complete and not misleading** matters (Act 843, section 26), and only data that is necessary, relevant and not excessive should be processed (section 19).
+- **Account and staff data:** first name, surname, email address, phone number (if provided), role (Owner, Manager or Tailor), shop name and shop phone, and sign-in details. Passwords are stored only as a one-way hash (they are not visible to other users or in readable form). The system also keeps sign-in session tokens (hashed), and, when someone asks to reset a password, a short-lived hashed reset code.
+- **Licence data:** the shop's licence key is stored in a protected (encrypted) form, together with a short hint, plan or trial flags, expiry and check times. Licence status may be checked with NeedleBase's licensing service (a separate system the operator configures). A device identifier may be sent as part of that check.
+- **Customer records the workshop enters:** name, phone number, and optional notes. Body **measurements** (for a garment, in the unit the shop uses, such as centimetres) are personal data because they belong to a named customer. A workshop should only record measurements needed for an order, and should not put health or other sensitive information in notes or measurement fields.
+- **Photo reference:** the customer record includes an optional "photo reference" field in the database, and that field can be synced. The current app screens do **not** include a way to take or upload a customer photo. If that is added later, this Policy will be updated.
+- **Orders:** a short order reference, garment type, quantities and prices, due and fitting dates, progress (new, cutting, sewing, fitting, ready, collected), notes, and which staff member is assigned, where linked to a customer.
+- **Payment records:** amounts in Ghana cedis (GHS), the method recorded (cash, mobile money / MoMo, bank transfer, or other), dates, notes, and the order they belong to. NeedleBase only records that the workshop says a payment happened. It does not receive, move or guarantee money, and it does not store MoMo PINs or bank passwords. Do not type anyone's PIN or full bank credentials into NeedleBase.
+- **Staff invitations:** an invite can store the person's email, name and role, plus a hashed one-time code (valid for seven days). The owner can share the code in person or by WhatsApp. If email sending is configured (Gmail SMTP or Resend), an invite may also be emailed.
+- **WhatsApp opt-in:** if the workshop uses WhatsApp notices, it can record whether a customer has opted in or out, who recorded that, and when.
+- **Activity log (audit):** the server keeps an append-only log of important actions (for example sign-in or a change to an order). An entry may include the user, role, a short summary, limited field changes with sensitive values masked, a device id, an IP address, and the browser or app "user agent". This log is not synced down to phones. Entries older than **730 days** (two years; this can be configured, but not below 30 days) are deleted automatically.
+- **Technical data:** a device identifier used when the phone syncs; and ordinary server logs used to run and secure the service (a sign-in log line may include an email address). We did not find a separate advertising, analytics, crash-reporting or push-notification product in the current app.
 
-## 4. Offline storage and syncing
+## 3. Why the data is used (Act 843)
 
-NeedleBase is offline-first. Customer, measurement, order and payment information may be stored in a local database on the phone/device first and synced to the NeedleBase API and its database (PostgreSQL) when the device is online. A customer's information may therefore exist both on the Business's device and in the hosted Service. Protect devices with a screen lock, app sign-in and role-based access; a lost device should be reported to the Business Owner promptly.
+Act 843 requires that personal data is used lawfully, for a clear purpose, kept reasonably accurate, not excessive, and protected. In short, the workshop and HelmutCode Solutions use the information above to: create and protect accounts; keep customer, measurement, order and payment records; check a shop licence; sync the phone with the shop; send a password-reset or invite email when email is configured (via Gmail SMTP or Resend); send a WhatsApp order notice when the workshop has turned that on and the customer has opted in; answer support requests; and keep the service safe.
 
-## 5. Sharing — no sale of personal data
+The main legal grounds are: performing the workshop's contract with its customer (and our contract with the workshop); a legitimate interest in running and securing a workshop system; a legal duty where one applies; and consent where it has been given (for example a WhatsApp opt-in, or a support message you choose to send us). A person may object to processing under section 20 of the Act. The workshop, as controller, must handle objections that relate to its customers.
+
+## 4. Stored on the phone and synced to the server
+
+NeedleBase is offline-first. Customer, measurement, order, payment and related records may be saved first in a local database on the phone (SQLite, not encrypted at rest by the app). When the phone is online, it syncs to the NeedleBase API and a PostgreSQL database. So a customer's information may exist both on the workshop's device and on the hosted service.
+
+The website, API and database are hosted with **MonsterASP.NET** in **Europe**, and the public site is at [https://needlebase.runasp.net/](https://needlebase.runasp.net/). Personal data held on the hosted service is therefore stored in Europe and is transferred outside Ghana. We will update this Policy if the hosting place changes in a material way.
+
+Please protect phones with a screen lock and keep sign-in details private. A lost or reset phone may still hold unsynced records that were only on that device — see the Terms for the workshop's responsibility for backups.
+
+When a record is deleted in the app, the server keeps a short "tombstone" so other devices can stay in step. Those tombstones are removed after **90 days**.
+
+## 5. Who the data is shared with — we do not sell it
 
 - **We do not sell personal data.** Selling personal data is an offence under Act 843, section 89.
-- We share data only: within a Business to its authorised Staff according to role; with hosting, database, communications and other sub-processors/providers reasonably needed to operate and secure the Service (in general terms: cloud/hosting and email/support providers, [hosting provider/region to be inserted]); where a Business instructs us; and where disclosure is required by law, court order or a regulator.
-- MoMo providers and banks are independent third parties for the actual movement of money; NeedleBase does not give them customer measurement data.
-- Hosting may involve processing outside Ghana. Act 843 does not set out a single transfer-approval chapter in the text relied on for this Policy, but registration particulars can include the country to which data may be transferred (section 47(1)(g)) and a controller must ensure a non-Ghana-domiciled processor complies with Ghana law (section 30(4)). We will take reasonable contractual and security steps for any such processing and update this Policy if our hosting region changes materially.
+- Data is shared only: with authorised staff in the same workshop, according to their role; with the hosting and database provider (**MonsterASP.NET**, in Europe); with **Gmail SMTP** or **Resend**, which we use to send email (password-reset and optional invite messages); with **Meta** (WhatsApp / graph.facebook.com) when a workshop has turned on WhatsApp notices and a customer has opted in — in that case the customer's number and the notice can be processed by Meta under Meta's own terms; with NeedleBase's licensing service, for licence checks; where the workshop instructs us; and where the law, a court or a regulator requires disclosure.
+- MoMo providers and banks are independent. NeedleBase does not send them measurement data.
+- The public website may include a WhatsApp "click to chat" link (wa.me) so you can message us. That is a link you choose to open; it is not a transfer of your customer list.
 
-## 6. Retention
+## 6. How long we keep it, and how to ask for deletion
 
-We and Businesses should not keep personal data longer than necessary for the purpose it was collected, unless retention is required/authorised by law, reasonably necessary for a lawful purpose connected with the Business, required by contract, or the data subject consents (Act 843, section 24). At the end of the retention period records should be deleted, destroyed or de-identified in a way that prevents reconstruction. The current product has no self-service export/deletion portal for a whole Business account: an Owner may ask us in writing at [contact email] and we will normally action a verified deletion request within 30 days, subject to lawful retention (for example where a law requires records to be kept — Act 772, section 8 deals with electronic retention where retention is required).
+We and workshops should not keep personal data longer than needed for the purpose it was collected, unless a law allows or requires it, or the person consents (Act 843, section 24).
+
+- **If you ask us to delete an account:** there is no in-app or self-service button to delete a whole shop account. An Owner (or a staff member, about their own sign-in account) may ask us by email or WhatsApp, using the contacts below. After we have verified the request, we will normally delete the account and the associated data we hold on the hosted service within **30 days**, except where the law requires or allows us to keep something.
+- **If a shop simply stops using NeedleBase** without asking us to delete the account, we keep the shop's records that we hold on the hosted service (including customer, order and payment records) for **one year**, and then we delete them, except where the law requires or allows us to keep something.
+- **Audit log:** deleted after 730 days by default (see section 2). This is a separate period and may run longer or shorter than the one-year shop-data period, including after an account-deletion request.
+- **Sync tombstones:** deleted after 90 days (see section 4).
+- **Password-reset codes:** short-lived; old unused codes are cleaned up.
+- **Staff invites:** expire after seven days.
+
+On a verified written request from the Owner we will also, within a reasonable period (normally within 30 days), make a reasonable copy of the data we hold available, except where the law does not allow that. We do not promise a particular export format. Data stored only on a workshop's own device remains the workshop's responsibility.
 
 ## 7. Security
 
-We apply appropriate, reasonable technical and organisational measures consistent with Act 843, section 28 — such as role-based access (Owner/Manager/Tailor), authenticated sign-in, secure transport for sync where configured, and limiting Staff access. No system is completely secure. If there are reasonable grounds to believe personal data has been accessed or acquired by an unauthorised person, Act 843, section 31 requires the controller to notify the Data Protection Commission and affected data subjects as soon as reasonably practicable (subject to any delay directed for a criminal investigation). As processor we will notify the affected Business and cooperate; the Business notifies its customers/Commission where it is controller.
+We use reasonable technical and organisational measures consistent with Act 843, section 28 — including role-based access (Owner, Manager, Tailor), hashed passwords, a protected licence key, signed-in sessions, and HTTPS for the hosted site and sync (as deployed). No system is completely secure. The copy on the phone is not encrypted by the app itself, so a screen lock and care of the device matter.
+
+If there are reasonable grounds to believe personal data has been accessed or acquired by an unauthorised person, Act 843, section 31 requires the controller to notify the Data Protection Commission and affected people as soon as reasonably practicable (subject to any delay directed for a criminal investigation). As processor we will notify the affected workshop and cooperate. The workshop notifies its customers and the Commission where it is the controller.
 
 ## 8. Your rights under Act 843
 
-Subject to the Act and proof of identity, a data subject may:
+Subject to the Act and proof of identity, a person may:
 
-- **Access**: request confirmation/description of personal data held and access in an intelligible form (sections 32 and 35; a controller should normally comply promptly and within 40 days under section 35(10)).
-- **Correction/deletion**: request correction or deletion of inaccurate, irrelevant, excessive, out-of-date, incomplete, misleading or unlawfully obtained data, or deletion of a record the controller is no longer authorised to retain (section 33).
-- **Object / stop processing**: object under section 20, and by written notice require a controller to cease processing that causes or is likely to cause unwarranted damage or distress (section 39 — the controller must respond in writing within 21 days).
-- **Direct marketing**: require a controller not to process data for direct marketing; prior written consent is required for such use (section 40).
-- **Automated decisions**: rights in relation to decisions based solely on automated processing that significantly affect the person (section 41), where applicable — NeedleBase does not make such decisions about customers.
-- **Compensation/complaints**: compensation may be available through the courts where damage or distress is caused by a contravention (section 43). You may also complain to the **Data Protection Commission** (which investigates complaints and maintains the Data Protection Register under Act 843, sections 3 and 46) via its website at dataprotection.org.gh / dpc.gov.gh, and ask the Commission for an assessment under section 77. Please contact the Business that collected your data first — it is usually the controller — and contact us at [contact email] if you need us, as processor, to assist that Business.
+- **Access** a description of their personal data and a copy in an intelligible form (sections 32 and 35; a controller should normally comply promptly and within 40 days).
+- **Ask for correction or deletion** of data that is inaccurate, irrelevant, excessive, out of date, incomplete, misleading or unlawfully obtained, or that the controller is no longer allowed to keep (section 33).
+- **Object** under section 20, and by written notice require a controller to stop processing that causes or is likely to cause unwarranted damage or distress (section 39 — the controller must reply in writing within 21 days).
+- **Direct marketing:** require a controller not to use their data for direct marketing; prior written consent is needed for that use (section 40). NeedleBase itself is not a marketing tool for advertising to a workshop's customers.
+- **Automated decisions:** rights where a solely automated decision significantly affects the person (section 41). NeedleBase does not make such decisions about customers.
+- **Complaints and compensation:** a person may complain to the **Data Protection Commission** (see [dataprotection.org.gh](https://dataprotection.org.gh) / [dpc.gov.gh](https://dpc.gov.gh)) and may have a path to compensation through the courts where the Act allows (section 43).
 
-Customers should normally direct requests to their tailoring Business (the controller). If you contact HelmutCode about customer data, we will pass the request to the relevant Business and assist it, unless we are the controller for that data (for example your Owner account).
+Please contact the workshop that collected your data first — it is usually the controller. If you contact HelmutCode Solutions about customer data, we will pass the request to the relevant workshop and assist it, unless we are the controller for that data (for example your own owner or staff account).
 
 ## 9. Children
 
-NeedleBase is a business tool. Personal accounts are for adults (18+) running or working in a Business. A Business should not enter a child's personal data except where a parent/guardian has arranged a garment/order and only the minimum necessary should be recorded; Act 843, section 37 restricts processing of special personal data, including data relating to a child under parental control except as the Act provides.
+NeedleBase is a business tool. Shop accounts are for adults (18 or over) running or working in a workshop. A workshop should not enter a child's personal data except where a parent or guardian has arranged a garment, and then only the minimum needed. Act 843, section 37 restricts processing of special personal data, including data relating to a child under parental control, except as the Act allows.
 
-## 10. Registration and accountability
+## 10. Cookies and the public website
 
-A data controller who intends to process personal data must register with the Data Protection Commission (Act 843, sections 27, 46 and 53; renewal every two years, section 50). HelmutCode's registration status for processing it controls: [DPC registration status/number to be inserted]. Each Business is responsible for its own registration as controller of its customer data. A certified Data Protection Supervisor may be appointed where required or appropriate (section 58): [Data Protection Supervisor/contact if appointed, to be inserted].
+The signed-in website uses small cookies that are needed for the service to work, not for advertising:
 
-## 11. Changes to this Policy
+- **NeedleBaseAuth** — keeps you signed in (about eight hours, or 30 days if you tick "Remember me").
+- **NeedleBase.AntiForgery** — a security cookie that helps protect forms.
 
-We may update this Policy as the Service or law changes, posting the new version with a new "Last updated" date and giving reasonable notice of material changes through the Service or by email.
+The public landing page and the Privacy and Terms pages do not use advertising or analytics cookies. Fonts on the landing page are stored on our own site (they are not loaded from Google Fonts).
 
-## 12. Contact
+## 11. The Data Protection Commission
 
-HelmutCode, [registered address in Ghana], [contact email]. Data-protection contact: [contact email]. If you are a customer of a tailoring Business, please contact that Business first about its customer records.
+A data controller who intends to process personal data must register with the Data Protection Commission (Act 843, sections 27, 46 and 53; renewal every two years, section 50). HelmutCode Solutions is not registered with the Data Protection Commission. Each workshop is responsible for its own registration as controller of its customer data.
+
+A person may complain to the Commission about the handling of their personal data (see [dataprotection.org.gh](https://dataprotection.org.gh) / [dpc.gov.gh](https://dpc.gov.gh)).
+
+## 12. Changes to this Policy
+
+We may update this Policy as the service or the law changes. We will post the new version with a new "Last updated" date and give reasonable notice of material changes through the service or by email.
+
+## 13. How to contact us
+
+HelmutCode Solutions, YN13 Flask Street, Ghana.
+
+Email: [helmutessien@gmail.com](mailto:helmutessien@gmail.com)
+
+WhatsApp: [+233 50 078 5153](https://wa.me/233500785153)
+
+These contacts are also the data-protection contact for HelmutCode Solutions, including requests to delete an account or a copy of the data we hold.
+
+If you are a customer of a tailoring or fashion workshop, please contact that workshop first about its customer records.
+
+The live web copy of this Policy is at [https://needlebase.runasp.net/Privacy](https://needlebase.runasp.net/Privacy). The same text is included in the NeedleBase phone app (More → Privacy Policy, and from the registration and sign-in screens) so it can be read offline.
