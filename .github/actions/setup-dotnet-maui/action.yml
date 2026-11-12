@@ -7,32 +7,60 @@ inputs:
 runs:
   using: composite
   steps:
-    # The SDK and its workloads live in one folder so a single cache entry restores both (the workload install
-    # is the slowest step of a cold run). The key changes when the SDK band or the workload list changes.
+    # The SDK and its workloads live in one folder so a single cache entry restores both (the workload
+    # install is the slowest step of a cold run). The key includes the exact 9.0 patch and the workload
+    # flag so a newer SDK is never restored with workload manifests from an older patch.
     - name: Point the SDK at a cacheable folder
       shell: bash
       run: |
+        set -euo pipefail
         echo "DOTNET_INSTALL_DIR=$RUNNER_TOOL_CACHE/needlebase-dotnet" >> "$GITHUB_ENV"
         echo "DOTNET_CLI_TELEMETRY_OPTOUT=1" >> "$GITHUB_ENV"
         echo "DOTNET_NOLOGO=1" >> "$GITHUB_ENV"
+        # Resolve the current 9.0 patch so the cache key and setup-dotnet stay in lockstep.
+        sdk_ver=""
+        for url in \
+          "https://builds.dotnet.microsoft.com/dotnet/Sdk/9.0/latest.version" \
+          "https://dotnetcli.blob.core.windows.net/dotnet/Sdk/9.0/latest.version"
+        do
+          if sdk_ver=$(curl -fsSL --retry 3 --retry-delay 2 --max-time 20 "$url" | tr -d '[:space:]') \
+            && [[ "$sdk_ver" =~ ^9\.0\.[0-9]+$ ]]; then
+            break
+          fi
+          sdk_ver=""
+        done
+        if [[ -z "$sdk_ver" ]]; then
+          echo "::warning::Could not resolve the latest 9.0 SDK version; falling back to 9.0.x."
+          sdk_ver="9.0.x"
+        fi
+        echo "DOTNET_SDK_VERSION=$sdk_ver" >> "$GITHUB_ENV"
+        echo "Resolved .NET SDK $sdk_ver"
     - name: Cache SDK + workloads
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ runner.tool_cache }}/needlebase-dotnet
-        key: dotnet-${{ runner.os }}-9.0-maui${{ inputs.maui }}-v1
+        key: dotnet-${{ runner.os }}-${{ env.DOTNET_SDK_VERSION }}-maui${{ inputs.maui }}-v2
     - name: Set up .NET SDK
       uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
       with:
-        dotnet-version: 9.0.x
+        dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+        skip-lts-prepass: true
     - name: Install maui-android workload
       if: inputs.maui == 'true'
       shell: bash
       run: |
-        if dotnet workload list | grep -q '^maui-android'; then
-          echo "maui-android already installed (cache hit)."
-        else
-          dotnet workload install maui-android
+        set -euo pipefail
+        echo "dotnet SDK $(dotnet --version)"
+        # Always install/repair against this SDK. `dotnet workload list` can still
+        # report maui-android from an older 9.0 patch left in the cached install
+        # directory after setup-dotnet adds a newer patch, which leaves
+        # MSBuildWorkloadSdkResolver unable to resolve Android AOT packs (NETSDK1147).
+        dotnet workload install maui-android
+        if ! dotnet workload list | grep -q '^maui-android'; then
+          echo "::error::maui-android workload is not installed for SDK $(dotnet --version)."
+          exit 1
         fi
+        dotnet workload list
     - name: Cache NuGet packages
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
