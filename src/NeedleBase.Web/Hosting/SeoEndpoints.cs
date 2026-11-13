@@ -11,7 +11,8 @@ public static class SeoEndpoints
         "/Account/Login",
         "/Account/Register",
         "/Terms",
-        "/Privacy"
+        "/Privacy",
+        "/account/delete"
     ];
 
     public static void Map(WebApplication app)
@@ -26,6 +27,7 @@ public static class SeoEndpoints
             sb.AppendLine("Allow: /Account/Register");
             sb.AppendLine("Allow: /Terms");
             sb.AppendLine("Allow: /Privacy");
+            sb.AppendLine("Allow: /account/delete");
             sb.AppendLine("Disallow: /Dashboard");
             sb.AppendLine("Disallow: /Orders");
             sb.AppendLine("Disallow: /Customers");

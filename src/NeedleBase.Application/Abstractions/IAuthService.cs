@@ -30,6 +30,12 @@ public interface IAuthService
 
     /// <summary>Sets a new password with an emailed code and signs out every device. Succeeds with no tokens (sign in next).</summary>
     Task<AuthResult> ResetPasswordAsync(ResetPasswordRequest request, string? ipAddress, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes the signed-in person's account after password + typed confirmation.
+    /// Staff: only their sign-in is removed. Owner: the shop is closed and hosted shop records are deleted.
+    /// </summary>
+    Task<AuthResult> DeleteAccountAsync(string userId, string? businessId, DeleteAccountRequest request, string? ipAddress, CancellationToken cancellationToken = default);
 }
 
 public sealed record AuthResult(

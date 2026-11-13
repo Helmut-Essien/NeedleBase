@@ -107,6 +107,8 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("mailto:helmutessien@gmail.com", footer);
         Assert.Contains("href=\"/Terms\"", footer);
         Assert.Contains("href=\"/Privacy\"", footer);
+        Assert.Contains("href=\"/account/delete\"", footer);
+        Assert.Contains("Delete account", footer);
         Assert.DoesNotContain("lp-brand", footer);
         Assert.DoesNotContain("<img", footer);
 
@@ -154,6 +156,7 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         var xml = await map.Content.ReadAsStringAsync();
         Assert.Contains("<loc>https://needlebase.example/</loc>", xml);
         Assert.Contains("<loc>https://needlebase.example/Account/Register</loc>", xml);
+        Assert.Contains("<loc>https://needlebase.example/account/delete</loc>", xml);
         Assert.DoesNotContain("/Dashboard", xml);
         Assert.DoesNotContain("/Orders", xml);
     }

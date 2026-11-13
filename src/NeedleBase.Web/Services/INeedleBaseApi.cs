@@ -49,6 +49,9 @@ public interface INeedleBaseApi
     /// <summary>New tokens for this browser (every other session is signed out).</summary>
     Task<ApiResult<AuthSessionPayload>> ChangePasswordAsync(NeedleBase.Application.Contracts.Auth.ChangePasswordRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Delete the signed-in account (staff) or close the shop (owner). 204 on success.</summary>
+    Task<ApiResult<bool>> DeleteAccountAsync(NeedleBase.Application.Contracts.Auth.DeleteAccountRequest request, CancellationToken cancellationToken = default);
+
     Task<ApiResult<WhatsAppSettingsDto>> GetWhatsAppSettingsAsync(CancellationToken cancellationToken = default);
 
     Task<ApiResult<WhatsAppSettingsDto>> UpdateWhatsAppSettingsAsync(UpdateWhatsAppSettingsRequest request, CancellationToken cancellationToken = default);

@@ -19,7 +19,7 @@ using System.Security.Cryptography;
 
 namespace NeedleBase.Infrastructure.Identity;
 
-public sealed class AuthService : IAuthService
+public sealed partial class AuthService : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ApplicationDbContext _db;
@@ -264,6 +264,13 @@ public sealed class AuthService : IAuthService
             return AuthResult.Fail("Business not found.", "BUSINESS_MISSING");
         }
 
+        if (business.IsClosed)
+        {
+            await _audit.WriteAsync(new AuditEntry(AuditActions.LoginBlocked, "Sign-in refused: shop account closed",
+                business.Id, user.Id, membership.Role), cancellationToken: cancellationToken);
+            return AuthResult.Fail("This shop account has been deleted.", "SHOP_CLOSED");
+        }
+
         await _audit.WriteAsync(new AuditEntry(AuditActions.LoginSucceeded, "Signed in", business.Id, user.Id, membership.Role),
             cancellationToken: cancellationToken);
         return await IssueTokensAsync(user, business, membership.Role, ipAddress, cancellationToken);
@@ -364,6 +371,12 @@ public sealed class AuthService : IAuthService
                 {
                     await tx.RollbackAsync(cancellationToken);
                     return AuthResult.Fail("Business not found.", "BUSINESS_MISSING");
+                }
+
+                if (business.IsClosed)
+                {
+                    await tx.RollbackAsync(cancellationToken);
+                    return AuthResult.Fail("This shop account has been deleted.", "SHOP_CLOSED");
                 }
 
                 var replacement = _tokenService.CreateRefreshToken(ipAddress);

@@ -30,6 +30,7 @@ public static class AccessRevokedCodes
 {
     public const string AccountDeactivated = "ACCOUNT_DEACTIVATED";
     public const string NoMembership = "NO_MEMBERSHIP";
+    public const string AccountDeleted = "ACCOUNT_DELETED";
 
-    public static bool IsRevoked(string? code) => code is AccountDeactivated or NoMembership;
+    public static bool IsRevoked(string? code) => code is AccountDeactivated or NoMembership or AccountDeleted;
 }

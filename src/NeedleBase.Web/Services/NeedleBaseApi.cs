@@ -108,6 +108,9 @@ public sealed class NeedleBaseApi : INeedleBaseApi
     public Task<ApiResult<AuthSessionPayload>> ChangePasswordAsync(NeedleBase.Application.Contracts.Auth.ChangePasswordRequest request, CancellationToken cancellationToken = default) =>
         SendAsync<AuthSessionPayload>(HttpMethod.Post, "api/auth/change-password", request, cancellationToken);
 
+    public Task<ApiResult<bool>> DeleteAccountAsync(NeedleBase.Application.Contracts.Auth.DeleteAccountRequest request, CancellationToken cancellationToken = default) =>
+        SendAsync<bool>(HttpMethod.Post, "api/me/delete-account", request, cancellationToken);
+
     public Task<ApiResult<WhatsAppSettingsDto>> GetWhatsAppSettingsAsync(CancellationToken cancellationToken = default) =>
         SendAsync<WhatsAppSettingsDto>(HttpMethod.Get, "api/whatsapp/settings", null, cancellationToken);
 

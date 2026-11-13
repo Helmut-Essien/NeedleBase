@@ -150,6 +150,8 @@ public static class MauiProgram
         builder.Services.AddTransient<StaffPage>();
         builder.Services.AddTransient<ChangePasswordViewModel>();
         builder.Services.AddTransient<ChangePasswordPage>();
+        builder.Services.AddTransient<DeleteAccountViewModel>();
+        builder.Services.AddTransient<DeleteAccountPage>();
         builder.Services.AddTransient<AcceptInviteViewModel>();
         builder.Services.AddTransient<AcceptInvitePage>();
         builder.Services.AddTransient<ForgotPasswordViewModel>();

@@ -46,7 +46,8 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Contains("NeedleBase.AntiForgery", html);
         Assert.Contains("do not sell personal data", html);
         Assert.Contains("needlebase.runasp.net/Privacy", html);
-        Assert.Contains("no in-app or self-service button", html);
+        Assert.Contains("If you delete your account in the app or on the website", html);
+        Assert.Contains("href=\"/account/delete\"", html);
         Assert.Contains("tailors, seamstresses, dressmakers and fashion workshop owners", html);
         Assert.DoesNotContain("sewing shops", html);
     }
@@ -67,9 +68,31 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Contains("as agreed in writing when the key is issued", html);
         Assert.Contains("licence fees you paid us in the 12 months", html);
         Assert.Contains("laws of the Republic of Ghana", html);
-        Assert.Contains("no in-app or self-service button", html);
+        Assert.Contains("More → Delete account", html);
+        Assert.Contains("href=\"/account/delete\"", html);
         Assert.DoesNotContain("without a subscription charge", html);
         Assert.DoesNotContain("19 October 2026", html);
+        Assert.DoesNotContain("sewing shops", html);
+    }
+
+    [Fact]
+    public async Task Delete_account_page_is_public_and_explains_the_paths()
+    {
+        using var response = await _anon.GetAsync("/account/delete");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var html = await response.Content.ReadAsStringAsync();
+        Assert.Contains("<h1", html);
+        Assert.Equal(1, CountIgnoreCase(html, "<h1"));
+        Assert.Contains("Delete your NeedleBase account", html);
+        Assert.Contains("If you cannot sign in", html);
+        Assert.Contains("helmutessien@gmail.com", html);
+        Assert.Contains("mailto:helmutessien@gmail.com", html);
+        Assert.Contains("wa.me/233500785153", html);
+        Assert.Contains("+233 50 078 5153", html);
+        Assert.Contains("More → Delete account", html);
+        Assert.Contains("30 days", html);
+        Assert.Contains("href=\"/Privacy\"", html);
+        Assert.DoesNotContain("Delete my account", html); // form only when signed in
         Assert.DoesNotContain("sewing shops", html);
     }
 
@@ -81,7 +104,9 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         var loginHtml = await login.Content.ReadAsStringAsync();
         Assert.Contains("href=\"/Privacy\"", loginHtml);
         Assert.Contains("href=\"/Terms\"", loginHtml);
+        Assert.Contains("href=\"/account/delete\"", loginHtml);
         Assert.Contains("Privacy Policy", loginHtml);
+        Assert.Contains("Delete account", loginHtml);
         Assert.Contains("Terms and Conditions", loginHtml);
         Assert.Contains("nb-auth-legal", loginHtml);
 
@@ -90,7 +115,9 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         var registerHtml = await register.Content.ReadAsStringAsync();
         Assert.Contains("href=\"/Privacy\"", registerHtml);
         Assert.Contains("href=\"/Terms\"", registerHtml);
+        Assert.Contains("href=\"/account/delete\"", registerHtml);
         Assert.Contains("Privacy Policy", registerHtml);
+        Assert.Contains("Delete account", registerHtml);
         Assert.Contains("Terms and Conditions", registerHtml);
         Assert.Contains("I agree to the", registerHtml);
     }
@@ -104,7 +131,7 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Contains("HelmutCode Solutions", html);
         Assert.Contains("YN13 Flask Street, Ghana", html);
         Assert.Contains("Effective date:</strong> 1 January 2027", html);
-        Assert.Contains("Last updated:</strong> 12 November 2026", html);
+        Assert.Contains("Last updated:</strong> 13 November 2026", html);
         Assert.Contains("helmutessien@gmail.com", html);
         Assert.Contains("mailto:helmutessien@gmail.com", html);
         Assert.Contains("wa.me/233500785153", html);

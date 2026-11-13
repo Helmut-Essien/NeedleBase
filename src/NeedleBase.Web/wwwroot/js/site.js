@@ -100,3 +100,19 @@
   window.addEventListener("pageshow", function (e) { if (e.persisted) close(false); });
   window.addEventListener("pagehide", function () { close(false); });
 })();
+
+// Prevent a double tap/click from posting a destructive form twice (account deletion).
+(function () {
+  document.querySelectorAll("form[data-nb-once]").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      if (form.getAttribute("data-nb-once-sent") === "1") {
+        e.preventDefault();
+        return;
+      }
+      form.setAttribute("data-nb-once-sent", "1");
+      form.querySelectorAll("[data-nb-once-submit], button[type=submit]").forEach(function (btn) {
+        btn.disabled = true;
+      });
+    });
+  });
+})();

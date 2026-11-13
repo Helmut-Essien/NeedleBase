@@ -48,6 +48,11 @@ public class Business : Entity
     /// <summary>Consecutive "couldn't reach Platform" re-checks (drives the back-off; never a lock).</summary>
     public int LicenseFailedChecks { get; private set; }
 
+    /// <summary>When the Owner closed the shop (account deletion). Null while the shop is open.</summary>
+    public DateTimeOffset? ClosedAtUtc { get; private set; }
+
+    public bool IsClosed => ClosedAtUtc is not null;
+
     private Business()
     {
     }
@@ -126,6 +131,38 @@ public class Business : Entity
         }
 
         LicenseNextCheckUtc = now + backoff;
+    }
+
+    /// <summary>
+    /// Owner has deleted the shop account: block further use, drop the licence secrets, and anonymise the shop name.
+    /// Hosted shop records are purged by the account-deletion service.
+    /// </summary>
+    public void Close(DateTimeOffset now)
+    {
+        if (ClosedAtUtc is not null)
+        {
+            return;
+        }
+
+        ClosedAtUtc = now;
+        Name = "Closed shop";
+        Phone = null;
+        LicenseKeyProtected = null;
+        LicenseKeyHint = null;
+        LicenseToken = null;
+        LicenseIsValid = false;
+        LicenseReason = "closed";
+        LicenseId = null;
+        LicensePlan = null;
+        LicenseIsTrial = false;
+        LicenseIsComplimentary = false;
+        LicenseExpiresAtUtc = null;
+        LicenseRefreshAfterUtc = null;
+        LicenseGraceUntilUtc = null;
+        LicenseCheckedAtUtc = null;
+        LicenseInvalidSinceUtc = null;
+        LicenseNextCheckUtc = null;
+        LicenseFailedChecks = 0;
     }
 }
 

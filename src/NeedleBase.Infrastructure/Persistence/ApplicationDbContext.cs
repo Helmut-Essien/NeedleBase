@@ -8,6 +8,7 @@ using NeedleBase.Domain.Entities;
 using NeedleBase.Infrastructure.Identity;
 using NeedleBase.Application.Audit;
 using NeedleBase.Infrastructure.Audit;
+using NeedleBase.Application.Contracts.Auth;
 
 namespace NeedleBase.Infrastructure.Persistence;
 
@@ -115,6 +116,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
+        RejectWritesToClosedShopAsync(CancellationToken.None).GetAwaiter().GetResult();
         var restored = StampSyncChangesAsync(CancellationToken.None).GetAwaiter().GetResult();
         WhatsApp.WhatsAppOutbox.AddAsync(this, CancellationToken.None).GetAwaiter().GetResult();
         CaptureAudit(restored);
@@ -123,10 +125,34 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        await RejectWritesToClosedShopAsync(cancellationToken).ConfigureAwait(false);
         var restored = await StampSyncChangesAsync(cancellationToken).ConfigureAwait(false);
         await WhatsApp.WhatsAppOutbox.AddAsync(this, cancellationToken).ConfigureAwait(false);
         CaptureAudit(restored);
         return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Blocks a request that authenticated while the shop was still open but is now writing after the owner
+    /// closed it (for example a sync push racing account deletion). Account deletion itself sets
+    /// <see cref="CurrentBusinessId"/> to null, so it is not rejected by this check.
+    /// </summary>
+    private async Task RejectWritesToClosedShopAsync(CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(CurrentBusinessId))
+        {
+            return;
+        }
+
+        var closed = await Businesses.AsNoTracking()
+            .Where(b => b.Id == CurrentBusinessId)
+            .Select(b => b.ClosedAtUtc != null)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+        if (closed)
+        {
+            throw new ShopClosedException();
+        }
     }
 
     /// <summary>
@@ -396,6 +422,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.Property(x => x.CurrencyCode).HasMaxLength(3).IsRequired();
             e.Property(x => x.MeasurementUnit).HasMaxLength(20).IsRequired();
             e.HasIndex(x => x.Name);
+            e.HasIndex(x => x.ClosedAtUtc);
             // Platform license (key encrypted with Data Protection; never plain text).
             e.Property(x => x.LicenseKeyProtected).HasMaxLength(2000);
             e.Property(x => x.LicenseKeyHint).HasMaxLength(8);

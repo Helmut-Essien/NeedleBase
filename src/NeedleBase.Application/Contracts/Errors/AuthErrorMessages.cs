@@ -27,6 +27,16 @@ public static class AuthErrorMessages
             _ => RegisterFallback
         };
 
+    public static string ForDelete(ApiProblem problem) =>
+        Common(problem) ?? problem.Code switch
+        {
+            StaffErrorMessages.PasswordIncorrect => "Wrong password. Check it and try again.",
+            "DELETE_CONFIRMATION_REQUIRED" => "Type the confirmation words exactly to delete your account.",
+            "OWNER_CONFIRMATION_REQUIRED" => "To close the shop, type DELETE SHOP to confirm.",
+            "SHOP_CLOSED" => "This shop account has been deleted.",
+            _ => problem.FirstValidationError ?? problem.Detail ?? "Couldn't delete the account. Try again."
+        };
+
     private static string? Common(ApiProblem problem) => problem.Code switch
     {
         "ACCOUNT_LOCKED" or "LOGIN_THROTTLED" => "Too many wrong tries. Wait a few minutes, then try again.",

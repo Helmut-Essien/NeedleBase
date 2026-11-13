@@ -69,17 +69,27 @@ public sealed class AccessRevokedService
         }
     }
 
-    public static string Title(string code) =>
-        code == AccessRevokedCodes.AccountDeactivated ? "Account turned off" : "Removed from the business";
+    public static string Title(string code) => code switch
+    {
+        AccessRevokedCodes.AccountDeactivated => "Account turned off",
+        AccessRevokedCodes.AccountDeleted => "Account deleted",
+        _ => "Removed from the business"
+    };
 
     public static string Message(string code, int unsynced)
     {
-        var why = code == AccessRevokedCodes.AccountDeactivated
-            ? "This account has been turned off."
-            : "This account is no longer part of the business.";
+        var why = code switch
+        {
+            AccessRevokedCodes.AccountDeactivated => "This account has been turned off.",
+            AccessRevokedCodes.AccountDeleted => "This NeedleBase account has been deleted.",
+            _ => "This account is no longer part of the business."
+        };
         var what = unsynced > 0
             ? $" {unsynced} change(s) on this device hadn't synced and can't be sent any more. The business's data will be removed from this device."
             : " The business's data will be removed from this device.";
-        return why + what + " Ask your business owner if you need access again.";
+        var next = code == AccessRevokedCodes.AccountDeleted
+            ? ""
+            : " Ask your business owner if you need access again.";
+        return why + what + next;
     }
 }

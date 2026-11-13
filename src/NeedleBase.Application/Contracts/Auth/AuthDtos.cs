@@ -159,3 +159,32 @@ public sealed class ResetPasswordRequest
 
 /// <summary>What the sign-in screens may offer: Forgot password only when the server can send email.</summary>
 public sealed record AuthOptionsDto(bool EmailEnabled);
+
+/// <summary>Typed confirmation phrases required to delete an account (trimmed, case-insensitive on the server).</summary>
+public static class DeleteAccountConfirmations
+{
+    public const string Staff = "DELETE";
+    public const string OwnerShop = "DELETE SHOP";
+
+    /// <summary>Case-insensitive; leading, trailing and repeated whitespace are ignored.</summary>
+    public static bool Matches(string? actual, string expected)
+    {
+        if (string.IsNullOrWhiteSpace(actual))
+        {
+            return false;
+        }
+
+        var normalized = string.Join(' ', actual.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return string.Equals(normalized, expected, StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+public sealed class DeleteAccountRequest
+{
+    [Required, MaxLength(100)]
+    public string Password { get; set; } = string.Empty;
+
+    /// <summary>Staff type DELETE. An Owner must type DELETE SHOP, because that closes the whole shop.</summary>
+    [Required, MaxLength(40)]
+    public string Confirmation { get; set; } = string.Empty;
+}

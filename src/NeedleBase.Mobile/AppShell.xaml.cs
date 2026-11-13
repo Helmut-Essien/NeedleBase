@@ -27,6 +27,7 @@ public partial class AppShell : Shell
         Routing.RegisterRoute(nameof(PrivacyPage), typeof(PrivacyPage));
         Routing.RegisterRoute(nameof(StaffPage), typeof(StaffPage));
         Routing.RegisterRoute(nameof(ChangePasswordPage), typeof(ChangePasswordPage));
+        Routing.RegisterRoute(nameof(DeleteAccountPage), typeof(DeleteAccountPage));
 
         // A stray first press must not survive a navigation and exit later.
         Navigated += (_, _) =>

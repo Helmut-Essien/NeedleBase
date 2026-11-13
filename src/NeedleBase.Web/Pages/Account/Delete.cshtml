@@ -1,0 +1,69 @@
+@page "/account/delete"
+@model NeedleBase.Web.Pages.Account.DeleteModel
+@using NeedleBase.Web.Pages.Shared
+@using NeedleBase.Application.Contracts.Auth
+@{
+    Layout = Model.IsSignedIn ? "_Layout" : "_AuthLayout";
+    ViewData["Title"] = "Delete account";
+}
+<h1 class="@(Model.IsSignedIn ? "nb-page-title" : "nb-auth-title")">Delete your NeedleBase account</h1>
+
+@if (Model.Deleted)
+{
+    <div class="alert alert-success" role="status">Your account has been deleted. You have been signed out.</div>
+}
+
+@if (!string.IsNullOrEmpty(Model.ErrorMessage))
+{
+    <div class="alert alert-danger" role="alert" aria-live="assertive">@Model.ErrorMessage</div>
+}
+
+@if (Model.IsSignedIn)
+{
+    <section class="nb-card nb-narrow">
+        <div class="nb-danger-box">
+            @if (Model.IsOwner)
+            {
+                <p id="delete-warning">You are the shop owner. Deleting your account <strong>closes the whole shop</strong>.</p>
+                <p>You and your staff will be signed out and will not be able to sign in again. The shop's records on our hosted service (customers, measurements, orders, payments and WhatsApp settings) will be deleted at once. The activity log is kept for up to two years. A copy only on a phone is not deleted — clear the app on each device if needed.</p>
+            }
+            else
+            {
+                <p id="delete-warning">This removes <strong>your sign-in only</strong>. The shop's customer, order and payment records stay, and other people in the shop can still use NeedleBase.</p>
+            }
+            <p>This cannot be undone.</p>
+        </div>
+        <form method="post" novalidate data-nb-once aria-describedby="delete-warning">
+            <div class="mb-3">
+                <label asp-for="Input.Password" class="form-label">Password</label>
+                <div class="nb-password-field">
+                    <input asp-for="Input.Password" id="Input_Password" class="form-control nb-password-input" autocomplete="current-password" />
+                    <partial name="_PasswordToggleButton" model="@(new PasswordToggleModel { InputId = "Input_Password" })" />
+                </div>
+                <span asp-validation-for="Input.Password" class="text-danger small"></span>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Input.Confirmation" class="form-label">Type @Model.ConfirmationPhrase to confirm</label>
+                <input asp-for="Input.Confirmation" class="form-control" autocomplete="off" aria-describedby="confirm-hint" />
+                <span id="confirm-hint" class="nb-meta">Type @Model.ConfirmationPhrase exactly.</span>
+                <span asp-validation-for="Input.Confirmation" class="text-danger small"></span>
+            </div>
+            <button type="submit" class="btn nb-btn-danger" data-nb-once-submit>Delete my account</button>
+        </form>
+    </section>
+}
+
+<section class="@(Model.IsSignedIn ? "nb-card nb-narrow" : "")">
+    <h2 class="@(Model.IsSignedIn ? "" : "nb-auth-title")" style="font-size:1.15rem;">If you cannot sign in</h2>
+    <p>If you can sign in, use the form on this page or, in the app, go to More → Delete account.</p>
+    <p>If you cannot sign in, email <a href="mailto:helmutessien@gmail.com">helmutessien@gmail.com</a> or WhatsApp <a href="https://wa.me/233500785153" target="_blank" rel="noopener noreferrer">+233 50 078 5153</a>. After we have verified the request, we will normally delete the account within 30 days.</p>
+    <p>Read the <a asp-page="/Privacy">Privacy Policy</a> for how long records are kept if a shop simply stops using NeedleBase without asking to delete.</p>
+</section>
+
+@if (Model.IsSignedIn)
+{
+    @section Scripts {
+        <script src="~/js/password-toggle.js" asp-append-version="true" defer></script>
+        <partial name="_ValidationScriptsPartial" />
+    }
+}

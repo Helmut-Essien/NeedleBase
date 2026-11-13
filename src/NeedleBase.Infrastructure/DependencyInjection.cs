@@ -161,7 +161,9 @@ public static class DependencyInjection
                                 u.IsActive,
                                 u.SecurityStamp,
                                 Member = businessId != null && db.StaffMemberships.IgnoreQueryFilters()
-                                    .Any(m => m.UserId == userId && m.BusinessId == businessId && m.IsActive)
+                                    .Any(m => m.UserId == userId && m.BusinessId == businessId && m.IsActive),
+                                ShopClosed = businessId != null && db.Businesses
+                                    .Any(b => b.Id == businessId && b.ClosedAtUtc != null)
                             })
                             .FirstOrDefaultAsync(CancellationToken.None); // ~1 ms; a cancelled lookup only produced auth-failure noise
                         if (check is null || !check.IsActive)
@@ -181,6 +183,12 @@ public static class DependencyInjection
                         if (string.IsNullOrEmpty(businessId))
                         {
                             context.Fail("Missing business membership.");
+                            return;
+                        }
+
+                        if (check.ShopClosed)
+                        {
+                            context.Fail("Shop closed.");
                             return;
                         }
 

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NeedleBase.Api.Http;
 using NeedleBase.Application.Abstractions;
+using NeedleBase.Application.Contracts.Auth;
 using NeedleBase.Application.Contracts.Sync;
 using NeedleBase.Application.Audit;
 
@@ -103,6 +104,11 @@ public sealed class SyncController : ControllerBase
             return Ok(string.IsNullOrEmpty(_currentUser.BusinessId)
                 ? page
                 : page with { Subscription = await _licenses.GetStatusAsync(_currentUser.BusinessId, cancellationToken) });
+        }
+        catch (ShopClosedException)
+        {
+            return ApiProblems.Create(HttpContext, StatusCodes.Status409Conflict, "SHOP_CLOSED",
+                "This shop account has been deleted", "This shop account has been deleted.");
         }
         catch (SyncMaintenanceException)
         {

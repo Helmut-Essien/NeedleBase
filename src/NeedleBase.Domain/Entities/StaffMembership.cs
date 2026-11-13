@@ -68,4 +68,10 @@ public class StaffMembership : Entity, IBusinessScoped
     }
 
     public void Reactivate() => IsActive = true;
+
+    /// <summary>Owner is closing the shop: the Owner membership can be turned off too.</summary>
+    public void CloseWithShop()
+    {
+        IsActive = false;
+    }
 }

@@ -177,6 +177,8 @@ public static class ApiApplication
             .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
             .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
+        builder.Services.AddExceptionHandler<NeedleBase.Api.Http.ShopClosedExceptionHandler>();
+
         var app = builder.Build();
 
         foreach (var warning in configWarnings)

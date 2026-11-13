@@ -53,6 +53,8 @@ public static class AuditActions
     public const string PasswordResetRequested = "auth.password_reset_requested";
     public const string PasswordReset = "auth.password_reset";
     public const string Registered = "auth.registered";
+    public const string AccountDeleted = "auth.account_deleted";
+    public const string BusinessClosed = "business.closed";
 
     public const string SyncPush = "sync.push";
     public const string SyncPull = "sync.pull";
@@ -112,6 +114,8 @@ public static class AuditActions
         PasswordResetRequested => "Password reset requested",
         PasswordReset => "Password reset",
         Registered => "Account registered",
+        AccountDeleted => "Account deleted",
+        BusinessClosed => "Shop account closed",
         SyncPush => "Phone sent changes",
         SyncPull => "Phone synced",
         PaymentsViewed => "Viewed payments",

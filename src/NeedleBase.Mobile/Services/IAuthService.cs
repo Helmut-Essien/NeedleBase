@@ -58,6 +58,10 @@ public interface IAuthService
     Task<bool> ChangePasswordAsync(ChangePasswordRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(false);
 
+    /// <summary>Deletes the signed-in account (or closes the shop, if the person is the Owner). Wipes this device on success.</summary>
+    Task<bool> DeleteAccountAsync(DeleteAccountRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
     /// <summary>Whether the server can email password-reset codes. Null when the server can't be reached.</summary>
     Task<bool?> EmailEnabledAsync(CancellationToken cancellationToken = default) => Task.FromResult<bool?>(false);
 

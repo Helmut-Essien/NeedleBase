@@ -794,3 +794,25 @@ a.nb-list__row:hover { color: var(--nb-brand-primary-dark); }
   outline: 2px solid var(--nb-focus);
   outline-offset: 2px;
 }
+
+/* Account deletion (destructive action) */
+.nb-btn-danger, .nb-btn-danger:visited {
+  background: #8b1e1e;
+  border: 1px solid #8b1e1e;
+  color: #fff;
+}
+.nb-btn-danger:hover, .nb-btn-danger:focus-visible {
+  background: #6f1717;
+  border-color: #6f1717;
+  color: #fff;
+}
+.nb-btn-danger:active { box-shadow: inset 2px 2px 5px rgba(0, 0, 0, .25); background: #5a1212; color: #fff; }
+.nb-danger-box {
+  border: 1px solid #e2c4c4;
+  background: #fdf6f6;
+  padding: 1rem 1.1rem;
+  border-radius: 10px;
+  margin: 0 0 1.25rem;
+}
+.nb-danger-box p { margin: 0 0 .6rem; }
+.nb-danger-box p:last-child { margin-bottom: 0; }

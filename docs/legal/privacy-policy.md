@@ -8,7 +8,7 @@
 
 **Effective date:** 1 January 2027
 
-**Last updated:** 12 November 2026
+**Last updated:** 13 November 2026
 
 NeedleBase is an offline-first app for tailors, seamstresses, dressmakers and fashion workshop owners in Ghana and West Africa. This Policy explains, in plain language, what personal data is involved, why it is used, and the rights people have under Ghana's Data Protection Act, 2012 (Act 843).
 
@@ -60,7 +60,8 @@ When a record is deleted in the app, the server keeps a short "tombstone" so oth
 
 We and workshops should not keep personal data longer than needed for the purpose it was collected, unless a law allows or requires it, or the person consents (Act 843, section 24).
 
-- **If you ask us to delete an account:** there is no in-app or self-service button to delete a whole shop account. An Owner (or a staff member, about their own sign-in account) may ask us by email or WhatsApp, using the contacts below. After we have verified the request, we will normally delete the account and the associated data we hold on the hosted service within **30 days**, except where the law requires or allows us to keep something.
+- **If you delete your account in the app or on the website:** after you confirm your password, a staff member's sign-in account is deleted at once (the shop's customer, order and payment records stay). If the Owner deletes their account, the shop is closed at once: everyone is signed out and cannot sign in, and we delete the shop's records that we hold on the hosted service (including customer, measurement, order and payment records, WhatsApp settings and staff sign-in accounts) at once, except where the law requires or allows us to keep something. The activity log is kept for up to 730 days (see below). A copy only on a phone is not deleted by this. The in-app path is More → Delete account. The web page is at [/account/delete](/account/delete).
+- **If you cannot sign in** (or prefer not to use the button): an Owner (or a staff member, about their own sign-in account) may ask us by email or WhatsApp, using the contacts below, or start from the public page at [/account/delete](/account/delete). After we have verified the request, we will normally delete the account and the associated data we hold on the hosted service within **30 days**, except where the law requires or allows us to keep something.
 - **If a shop simply stops using NeedleBase** without asking us to delete the account, we keep the shop's records that we hold on the hosted service (including customer, order and payment records) for **one year**, and then we delete them, except where the law requires or allows us to keep something.
 - **Audit log:** deleted after 730 days by default (see section 2). This is a separate period and may run longer or shorter than the one-year shop-data period, including after an account-deletion request.
 - **Sync tombstones:** deleted after 90 days (see section 4).
@@ -119,7 +120,7 @@ Email: [helmutessien@gmail.com](mailto:helmutessien@gmail.com)
 
 WhatsApp: [+233 50 078 5153](https://wa.me/233500785153)
 
-These contacts are also the data-protection contact for HelmutCode Solutions, including requests to delete an account or a copy of the data we hold.
+These contacts are also the data-protection contact for HelmutCode Solutions, including requests to delete an account or a copy of the data we hold. You can also delete an account in the app (More → Delete account) or at [https://needlebase.runasp.net/account/delete](https://needlebase.runasp.net/account/delete).
 
 If you are a customer of a tailoring or fashion workshop, please contact that workshop first about its customer records.
 

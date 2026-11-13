@@ -8,7 +8,7 @@
 
 **Effective date:** 1 January 2027
 
-**Last updated:** 12 November 2026
+**Last updated:** 13 November 2026
 
 ## 1. Definitions
 
@@ -107,7 +107,7 @@ We are not responsible for those third parties' services, charges, outages or te
 
 12.1 The Owner may stop using the Service at any time. We may suspend or terminate access where an account is used unlawfully, creates a security risk, or materially breaches these Terms, or where the licence key is no longer valid and any grace period has ended; where practicable we will give notice and a chance to remedy first.
 
-12.2 The current product has **no in-app or self-service button** to export or delete a whole shop account. An Owner (or a staff member, about their own sign-in account) may ask us by email or WhatsApp to delete the account and the associated data we hold. After we have verified the request, we will normally action it within 30 days, except where the law requires or allows us to keep something, or the data is reasonably needed to resolve a dispute or enforce these Terms.
+12.2 You can delete your account in the NeedleBase app (More → Delete account) or on the website at [/account/delete](/account/delete), after confirming your password. A staff member's deletion removes only their sign-in account; the shop's records stay. If the Owner deletes their account, the shop is closed at once: everyone is signed out and cannot sign in, and we delete the shop's hosted records (customers, measurements, orders, payments, WhatsApp settings and staff sign-in accounts) at once, except the activity log, which is kept for up to 730 days, and except where the law requires or allows us to keep something, or the data is reasonably needed to resolve a dispute or enforce these Terms. If you cannot sign in, you may ask us by email or WhatsApp; after we have verified the request, we will normally action it within 30 days. Data stored only on a workshop's own device is not deleted by this — it remains the workshop's responsibility.
 
 12.3 If a Business simply stops using the Service without asking us to delete the account, we keep the Business Data we hold on the hosted service for **one year** after use stops, and then we delete it, except where the law requires or allows us to keep something. The server **audit log** is deleted after **730 days** (two years) by default, which is a separate period and may run longer or shorter than the one-year shop-data period. Data stored only on a Business's own device remains the Business's responsibility.
 

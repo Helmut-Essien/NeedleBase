@@ -24,7 +24,15 @@ public sealed class MorePage : ContentPage
             "What's waiting to sync, problems and conflicts")));
 
         body.Add(Ui.Heading("Your account", 2));
-        body.Add(Ui.Card(Ui.LinkRow("Change password", MaterialIcons.Lock, () => Shell.Current.GoToAsync(nameof(ChangePasswordPage)), "MoreChangePassword")));
+        body.Add(Ui.Card(new VerticalStackLayout
+        {
+            Children =
+            {
+                Ui.LinkRow("Change password", MaterialIcons.Lock, () => Shell.Current.GoToAsync(nameof(ChangePasswordPage)), "MoreChangePassword"),
+                Ui.Divider(),
+                Ui.LinkRow("Delete account", MaterialIcons.PersonOff, () => Shell.Current.GoToAsync(nameof(DeleteAccountPage)), "MoreDeleteAccount")
+            }
+        }));
 
         body.Add(Ui.Heading("About", 2));
         var about = new VerticalStackLayout

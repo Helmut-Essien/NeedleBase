@@ -259,6 +259,75 @@ public sealed class AuthService : IAuthService
         }
     }
 
+
+    public async Task<bool> DeleteAccountAsync(DeleteAccountRequest request, CancellationToken cancellationToken = default)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            var outcome = await TryDeleteAccountAsync(request, cancellationToken);
+            if (outcome != HttpStatusCode.Unauthorized || attempt > 0)
+            {
+                return outcome == HttpStatusCode.NoContent;
+            }
+
+            var refreshed = await RefreshAsync(cancellationToken);
+            if (!refreshed.Succeeded)
+            {
+                LastErrorMessage = refreshed.IsTransientFailure
+                    ? "Can't reach NeedleBase. Check your connection and try again."
+                    : "Your session has ended. Sign in again.";
+                return false;
+            }
+        }
+    }
+
+    private async Task<HttpStatusCode> TryDeleteAccountAsync(DeleteAccountRequest request, CancellationToken cancellationToken)
+    {
+        LastErrorMessage = null;
+        var access = await GetAccessTokenAsync();
+        if (string.IsNullOrWhiteSpace(access))
+        {
+            LastErrorMessage = "Your session has ended. Sign in again.";
+            return HttpStatusCode.Forbidden;
+        }
+
+        using var message = new HttpRequestMessage(HttpMethod.Post, "api/me/delete-account")
+        {
+            Content = JsonContent.Create(request, options: JsonOptions)
+        };
+        message.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", access);
+        using var response = await CreateAuthClient().SendAsync(message, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NoContent)
+        {
+            // The server has already deleted the account. Always sign out locally. If the wipe
+            // fails, leave the access_revoked flag so the next start retries clearing this device.
+            var wiped = await _localDatabase.WipeAsync(cancellationToken);
+            await ClearTokensAsync();
+            _secureStorage.Remove(LocalDataOwnerKey);
+            if (!wiped)
+            {
+                await _secureStorage.SetAsync(AccessRevokedKey, AccessRevokedCodes.AccountDeleted);
+            }
+            else
+            {
+                _secureStorage.Remove(AccessRevokedKey);
+            }
+
+            return HttpStatusCode.NoContent;
+        }
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            LastErrorMessage = "Your session has ended. Sign in again.";
+            return response.StatusCode;
+        }
+
+        LastErrorMessage = response.StatusCode == HttpStatusCode.TooManyRequests
+            ? "Too many tries. Wait a few minutes and try again."
+            : AuthErrorMessages.ForDelete(await ApiProblem.ReadAsync(response, cancellationToken));
+        return response.StatusCode;
+    }
+
     public async Task<AuthUserDto?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var client = CreateAuthClient();

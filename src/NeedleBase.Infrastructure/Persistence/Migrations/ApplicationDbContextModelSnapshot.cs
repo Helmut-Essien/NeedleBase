@@ -250,6 +250,9 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasMaxLength(26)
                         .HasColumnType("character varying(26)");
 
+                    b.Property<DateTimeOffset?>("ClosedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -330,6 +333,8 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(40)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClosedAtUtc");
 
                     b.HasIndex("LicenseNextCheckUtc")
                         .HasFilter("\"LicenseKeyProtected\" IS NOT NULL");
