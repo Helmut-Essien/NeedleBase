@@ -9,7 +9,14 @@ These notes are for the operator and for people maintaining NeedleBase. They are
 
 User-facing copies should not contain `[TO CONFIRM]` markers or a "Draft for review / not legal advice" banner.
 
-Account deletion is **built** (13 November 2026). In-app path: More → Your account → Delete account (password + typed confirmation). Public web page: `/account/delete` (linked from the landing footer, signed-in footer, auth layout, Privacy Policy, and the Change password page). Staff deletion removes only that sign-in; an Owner deletion closes the shop, signs everyone out, and purges hosted shop records immediately (activity log kept up to 730 days). People who cannot sign in can still request deletion by email or WhatsApp, normally actioned within 30 days. The published Privacy Policy and Terms describe this. Keep those copies in sync if the behaviour changes.
+## Account deletion (built, 13 November 2026)
+
+- In the app: **More → Your account → Delete account** (password and a typed confirmation).
+- On the web: `/account/delete` (linked from the landing footer, the signed-in footer, the auth layout, the Privacy Policy, and the Change password page).
+- A staff delete removes only that sign-in.
+- An Owner delete closes the shop, signs everyone out, and purges hosted shop records immediately (the activity log is kept for up to 730 days).
+- People who cannot sign in can still request deletion by email or WhatsApp, normally actioned within 30 days.
+- The published Privacy Policy and Terms describe this. Keep those copies in sync if the behaviour changes.
 
 ## Still outstanding (cannot be fixed by the documents alone)
 
@@ -25,7 +32,7 @@ Two commercial decisions now clash with the published Terms. Record them here; d
 - The Terms say fees are whatever was agreed when the licence key was issued. Planned pricing says that when Starter's launch price rises, existing shops move to the new price after 30 days' notice. The Terms will need a price-change clause.
 - The Terms say no export tool is promised. Export is now planned for the Free "Save a copy" action, for paid plans, and for a shop that has stopped paying and is read-only.
 
-Planned prices themselves are decided (see the README section "Pricing (decided, not built)") but are **not built** and are **not** yet the prices on the public landing page. Until the landing page is updated, treat the figures on that page as samples. The "Website prices are samples until confirmed in writing" line in the Terms still matches what the landing page shows today.
+Planned prices themselves are decided (see the README section [Pricing (decided, not built)](../../README.md#pricing-decided-not-built)) but are **not built** and are **not** yet the prices on the public landing page. Until the landing page is updated, treat the figures on that page as samples. The "Website prices are samples until confirmed in writing" line in the Terms still matches what the landing page shows today.
 
 ## Contacts and facts already confirmed
 

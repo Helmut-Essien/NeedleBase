@@ -1,5 +1,7 @@
 # Priority journeys (design-time + acceptance)
 
+Five end-to-end journeys that gate slice acceptance. Use them for prototypes and as device or browser checks.
+
 Five journeys gate the slices in [phases.md](../needlebase-phases/phases.md). Use them for prototypes and as end-to-end acceptance checks. Sample data: **Ama Owusu** (Owner, *Ama Stitches*, Accra) · **Kofi Asante** (Tailor) · **Efua Mensah**, +233 24 555 0123.
 
 | # | Journey | Steps | Must pass | Slice | Status |

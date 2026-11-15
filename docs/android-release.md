@@ -1,5 +1,7 @@
 # Android release (sideload now, Google Play later)
 
+How to build a signed sideload APK or a Google Play App Bundle for NeedleBase.
+
 Package id `com.helmutcode.needlebase`. Release builds are a signed **universal APK** (sideloading), a signed
 **App Bundle (.aab)** (Google Play), or both from one build, all signed with the same upload key; profiled AOT, target SDK 35
 (the .NET 9 Android default; the build stops if it is ever below 35).

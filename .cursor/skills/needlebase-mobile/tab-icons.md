@@ -57,7 +57,7 @@ Data-driven glyphs: expose `MauiIcons.Material.MaterialIcons` from the VM (enum,
 ## Rules
 
 1. **Always size:** `IconSize`/`Size` **and** host `WidthRequest/HeightRequest`. Unsized icons fill their container. Tabs 22 · in-field toggles 21 (in a 21×21 Image) · actions 24 · empty states 48.
-2. **Colours from real keys:** `Charcoal`, `Gray600` (default glyph), `Gray500` (unselected tab), `Primary` (selected/accent), `White` on filled buttons. No raw hex; no invented keys. Token map: [design-system.md](../needlebase-uiux/design-system.md#token--code-map-source-of-truth-is-code-keep-this-table-in-sync).
+2. **Colours from real keys:** `Charcoal`, `Gray600` (default glyph), `Gray500` (unselected tab), `Primary` (selected/accent), `White` on filled buttons. No raw hex; no invented keys. Token map: [design-system.md](../needlebase-uiux/design-system.md#token-to-code-map).
 3. **Don't swap glyphs by DataTrigger on `ImageButton.Source`.** It didn't re-render on Android. Use two Images toggled by `IsVisible` ([password toggle](../needlebase-uiux/maui-patterns.md#password-visibility-toggle)).
 4. Icon-only controls: 44×44 target + `SemanticProperties.Description` + `AutomationId`.
 5. Check the enum exists in `MaterialIcons` before using a name.

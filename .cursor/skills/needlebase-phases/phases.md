@@ -1,13 +1,13 @@
 # NeedleBase slices
 
-Deliver **one slice at a time**. Confirm with the user before starting the next. Every slice must follow [engineering-review](../needlebase-architecture/engineering-review.md) and [code-quality-performance](../needlebase-architecture/code-quality-performance.md). Journey acceptance: [journeys.md](../needlebase-uiux/journeys.md).
+Status and acceptance for each implementation slice. Most slices are built. Confirm with the user before starting later work. Every slice must follow [engineering-review](../needlebase-architecture/engineering-review.md) and [code-quality-performance](../needlebase-architecture/code-quality-performance.md). Journey acceptance: [journeys.md](../needlebase-uiux/journeys.md).
 
 | Slice | Focus | Status |
 |-------|-------|--------|
-| 0 | Scaffold: sln, Clean Architecture, health, README | Done |
-| 1 | Auth + Business tenancy (JWT, refresh, register business) | Done |
-| 2 | Customers + measurements | Done (its code gaps G1, G4, G5 closed 20 Oct 2026: [code-gaps.md](code-gaps.md)) |
-| 3 | Orders + production status (mobile primary) | Done (mobile data syncs via Slice 4) |
+| 0 | Scaffold: sln, Clean Architecture, health, README | Built |
+| 1 | Auth + Business tenancy (JWT, refresh, register shop) | Built |
+| 2 | Customers + measurements | Built (code gaps G1, G4, G5 closed 20 Oct 2026: [code-gaps.md](code-gaps.md)) |
+| 3 | Orders + production status (mobile primary) | Built (mobile data syncs via Slice 4) |
 | 4 | Offline sync push/pull + DeletedItem + SyncChip | Code done 20 Oct 2026; Journey 2 not yet verified on devices (two-device sync, airplane mode) |
 | 5 | Payments + balances + receipts (conflict-safe) | Code done 22 Oct 2026; Journey 1 steps 6–7 and Journey 4 not yet verified on a device |
 | 6 | Web dashboard + production board | Code done 22 Oct 2026; Journey 3 (phone change → web) not yet verified with a signed-in phone and browser |

@@ -1,4 +1,6 @@
-# DI & navigation (current code + planned)
+# DI and navigation (current code + planned)
+
+How the MAUI app registers services and navigates, including what is built and what is still planned.
 
 ## Current registrations (`src/NeedleBase.Mobile/MauiProgram.cs`)
 

@@ -1,12 +1,11 @@
 ---
 name: needlebase-phases
 description: >-
-  Guides NeedleBase implementation slices (phases): scaffold, auth/tenancy,
-  customers/measurements, orders, offline sync, payments, web oversight, staff,
-  subscription, plus the ranked code-gaps backlog (where code doesn't meet
-  the skills yet). Use when planning delivery, starting a slice, asking what
-  to build next, scoping MVP work, confirming acceptance, or picking the next
-  code gap to fix. One slice at a time, with user confirmation.
+  NeedleBase slice status, acceptance lists, later work, and the code-gaps
+  backlog. Most slices are built. Plan limits and the Free phone-only tier
+  are decided but not built. Use when checking what is built, planning later
+  work, confirming acceptance, or picking a code gap to fix. Confirm with the
+  user before starting a new slice or later-work item.
 ---
 
 # NeedleBase Implementation Phases
@@ -15,7 +14,7 @@ description: >-
 
 Follow [standing-rules.md](../standing-rules.md) on every change in this repo: back up the file before you edit it, never touch `.vscode`, commit only when the user says "commit" (locally, no push, no amend or rebase, no `--no-verify`), never commit secrets, use `grep` not `rg`, treat Platform and AssetTag as read-only, and ship a clean Release `--no-incremental` build with 0 warnings and all tests passing. Product copy is plain language for tailors, seamstresses, dressmakers and fashion workshop owners — never "sewing shops".
 
-Deliver **one slice at a time**. Confirm with the user before starting the next. Every slice follows [engineering-review](../needlebase-architecture/engineering-review.md) and [code-quality-performance](../needlebase-architecture/code-quality-performance.md). UI must match [needlebase-uiux](../needlebase-uiux/SKILL.md). Domain/contracts: [needlebase-domain](../needlebase-domain/SKILL.md).
+Status and acceptance live in [phases.md](phases.md). The backlog of skill-vs-code gaps is [code-gaps.md](code-gaps.md). Confirm with the user before starting later work. Every slice follows [engineering-review](../needlebase-architecture/engineering-review.md) and [code-quality-performance](../needlebase-architecture/code-quality-performance.md). UI must match [needlebase-uiux](../needlebase-uiux/SKILL.md). Domain and contracts: [needlebase-domain](../needlebase-domain/SKILL.md).
 
 ## Delivery rules
 

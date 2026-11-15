@@ -1,11 +1,10 @@
 ---
 name: needlebase-mobile-sync
 description: >-
-  Implements NeedleBase offline-first SQLite sync: LocalDbContext, sync queue,
-  push/pull, conflicts, token refresh honesty, payment-safe merge rules, and
-  batched high-throughput sync (target design, Slice 4). Use when building or
-  changing sync, SyncQueueItem, DeletedItem, push/pull endpoints, conflict
-  handling, or SyncChip/Sync details wiring.
+  NeedleBase offline-first SQLite sync: LocalDbContext, sync queue, push/pull,
+  conflicts, token refresh honesty, payment-safe merge rules, and SyncChip /
+  Sync details. Use when changing sync, SyncQueueItem, DeletedItem, push/pull
+  endpoints, conflict handling, or sync UI.
 ---
 
 # NeedleBase Mobile Sync (Offline-First)

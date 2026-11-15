@@ -140,7 +140,7 @@ Do not claim full offline parity with mobile; show local-save and sync protectio
 
 ## v4 visual design (Material + soft UI) [code, approved 22 Oct 2026]
 
-Reference: box mockup `/workspace/mockup/dashboard.html` (v4) and `/workspace/web-v4-shots/`. Tokens/components: [design-system.md § Web v4](design-system.md#web-v4-soft-ui--material). Applies to **every** page via `site.css` (no per-page styles, no inline styles).
+Reference: box mockup `/workspace/mockup/dashboard.html` (v4) and `/workspace/web-v4-shots/`. Tokens/components: [design-system.md § Web v4](design-system.md#web-v4). Applies to **every** page via `site.css` (no per-page styles, no inline styles).
 
 | Page | v4 treatment |
 |------|--------------|

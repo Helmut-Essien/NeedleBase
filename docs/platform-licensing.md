@@ -1,14 +1,14 @@
 # NeedleBase licensing through Platform
 
-NeedleBase shops are licensed by **Platform** (the license hub). NeedleBase only *reads* Platform: it calls
+How NeedleBase shops are licensed through **Platform**, the licensing hub. NeedleBase only *reads* Platform: it calls
 `POST /api/licenses/validate` and `GET /api/licenses/keys` (JWKS). Only the NeedleBase **server** talks to Platform;
 the integration key never reaches browsers or phones.
 
 ## How it works
 
-- **New shop (register):** the owner enters a license key. Before anything is created, the server asks Platform
+- **New shop (register):** the Owner enters a licence key. Before anything is created, the server asks Platform
   with the key, the new shop's id (ULID) as `deviceId`, the shop name, and the owner's email.
-  - Allowed: a valid license (active, trial or complimentary) whose customer email matches the owner's email.
+  - Allowed: a valid licence (active, trial or complimentary) whose customer email matches the owner's email.
   - Refused with a per-reason message: invalid key, key used by another shop, expired, suspended, cancelled,
     not active, email doesn't match.
   - Platform unreachable / busy (network, timeout, 429, 5xx, bad token): registration is refused with
@@ -59,7 +59,7 @@ setup problem (logged).
 ## What Platform must provide (NeedleBase does not change Platform)
 
 1. **Email check on validate:** accept an optional `email` in the validate request and return
-   `emailMatches: true|false` (case-insensitive compare with the license's customer email). Never echo the email
+   `emailMatches: true|false` (case-insensitive compare with the licence's customer email). Never echo the email
    or the customer's real email back. When no email is sent, return `emailMatches: null`.
    NeedleBase treats a missing `emailMatches` as a mismatch and refuses registration/attach.
 2. **One shop per key:** NeedleBase licenses must have `MaxDevices = 1` (the device is the shop id). A second shop

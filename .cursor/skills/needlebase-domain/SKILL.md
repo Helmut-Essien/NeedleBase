@@ -46,7 +46,7 @@ Users are ASP.NET Identity users (Infrastructure); the domain sees `UserId` stri
 
 `New → Cutting → Sewing → Fitting → Ready → Collected`  
 Also: `Cancelled`. **Overdue** = derived (due date passed and not Collected/Cancelled) — badge, not necessarily stored.  
-Status constants: `OrderStatus` in `Domain/Enums` (same static-class pattern as `BusinessRole`). UI display names/colours/icons: [content-and-states.md §6](../needlebase-uiux/content-and-states.md#6-status-names--colours-single-source) (`Ready` displays as "Ready to collect").
+Status constants: `OrderStatus` in `Domain/Enums` (same static-class pattern as `BusinessRole`). UI display names/colours/icons: [content-and-states.md §6](../needlebase-uiux/content-and-states.md#6-status-names-and-colours) (`Ready` displays as "Ready to collect").
 
 ### Order rules [code]
 

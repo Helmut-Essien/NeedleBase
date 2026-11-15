@@ -65,7 +65,7 @@ Client rules:
 - 5xx outside Development is always "Something went wrong on our side. Please try again."
 [code] Auth copy per `code` lives in one place: `NeedleBase.Application/Contracts/Errors/AuthErrorMessages.cs` (used by mobile `AuthService.LastErrorMessage` and web `ApiAuthService.LastErrorMessage`). Registration failures never reveal whether an email exists (`REGISTER_FAILED` is generic by design). Order copy per `code`: `OrderErrorMessages.cs` (API `detail` and mobile local errors use the same text).
 
-## 6. Status names & colours (single source)
+## 6. Status names and colours
 
 From domain: `New → Cutting → Sewing → Fitting → Ready → Collected`, plus `Cancelled`. **Overdue** is derived, a badge next to the status. [code: `Mobile/Helpers/OrderStatusPresentation.cs`, Home stages use `Accent(status)`]. Orders saved offline say **"Saved on this device"** (then sync in the background, Slice 4). Unknown statuses from a newer server show **Other status** (`OrderStatusPresentation.UnknownStatusLabel`). UI label "Ready" is shown as **Ready to collect** (matches Home "READY TO COLLECT" [code]).
 

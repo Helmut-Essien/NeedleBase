@@ -1,10 +1,10 @@
 ---
 name: needlebase-web
 description: >-
-  Implements NeedleBase responsive web oversight app (Razor Pages + Bootstrap)
-  calling the API over HTTP only—no direct SQL—with pagination and parallel
-  fetch performance. Use when building Web pages, dashboard, tables, production
-  board, cookie session, or HttpClient auth refresh against NeedleBase.Api.
+  NeedleBase Razor Pages web app: cookie sign-in, HTTP-only access to the Api
+  (no direct SQL), sidebar shell, landing, legal pages, License, WhatsApp
+  settings and account deletion. Use when editing Web pages, layouts,
+  dashboard, tables, the production board, or HttpClient auth refresh.
 ---
 
 # NeedleBase Web

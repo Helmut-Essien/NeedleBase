@@ -1,5 +1,7 @@
 # MVVM patterns (current code)
 
+How NeedleBase ViewModels are structured in the current code.
+
 ## BaseViewModel (`ViewModels/BaseViewModel.cs`)
 
 ```csharp

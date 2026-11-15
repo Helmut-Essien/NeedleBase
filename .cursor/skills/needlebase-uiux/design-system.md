@@ -1,5 +1,7 @@
 # NeedleBase Design System
 
+Colour, type, spacing and component tokens for the phone app and the website. The source of truth is the code (`Colors.xaml` and `wwwroot/css/site.css`).
+
 Parent brand: HelmutCode. Product: NeedleBase. Use supplied logo unchanged.
 
 ## Colour tokens
@@ -47,7 +49,9 @@ Parent brand: HelmutCode. Product: NeedleBase. Use supplied logo unchanged.
 | `color.disabled.text` | `#5B656B` | Disabled labels (was `#A0A8AD` — 2.4:1 on white, unreadable; code uses `Gray600`) |
 | `color.overlay` | `rgba(32, 42, 50, 0.5)` | Modal scrim |
 
-### Token → code map (source of truth is code; keep this table in sync)
+### Token to code map
+
+The source of truth is the code. Keep this table in sync with it.
 
 | Token | Mobile `Resources/Styles/Colors.xaml` | Web `wwwroot/css/site.css` |
 |-------|----------------------------------------|----------------------------|
@@ -193,7 +197,7 @@ Heights: mobile 48; web 48 for auth/primary form submit (`.nb-auth-submit`), 40 
 
 Always: icon + label (+ optional colour).
 
-Exact token + icon per status (single source): [content-and-states.md §6](content-and-states.md#6-status-names--colours-single-source). Summary: New neutral · Cutting info · Sewing green tint · Fitting amber · Ready to collect solid `PrimaryDark` · Collected muted · Cancelled error muted · Overdue amber badge alongside status.
+Exact token + icon per status (single source): [content-and-states.md §6](content-and-states.md#6-status-names-and-colours). Summary: New neutral · Cutting info · Sewing green tint · Fitting amber · Ready to collect solid `PrimaryDark` · Collected muted · Cancelled error muted · Overdue amber badge alongside status.
 
 ### Sync chip (persistent)
 
@@ -260,7 +264,7 @@ Minimal. 150–200ms ease for sheets/toasts. No decorative looping animation. Sy
 
 Pre-merge gate: [review-checklist.md](review-checklist.md).
 
-## Web v4: soft UI + Material
+## Web v4
 
 Approved 22 Oct 2026 (mockup v4). Web only; the MAUI app keeps the flat tokens above. Implemented in `src/NeedleBase.Web/wwwroot/css/site.css` (v4 block) on top of Bootstrap 5 CSS (grid/utilities/forms only; **Bootstrap JS is no longer loaded**).
 

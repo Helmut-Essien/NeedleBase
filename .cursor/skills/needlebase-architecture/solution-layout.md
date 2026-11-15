@@ -1,5 +1,7 @@
 # Solution layout
 
+How the NeedleBase solution is laid out today. Add a `[target]` folder only when a slice needs it.
+
 `[now]` = exists today · `[target]` = add when the slice needs it (don't create empty folders).
 
 ```

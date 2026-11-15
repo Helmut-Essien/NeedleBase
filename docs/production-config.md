@@ -1,5 +1,7 @@
 # Production configuration
 
+Every setting a production NeedleBase site needs, and how the Api checks them at start-up.
+
 Every setting a real NeedleBase deployment (MonsterASP.NET + helmutcode.com) needs. Nothing secret goes in the
 repo: `appsettings.json` ships empty values, Development uses user-secrets, production uses **environment
 variables** on the server.
@@ -14,7 +16,7 @@ Outside Development (and the `Testing` environment used by integration tests) th
 missing or wrong it stops with one message listing every problem (setting names only, never values). Optional
 features that are simply off (email, WhatsApp, token issuer) are logged as warnings at start-up.
 
-In the single-site layout ([deployment.md](deployment.md#one-site-one-app-web-at--api-at-api)) `Api:BaseUrl` is the **site root**
+In the single-site layout ([deployment.md](deployment.md#one-site-one-app)) `Api:BaseUrl` is the **site root**
 (`https://your-host/`): the Web's calls are relative `api/...` paths. The Web refuses to start without an https `Api:BaseUrl` outside Development, and with a bad
 `ForwardedHeaders:*` or relative `DataProtection:KeysPath`.
 
@@ -38,7 +40,7 @@ So every setting below, Api and Web, goes into the one site.
 | `GitHub__Token` | no | Only for a private repository or if the 60-calls-an-hour anonymous GitHub limit is ever hit (answers are cached 5 minutes). A read-only fine-grained token (Contents: read). Set it on the panel; never commit it. |
 | `Platform__BaseUrl` | **yes**\* | https Platform licensing address (release: `PLATFORM_BASE_URL` variable). |
 | `Platform__IntegrationKey` | **yes**\* | Secret from Platform for the `NEEDLEBASE` service (release: `PLATFORM_INTEGRATION_KEY` secret; without both, the release writes `Platform__RequireLicenseKey=false`). |
-| `Platform__TokenIssuer` | recommended | Expected license-token issuer; empty = not checked (warning). |
+| `Platform__TokenIssuer` | recommended | Expected licence-token issuer; empty = not checked (warning). |
 | `Platform__RequireLicenseKey` | no | `true`/`false` (anything else is a start-up error). Default `true`. `false` = shops register without a key and are never locked (warning). \*Platform settings are only required while this is `true`. |
 | `Platform__ServiceCode`, `LockGraceDays`, `TimeoutSeconds`, `RecheckPollMinutes` | no | See [platform-licensing.md](platform-licensing.md). |
 | `Email__Host`, `Email__Port`, `Email__Username`, `Email__Password` | optional, all or none | SMTP. Off when none set (invite/reset codes are shared by hand, Forgot password hidden). Half-set = start-up error. Gmail caps ~500 mails/day; use a real provider for launch. |
@@ -48,7 +50,7 @@ So every setting below, Api and Web, goes into the one site.
 | `WhatsApp__BusinessAccountId`, `ApiVersion`, `TemplateLanguage`, `DelaySeconds`, `MaxPerBusinessPerHour` | no | Defaults in `WhatsAppOptions`. |
 | `ForwardedHeaders__KnownProxies` | if behind a proxy | Comma-separated proxy IPs (full form: `10.0.0.5`, not `10.5`, no ports) whose `X-Forwarded-For/-Proto` are trusted (loopback always is). Ask MonsterASP. Without it, every user looks like the proxy IP to the rate limits and login throttle. If the Api log says "The Web front end reaches the Api from X", add X here (the Web's calls re-enter through the host's network). |
 | `ForwardedHeaders__KnownNetworks` | if behind a proxy | Comma-separated CIDR ranges, e.g. `10.0.0.0/8`. `/0` (trust everyone) is refused: anyone could fake their IP and dodge rate limits. |
-| `DataProtection__KeysPath` | recommended | Absolute folder for the Api key ring (encrypts stored license keys). Default `<site>/App_Data/Keys/Api`. When the Api runs inside the Web, a set `DataProtection__KeysPath` is the Web's folder and the Api uses its `Api` subfolder. |
+| `DataProtection__KeysPath` | recommended | Absolute folder for the Api key ring (encrypts stored licence keys). Default `<site>/App_Data/Keys/Api`. When the Api runs inside the Web, a set `DataProtection__KeysPath` is the Web's folder and the Api uses its `Api` subfolder. |
 | `RateLimits__AuthPermitPerMinute` / `RegisterPermitPer10Minutes` / `RefreshPermitPerMinute` | no | Defaults 30 / 10 / 300 per IP. |
 
 ## Web (`src/NeedleBase.Web`)
@@ -65,7 +67,7 @@ So every setting below, Api and Web, goes into the one site.
 
 Both apps keep an encryption key ring on disk:
 
-- **Api** (`App_Data/Keys/Api` or `DataProtection__KeysPath`): encrypts each shop's license key. If lost, stored
+- **Api** (`App_Data/Keys/Api` or `DataProtection__KeysPath`): encrypts each shop's licence key. If lost, stored
   keys can't be read and those shops show "needs re-attach" until the owner enters the key again (never locked).
 - **Web** (`App_Data/Keys` or `DataProtection__KeysPath`): signs the sign-in and antiforgery cookies. If lost,
   everyone is signed out once.

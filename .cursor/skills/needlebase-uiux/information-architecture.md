@@ -1,5 +1,7 @@
 # NeedleBase Information Architecture
 
+How the phone app and the website are organised: tabs, sidebar, roles and main journeys.
+
 ## Domain entities (shared)
 
 ```
@@ -16,7 +18,7 @@ Business (workspace)
 └── Settings (units, currency GHS, notifications, subscription, sync)
 ```
 
-**Order statuses (main flow):** New → Cutting → Sewing → Fitting → Ready → Collected (UI label for Ready: **Ready to collect**; colours/icons in [content-and-states.md](content-and-states.md#6-status-names--colours-single-source))  
+**Order statuses (main flow):** New → Cutting → Sewing → Fitting → Ready → Collected (UI label for Ready: **Ready to collect**; colours/icons in [content-and-states.md](content-and-states.md#6-status-names-and-colours))  
 **Side statuses:** Cancelled, Overdue (flag on due date; do not clutter primary chip set)
 
 ---

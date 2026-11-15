@@ -1,8 +1,10 @@
 # Deployment (MonsterASP.NET + helmutcode.com)
 
-Settings: [production-config.md](production-config.md). Android: [android-release.md](android-release.md). Automated release/deploy: [ci-cd.md](ci-cd.md) (the steps below are what it does; use them by hand when needed).
+How to host NeedleBase as one site on MonsterASP.NET: the Web at `/` and the Api at `/api`, in the same process.
 
-## One site, one app: Web at `/`, Api at `/api`
+Settings: [production-config.md](production-config.md). Android: [android-release.md](android-release.md). Automated release and deploy: [ci-cd.md](ci-cd.md) (the steps below are what it does; use them by hand when needed).
+
+## One site, one app
 
 NeedleBase runs as **one** ASP.NET Core application in **one** MonsterASP site (one hostname, one certificate, one
 app pool, no CORS, no IIS sub-application), like Platform:
@@ -33,8 +35,8 @@ apart (`Api:InProcess=false`, `Api:BaseUrl` points at the standalone Api). Healt
 
 Moving from the old two-app layout: the first one-app deploy deletes the old `wwwroot\api` files (except
 `wwwroot\api\App_Data`, which is kept). The Api's key ring moves from `wwwroot\api\App_Data\Keys\Api` to
-`wwwroot\App_Data\Keys\Api`; copy the old `*.xml` key files across in the file manager so stored license keys stay
-readable (otherwise the Owner re-enters the license key once; shops are never locked). After that the leftover
+`wwwroot\App_Data\Keys\Api`; copy the old `*.xml` key files across in the file manager so stored licence keys stay
+readable (otherwise the Owner re-enters the licence key once; shops are never locked). After that the leftover
 `wwwroot\api` folder can be deleted.
 
 ## First deploy before HTTPS (free plan)

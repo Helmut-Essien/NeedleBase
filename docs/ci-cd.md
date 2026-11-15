@@ -1,5 +1,7 @@
 # CI/CD (GitHub Actions)
 
+How NeedleBase is built, tested, released and deployed from GitHub Actions.
+
 | File | What |
 |---|---|
 | `.github/workflows/ci.yml` | Every PR and push to other branches (main runs it inside Release): detect changes, build + test only the affected parts, Android Debug build, vulnerable-package check. |
@@ -60,7 +62,7 @@ Same shape as AssetTag's `main.yml`: one database, one secret for it, and nothin
 | `MONSTER_SITE` | production | IIS site name (e.g. `site12345`) |
 | `MONSTER_USER` / `MONSTER_PASSWORD` | production | Web Deploy login of the site. No commas or double quotes (msdeploy can't parse them). |
 | `JWT_SECURITY_KEY` | production, optional | ≥ 32 random characters. Unset = derived from the database secret (stable; changing the DB password signs everyone out once). |
-| `PLATFORM_INTEGRATION_KEY` | production, optional | Platform licensing key; with the `PLATFORM_BASE_URL` variable turns license keys on. Unset = shops register without a key (warning in the run). |
+| `PLATFORM_INTEGRATION_KEY` | production, optional | Platform licensing key; with the `PLATFORM_BASE_URL` variable turns licence keys on. Unset = shops register without a key (warning in the run). |
 | `PLAY_SERVICE_ACCOUNT_JSON` | play-store | Play Console service-account JSON (later) |
 
 The deploy masks every value it writes. Optional extras (email, WhatsApp, proxies) are not wired: the deploy
@@ -135,7 +137,7 @@ from an old ref, so phones can install it).
 
 ### Server packages
 
-Framework-dependent, `UseAppHost=false`, out-of-process hosting. One site, one app ([deployment.md](deployment.md#one-site-one-app-web-at--api-at-api)):
+Framework-dependent, `UseAppHost=false`, out-of-process hosting. One site, one app ([deployment.md](deployment.md#one-site-one-app)):
 the Web package (artifact `server-site`) contains the Api, which it serves under `/api` in the same process. Web
 Deploy removes stale files (so old DLLs, and the old `/api` sub-application files, never linger) but **never touches
 `App_Data`** (Data Protection key rings, also `api\App_Data` left by the old layout), `logs`, `data` or

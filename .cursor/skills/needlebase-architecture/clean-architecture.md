@@ -1,5 +1,7 @@
 # Clean Architecture rules
 
+Where each NeedleBase project may depend, and where new code belongs.
+
 ## Where code lives (decided)
 
 **Target:** use-case services live in **Application**. **Infrastructure** only implements persistence and external interfaces (EF `ApplicationDbContext`, Identity, token service, clock, email, file storage). Controllers and PageModels stay thin.

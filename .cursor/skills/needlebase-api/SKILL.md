@@ -1,12 +1,12 @@
 ---
 name: needlebase-api
 description: >-
-  NeedleBase ASP.NET Core Api + Infrastructure: controllers, JWT/refresh auth
+  NeedleBase ASP.NET Core Api and Infrastructure: controllers, JWT/refresh auth
   and policies, fail-closed Business tenancy filters, EF Core PostgreSQL and
-  migrations, ProblemDetails errors with stable codes, health/ping, and
-  sync push/pull with DeletedItem. Use when editing Api controllers,
-  middleware, Program.cs, Infrastructure persistence/identity, EF migrations,
-  or API error handling.
+  migrations, ProblemDetails errors, health/ping, sync push/pull with
+  DeletedItem, licensing and account deletion. Use when editing Api
+  controllers, middleware, Program.cs, Infrastructure persistence or identity,
+  EF migrations, or API error handling.
 ---
 
 # NeedleBase API & Infrastructure
