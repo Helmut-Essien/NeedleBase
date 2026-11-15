@@ -10,6 +10,10 @@ description: >-
 
 # NeedleBase UI/UX
 
+## Standing rules
+
+Follow [standing-rules.md](../standing-rules.md) on every change in this repo: back up the file before you edit it, never touch `.vscode`, commit only when the user says "commit" (locally, no push, no amend or rebase, no `--no-verify`), never commit secrets, use `grep` not `rg`, treat Platform and AssetTag as read-only, and ship a clean Release `--no-incremental` build with 0 warnings and all tests passing. Product copy is plain language for tailors, seamstresses, dressmakers and fashion workshop owners — never "sewing shops".
+
 Offline-first tailoring business management SaaS (HelmutCode). Mobile is the daily tailor tool; web is oversight. Shared visual identity; platform-specific density and patterns.
 
 ## When this skill applies

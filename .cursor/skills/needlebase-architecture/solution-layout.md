@@ -25,7 +25,7 @@ src/
   NeedleBase.Mobile.Data/
     Data/{LocalDbContext,LocalDbOptions}.cs  Services/ (Customer/Measurement local services, LocalDatabaseService) [now]
     Data/LocalSchemaMigrator.cs  (versioned steps, PRAGMA user_version) [now]
-tests/  Domain.Tests  Application.Tests  Api.Tests  Mobile.Tests   [now] — see testing.md
+tests/  Domain.Tests  Application.Tests  Api.Tests  Web.Tests  Mobile.Tests   [now] — see testing.md
 ```
 
 ## Scaffold order

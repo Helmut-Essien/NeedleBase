@@ -7,6 +7,8 @@ NeedleBase uses WhatsApp in two ways:
 
 One WhatsApp number (the NeedleBase platform number) sends for every shop. The shop's name goes into each message.
 
+**Product note (15 November 2026):** automatic template messages are implemented in code, but they are **not** a sold plan feature until the business is verified with Meta. Until then, shops use **tap-to-send**. This document remains the technical setup for the automatic path, for when that verification is done.
+
 ## 1. Meta business, app and number
 
 1. Go to <https://business.facebook.com> and create (or open) the **Meta Business portfolio** for the business that will own the number.

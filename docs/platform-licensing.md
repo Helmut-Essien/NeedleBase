@@ -77,3 +77,9 @@ setup problem (logged).
 ## Known limits
 
 See `.cursor/skills/needlebase-phases/code-gaps.md`, section "Platform licensing".
+
+Shops that were created before licensing, and shops that do not yet have a key, stay unlimited. A planned **Free** tier (phone only, no account, no licence key, tight customer and order limits) is **not built**. Do not start locking shops without a key to Free limits until that work is requested.
+
+## Pricing (decided, not built)
+
+Plan prices and feature limits (Free / Starter / Workshop / Production) are decided but not enforced. The source of truth is the README section "Pricing (decided, not built)". The public landing page may still show older sample prices until those pages are updated.

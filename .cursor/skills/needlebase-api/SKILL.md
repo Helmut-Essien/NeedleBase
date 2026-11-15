@@ -11,22 +11,26 @@ description: >-
 
 # NeedleBase API & Infrastructure
 
+## Standing rules
+
+Follow [standing-rules.md](../standing-rules.md) on every change in this repo: back up the file before you edit it, never touch `.vscode`, commit only when the user says "commit" (locally, no push, no amend or rebase, no `--no-verify`), never commit secrets, use `grep` not `rg`, treat Platform and AssetTag as read-only, and ship a clean Release `--no-incremental` build with 0 warnings and all tests passing. Product copy is plain language for tailors, seamstresses, dressmakers and fashion workshop owners — never "sewing shops".
+
 Composition: **Api** host + **Infrastructure** implementations of **Application** interfaces. Domain stays persistence-ignorant.
 
-**Built:** auth (register-business, login, refresh, logout), `/api/me`, Customers + Measurements CRUD, Orders CRUD + status patch, health, ping, ProblemDetails. sync push/pull + `DeletedItem` (S4). Payments (S5), Staff/Invitations (S7: `api/staff`, `api/auth/invite-preview|accept-invite|change-password`; S7b: `GET api/auth/options` → `{emailEnabled}`, `POST api/auth/forgot-password` 202 (same reply for unknown emails; 503 `PASSWORD_RESET_UNAVAILABLE` when email is off), `POST api/auth/reset-password` 204 / `RESET_CODE_INVALID` / `PASSWORD_WEAK` / 429, `POST api/staff/{userId}/reassign-orders` RequireOwner `{toUserId?}` → `{moved,toUserId,toName}` / `REASSIGN_TARGET_INVALID`). Email: `IEmailSender.TryQueue` (never blocks a request; never log codes/passwords); settings section `Email` (Host, Port, Username, Password, FromAddress, FromName, AppBaseUrl, TimeoutSeconds), password only from user-secrets/env. **Planned:** Subscription (S8).
+**Built:** auth (register-business, login, refresh-token, logout, invite-preview, accept-invite, change-password, forgot/reset password, `GET api/auth/options`), `/api/me`, `POST /api/me/delete-account` (staff removes that login; owner closes the shop), Customers + Measurements CRUD, Orders CRUD + status patch, health, ping, ProblemDetails, sync push/pull + `DeletedItem` (S4), Payments (S5), Staff/Invitations (S7, including `POST api/staff/{userId}/reassign-orders`), Platform licensing (`GET /api/subscription`, `POST /api/subscription/license`) and the read-only lock when a licence lapses, WhatsApp send + tap-to-send. Email: `IEmailSender.TryQueue` (never blocks a request; never log codes/passwords); settings section `Email` (Host, Port, Username, Password, FromAddress, FromName, AppBaseUrl, TimeoutSeconds), password only from user-secrets/env. **Not built:** plan feature limits and the Free phone-only tier (see the README section "Pricing (decided, not built)"). Automatic WhatsApp template messages are in code but are not a sold plan feature until Meta verifies the business.
 
 ## Hard rules
 
 1. **ULID string IDs** (NUlid) — never int/Guid PKs for domain entities.  
 2. **BusinessId filter, fail closed** — every tenant entity gets a global filter `x.BusinessId == CurrentBusinessId` set by `BusinessTenancyMiddleware` from the `business_id` claim. **Null business id → no rows.** Login/refresh/membership checks use `.IgnoreQueryFilters()` with explicit `UserId`/`BusinessId` predicates. Every tenant endpoint has a cross-tenant isolation test.  
    [code] Filters are `CurrentBusinessId != null && x.BusinessId == CurrentBusinessId`; `Identity/AuthService.cs` login/refresh membership lookups use `.IgnoreQueryFilters()` scoped by user id. Tests: `TenancyIsolationTests`.  
-3. **DeletedItem (planned S4)** — `SaveChanges` will track deletes for mobile pull, with BusinessId. Not in code yet; don't reference it until S4.  
+3. **DeletedItem (S4, built)** — `SaveChanges` tracks deletes for mobile pull, with BusinessId (`Domain/Entities/DeletedItem.cs`; server-only).  
 4. **Sync push (S4, built)** — `RequireStaff`; scoped to the token's business by the fail-closed filters; idempotent on client ULIDs (identical replay = applied no-op). No distributed lock (optional; not built).  
 5. **Payment conflicts** — do not silently overwrite; return conflict payload for mobile UI.  
 6. **Auth** — JWT Bearer + refresh tokens; map `X-Auth-Token` → `Authorization` for mobile. Do not log tokens in Production.  
 7. **Health** — `/health/live`, `/health/ready` (DB), mobile ping `GET /api/test/ping` (`DiagnosticsController`) — all anonymous.  
 8. **Migrations** — In **Development only**, `Program.cs` listens first, then runs `MigrateAsync()` + `DevelopmentDataSeeder` (logs and continues if Postgres is down). Production never auto-migrates: apply a reviewed `dotnet ef migrations script --idempotent` after a DB backup. Never edit an applied migration.  
-9. **Email links (planned)** — use `FrontendBaseUrl` config; never hardcode Web hostnames.  
+9. **Email links** — use `FrontendBaseUrl` / `Email:AppBaseUrl`; never hardcode Web hostnames.  
 10. **Thin endpoints** — controllers call Application use-case services and return DTOs or `ApiProblems.*`.
    [code] `Application/Customers/` (via `IApplicationDbContext`).  
 11. **Speed & EF hygiene** — `AsNoTracking()` + DTO projection for reads; index `BusinessId` (and common filter/sort columns); no N+1; paginate lists with a hard max page size; pass `CancellationToken`; batch sync apply/`SaveChanges`; prefer `ExecuteUpdate`/`ExecuteDelete` only when DeletedItem/sync side-effects are handled. Full rules: [code-quality-performance](../needlebase-architecture/code-quality-performance.md).  

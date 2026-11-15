@@ -9,7 +9,7 @@ app pool, no CORS, no IIS sub-application), like Platform:
 
 | URL | Served by |
 |---|---|
-| `https://your-host/` | the Web (Blazor Server, cookie sign-in) |
+| `https://your-host/` | the Web (Razor Pages, cookie sign-in) |
 | `https://your-host/api/...` | the Api, hosted **inside the Web process** (`Api:InProcess=true`, JWT auth) |
 
 Panel setup, once:

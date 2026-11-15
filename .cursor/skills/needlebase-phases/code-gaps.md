@@ -2,7 +2,7 @@
 
 The skills define the **target standard**. Each item here is (or was) a place where the code did not comply. When you find a new one, add it as `Gn` with files, required change and an acceptance test, and add an inline `> Code gap (to implement): … (Gn)` marker in the skill. Fix one item per change, following [engineering-review](../needlebase-architecture/engineering-review.md). When it's fixed, move it to **Done** with the date and remove the inline marker.
 
-Feature work that isn't built yet (Orders, sync, payments, staff) is **not** listed here. That is the slice plan in [phases.md](phases.md).
+Feature work that isn't built yet is **not** listed here. See [phases.md](phases.md) (later work) and the README section "Pricing (decided, not built)".
 
 ## Open
 

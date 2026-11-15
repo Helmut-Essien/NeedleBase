@@ -8,11 +8,11 @@ Deliver **one slice at a time**. Confirm with the user before starting the next.
 | 1 | Auth + Business tenancy (JWT, refresh, register business) | Done |
 | 2 | Customers + measurements | Done (its code gaps G1, G4, G5 closed 20 Oct 2026: [code-gaps.md](code-gaps.md)) |
 | 3 | Orders + production status (mobile primary) | Done (mobile data syncs via Slice 4) |
-| 4 | Offline sync push/pull + DeletedItem + SyncChip | In progress: code + automated tests done 20 Oct 2026; Journey 2 not yet verified on devices (two-device sync, airplane mode) |
-| 5 | Payments + balances + receipts (conflict-safe) | In progress: code + automated tests done 22 Oct 2026; Journey 1 steps 6–7 and Journey 4 not yet verified on a device |
-| 6 | Web dashboard + production board | In progress: code + automated tests done 22 Oct 2026; Journey 3 (phone change → web) not yet verified with a signed-in phone and browser |
-| 7 | Staff invites + role-limited UI | Planned |
-| 8 | Subscription/trial + polish | Planned |
+| 4 | Offline sync push/pull + DeletedItem + SyncChip | Code done 20 Oct 2026; Journey 2 not yet verified on devices (two-device sync, airplane mode) |
+| 5 | Payments + balances + receipts (conflict-safe) | Code done 22 Oct 2026; Journey 1 steps 6–7 and Journey 4 not yet verified on a device |
+| 6 | Web dashboard + production board | Code done 22 Oct 2026; Journey 3 (phone change → web) not yet verified with a signed-in phone and browser |
+| 7 | Staff invites + role-limited UI | Code done 26 Oct 2026; Journey 5 not yet verified on a device or in a browser |
+| 8 | Licensing, WhatsApp and polish | Platform licensing, the read-only lock, WhatsApp (tap-to-send + automatic sending) and pending-sync badges are built and committed. **Not built:** plan feature limits and the Free phone-only tier (see the README section "Pricing (decided, not built)"). |
 
 ---
 
@@ -137,7 +137,7 @@ Slice 7b (26 Oct 2026): Gmail SMTP email (MailKit, config/user-secrets only; off
 - No invented multi-currency or multi-business switching
 - **WhatsApp order updates** (added 26 Oct 2026 at the owner's request): (a) tap-to-send from order detail on phone + web (prefilled, editable, per-status Ghana-friendly text with the shop name; +233 normalisation; works offline; missing/invalid number explained; audited as "opened"); (b) automatic template messages via Meta Cloud API on owner-chosen statuses (config only from user-secrets/env; off + explained when unconfigured; per-business settings; per-customer opt-in, default off, STOP honoured; transactional outbox + background sender with backoff, 2-min debounce, once per order+status across sync replays; signed webhook for delivery states; Owner/Manager log; per-business hourly cap; masked audit). Setup: `docs/whatsapp-setup.md`.
 
-**Slice 8 status (26 Oct 2026):** partly built [code], not committed.
+**Slice 8 status (15 Nov 2026):** Platform licensing, daily recheck, grace and the read-only lock, WhatsApp (tap-to-send + automatic sending) and pending-sync badges are **built and committed**. Plan feature limits (staff, customers, orders, photos, emails) and the Free phone-only tier are **not built**. See the README section "Pricing (decided, not built)". Automatic WhatsApp template messages are not a sold plan feature until Meta verifies the business.
 Built: WhatsApp (a) + (b) above; per-row pending-sync badge on the phone's Orders and Customers lists ("Not synced yet" / "Needs attention", one indexed queue query per page; clears when acked). Server: `Domain/Entities/WhatsApp*.cs`, `Application/WhatsApp/WhatsAppLinks.cs`, `Contracts/WhatsApp`, `Infrastructure/WhatsApp/*` (options, client, outbox in `SaveChanges`, sender `BackgroundService`, service, webhook), `Api/Controllers/WhatsAppController.cs`, migration `20261026114928_WhatsApp`. Web: order page WhatsApp card (+ consent and per-order log for Owner/Manager), `Pages/Settings/WhatsApp` (+ nav). Mobile: "Message on WhatsApp" on Order detail (`Launcher`, `whatsapp://` then `wa.me`; Android `<queries>` entry), best-effort opened ping.
 Smoke coverage (existing + new): auth (`AuthApiTests`, `StaffApiTests`), BusinessId isolation (tenant tests across Customers/Orders/Payments/Audit + WhatsApp log), sync idempotency (`SyncEndpointTests`, payment replay, WhatsApp once-per-status on re-push), payment conflict path (`PaymentApiTests` SameId/different content). Page-size caps: server `PaginationDefaults.MaxPageSize` = 100, web client clamps, WhatsApp log 50/page.
 Added (26 Oct 2026, after user decisions): badge tap → Sync details; Sync details lists conflicts/failures first ("N changes need your choice"), real empty state only after a successful load, load error + Try again; More → "Sync details". Phone: customer WhatsApp consent on Customer detail (works offline: local `WhatsAppConsents` table, schema v10; pushed after each sync with the time it was chosen; the server keeps the newer change, so a STOP reply always wins over a late offline opt-in; the server writes the audit entry; Owner/Manager change it, Tailors see it read-only) and More → WhatsApp settings + message log (online only; Owner/Manager; Save disabled when the server isn't configured or for anyone else). Home shows "Couldn't load" + Try again instead of "Nothing needs attention" when the local read fails. Indexes checked: BusinessId + hot filters all covered; no migration.
@@ -159,19 +159,27 @@ Mark a slice **Done** in the table only when its acceptance list is met (or expl
 Not owned by one slice (only “Recent activity” was in the IA). Built after Slice 6: `AuditEvents` (append-only), Api `GET /api/audit`, web **Activity** page + order History panel + customer History link. Slice 7 must keep emitting `staff.*` (captured automatically from `StaffMembership` changes) and emit `auth.password_changed` from the password-change endpoint it adds. Mobile read-only history: deferred.
 
 ### Platform licensing (3 Nov 2026)
-Supersedes the 26 Oct "Trial/subscription: ON HOLD" decision (the user approved the flow on 3 Nov 2026). Code + automated tests done, not committed; not yet verified against a real Platform (Platform must first add the email-match field: `docs/platform-licensing.md`).
+Supersedes the 26 Oct "Trial/subscription: ON HOLD" decision (the user approved the licensing flow on 3 Nov 2026). Code + automated tests are committed. Not yet verified against a live Platform in production (see `docs/platform-licensing.md`). Plan prices and feature limits were decided later and are **not built** — see the README section "Pricing (decided, not built)".
 Server: `Business` license fields + migration `20261103123054_PlatformLicense`; `Application/Licensing` (`SubscriptionRules`, `LicenseErrors`, `ILicensePlatform`); `Infrastructure/Licensing` (Platform client, ES256/JWKS token check, encrypted key, re-check worker); `SubscriptionWriteGuard` (read-only refuses new customers/measurements/orders/payments; sync pushes allowed); `GET /api/subscription`, `POST /api/subscription/license` (Owner, rate-limited); register needs a key (`Platform:RequireLicenseKey`); status in every sync pull.
 Web: license key on Register; banner on every page (cached 60 s); `Settings/License` (Owner). Mobile: key on Register; Home banner; local read-only gate (offline), status kept in secure storage.
 Tests: `LicensingApiTests`, `PlatformLicenseClientTests`, `LicensingRulesTests`, `BusinessLicenseTests`, `LicensePageTests`, `LicenseGateMobileTests`.
+
+## Later work (after the slices)
+
+**Account deletion (built, 13 Nov 2026).** `POST /api/me/delete-account`, the website `/account/delete`, and the phone app at More → Your account → Delete account. A staff delete removes that login; an owner delete closes the shop and removes shop data. Still open: no automatic purge one year after a shop simply stops using NeedleBase; this repo has no Platform API to release a closed shop's licence key.
+
+**Pricing and plan limits (decided, not built).** Free / Starter / Workshop / Production as in the README section "Pricing (decided, not built)". Until this is built, shops without a licence key stay unlimited, and the public landing page may still show older sample prices.
 
 ## Out of scope until explicitly requested
 
 Multi-currency runtime, multi-business workspace switcher, full web offline parity, external payment-provider webhooks as source of truth, AI, Redis, Excel/PDF reporting suites, rewriting away from Clean Architecture / MVVM.
 
-Production readiness, code side (3 Nov 2026): SQLite native package patched; production migration script + deploy doc
+Production readiness, code side (3 Nov 2026, status refreshed 15 Nov 2026): SQLite native package patched; production migration script + deploy doc
 (`docs/deployment.md`); settings list + fail-fast start-up check (`docs/production-config.md`); Android Release AAB with
-env-based signing and release guards (`docs/android-release.md`). Still needed before launch: owner accounts/keys/hosting,
-legal placeholders, Platform `emailMatches`, device journeys (Slices 4–7). Details: code-gaps.md "Production readiness".
+env-based signing and release guards (`docs/android-release.md`). Slices 4–7, published legal pages, Platform licensing and account deletion are built.
+Still needed before launch: Play Console listing and a signed production build, a lawyer's review of the legal pages,
+an accountant's advice on VAT, and (if required) Data Protection Commission registration. Device/browser journeys 2–5 are not yet verified. Plan limits and the Free
+phone-only tier are decided but not built. Details: code-gaps.md "Production readiness".
 
 CI/CD (3 Nov 2026, G3): GitHub Actions builds/tests only the affected parts with one required "CI result" check;
 tag `vX.Y.Z` releases a signed sideload APK + Play AAB, migration SQL and checksums, then deploys Api/Web to

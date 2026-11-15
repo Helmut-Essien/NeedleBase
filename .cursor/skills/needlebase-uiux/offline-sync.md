@@ -99,11 +99,11 @@ Protect unsaved web edits: beforeunload / “You have unsaved changes”; if loc
 
 ---
 
-## Subscription & entitlement (planned S8)
+## Subscription & entitlement
 
-Surfaces: trial/activation · plan & status · expired/suspended (what still works vs locked) · "Couldn't verify plan — using last known access" · upgrade/renew → back to work.
+**Built [code]:** Platform licence status on the phone (Home banner, a local read-only gate when offline) and on the website (banner + Settings → License). When a licence lapses after the grace period, the shop is read-only: existing records can be viewed and synced, but new customers, measurements, orders and payments are refused. Login is never blocked by a lapsed licence.
 
-Rules: never dominates Home/Dashboard · **never blocks login** · when expired, list *still available* vs *restricted* from real product rules (don't invent) · prefer a soft banner/Settings badge over a full-screen block. Example: "Your trial ended on 12 Oct 2026. You can still view records on this device. Renew to sync and add staff."
+**Decided, not built:** plan feature limits and the Free phone-only tier (no account, no sync) in the README section "Pricing (decided, not built)". There is no free trial. Do not invent upgrade/renewal screens or trial-ended copy until that work is requested. Shops without a licence key today stay unlimited.
 
 ## Sample sync chip copy (short)
 

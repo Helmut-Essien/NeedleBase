@@ -130,11 +130,11 @@ An unknown `--format`/`NeedleBasePackageFormat` (anything but apk, aab, both) al
 ## Play Console (you)
 
 - Developer account, app entry, **Play App Signing** on.
-- Privacy policy URL: the live Web `/Privacy` page (fill its placeholders first).
+- Privacy policy URL: the live Web `/Privacy` page.
 - Data safety: customer names, phone numbers, measurements, orders and payments are stored and synced over https
   to the Api; staff email addresses for sign-in; no ads, no sale of data. `allowBackup=false` (no device backups).
   Permissions: INTERNET, ACCESS_NETWORK_STATE only.
-- Account deletion: Play requires a web link where users can ask for their account to be deleted.
+- Account deletion: the in-app path is More → Your account → Delete account. Play also requires a web link; use the live `/account/delete` page (signed-out visitors can ask by email or WhatsApp).
 - Test on a real device (Journeys 1–5 in phases.md) before the production track.
 
 The guards run on `dotnet publish` (how the bundle is made; the script uses it) and fail in seconds, before

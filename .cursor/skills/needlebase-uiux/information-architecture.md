@@ -41,7 +41,7 @@ Business (workspace)
 | **Customers** | Find & manage people | List → Profile (Overview, Measurements, Orders, Images/Notes) → Add/Edit | `People` | ✓ |
 | **Orders** | Daily production work | List/filter → Detail → Status update; Create multi-step | `ReceiptLong` | ✓ (Slice 3) |
 | **Payments** | Money in | Balances, record payment, history, receipt share | `Payments` | [code] Slice 5 (Owner/Manager only) |
-| **More** | Secondary | Measurements hub (optional shortcut), Staff*, Settings, Sync details, Subscription, Help | `Menu` | Placeholder + About (Terms/Privacy) built; rest planned |
+| **More** | Secondary | Sync details, Change password, Delete account, Terms, Privacy, Check for updates, Staff*, WhatsApp settings* | `Menu` | Built as listed. A Subscription / plan page is not built. Measurements stay under Customers, not as a More shortcut. |
 
 Tab icons: MauiIcons.Material on Shell tabs — [tab-icons.md](../needlebase-mobile/tab-icons.md).
 
@@ -53,10 +53,12 @@ Tab icons: MauiIcons.Material on Shell tabs — [tab-icons.md](../needlebase-mob
 
 ```
 Welcome
-├── Sign up → Verify → Business profile setup → Offline explainer → Trial/activation → Home
+├── Sign up → Verify → Business profile setup → Offline explainer → Home
 ├── Log in → Home (or Accept invite → role-limited Home)
-└── Password recovery  (hidden until built — no link shown)
+└── Password recovery  (Login shows the link when email is configured)
 ```
+
+There is no free trial. Registering a cloud shop uses a licence key when Platform requires one. A Free phone-only mode with no account is decided but **not built** (see the README section "Pricing (decided, not built)").
 
 Offline explainer: one screen — “Works without internet. Saves on this device. Syncs when you’re back online.”
 
@@ -94,7 +96,7 @@ Default MVP: Tailor can update production status; cannot manage staff or subscri
 
 ## Web navigation map
 
-Sidebar (planned S6): Dashboard · Customers · Measurements · Orders · Production · Payments · Staff* · Reports · Settings. Top bar: business, search, SyncChip, profile. \*Staff hidden for solo until invited.
+Sidebar **[code]**: Dashboard · Production · Orders · Customers · Payments* · Staff* · WhatsApp* · Activity* · License (Owner). Measurements live on the customer pages (no Measurements nav item). Reports are **not built**. Top bar: business name, user, Sign out (no SyncChip or global search). Staff stays visible for a solo Owner so the invite entry point is reachable. \*Role-filtered.
 
 | Nav item | Purpose |
 |----------|---------|

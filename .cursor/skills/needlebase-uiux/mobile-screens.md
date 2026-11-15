@@ -104,7 +104,7 @@ Default currency GH₵.
 
 ## Staff & settings (More)
 
-**[planned]**: More tab contents. Built so far [code]: placeholder intro + **About** card with Terms and Conditions / Privacy Policy rows (push `TermsPage`/`PrivacyPage`) + app version. Everything else here is planned.
+**Built [code]:** More tab groups: **This device** (Sync details); **Your account** (Change password, Delete account); **About** (Terms and Conditions, Privacy Policy, Check for updates, app version); **Team** for owners/managers (Staff, WhatsApp). A Subscription / plan page on this tab is **not built**.
 
 | Solo | Multi-employee |
 |------|----------------|

@@ -11,6 +11,10 @@ description: >-
 
 # NeedleBase Architecture
 
+## Standing rules
+
+Follow [standing-rules.md](../standing-rules.md) on every change in this repo: back up the file before you edit it, never touch `.vscode`, commit only when the user says "commit" (locally, no push, no amend or rebase, no `--no-verify`), never commit secrets, use `grep` not `rg`, treat Platform and AssetTag as read-only, and ship a clean Release `--no-incremental` build with 0 warnings and all tests passing. Product copy is plain language for tailors, seamstresses, dressmakers and fashion workshop owners — never "sewing shops".
+
 Offline-first tailoring SaaS (HelmutCode). **.NET 9**: ASP.NET Core Api (PostgreSQL), Razor Pages Web, .NET MAUI Android app with SQLite. Clean Architecture + **Business (workspace) multi-tenancy**; mobile presentation is MVVM (CommunityToolkit.Mvvm).
 
 Layout (now vs target): [solution-layout.md](solution-layout.md). Layer rules: [clean-architecture.md](clean-architecture.md). Tests: [testing.md](testing.md). Gap backlog (done + deferred ops): [code-gaps.md](../needlebase-phases/code-gaps.md).

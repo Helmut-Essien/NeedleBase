@@ -9,6 +9,10 @@ description: >-
 
 # NeedleBase Domain & Contracts
 
+## Standing rules
+
+Follow [standing-rules.md](../standing-rules.md) on every change in this repo: back up the file before you edit it, never touch `.vscode`, commit only when the user says "commit" (locally, no push, no amend or rebase, no `--no-verify`), never commit secrets, use `grep` not `rg`, treat Platform and AssetTag as read-only, and ship a clean Release `--no-incremental` build with 0 warnings and all tests passing. Product copy is plain language for tailors, seamstresses, dressmakers and fashion workshop owners — never "sewing shops".
+
 Core workflow: Customer → Measurements → Order → Production → Payment → Collection.
 
 ## Hard rules
@@ -31,10 +35,10 @@ Core workflow: Customer → Measurements → Order → Production → Payment �
 | `Customer` | Client | `Name`, `Phone`, `Notes`, `PhotoRef`, `CreatedAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
 | `MeasurementProfile` | Measurements | CustomerId, `GarmentTemplate`, `Unit`, `FieldsJson`, `Notes`, `MeasuredAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
 | `Order` / `OrderLine` | Sewing job / garment lines | ref, status, due/fitting dates, assignee, totals; line template, qty, measurement snapshot | **Built** (S3) |
-| `Payment` | Money in | OrderId, amount, method, note, recordedAt, sync metadata | Planned S5 |
+| `Payment` | Money in | OrderId, amount, method, note, recordedAt, sync metadata | **Built** (S5) |
 | `DeletedItem` | Sync tombstone | EntityType, EntityId, BusinessId, DeletedAt | Built S4 (`Domain/Entities/DeletedItem.cs`; server-only, written in `ApplicationDbContext.SaveChanges`) |
-| `Invitation` | Staff invite | Email/phone, role, business, expiry | Planned S7 |
-| Mobile-only `SyncQueueItem`, `DeviceInfo` | Offline queue | Mobile.Data only | Planned S4 |
+| `Invitation` | Staff invite | Email/phone, role, business, expiry | **Built** (S7) |
+| Mobile-only `SyncQueueItem`, `DeviceInfo` | Offline queue | Mobile.Data only | **Built** (S4) |
 
 Users are ASP.NET Identity users (Infrastructure); the domain sees `UserId` strings.
 

@@ -11,6 +11,10 @@ description: >-
 
 # NeedleBase Implementation Phases
 
+## Standing rules
+
+Follow [standing-rules.md](../standing-rules.md) on every change in this repo: back up the file before you edit it, never touch `.vscode`, commit only when the user says "commit" (locally, no push, no amend or rebase, no `--no-verify`), never commit secrets, use `grep` not `rg`, treat Platform and AssetTag as read-only, and ship a clean Release `--no-incremental` build with 0 warnings and all tests passing. Product copy is plain language for tailors, seamstresses, dressmakers and fashion workshop owners — never "sewing shops".
+
 Deliver **one slice at a time**. Confirm with the user before starting the next. Every slice follows [engineering-review](../needlebase-architecture/engineering-review.md) and [code-quality-performance](../needlebase-architecture/code-quality-performance.md). UI must match [needlebase-uiux](../needlebase-uiux/SKILL.md). Domain/contracts: [needlebase-domain](../needlebase-domain/SKILL.md).
 
 ## Delivery rules

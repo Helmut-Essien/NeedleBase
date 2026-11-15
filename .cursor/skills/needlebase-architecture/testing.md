@@ -8,8 +8,9 @@ Run everything: `dotnet test` from the repo root (solution). Api tests need Post
 |---------|--------|--------------------|
 | `tests/NeedleBase.Domain.Tests` | net9.0 | `BusinessTests`, `CustomerTests`, `EntityTests`: invariants |
 | `tests/NeedleBase.Application.Tests` | net9.0 | `IdGeneratorTests` |
-| `tests/NeedleBase.Api.Tests` | net9.0 | `NeedleBaseApiFactory` + `AuthEndpointTests`, `CustomerEndpointTests`, `HealthEndpointTests` |
-| `tests/NeedleBase.Mobile.Tests` | net9.0 | `AuthServiceTokenHonestyTests`, `CustomerLocalServiceTests`, `HomeViewModelTests`, `PasswordToggleViewModelTests` |
+| `tests/NeedleBase.Api.Tests` | net9.0 | `NeedleBaseApiFactory` + `AuthEndpointTests`, `CustomerEndpointTests`, `HealthEndpointTests` (and later licensing, sync, payments, staff, WhatsApp and account-deletion tests) |
+| `tests/NeedleBase.Web.Tests` | net9.0 | Landing, legal pages, license, staff, auth and in-process Api hosting tests |
+| `tests/NeedleBase.Mobile.Tests` | net9.0 | `AuthServiceTokenHonestyTests`, `CustomerLocalServiceTests`, `HomeViewModelTests`, `PasswordToggleViewModelTests` (and later sync, payments, staff and account-deletion tests) |
 
 Packages: xunit, xunit.runner.visualstudio, Microsoft.NET.Test.Sdk, coverlet.collector, Microsoft.AspNetCore.Mvc.Testing, Microsoft.EntityFrameworkCore.Sqlite. **No mocking library is used.** Prefer real implementations, EF Sqlite in-memory, and small hand-written fakes. Add NSubstitute only if a fake becomes unwieldy, and record that decision here.
 

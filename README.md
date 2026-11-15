@@ -1,6 +1,6 @@
 # NeedleBase
 
-Offline-first **tailoring business management** for HelmutCode. Built for Ghanaian / West African workshops: register customers, take measurements, sew orders, track production, collect payments — on a phone that works without reliable internet, with a web console for owners and managers.
+Offline-first **tailoring business management** for HelmutCode. Built for Ghanaian / West African workshops: register customers, take measurements, create orders, track production, collect payments — on a phone that works without reliable internet, with a web console for owners and managers.
 
 **Stack:** .NET 9 · ASP.NET Core API · Razor Pages web · .NET MAUI (Android) + SQLite · Clean Architecture · ULID string IDs (NUlid)
 
@@ -8,13 +8,13 @@ Offline-first **tailoring business management** for HelmutCode. Built for Ghanai
 
 ## What the application does
 
-NeedleBase is the operating system for a sewing / tailoring shop.
+NeedleBase is the operating system for tailors, seamstresses, dressmakers and fashion workshop owners.
 
 A **Business** (e.g. *Ama Stitches, Accra*) is an isolated workspace. The owner signs up, then staff (optional) join by invite. Day to day, tailors and managers:
 
 1. **Register customers** — name, phone, notes (sample: *Efua Mensah, +233…*).
 2. **Record measurements** — garment templates (dress, shirt, etc.), units, dated history per customer.
-3. **Create sewing orders** — one or more garment lines, each holding a **snapshot** of measurements at order time so later edits to the customer profile do not rewrite the job.
+3. **Create orders** — one or more garment lines, each holding a **snapshot** of measurements at order time so later edits to the customer profile do not rewrite the job.
 4. **Move work through production** — status pipeline from new job → cutting → sewing → fitting → ready → collected (or cancelled). Overdue is derived when the due date has passed and the order is not finished.
 5. **Collect money** — deposits and further payments (Cash, MoMo, Bank, Other); outstanding balance = order total − sum(payments); receipts for share/print.
 6. **Stay honest offline** — mobile saves to SQLite first (“Saved on this device”), queues changes, then syncs to the cloud when online without duplicating records.
@@ -24,9 +24,9 @@ A **Business** (e.g. *Ama Stitches, Accra*) is an isolated workspace. The owner 
 
 | Role | What they do |
 |------|----------------|
-| **Owner** | Full control: business settings, staff, subscription, payments, all orders |
+| **Owner** | Full control: business settings, staff, licence, payments, all orders |
 | **Manager** | Operations: customers, orders, assign work, payments; not billing ownership unless granted |
-| **Tailor** | Assigned work and related customers; update production; **no** Staff/Subscription; Payments hidden by default |
+| **Tailor** | Assigned work and related customers; update production; **no** Staff or Licence; Payments hidden by default |
 
 A solo tailor can run the whole shop as Owner with **zero** staff setup.
 
@@ -34,8 +34,8 @@ A solo tailor can run the whole shop as Owner with **zero** staff setup.
 
 | Platform | What the user experiences |
 |----------|---------------------------|
-| **Mobile (MAUI)** | Bottom nav: Home · Customers · Orders · Payments · More (+ FAB **New Order**). Primary daily tool; full offline MVP. |
-| **Web** | Left sidebar oversight: Dashboard, Customers, Measurements, Orders, Production, Payments, Staff, Settings. Online only via API. |
+| **Mobile (MAUI)** | Bottom nav: Home · Customers · Orders · Payments · More. New order from Home, Orders and a customer page. Primary daily tool; full offline MVP. |
+| **Web** | Left sidebar: Dashboard, Production, Orders, Customers; and for the right roles Payments, Staff, WhatsApp, Activity and License. Measurements live on the customer pages. Online only via the API. |
 | **Api + PostgreSQL** | Auth, tenancy, sync endpoints, CRUD; JWT + refresh; claims `sub`, `business_id`, `role`. |
 
 ### Priority journeys (acceptance targets)
@@ -73,7 +73,7 @@ SyncQueueItem / DeviceInfo   (mobile SQLite only)
 | **Invitation** | Staff onboarding | Email/phone, role, expiry; accept joins membership |
 | **Customer** | Client of the shop | Name, phone, notes, optional photo |
 | **MeasurementProfile** | Body / garment measures | CustomerId, garment template, fields, unit, dated history |
-| **Order** | One sewing job | CustomerId, readable/ULID ref, status, due/fitting dates, assignee, totals |
+| **Order** | One customer order | CustomerId, readable/ULID ref, status, due/fitting dates, assignee, totals |
 | **OrderLine** | Garment within an order | Template, qty, style notes/images, **measurement snapshot** |
 | **Payment** | Money received | OrderId, amount, method, note, recordedAt; conflict-safe on sync |
 | **DeletedItem** | Sync tombstone | EntityType, EntityId, BusinessId, DeletedAt |
@@ -125,12 +125,12 @@ Deliver **one slice at a time**; confirm before starting the next. Detail and ac
 | **0** Scaffold | **Done** | Solution, Clean Architecture projects, health endpoints, README, package baselines, Web/Mobile shells |
 | **1** Auth + Business | **Done** | Register business + owner; login; JWT + refresh; `business_id` / `role` claims; mobile secure token store + session; Web cookie/session + HttpClients; BusinessId global query filters |
 | **2** Customers + measurements | **Done** | Domain + Api CRUD (paginated, Business-scoped); mobile Customers tab + measurement capture; local SQLite save. Web customers deferred to Slice 6 (oversight). |
-| **3** Orders + production | Planned | Orders/lines; status pipeline; mobile New Order wizard + Orders tab; Api list/detail |
-| **4** Offline sync | Planned | Sync queue, push/pull, `DeletedItem`, SyncChip / Sync details, idempotent ULIDs, token honesty under offline |
-| **5** Payments | Planned | Record deposits/payments, balances, receipts; conflict-safe sync + UI resolution |
-| **6** Web oversight | Planned | Sidebar shell; Dashboard; Production board; Orders via Api HTTP |
-| **7** Staff + roles | Planned | Invitations, role policies, role-filtered mobile/web nav |
-| **8** Subscription + polish | Planned | Trial/subscription UI; empty/error/recovery; indexes; smoke tests (auth, tenancy, sync, payment conflicts) |
+| **3** Orders + production | **Built** | Orders/lines; status pipeline; mobile New Order wizard + Orders tab; Api list/detail |
+| **4** Offline sync | **Built** (device journeys not yet verified) | Sync queue, push/pull, `DeletedItem`, SyncChip / Sync details, idempotent ULIDs, token honesty under offline |
+| **5** Payments | **Built** (device journeys not yet verified) | Record deposits/payments, balances, receipts; conflict-safe sync + UI resolution |
+| **6** Web oversight | **Built** (browser journey not yet verified) | Sidebar shell; Dashboard; Production board; Orders via Api HTTP |
+| **7** Staff + roles | **Built** (device journey not yet verified) | Invitations, role policies, role-filtered mobile/web nav, password reset when email is configured |
+| **8** Licensing and access | **Built** for Platform licence keys, daily recheck, a grace period and the read-only lock. WhatsApp tap-to-send and automatic sending are in code. **Not built:** plan feature limits and the Free phone-only tier. | Licence key attach, status banners, read-only when a licence lapses. Plan limits and a no-account Free mode are decided but not enforced. |
 
 ---
 
@@ -145,11 +145,12 @@ NeedleBase.sln
 │   ├── NeedleBase.Api/              # ASP.NET Core host
 │   ├── NeedleBase.Web/              # Razor Pages — HTTP to Api only (no SQL)
 │   ├── NeedleBase.Mobile/           # .NET MAUI (MVVM)
-│   └── NeedleBase.Mobile.Data/      # SQLite LocalDbContext (customers/measurements; sync queue Slice 4)
+│   └── NeedleBase.Mobile.Data/      # SQLite LocalDbContext, sync queue and device info
 └── tests/
     ├── NeedleBase.Domain.Tests/
     ├── NeedleBase.Application.Tests/
     ├── NeedleBase.Api.Tests/
+    ├── NeedleBase.Web.Tests/
     └── NeedleBase.Mobile.Tests/
 ```
 
@@ -244,13 +245,42 @@ Override with user secrets / env when needed (`ConnectionStrings__DefaultConnect
 | POST | `/api/auth/register-business` | Creates Business + Owner; returns tokens + user |
 | POST | `/api/auth/login` | Returns tokens + user (`business_id`, `role`) |
 | POST | `/api/auth/refresh-token` | Rotates refresh token |
+| POST | `/api/auth/logout` | Revokes the refresh token |
+| GET | `/api/auth/options` | Whether email/password reset is available |
+| POST | `/api/auth/forgot-password` | Request a reset (same reply if the email is unknown) |
+| POST | `/api/auth/reset-password` | Set a new password with the reset code |
+| POST | `/api/auth/invite-preview` | Preview a staff invite |
+| POST | `/api/auth/accept-invite` | Accept a staff invite |
+| POST | `/api/auth/change-password` | Change the signed-in user's password (JWT required) |
 | GET | `/api/me` | Requires JWT + `business_id` + staff role |
+| POST | `/api/me/delete-account` | Delete this login, or close the shop if the user is the owner (JWT required) |
 
 Mobile may send `X-Auth-Token: Bearer …` instead of `Authorization` (mapped on the Api).
 
 **BusinessId tenancy:** `ApplicationDbContext` uses **global query filters** on `IBusinessScoped` entities when `CurrentBusinessId` is set from JWT by `BusinessTenancyMiddleware`. Auth/bootstrap paths clear the filter by leaving it null.
 
-**Migrations:** Development auto-applies `dotnet ef` migrations on Api startup. Production never does: apply the idempotent script from `scripts/db-migrate.sh` as a deploy step ([docs/deployment.md](docs/deployment.md)). Production settings: [docs/production-config.md](docs/production-config.md); Android release (sideload APK now, Play AAB later): [docs/android-release.md](docs/android-release.md). CI/CD: [docs/ci-cd.md](docs/ci-cd.md).
+**Account deletion:** in the phone app, **More → Your account → Delete account**. On the website, `/account/delete` (a signed-in form, or instructions to email or WhatsApp when signed out). A staff delete removes only that login. An owner delete closes the shop, signs everyone out, and removes the shop's customers, measurements, orders, payments and WhatsApp data. An anonymised shop record and the activity log remain (the log is kept for up to 2 years).
+
+**Legal:** published Privacy Policy and Terms live in [docs/legal/](docs/legal/), and the same wording is on the website and in the app. Internal notes for keeping those copies in sync, and for gaps the documents cannot fix, are in [docs/legal/README.md](docs/legal/README.md).
+
+**Licensing:** shops are licensed through Platform. See [docs/platform-licensing.md](docs/platform-licensing.md). WhatsApp setup: [docs/whatsapp-setup.md](docs/whatsapp-setup.md).
+
+## Pricing (decided, not built)
+
+These prices and limits are decided but **not enforced** in the app or on the website yet. The public landing page may still show older sample prices until those pages are updated. Prices are in Ghana cedis and **do not include VAT**.
+
+| Plan | Price | Who | What it includes |
+|------|-------|-----|------------------|
+| **Free** | GH₵0 | Owner only, on the phone | 10 customers and 20 orders ever created (deleting either one does not free a slot). No account, no sync, no website. WhatsApp by tap-to-send. "Save a copy" export only. |
+| **Starter** | GH₵50 / month, GH₵140 / quarter, GH₵500 / year | Owner + 2 staff | Sync, a cloud backup, the website, unlimited customers and orders, a daily summary email to the owner, export, and the shop's phone number on receipts. This is a launch price and may rise later. Existing shops move to the new price after 30 days' notice. |
+| **Workshop** | GH₵150 / month, GH₵430 / quarter, GH₵1,500 / year | Up to 8 staff | Everything in Starter, plus assignment and due-date emails, a weekly balances email, photos, PDF receipts, and profit and monthly reports. |
+| **Production** | GH₵300 / month, GH₵850 / quarter, GH₵3,000 / year | Up to 20 staff | Everything in Workshop, plus more photo storage and a setup call. |
+
+A year costs 10 months. There is no free trial and no founding-shop discount. A referral offer is planned. When a paid shop stops paying, the existing read-only lock applies and the shop can still export.
+
+**Not built yet:** the Free phone-only mode (no account); the first paid upload of data already on the phone; server checks for plan limits; usage counters and upgrade prompts; and the paid-plan emails listed above. Automatic WhatsApp template messages exist in code but are **not** a sold plan feature until Meta verifies the business.
+
+**Migrations:** Development auto-applies `dotnet ef` migrations on Api startup. Production never does: apply the idempotent script from `scripts/db-migrate.sh` as a deploy step ([docs/deployment.md](docs/deployment.md)). Production settings: [docs/production-config.md](docs/production-config.md); Android release (sideload APK now, Play AAB later): [docs/android-release.md](docs/android-release.md). CI/CD: [docs/ci-cd.md](docs/ci-cd.md). Privacy and Terms: [docs/legal/](docs/legal/).
 
 **Development seed:** On Api startup in Development (when `Seed:DevelopmentData` is true), sample Ama Stitches data is inserted if missing:
 
