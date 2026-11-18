@@ -61,8 +61,8 @@ Customer registration → Measurements → Sewing order → Production tracking 
 | | Mobile (MAUI) | Web |
 |---|---------------|-----|
 | Job | Everyday tailor work | Business oversight |
-| Nav | Bottom 5 + New Order FAB | Left sidebar; <768 top app bar + collapsible drawer |
-| Built today | Auth, Home, Customers, Measurements, Orders (list/create/detail); Terms/Privacy; Payments placeholder | Auth, Dashboard, Production, Orders (list/detail + status), Payments, Customers, Activity, Terms/Privacy (sidebar ≥768, top bar below) |
+| Nav | Bottom 5; New order is a page action (not a FAB) | Left sidebar; <768 top app bar + collapsible drawer |
+| Built today | Auth, Home, Customers, Measurements, Orders, Payments, Staff, WhatsApp, Delete account, Terms/Privacy. New order from Home, Orders and a customer page | Auth, Dashboard, Production, Orders, Payments, Customers, Staff, WhatsApp, Activity, License, Delete account, Terms/Privacy (sidebar ≥768, top bar below) |
 | Offline | Full MVP offline required | Clear local-save/sync; do not claim full offline parity unless implemented |
 | Density | Touch-first, large tap targets | Tables, filters, drawers, keyboard |
 
@@ -115,6 +115,7 @@ When designing or implementing UI:
 | Field errors | [validation.md](validation.md) |
 | Mobile / web screen specs (built vs planned) | [mobile-screens.md](mobile-screens.md) · [web-screens.md](web-screens.md) |
 | Sync/offline/conflict/subscription UX | [offline-sync.md](offline-sync.md) |
+| Plans (decided, not built) | [needlebase-plans](../needlebase-plans/SKILL.md) |
 | Icons (single source) | [tab-icons.md](../needlebase-mobile/tab-icons.md) |
 | Pre-merge gate | [review-checklist.md](review-checklist.md) |
 

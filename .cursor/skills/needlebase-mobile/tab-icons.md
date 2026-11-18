@@ -50,7 +50,7 @@ Tab colours live on the TabBar (`TabBarBackgroundColor="White"`, Foreground/Titl
 <mi:MauiIcon Icon="{mi:Material Icon=Add}" IconSize="24" IconColor="{StaticResource Charcoal}" />
 ```
 
-C#: `new MauiIcon { Icon = MaterialIcons.ChevronRight, IconSize = 22, IconColor = … }` (used in `MorePlaceholderPage`).
+C#: `new MauiIcon { Icon = MaterialIcons.ChevronRight, IconSize = 22, IconColor = … }` (used in `MorePage`).
 
 Data-driven glyphs: expose `MauiIcons.Material.MaterialIcons` from the VM (enum, never magic strings) and bind `{mi:Material Icon={Binding CategoryIcon}, IconColor=…}`.
 

@@ -103,7 +103,7 @@ Protect unsaved web edits: beforeunload / “You have unsaved changes”; if loc
 
 **Built [code]:** Platform licence status on the phone (Home banner, a local read-only gate when offline) and on the website (banner + Settings → License). When a licence lapses after the grace period, the shop is read-only: existing records can be viewed and synced, but new customers, measurements, orders and payments are refused. Login is never blocked by a lapsed licence.
 
-**Decided, not built:** plan feature limits and the Free phone-only tier (no account, no sync) in the README section "Pricing (decided, not built)". There is no free trial. Do not invent upgrade/renewal screens or trial-ended copy until that work is requested. Shops without a licence key today stay unlimited.
+**Decided, not built:** plan feature limits and the Free phone-only tier (no account, no sync) in [needlebase-plans](../needlebase-plans/SKILL.md). There is no free trial. Do not invent upgrade/renewal screens or trial-ended copy until that work is requested. Shops without a licence key today stay unlimited.
 
 ## Sample sync chip copy (short)
 

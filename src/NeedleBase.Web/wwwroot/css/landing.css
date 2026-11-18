@@ -1718,7 +1718,7 @@ body.lp-nav-open { overflow: hidden; }
   text-wrap: balance;
 }
 
-/* —— Pricing (accessible monthly/yearly toggle kept) —— */
+/* —— Pricing (accessible monthly / quarterly / yearly toggle) —— */
 .lp-section--pricing {
   background: var(--lp-forest);
   color: var(--lp-cream);
@@ -1728,6 +1728,7 @@ body.lp-nav-open { overflow: hidden; }
 .lp-bill {
   position: relative;
   display: inline-flex;
+  flex-wrap: wrap;
   background: #12261a;
   border-radius: 999px;
   padding: 0.2rem;
@@ -1764,10 +1765,33 @@ body.lp-nav-open { overflow: hidden; }
   color: var(--lp-amber-soft);
   font-weight: 700;
 }
-.lp-pricing-wrap:has(#lp-bill-month:checked) .lp-plan__price--year { display: none; }
-.lp-pricing-wrap:has(#lp-bill-year:checked) .lp-plan__price--month { display: none; }
-.lp-pricing-wrap:has(#lp-bill-year:checked) .lp-plan__yearly { visibility: hidden; }
-.lp-plan__yearly { margin: 0.15rem 0 0; font-size: 0.88rem; color: rgba(244, 242, 236, 0.7); }
+@media (max-width: 699px) {
+  .lp-bill {
+    flex-wrap: nowrap;
+    width: 100%;
+  }
+  .lp-bill__opt {
+    flex: 1;
+    justify-content: center;
+    padding: 0.3rem 0.4rem;
+    font-size: 0.85rem;
+  }
+  .lp-bill__save { display: none; }
+}
+.lp-pricing-wrap:has(#lp-bill-month:checked) .lp-plan__price--quarter,
+.lp-pricing-wrap:has(#lp-bill-month:checked) .lp-plan__price--year,
+.lp-pricing-wrap:has(#lp-bill-month:checked) .lp-plan__alt--quarter,
+.lp-pricing-wrap:has(#lp-bill-month:checked) .lp-plan__alt--year { display: none; }
+.lp-pricing-wrap:has(#lp-bill-quarter:checked) .lp-plan__price--month,
+.lp-pricing-wrap:has(#lp-bill-quarter:checked) .lp-plan__price--year,
+.lp-pricing-wrap:has(#lp-bill-quarter:checked) .lp-plan__alt--month,
+.lp-pricing-wrap:has(#lp-bill-quarter:checked) .lp-plan__alt--year { display: none; }
+.lp-pricing-wrap:has(#lp-bill-year:checked) .lp-plan__price--month,
+.lp-pricing-wrap:has(#lp-bill-year:checked) .lp-plan__price--quarter,
+.lp-pricing-wrap:has(#lp-bill-year:checked) .lp-plan__alt--month,
+.lp-pricing-wrap:has(#lp-bill-year:checked) .lp-plan__alt--quarter { display: none; }
+.lp-plan--free .lp-plan__yearly { display: none; }
+.lp-plan__yearly { margin: 0.15rem 0 0; font-size: 0.88rem; color: rgba(244, 242, 236, 0.7); min-height: 1.2em; }
 .lp-pricing { display: grid; gap: 1rem; width: 100%; overflow: visible; padding-top: 0.6rem; }
 .lp-plan {
   background: #16301f;
@@ -1784,7 +1808,28 @@ body.lp-nav-open { overflow: hidden; }
 .lp-plan__amount { font-family: var(--lp-serif); font-size: clamp(2rem, 4vw, 2.7rem); font-weight: 700; letter-spacing: -0.03em; }
 .lp-plan__per { font-size: 1rem; font-weight: 600; opacity: 0.75; }
 .lp-plan__list { margin: 0.5rem 0 1rem; padding: 0 0 0 1.1rem; color: rgba(244, 242, 236, 0.86); flex: 1; }
-.lp-plan .lp-btn { width: 100%; }
+.lp-plan--free .lp-plan__list:not(.lp-plan__list--limits) { margin-bottom: 0.4rem; flex: 0 0 auto; }
+.lp-plan__limits-label {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(244, 242, 236, 0.58);
+}
+.lp-plan__list--limits {
+  margin: 0.3rem 0 0.45rem;
+  flex: 1;
+  color: rgba(244, 242, 236, 0.75);
+  font-size: 0.9rem;
+}
+.lp-plan__footnote {
+  margin: 0 0 0.85rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: rgba(244, 242, 236, 0.78);
+}
+.lp-plan .lp-btn { width: 100%; margin-top: auto; }
 .lp-plan .lp-btn--ghost {
   color: var(--lp-cream);
   border-color: rgba(244, 242, 236, 0.35);
@@ -1804,9 +1849,13 @@ body.lp-nav-open { overflow: hidden; }
 .lp-plan--featured .lp-plan__yearly { color: var(--lp-muted); }
 .lp-plan--featured .lp-plan__list { color: var(--lp-ink-soft); }
 .lp-pricing__note { margin: 0.4rem 0 0; color: rgba(244, 242, 236, 0.72); font-size: 0.95rem; }
-@media (min-width: 900px) {
-  .lp-pricing { grid-template-columns: repeat(3, 1fr); align-items: stretch; }
+@media (min-width: 700px) {
+  .lp-pricing { grid-template-columns: repeat(2, 1fr); align-items: stretch; }
+}
+@media (min-width: 1100px) {
+  .lp-pricing { grid-template-columns: repeat(4, 1fr); }
   .lp-plan--featured { transform: translateY(-0.25rem); }
+  .lp-plan__amount { font-size: clamp(1.7rem, 2.2vw, 2.3rem); }
 }
 @media (hover: hover) and (pointer: fine) {
   .lp-plan { transition: transform 0.35s var(--lp-ease); }

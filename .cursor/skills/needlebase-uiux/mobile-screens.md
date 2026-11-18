@@ -18,7 +18,7 @@ Sample business: **Ama Stitches**, Accra. Currency **GH₵**.
 | Password recovery | Email → 8-digit emailed code + new password | Built (S7b) `ForgotPasswordPage`; the Login link shows only when email is configured on the server |
 | Business profile | Business name, phone, location (optional), logo optional | Solo-friendly; no staff required |
 | Offline explainer | One screen: local save + sync later | Mandatory once; no Shell nav bar |
-| Trial / activation | Plan summary + Start | Soft; then Home |
+| Free on this phone | Use without an account, next to sign in, a licence key, or an invite | Decided, not built. See [needlebase-plans](../needlebase-plans/SKILL.md). There is no free trial of paid features. |
 | Accept invite | Shop name + role explanation → Join | No Shell nav bar |
 
 ---
@@ -109,7 +109,7 @@ Default currency GH₵.
 | Solo | Multi-employee |
 |------|----------------|
 | Soft “Invite someone to help” | Staff list, invite, role (Owner/Manager/Tailor), plain-language permissions |
-| Settings: business, units, currency, notifications, subscription, sync diagnostics | Same + assignment prefs |
+| Settings: business, units, currency, notifications, sync diagnostics. A License / plan-usage page is not built on the phone | Same + assignment prefs |
 
 Hide staff complexity until needed.
 
@@ -117,7 +117,7 @@ Hide staff complexity until needed.
 
 ## UI patterns (mobile)
 
-- Bottom nav 5 + FAB New Order  
+- Bottom nav 5. New order is a page action on Home, Orders and a customer page, not a FAB.  
 - Lists → detail → sheets for quick edits  
 - Skeletons on load; toast for local save  
 - Destructive actions behind confirm  

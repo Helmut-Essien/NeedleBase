@@ -12,7 +12,7 @@ Breakpoints & responsive rules: [web-screens.md](web-screens.md#responsive-rules
 
 | Pattern | Mobile | Web |
 |---------|--------|-----|
-| Primary create | FAB New Order | Page header button |
+| Primary create | Page action on Home, Orders and a customer page | Page header button |
 | Quick edit | Bottom sheet | Right drawer or modal |
 | Filters | Sheet | Filter bar / dropdowns |
 | Navigation | Bottom tabs | Sidebar routes (≥768); collapsible off-canvas drawer <768 |
@@ -46,7 +46,7 @@ Critical composites:
 - StatusChip (order statuses + overdue)  
 - Payment row (pending sync vs synced)  
 - Customer/Order list row  
-- Primary Button / FAB  
+- Primary Button  
 - TextField / MeasurementField  
 - EmptyState / ErrorState / Skeleton  
 

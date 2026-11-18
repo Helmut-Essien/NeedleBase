@@ -15,7 +15,7 @@ Business (workspace)
 │       ├── Production status & assignments
 │       ├── Fitting / delivery dates
 │       └── Payments (deposits, instalments) → Receipts
-└── Settings (units, currency GHS, notifications, subscription, sync)
+└── Settings (units, currency GHS, notifications, licence, sync)
 ```
 
 **Order statuses (main flow):** New → Cutting → Sewing → Fitting → Ready → Collected (UI label for Ready: **Ready to collect**; colours/icons in [content-and-states.md](content-and-states.md#6-status-names-and-colours))  
@@ -31,7 +31,6 @@ Business (workspace)
 ┌─────────────────────────────────────┐
 │  Top: greeting / title + SyncChip   │
 │  Content                            │
-│  [FAB: New Order]                   │
 ├─────────────────────────────────────┤
 │ Home | Customers | Orders | Payments│ More │
 └─────────────────────────────────────┘
@@ -43,13 +42,13 @@ Business (workspace)
 | **Customers** | Find & manage people | List → Profile (Overview, Measurements, Orders, Images/Notes) → Add/Edit | `People` | ✓ |
 | **Orders** | Daily production work | List/filter → Detail → Status update; Create multi-step | `ReceiptLong` | ✓ (Slice 3) |
 | **Payments** | Money in | Balances, record payment, history, receipt share | `Payments` | [code] Slice 5 (Owner/Manager only) |
-| **More** | Secondary | Sync details, Change password, Delete account, Terms, Privacy, Check for updates, Staff*, WhatsApp settings* | `Menu` | Built as listed. A Subscription / plan page is not built. Measurements stay under Customers, not as a More shortcut. |
+| **More** | Secondary | Sync details, Change password, Delete account, Terms, Privacy, Check for updates, Staff*, WhatsApp settings* | `Menu` | Built as listed. A License / plan-usage page is not built on the phone. Measurements stay under Customers, not as a More shortcut. |
 
 Tab icons: MauiIcons.Material on Shell tabs — [tab-icons.md](../needlebase-mobile/tab-icons.md).
 
 \*Staff only if business has staff or Owner/Manager opted in — solo: omit or show “Invite helper” soft entry.
 
-**Primary action:** FAB **New Order** (visible on Home, Customers, Orders; optional on Payments). **[planned]** No FAB in code yet; today Home has a "New order" quick action.
+**Primary action:** New order is a page action on Home, Orders and a customer page. There is no FAB.
 
 ### Auth & onboarding (pre-shell)
 
@@ -60,7 +59,7 @@ Welcome
 └── Password recovery  (Login shows the link when email is configured)
 ```
 
-There is no free trial. Registering a cloud shop uses a licence key when Platform requires one. A Free phone-only mode with no account is decided but **not built** (see the README section "Pricing (decided, not built)").
+There is no free trial. Registering a cloud shop uses a licence key when Platform requires one. A Free phone-only mode with no account is decided but **not built** (see [needlebase-plans](../needlebase-plans/SKILL.md)).
 
 Offline explainer: one screen — “Works without internet. Saves on this device. Syncs when you’re back online.”
 
@@ -71,14 +70,14 @@ Offline explainer: one screen — “Works without internet. Saves on this devic
 | Area | Screens |
 |------|---------|
 | Auth | Welcome, Sign up, Login, Forgot password, Invite accept |
-| Setup | Business profile, Units/currency, Offline explainer, Trial active |
+| Setup | Business profile, Units/currency, Offline explainer, Free on this phone (not built) |
 | Home | Dashboard |
 | Customers | List, Add/Edit, Profile tabs |
 | Measurements | Template picker, Entry form, History compare, Linked from customer/order |
 | Orders | List, Create (steps), Detail, Status sheet, Calendar (fitting/delivery) |
 | Payments | List/balances, Record payment, Receipt preview |
-| More | Staff list/invite/roles*, Settings, Sync details, Subscription |
-| System | Empty, loading, error, conflict resolve, subscription expired sheet |
+| More | Staff list/invite/roles*, Settings, Sync details, License / plan usage (not built on the phone) |
+| System | Empty, loading, error, conflict resolve, licence read-only banner (built) |
 
 ### Role-filtered mobile nav
 
@@ -89,10 +88,10 @@ Offline explainer: one screen — “Works without internet. Saves on this devic
 | Orders | ✓ | ✓ | ✓ assigned |
 | Payments | ✓ | ✓ | ✗ or view-only if policy allows (default: hide record) |
 | More → Staff | ✓ | ✓ | ✗ |
-| More → Settings/Subscription | ✓ | limited | profile + sync only |
-| FAB New Order | ✓ | ✓ | per permission (default ✓ if assigned work model allows create) |
+| More → Settings / License | ✓ | limited | profile + sync only |
+| New order | ✓ | ✓ | per permission (default ✓ if assigned work model allows create) |
 
-Default MVP: Tailor can update production status; cannot manage staff or subscription; payment recording Owner/Manager only unless Owner enables.
+Default MVP: Tailor can update production status; cannot manage staff or the License page; payment recording Owner/Manager only unless Owner enables.
 
 ---
 
@@ -110,7 +109,7 @@ Sidebar **[code]**: Dashboard · Production · Orders · Customers · Payments* 
 | **Payments** | List, balances, receipts; simple outstanding/revenue summary |
 | **Staff** | Invite, roles, profiles, assignments |
 | **Reports** | Lightweight operational summaries (not full accounting) |
-| **Settings** | Business, units, currency, notifications, subscription, sync diagnostics |
+| **Settings** | Business, units, currency, notifications, licence (usage meters not built on the phone), sync diagnostics |
 
 ### Web responsive nav
 
@@ -147,7 +146,7 @@ Sidebar **[code]**: Dashboard · Production · Orders · Customers · Payments* 
 | Payment | Order, customer, receipt |
 | Home/Dashboard tiles | Filtered Orders / Payments lists |
 | Sync chip | Sync details (pending, retry, conflicts) |
-| Subscription badge | Plan / renew (never blocks login) |
+| Licence status banner | Plan / renew (never blocks login). The lapse banner is built; usage meters are not |
 
 ## Empty-state destinations
 

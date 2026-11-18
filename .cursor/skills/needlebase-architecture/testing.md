@@ -6,11 +6,11 @@ Run everything: `dotnet test` from the repo root (solution). Api tests need Post
 
 | Project | Target | What's there today |
 |---------|--------|--------------------|
-| `tests/NeedleBase.Domain.Tests` | net9.0 | `BusinessTests`, `CustomerTests`, `EntityTests`: invariants |
-| `tests/NeedleBase.Application.Tests` | net9.0 | `IdGeneratorTests` |
-| `tests/NeedleBase.Api.Tests` | net9.0 | `NeedleBaseApiFactory` + `AuthEndpointTests`, `CustomerEndpointTests`, `HealthEndpointTests` (and later licensing, sync, payments, staff, WhatsApp and account-deletion tests) |
-| `tests/NeedleBase.Web.Tests` | net9.0 | Landing, legal pages, license, staff, auth and in-process Api hosting tests |
-| `tests/NeedleBase.Mobile.Tests` | net9.0 | `AuthServiceTokenHonestyTests`, `CustomerLocalServiceTests`, `HomeViewModelTests`, `PasswordToggleViewModelTests` (and later sync, payments, staff and account-deletion tests) |
+| `tests/NeedleBase.Domain.Tests` | net9.0 | Business, customer, order, payment, invitation, phone and licence-entity tests |
+| `tests/NeedleBase.Application.Tests` | net9.0 | Auth copy, search keys, licensing rules, payments, staff, orders, email and password policy, account-deletion confirmations |
+| `tests/NeedleBase.Api.Tests` | net9.0 | `NeedleBaseApiFactory` plus auth, tenancy, customers, orders, sync, payments, staff, licensing, WhatsApp, account deletion, production config, and review/audit tests. Needs PostgreSQL on localhost:5435 |
+| `tests/NeedleBase.Web.Tests` | net9.0 | Landing, legal pages, license, staff, WhatsApp, auth, order edit, render and in-process Api hosting tests |
+| `tests/NeedleBase.Mobile.Tests` | net9.0 | Local data, sync, payments, staff, licence gate, WhatsApp, search, list cache, updates and related UI tests |
 
 Packages: xunit, xunit.runner.visualstudio, Microsoft.NET.Test.Sdk, coverlet.collector, Microsoft.AspNetCore.Mvc.Testing, Microsoft.EntityFrameworkCore.Sqlite. **No mocking library is used.** Prefer real implementations, EF Sqlite in-memory, and small hand-written fakes. Add NSubstitute only if a fake becomes unwieldy, and record that decision here.
 
@@ -44,7 +44,7 @@ Tests take `IClassFixture<NeedleBaseApiFactory>`, register a fresh business with
 | Every new entity (slice 3+) | tenancy isolation + idempotent create + ProblemDetails 404/409 | required |
 | Sync (slice 4) | idempotent push, conflicts, tenancy, tombstones, cursor paging (`Api.Tests/SyncEndpointTests`); queue/coalesce, push ack, fresh-device pull without duplicates, transient keeps queue, tombstone, conflict resolve, HTTP failure mapping (`Mobile.Tests/SyncEngineTests`); migrator v4 | built; two-device + airplane-mode run is manual |
 | Sync edge cases | tombstone resurrection, first pull without tombstones, open-transaction row not skipped, order create+status atomic, foreign ids, delete-refused / parent-deleted conflicts, expired/v1 cursor, tombstone purge (`Api.Tests/SyncEdgeCaseApiTests`); order/measurement round trip, stale tombstone, deferred children, Discard, resync prune, parents-first, page+cursor atomicity, 400/403/Retry-After, chip states, re-sign-in wipe rules, single refresh (`Mobile.Tests/SyncEdgeCaseTests`) | built |
-| Payments (slice 5) | conflicting edits → conflict payload, never silent overwrite | planned |
+| Payments (slice 5) | conflicting edits → conflict payload, never silent overwrite | ✓ built; see Slice 5 tests below |
 
 Code gaps: [code-gaps.md](../needlebase-phases/code-gaps.md).
 

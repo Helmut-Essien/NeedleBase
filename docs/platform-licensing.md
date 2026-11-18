@@ -80,6 +80,12 @@ See `.cursor/skills/needlebase-phases/code-gaps.md`, section "Platform licensing
 
 Shops that were created before licensing, and shops that do not yet have a key, stay unlimited. A planned **Free** tier (phone only, no account, no licence key, tight customer and order limits) is **not built**. Do not start locking shops without a key to Free limits until that work is requested.
 
+## Platform product plans (built)
+
+Platform's per-product plan catalog is built (merged to `master` in PR #11, `9697838`): a `ProductPlan` table, a dropdown when issuing or editing a key, a check that the key uses one of the product's active plans, a way to map old names, and `ServiceProduct.DefaultMaxDevices`. The validate contract NeedleBase calls is unchanged.
+
+The admin still needs to add the `starter`, `workshop` and `production` plans to the NeedleBase product, and set that product's default device limit to **1**. Until the plans are added, NeedleBase keys can still use free-text plan names. Until the device limit is set, new keys get the server default of 3. Details: [needlebase-plans](../.cursor/skills/needlebase-plans/SKILL.md).
+
 ## Pricing (decided, not built)
 
-Plan prices and feature limits (Free / Starter / Workshop / Production) are decided but not enforced. The source of truth is the README section "Pricing (decided, not built)". The public landing page may still show older sample prices until those pages are updated.
+Plan prices and feature limits (Free / Starter / Workshop / Production) are decided but not enforced in NeedleBase. The source of truth is [needlebase-plans](../.cursor/skills/needlebase-plans/SKILL.md). A short price table also lives in the README section [Pricing (decided, not built)](../README.md#pricing-decided-not-built). The published Terms and the public landing page show these prices (updated 18 November 2026).

@@ -26,7 +26,7 @@ Sync details: [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md).
 2. **Login navigation:** Session expiry uses `ShowLoginAsync()` (hide tabs, pop **every** tab stack to root). Never `GoToAsync("/LoginPage")` alone.
 3. **Logout isolation:** Explicit logout clears secure tokens **and** local SQLite for that profile so the next user cannot see prior data. If wipe fails, abort logout. Session expiry must **not** wipe SQLite. Only exception: the server says the account is deactivated or no longer a member (`ACCOUNT_DEACTIVATED`/`NO_MEMBERSHIP` on refresh) → `AccessRevokedService` stops sync, warns with the unsynced count, wipes, shows Login (see needlebase-mobile-sync).
 4. **Splash:** If tokens exist and migrations/startup throw, retry — do not treat as logged out.
-5. **HTTP 401 retry (planned with `ApiClient`, Slice 3–4):** Buffer body and **clone** `HttpRequestMessage` before resend.
+5. **HTTP 401 retry (built):** `TokenRefreshHandler` on the `ApiClient` HttpClient buffers the body and retries once on 401 after a shared refresh. A transient refresh failure keeps the session; a rejected refresh is treated as an expired session. It never wipes local data.
 6. **Compiled bindings:** Always `x:DataType` on pages.
 7. **Busy guard:** `if (IsBusy) return;` on commands; `try/finally` clears `IsBusy`.
 8. **Tab VMs:** Singleton tabs; Transient add/edit forms. Initialize tabs in `OnAppearing`; forms initialize once per instance (do not wipe state on every `OnAppearing`).

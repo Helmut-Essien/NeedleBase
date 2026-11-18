@@ -283,18 +283,18 @@ Shops are licensed through Platform. See [docs/platform-licensing.md](docs/platf
 
 ## Pricing (decided, not built)
 
-These prices and limits are decided but **not enforced** in the app or on the website yet. The public landing page may still show older sample prices until those pages are updated. Prices are in Ghana cedis and **do not include VAT**.
+These prices and limits are decided but **not enforced** in the app yet. The public landing page and the published Terms show these prices (updated 18 November 2026). Prices are in Ghana cedis and **do not include VAT**. The full plan (PlanCatalog rules, implementation order, risks, and how this works with Platform) is in [.cursor/skills/needlebase-plans/SKILL.md](.cursor/skills/needlebase-plans/SKILL.md).
 
 | Plan | Price | Who | What it includes |
 |------|-------|-----|------------------|
 | **Free** | GH₵0 | Owner only, on the phone | 10 customers and 20 orders ever created (deleting either one does not free a slot). No account, no sync, no website. WhatsApp by tap-to-send. "Save a copy" export only. |
-| **Starter** | GH₵50 / month, GH₵140 / quarter, GH₵500 / year | Owner + 2 staff | Sync, a cloud backup, the website, unlimited customers and orders, a daily summary email to the Owner, export, and the shop's phone number on receipts. This is a launch price and may rise later. Existing shops move to the new price after 30 days' notice. |
-| **Workshop** | GH₵150 / month, GH₵430 / quarter, GH₵1,500 / year | Up to 8 staff | Everything in Starter, plus assignment and due-date emails, a weekly balances email, photos, PDF receipts, and profit and monthly reports. |
-| **Production** | GH₵300 / month, GH₵850 / quarter, GH₵3,000 / year | Up to 20 staff | Everything in Workshop, plus more photo storage and a setup call. |
+| **Starter** | GH₵50 / month, GH₵140 / quarter, GH₵500 / year | Owner + 2 staff | Sync, a cloud backup, the website, unlimited customers and orders, a monthly summary email to the Owner, export, and the shop's phone number on receipts. This is a launch price and may rise later. Existing shops move to the new price after 30 days' notice. |
+| **Workshop** | GH₵150 / month, GH₵430 / quarter, GH₵1,500 / year | Owner + 8 staff | Everything in Starter (including the monthly summary email), plus assignment and due-date emails, a weekly summary email to the Owner that includes the balances owed, photos, PDF receipts, and profit and monthly reports. |
+| **Production** | GH₵300 / month, GH₵850 / quarter, GH₵3,000 / year | Owner + 20 staff | Everything in Workshop, plus more photo storage and a setup call. |
 
 A year costs 10 months. There is no free trial and no founding-shop discount. A referral offer is planned. When a paid shop stops paying, the existing read-only lock applies and the shop can still export.
 
-**Not built yet:** the Free phone-only mode (no account); the first paid upload of data already on the phone; server checks for plan limits; usage counters and upgrade prompts; and the paid-plan emails listed above. Automatic WhatsApp template messages exist in code but are **not** a sold plan feature until Meta verifies the business.
+**Not built yet:** the Free phone-only mode (no account); the first paid upload of data already on the phone; server checks for plan limits; usage counters and upgrade prompts; export and "Save a copy"; and the paid-plan emails listed above. Workshop and Production features (photos, PDF receipts, and profit and monthly reports) are also not built, though they are listed on the landing page and in the Terms. Automatic WhatsApp template messages exist in code but are **not** a sold plan feature until Meta verifies the business.
 
 ## Further documentation
 
@@ -308,4 +308,5 @@ A year costs 10 months. There is no free trial and no founding-shop discount. A 
 | [docs/whatsapp-setup.md](docs/whatsapp-setup.md) | Tap-to-send and automatic WhatsApp setup |
 | [docs/legal/](docs/legal/) | Privacy Policy, Terms, and internal legal notes |
 | [docs/landing-photos/README.md](docs/landing-photos/README.md) | Landing-page photo sources |
+| [.cursor/skills/needlebase-plans/SKILL.md](.cursor/skills/needlebase-plans/SKILL.md) | Decided plans, limits and the implementation order (not built) |
 | [.cursor/skills/](.cursor/skills/) | Agent skills and standing rules |

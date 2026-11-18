@@ -1,9 +1,9 @@
 namespace NeedleBase.Web.Marketing;
 
 /// <summary>
-/// Public marketing contacts and placeholder prices for the landing page.
-/// PLACEHOLDER PRICING — replace with real prices.
+/// Public marketing contacts and published plan prices for the landing page.
 /// Edit this file only when changing WhatsApp, email, or plan amounts.
+/// Prices are in Ghana cedis and exclude VAT. A year costs 10 months.
 /// </summary>
 public static class LandingSalesInfo
 {
@@ -29,52 +29,81 @@ public static class LandingSalesInfo
         return $"mailto:{Email}?subject={s}";
     }
 
-    // PLACEHOLDER PRICING — replace with real prices (GHS).
-    // Yearly = 10× monthly (two months free).
     public static IReadOnlyList<LandingPlan> Plans { get; } =
     [
         new LandingPlan(
-            Id: "starter",
-            Name: "Starter",
-            Tagline: "Owner plus a small team",
-            MonthlyGhs: 149,
-            YearlyGhs: 1_490,
+            Id: "free",
+            Name: "Free",
+            Tagline: "Try it on your phone",
+            MonthlyGhs: 0,
+            QuarterlyGhs: 0,
+            YearlyGhs: 0,
             Highlights:
             [
-                "Owner plus a helper",
-                "Up to 2 staff",
-                "Phone and computer",
-                "Orders, measurements, payments"
+                "On one phone",
+                "Up to 10 customers and 20 orders",
+                "Send messages on WhatsApp",
+                "Save a copy of your records"
+            ],
+            Limitations:
+            [
+                "Staff can't join",
+                "Not on a computer or the website",
+                "Deleting a customer or an order doesn't free a slot",
+                "Records stay on that phone only — if it's lost or the app is removed, they're gone unless you saved a copy",
+                "No summary emails"
+            ],
+            Footnote: "If you move to a paid plan, your records come with you.",
+            Featured: false,
+            IsFree: true),
+        new LandingPlan(
+            Id: "starter",
+            Name: "Starter",
+            Tagline: "You plus a small team",
+            MonthlyGhs: 50,
+            QuarterlyGhs: 140,
+            YearlyGhs: 500,
+            Highlights:
+            [
+                "You plus 2 staff",
+                "Unlimited customers and orders",
+                "Works on all your shop's phones and computers",
+                "Your records are kept safe online",
+                "A monthly summary email",
+                "Your shop's phone number on receipts"
             ],
             Featured: false),
         new LandingPlan(
             Id: "workshop",
             Name: "Workshop",
-            Tagline: "Busy tailor and fashion workshops",
-            MonthlyGhs: 349,
-            YearlyGhs: 3_490,
+            Tagline: "A busy workshop",
+            MonthlyGhs: 150,
+            QuarterlyGhs: 430,
+            YearlyGhs: 1_500,
             Highlights:
             [
-                "A busy tailor or fashion workshop",
-                "Up to 8 staff",
-                "Invite managers and tailors",
-                "Phone and computer",
-                "Orders, measurements, payments"
+                "You plus 8 staff",
+                "Everything in Starter",
+                "Staff get an email when a job is given to them or is due",
+                "Weekly and monthly summaries, including money owed",
+                "Photos",
+                "PDF receipts",
+                "Profit and monthly reports"
             ],
             Featured: true),
         new LandingPlan(
             Id: "production",
             Name: "Production",
-            Tagline: "Larger workrooms",
-            MonthlyGhs: 649,
-            YearlyGhs: 6_490,
+            Tagline: "A larger workroom",
+            MonthlyGhs: 300,
+            QuarterlyGhs: 850,
+            YearlyGhs: 3_000,
             Highlights:
             [
-                "A larger workroom",
-                "Up to 20 staff",
-                "Invite managers and tailors",
-                "Phone and computer",
-                "Orders, measurements, payments"
+                "You plus 20 staff",
+                "Everything in Workshop",
+                "More photo storage",
+                "A setup call"
             ],
             Featured: false)
     ];
@@ -85,9 +114,24 @@ public sealed record LandingPlan(
     string Name,
     string Tagline,
     int MonthlyGhs,
+    int QuarterlyGhs,
     int YearlyGhs,
     IReadOnlyList<string> Highlights,
-    bool Featured)
+    bool Featured,
+    bool IsFree = false,
+    IReadOnlyList<string>? Limitations = null,
+    string? Footnote = null)
 {
-    public int YearlySavingGhs => (MonthlyGhs * 12) - YearlyGhs;
+    public IReadOnlyList<string> LimitationItems => Limitations ?? [];
+
+    public int YearlySavingGhs => MonthlyGhs <= 0 ? 0 : (MonthlyGhs * 12) - YearlyGhs;
+
+    public string MonthlyAlt =>
+        IsFree ? "" : $"or GH₵ {QuarterlyGhs.ToString("N0")} / quarter · GH₵ {YearlyGhs.ToString("N0")} / year";
+
+    public string QuarterlyAlt =>
+        IsFree ? "" : $"or GH₵ {MonthlyGhs.ToString("N0")} / month · GH₵ {YearlyGhs.ToString("N0")} / year";
+
+    public string YearlyAlt =>
+        YearlySavingGhs <= 0 ? "" : $"That's 10 months for the price of 12 (save GH₵ {YearlySavingGhs.ToString("N0")})";
 }

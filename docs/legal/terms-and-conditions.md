@@ -8,7 +8,7 @@
 
 **Effective date:** 1 January 2027
 
-**Last updated:** 13 November 2026
+**Last updated:** 18 November 2026
 
 ## 1. Definitions
 
@@ -23,9 +23,9 @@
 
 2.1 NeedleBase helps a Business manage customers, measurements, sewing orders (from new order through cutting, sewing, fitting and readiness to collection) and records of payments made to the Business.
 
-2.2 The Service is **offline-first**. The mobile app can store Business Data on the device in a local database (SQLite). That on-device copy is **not encrypted at rest by the app**. Data is synced to our API and hosted database when an internet connection is available. Syncing may be delayed by connectivity, device or service problems; the Business should check important orders and payments after reconnecting, protect phones with a screen lock, and keep its own backups of anything that has not yet synced. A lost, stolen or reset phone may still hold unsynced records that exist only on that device.
+2.2 The Service is **offline-first**. The mobile app can store Business Data on the device in a local database (SQLite). That on-device copy is **not encrypted at rest by the app**. Data is synced to our API and hosted database when an internet connection is available. Syncing may be delayed by connectivity, device or service problems; the Business should check important orders and payments after reconnecting, protect phones with a screen lock, and keep its own backups of anything that has not yet synced. A lost, stolen or reset phone may still hold unsynced records that exist only on that device. The syncing described in this clause applies when a Business uses a paid plan, or a complimentary or trial licence key, with the hosted service. A Business on the Free plan uses the app on one phone only; we do not sync or back up that Business Data (see clause 4.3).
 
-2.3 We will use reasonable efforts to keep the Service available and secure, but we do not guarantee uninterrupted or error-free availability. Features may change as the Service develops, and some planned features (including any export tool) are not promised unless we state in writing that they are available.
+2.3 We will use reasonable efforts to keep the Service available and secure, but we do not guarantee uninterrupted or error-free availability. Features may change as the Service develops, and some planned features are not promised unless we state in writing that they are available. Export of Business Data is described in clauses 4.3, 4.7 and 12.4.
 
 2.4 Electronic acceptance: an agreement may be formed electronically. The Electronic Transactions Act, 2008 (Act 772) recognises electronic records and agreements (including sections 5 to 8 on electronic records and retention, section 17 on automated transactions and section 23 on formation and validity of agreements). By ticking the acceptance box and creating an account you agree to these Terms and to the Privacy Policy; please save or print a copy for your records (see Act 772, section 47 on information to be provided in electronic transactions, where it applies).
 
@@ -37,19 +37,30 @@
 
 3.3 You are responsible for activity under your Business's accounts, and must notify us promptly at helmutessien@gmail.com or on WhatsApp +233 50 078 5153 if you suspect unauthorised access.
 
-## 4. Fees, sample prices and licence keys
+## 4. Fees, plans and licence keys
 
 4.1 There is **no in-app billing** in the current product. NeedleBase does not take card, mobile money or bank payments for a subscription inside the app or the website.
 
-4.2 The public website may show **sample plan prices** (for example monthly and yearly figures in Ghana cedis). Those figures are illustrations only until we confirm them to you in writing. They are not an offer, and they are not a price promised in these Terms.
+4.2 The current published plan prices, in Ghana cedis and **excluding VAT**, are:
 
-4.3 Access to the Service for a Business is granted with a **licence key**. New shops must normally enter a licence key when they register. Keys are agreed and issued **off the app**, after you contact us by WhatsApp or email, and are then entered in NeedleBase. The server stores the key in a protected (encrypted) form and may check the key's status with NeedleBase's licensing service. A key may have a plan, a trial period, a complimentary period, or an expiry date. If a key is no longer valid, the Business may have a short grace period (currently seven days after the licensing service first says the key is not valid) before access is limited.
+- **Free:** GH₵0.
+- **Starter:** GH₵50 per month, GH₵140 per quarter, or GH₵500 per year.
+- **Workshop:** GH₵150 per month, GH₵430 per quarter, or GH₵1,500 per year.
+- **Production:** GH₵300 per month, GH₵850 per quarter, or GH₵3,000 per year.
 
-4.4 The fee for a key or plan, and any refund, are **as agreed in writing when the key is issued** (for example in our WhatsApp or email messages with you). These Terms do not add a separate refund percentage or cooling-off period. Nothing in this clause takes away any right that Ghana law says you cannot give up.
+A year costs the same as 10 months. The website [pricing](/#pricing) section shows these plans and what they include. Starter's monthly price is a launch price and may rise later, subject to clause 4.6.
 
-4.5 If we later add paid plans or in-app billing, we will give reasonable prior notice (normally at least 30 days) of the price, what it covers and when it starts. A paid plan will not start for your Business until you accept it. Taxes or charges imposed by law, if they apply, will be shown as required.
+4.3 **Free plan.** The Free plan is for the Owner only, on one phone, with no NeedleBase account, no licence key, and no use of the website or the hosted service. It allows 10 customers and 20 orders ever created; deleting a customer or an order does not free a slot. We do not sync or back up Free-plan Business Data. The Business should keep its own copy using the "Save a copy" action in the app.
 
-4.6 A Business remains responsible for its own taxes, invoices, receipts and filings with the Ghana Revenue Authority and other authorities. Payment records in NeedleBase are business records; they are not tax invoices unless the Business separately issues a valid invoice.
+4.4 Access to a **paid plan** (Starter, Workshop or Production) is granted with a **licence key**. New paid shops must enter a licence key when they register. Keys are agreed and issued **off the app**, after you contact us by WhatsApp or email, and are then entered in NeedleBase. The server stores the key in a protected (encrypted) form and may check the key's status with NeedleBase's licensing service. A key may have a plan, a trial period, a complimentary period, or an expiry date. If a key is no longer valid, the Business may have a short grace period (currently seven days after the licensing service first says the key is not valid) before access is limited.
+
+4.5 The fee for a published plan is the price in clause 4.2, unless we have agreed a complimentary key or a different fee **in writing** (for example in our WhatsApp or email messages with you). Any refund is as agreed in writing, or as Ghana law requires. These Terms do not add a separate refund percentage or cooling-off period. Nothing in this clause takes away any right that Ghana law says you cannot give up.
+
+4.6 If we change a published plan price, we will give at least **30 days' notice** before the new price applies, through the Service or by email (or WhatsApp where we already contact you that way). After that notice, existing shops on that plan, including early Starter shops, move to the new price. Taxes or charges imposed by law, if they apply, will be shown as required and are not included in the prices in clause 4.2.
+
+4.7 If a paid shop's licence key is no longer valid and any grace period has ended, the Business becomes **read-only**: it can view and export its Business Data but cannot add or change customers, measurements, orders or payments, except as we describe in the Service. We keep the Business Data we hold on the hosted service for **one year** after use stops if the account is not deleted, as described in clause 12.3.
+
+4.8 A Business remains responsible for its own taxes, invoices, receipts and filings with the Ghana Revenue Authority and other authorities. Payment records in NeedleBase are business records; they are not tax invoices unless the Business separately issues a valid invoice.
 
 ## 5. Payment records — NeedleBase is not a payment service provider
 
@@ -111,7 +122,7 @@ We are not responsible for those third parties' services, charges, outages or te
 
 12.3 If a Business simply stops using the Service without asking us to delete the account, we keep the Business Data we hold on the hosted service for **one year** after use stops, and then we delete it, except where the law requires or allows us to keep something. The server **audit log** is deleted after **730 days** (two years) by default, which is a separate period and may run longer or shorter than the one-year shop-data period. Data stored only on a Business's own device remains the Business's responsibility.
 
-12.4 On a verified written request from the Owner we will also, within a reasonable period (normally within 30 days), make Business Data held in our systems available in a reasonable manner, except where the law does not allow that. We do not promise a particular export format. Act 772, section 8 addresses retention of electronic records where a law requires retention.
+12.4 A paid shop, and a shop that has become read-only after its licence lapsed, can export its Business Data from the Service. A Free shop can save a copy of the records on the phone ("Save a copy"). On a verified written request from the Owner we will also, within a reasonable period (normally within 30 days), make Business Data held in our systems available in a reasonable manner, except where the law does not allow that. We do not promise a particular export format. Act 772, section 8 addresses retention of electronic records where a law requires retention.
 
 12.5 Clauses that by their nature should survive termination (ownership, data protection, liability, governing law) survive.
 

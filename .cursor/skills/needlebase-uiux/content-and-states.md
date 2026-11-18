@@ -143,7 +143,7 @@ Second-audit copy: past due date is allowed with the inline warning "Due date is
 
 ## 13. Legal pages
 
-Terms and Privacy exist on both platforms (mobile `TermsPage`/`PrivacyPage`, web `/Terms`, `/Privacy`). They are linked from the Register terms row, mobile **More → About** (`MoreTermsLink`/`MorePrivacyLink` in `MorePlaceholderPage`, plus the real app version), and the web `_Layout` footer [code]. Keep wording in sync with `docs/legal`. Use `.nb-legal` (max-width 760px) on web and page padding 16 on mobile.
+Terms and Privacy exist on both platforms (mobile `TermsPage`/`PrivacyPage`, web `/Terms`, `/Privacy`). They are linked from the Register terms row, mobile **More → About** (`MoreTermsLink`/`MorePrivacyLink` in `MorePage`, plus the real app version), and the web `_Layout` footer [code]. Keep wording in sync with `docs/legal`. Use `.nb-legal` (max-width 760px) on web and page padding 16 on mobile.
 
 ## Web v4 empty/error states
 

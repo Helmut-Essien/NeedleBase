@@ -105,14 +105,14 @@ Destructive and money actions use a Bootstrap confirm modal naming the record an
 
 ---
 
-## Settings & subscription
+## Settings & licence
 
 - Business profile  
 - Units, currency (GHS default)  
 - Notification preferences  
-- Subscription: plan, renewal, usage limits, renew/upgrade  
+- **License (built):** the Owner attaches a licence key and sees status on `Settings/License`. Usage meters and upgrade prompts are decided but **not built** (see [needlebase-plans](../needlebase-plans/SKILL.md)).  
 - Sync diagnostics + link to pending/conflicts  
-- Expired: available vs restricted list (see offline-sync)
+- A lapsed shop becomes read-only and can still export (export itself is not built yet). See [offline-sync.md](offline-sync.md).
 
 ---
 

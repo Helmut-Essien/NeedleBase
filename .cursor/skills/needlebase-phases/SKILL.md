@@ -56,3 +56,4 @@ See the end of [phases.md](phases.md).
 | Sync | [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md) |
 | Web | [needlebase-web](../needlebase-web/SKILL.md) |
 | Journeys / IA | [needlebase-uiux](../needlebase-uiux/SKILL.md) |
+| Plans (decided, not built) | [needlebase-plans](../needlebase-plans/SKILL.md) |

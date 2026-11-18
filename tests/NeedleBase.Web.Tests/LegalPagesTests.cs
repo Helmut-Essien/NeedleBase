@@ -38,7 +38,7 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = await response.Content.ReadAsStringAsync();
 
-        AssertPublishedLegalCommon(html);
+        AssertPublishedLegalCommon(html, lastUpdated: "13 November 2026");
         Assert.Contains("<h1>NeedleBase Privacy Policy</h1>", html);
         Assert.Equal(1, CountIgnoreCase(html, "<h1"));
         Assert.Contains("do <strong>not</strong> include a way to take or upload a customer photo", html);
@@ -59,13 +59,20 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = await response.Content.ReadAsStringAsync();
 
-        AssertPublishedLegalCommon(html);
+        AssertPublishedLegalCommon(html, lastUpdated: "18 November 2026");
         Assert.Contains("<h1>NeedleBase Terms and Conditions</h1>", html);
         Assert.Equal(1, CountIgnoreCase(html, "<h1"));
         Assert.Contains("no in-app billing", html);
-        Assert.Contains("sample plan prices", html);
+        Assert.Contains("published plan prices", html);
+        Assert.Contains("excluding VAT", html);
         Assert.Contains("licence key", html);
-        Assert.Contains("as agreed in writing when the key is issued", html);
+        Assert.Contains("before the new price applies", html);
+        Assert.Contains("Free plan", html);
+        Assert.Contains("Save a copy", html);
+        Assert.Contains("view and export its Business Data", html);
+        Assert.Contains("complimentary key or a different fee", html);
+        Assert.DoesNotContain("sample plan prices", html);
+        Assert.DoesNotContain("as agreed in writing when the key is issued", html);
         Assert.Contains("licence fees you paid us in the 12 months", html);
         Assert.Contains("laws of the Republic of Ghana", html);
         Assert.Contains("More → Delete account", html);
@@ -122,7 +129,7 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Contains("I agree to the", registerHtml);
     }
 
-    private static void AssertPublishedLegalCommon(string html)
+    private static void AssertPublishedLegalCommon(string html, string lastUpdated)
     {
         Assert.DoesNotContain("[TO CONFIRM", html);
         Assert.DoesNotContain("Draft for review", html);
@@ -131,7 +138,7 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Contains("HelmutCode Solutions", html);
         Assert.Contains("YN13 Flask Street, Ghana", html);
         Assert.Contains("Effective date:</strong> 1 January 2027", html);
-        Assert.Contains("Last updated:</strong> 13 November 2026", html);
+        Assert.Contains($"Last updated:</strong> {lastUpdated}", html);
         Assert.Contains("helmutessien@gmail.com", html);
         Assert.Contains("mailto:helmutessien@gmail.com", html);
         Assert.Contains("wa.me/233500785153", html);

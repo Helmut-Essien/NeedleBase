@@ -222,7 +222,7 @@ No cards in marketing-style heroes if any; product UI cards only when they group
 ### Navigation
 
 - Mobile bottom nav: 5 items; active = green-tinted icon + label; inactive = tertiary text + untinted/grey icon. Each tab must have its **own** glyph (see Iconography → Mobile icons (implementation)).
-- FAB: `PrimaryDark` circle, + or “Order”. **[planned]** (not in code yet).
+- New order is a page action on Home, Orders and a customer page, not a FAB.
 - Web sidebar (v4): items 44px in an inset tray; active = filled `#247A2B` pill with white text (5.4:1) + soft green glow; inactive = `t2` text. Below 768 the sidebar is an off-canvas drawer (see web-screens.md).
 
 ### Dialogs & sheets

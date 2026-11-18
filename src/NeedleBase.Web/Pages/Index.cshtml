@@ -507,12 +507,14 @@
             <div class="lp-section__head lp-section__head--left" data-lp-reveal>
                 <p class="lp-eyebrow">Pricing</p>
                 <h2 id="pricing-title">Simple plans in Ghana cedis</h2>
-                <p class="lp-section__lead">Sample prices for tailor shops and fashion workshops. Message us to confirm your plan. Pay yearly and save two months.</p>
+                <p class="lp-section__lead">Plans for tailors, seamstresses, dressmakers and fashion workshop owners. A year costs the same as 10 months. Prices exclude VAT.</p>
             </div>
             <div class="lp-pricing-wrap" data-lp-reveal>
                 <div class="lp-bill" role="radiogroup" aria-label="Billing period">
                     <input type="radio" name="lp-bill" id="lp-bill-month" checked />
                     <label class="lp-bill__opt" for="lp-bill-month">Monthly</label>
+                    <input type="radio" name="lp-bill" id="lp-bill-quarter" />
+                    <label class="lp-bill__opt" for="lp-bill-quarter">Quarterly</label>
                     <input type="radio" name="lp-bill" id="lp-bill-year" />
                     <label class="lp-bill__opt" for="lp-bill-year">Yearly <span class="lp-bill__save">Save two months</span></label>
                 </div>
@@ -520,36 +522,71 @@
                     @foreach (var plan in Model.Plans)
                     {
                         var planWa = LandingSalesInfo.WhatsAppUrlForPlan(plan.Name);
-                        <article class="lp-plan@(plan.Featured ? " lp-plan--featured" : "")">
+                        <article class="lp-plan@(plan.Featured ? " lp-plan--featured" : "")@(plan.IsFree ? " lp-plan--free" : "")">
                             <h3>@plan.Name</h3>
                             <p class="lp-plan__tag">@plan.Tagline</p>
                             <p class="lp-plan__price lp-plan__price--month">
                                 <span class="lp-plan__amount">GH₵ @plan.MonthlyGhs.ToString("N0")</span>
                                 <span class="lp-plan__per">/ month</span>
                             </p>
+                            <p class="lp-plan__price lp-plan__price--quarter">
+                                <span class="lp-plan__amount">GH₵ @plan.QuarterlyGhs.ToString("N0")</span>
+                                <span class="lp-plan__per">/ quarter</span>
+                            </p>
                             <p class="lp-plan__price lp-plan__price--year">
                                 <span class="lp-plan__amount">GH₵ @plan.YearlyGhs.ToString("N0")</span>
                                 <span class="lp-plan__per">/ year</span>
                             </p>
-                            <p class="lp-plan__yearly">or GH₵ @plan.YearlyGhs.ToString("N0") / year (save GH₵ @plan.YearlySavingGhs.ToString("N0"))</p>
+                            @if (!plan.IsFree)
+                            {
+                                <p class="lp-plan__yearly lp-plan__alt--month">@plan.MonthlyAlt</p>
+                                <p class="lp-plan__yearly lp-plan__alt--quarter">@plan.QuarterlyAlt</p>
+                                <p class="lp-plan__yearly lp-plan__alt--year">@plan.YearlyAlt</p>
+                            }
                             <ul class="lp-plan__list">
                                 @foreach (var h in plan.Highlights)
                                 {
                                     <li>@h</li>
                                 }
                             </ul>
-                            <a class="lp-btn @(plan.Featured ? "lp-btn--primary" : "lp-btn--ghost") lp-btn--lg"
-                               href="@planWa" rel="noopener" target="_blank"
-                               title="Opens WhatsApp so we can confirm the @plan.Name plan"
-                               aria-label="Choose @plan.Name — opens WhatsApp to confirm and set you up">
-                                Choose @plan.Name
-                            </a>
+                            @if (plan.LimitationItems.Count > 0)
+                            {
+                                <p class="lp-plan__limits-label">Not included</p>
+                                <ul class="lp-plan__list lp-plan__list--limits">
+                                    @foreach (var limit in plan.LimitationItems)
+                                    {
+                                        <li>@limit</li>
+                                    }
+                                </ul>
+                            }
+                            @if (!string.IsNullOrEmpty(plan.Footnote))
+                            {
+                                <p class="lp-plan__footnote">@plan.Footnote</p>
+                            }
+                            @if (plan.IsFree)
+                            {
+                                <a class="lp-btn lp-btn--ghost lp-btn--lg"
+                                   href="@apk" rel="noopener" target="_blank"
+                                   title="Download the NeedleBase Android app"
+                                   aria-label="Download the app for the Free plan">
+                                    Download the app
+                                </a>
+                            }
+                            else
+                            {
+                                <a class="lp-btn @(plan.Featured ? "lp-btn--primary" : "lp-btn--ghost") lp-btn--lg"
+                                   href="@planWa" rel="noopener" target="_blank"
+                                   title="Opens WhatsApp so we can set you up with the @plan.Name plan"
+                                   aria-label="Choose @plan.Name — opens WhatsApp so we can send a licence key">
+                                    Choose @plan.Name
+                                </a>
+                            }
                         </article>
                     }
                 </div>
             </div>
             <p class="lp-pricing__note" data-lp-reveal>
-                Sample prices — we confirm the amount when you message us. Choosing a plan opens WhatsApp so we can set you up.
+                Prices exclude VAT. To start a paid plan, message us on WhatsApp or email and we will send a licence key. The Free plan runs on your phone — download the app to get started.
             </p>
         </div>
     </section>
@@ -558,34 +595,38 @@
         <div class="lp-section__inner lp-faq-layout">
             <div class="lp-faq__intro" data-lp-reveal>
                 <p class="lp-eyebrow">Questions</p>
-                <h2 id="faq-title">Before you message us</h2>
-                <p class="lp-section__lead">A few things people usually ask before they write. If you need something else, message us and we'll answer.</p>
+                <h2 id="faq-title">Before you get started</h2>
+                <p class="lp-section__lead">A few things people usually ask. If you need something else, message us and we'll answer.</p>
                 <p class="lp-faq__cta"><a class="lp-btn lp-btn--primary lp-btn--lg" href="@wa" rel="noopener" target="_blank">Message us on WhatsApp</a></p>
             </div>
             <div class="lp-faq">
                 <details>
                     <summary>Who is NeedleBase for?</summary>
-                    <div class="lp-faq__body"><p>Tailors, seamstresses, dressmakers and clothing or fashion workshop owners — especially in Ghana and West Africa — who want one place for customers, measurements, orders and payments.</p></div>
+                    <div class="lp-faq__body"><p>Tailors, seamstresses, dressmakers and fashion workshop owners — especially in Ghana and West Africa — who want one place for customers, measurements, orders and payments. You can start free on one phone, or use a paid plan if you have staff or more than one device.</p></div>
                 </details>
                 <details>
-                    <summary>How do I get a licence key?</summary>
-                    <div class="lp-faq__body"><p>Message Helmut on WhatsApp or email. After you agree on a plan, we send your licence key by email. Use that same email when you register the shop.</p></div>
+                    <summary>How do I get started?</summary>
+                    <div class="lp-faq__body"><p>Download the app (in the menu, the footer, or the Free plan) and use it free on one phone straight away. You don't need to register or enter a licence key. When you want staff, the website, or your records kept safe online, message us on WhatsApp or email and we will send a licence key.</p></div>
                 </details>
                 <details>
                     <summary>How much does NeedleBase cost?</summary>
-                    <div class="lp-faq__body"><p>See the Pricing section for sample Ghana cedi plans (Starter, Workshop, Production). Message us to confirm the plan that fits your shop — the numbers on this page are placeholders until we finalise with you.</p></div>
+                    <div class="lp-faq__body"><p>Free is GH₵0. Starter is GH₵50 a month, Workshop GH₵150, and Production GH₵300. You can also pay by the quarter or the year (a year costs the same as 10 months). Prices exclude VAT. Download the app to use Free on your phone, or message us for a paid-plan licence key.</p></div>
+                </details>
+                <details>
+                    <summary>What can't I do on Free?</summary>
+                    <div class="lp-faq__body"><p>Free works on one phone only, and staff can't join. You can't use it on a computer or the website. It stops at 10 customers and 20 orders, and deleting one doesn't give the space back. Your records are only on that phone — NeedleBase doesn't keep a copy — so if the phone is lost or the app is removed, the records are gone unless you saved a copy. There are no summary emails. If you move to a paid plan, your records come with you.</p></div>
                 </details>
                 <details>
                     <summary>Does the phone need internet all day?</summary>
-                    <div class="lp-faq__body"><p>No. Save customers, measurements and orders on the phone even with no internet. When you're back online, the phone updates the shop.</p></div>
+                    <div class="lp-faq__body"><p>No. You can save customers, measurements and orders on the phone with no internet. On a paid plan, when you're back online the phone updates the rest of the shop. The Free plan stays on that one phone.</p></div>
                 </details>
                 <details>
                     <summary>Do my staff need a licence key?</summary>
-                    <div class="lp-faq__body"><p>No. Only the shop owner registers with the key. Managers and tailors join with an invite you send.</p></div>
+                    <div class="lp-faq__body"><p>Staff can only join on a paid plan. Only the shop owner registers with the licence key. Managers and tailors then join with an invite you send. On Free, staff can't join.</p></div>
                 </details>
                 <details>
-                    <summary>Where do I get the Android app?</summary>
-                    <div class="lp-faq__body"><p>Use Download app in the menu or the footer, after your shop is registered.</p></div>
+                    <summary>How do I get a licence key?</summary>
+                    <div class="lp-faq__body"><p>You don't need one for Free. For a paid plan, message us on WhatsApp or email. After you agree on a plan, we send your licence key by email. Use that same email when you register the shop.</p></div>
                 </details>
                 <details>
                     <summary>How do I contact you?</summary>
@@ -718,32 +759,37 @@
         {
           "@@type": "Question",
           "name": "Who is NeedleBase for?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "Tailors, seamstresses, dressmakers and clothing or fashion workshop owners — especially in Ghana and West Africa — who want one place for customers, measurements, orders and payments." }
+          "acceptedAnswer": { "@@type": "Answer", "text": "Tailors, seamstresses, dressmakers and fashion workshop owners — especially in Ghana and West Africa — who want one place for customers, measurements, orders and payments. You can start free on one phone, or use a paid plan if you have staff or more than one device." }
         },
         {
           "@@type": "Question",
-          "name": "How do I get a licence key?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "Message Helmut on WhatsApp or email. After you agree on a plan, we send your licence key by email. Use that same email when you register the shop." }
+          "name": "How do I get started?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "Download the app (in the menu, the footer, or the Free plan) and use it free on one phone straight away. You don't need to register or enter a licence key. When you want staff, the website, or your records kept safe online, message us on WhatsApp or email and we will send a licence key." }
         },
         {
           "@@type": "Question",
           "name": "How much does NeedleBase cost?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "See the Pricing section for sample Ghana cedi plans (Starter, Workshop, Production). Message us to confirm the plan that fits your shop — the numbers on this page are placeholders until we finalise with you." }
+          "acceptedAnswer": { "@@type": "Answer", "text": "Free is GH₵0. Starter is GH₵50 a month, Workshop GH₵150, and Production GH₵300. You can also pay by the quarter or the year (a year costs the same as 10 months). Prices exclude VAT. Download the app to use Free on your phone, or message us for a paid-plan licence key." }
+        },
+        {
+          "@@type": "Question",
+          "name": "What can't I do on Free?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "Free works on one phone only, and staff can't join. You can't use it on a computer or the website. It stops at 10 customers and 20 orders, and deleting one doesn't give the space back. Your records are only on that phone — NeedleBase doesn't keep a copy — so if the phone is lost or the app is removed, the records are gone unless you saved a copy. There are no summary emails. If you move to a paid plan, your records come with you." }
         },
         {
           "@@type": "Question",
           "name": "Does the phone need internet all day?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "No. Save customers, measurements and orders on the phone even with no internet. When you're back online, the phone updates the shop." }
+          "acceptedAnswer": { "@@type": "Answer", "text": "No. You can save customers, measurements and orders on the phone with no internet. On a paid plan, when you're back online the phone updates the rest of the shop. The Free plan stays on that one phone." }
         },
         {
           "@@type": "Question",
           "name": "Do my staff need a licence key?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "No. Only the shop owner registers with the key. Managers and tailors join with an invite you send." }
+          "acceptedAnswer": { "@@type": "Answer", "text": "Staff can only join on a paid plan. Only the shop owner registers with the licence key. Managers and tailors then join with an invite you send. On Free, staff can't join." }
         },
         {
           "@@type": "Question",
-          "name": "Where do I get the Android app?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "Use Download app in the menu or the footer, after your shop is registered." }
+          "name": "How do I get a licence key?",
+          "acceptedAnswer": { "@@type": "Answer", "text": "You don't need one for Free. For a paid plan, message us on WhatsApp or email. After you agree on a plan, we send your licence key by email. Use that same email when you register the shop." }
         },
         {
           "@@type": "Question",

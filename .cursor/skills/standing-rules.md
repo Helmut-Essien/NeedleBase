@@ -45,7 +45,7 @@ Use these terms consistently in skills and docs:
 
 ## Pricing and plans (until built)
 
-Plan prices and limits are decided but **not built**. Do not enforce them in code until the user asks. Do not change the public landing-page sample prices unless the user asks. Automatic WhatsApp template messages are not a sold plan feature until Meta verifies the business; tap-to-send is the current path, with email notifications planned for paid plans. The decided prices and limits are in the README section [Pricing (decided, not built)](../../README.md#pricing-decided-not-built).
+Plan prices and limits are decided but **not built**. Do not enforce them in code until the user asks. The public landing-page prices and the published Terms already show the decided prices (updated 18 November 2026). Do not change those public prices or the published Terms again unless the user asks. Automatic WhatsApp template messages are not a sold plan feature until Meta verifies the business; tap-to-send is the current path, with email notifications planned for paid plans. The decided prices, limits, PlanCatalog rules and implementation order are in [needlebase-plans](needlebase-plans/SKILL.md). A short price table also lives in the README section [Pricing (decided, not built)](../../README.md#pricing-decided-not-built).
 
 ## Machine
 

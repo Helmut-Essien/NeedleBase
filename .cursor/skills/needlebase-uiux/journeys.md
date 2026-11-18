@@ -10,6 +10,6 @@ Five journeys gate the slices in [phases.md](../needlebase-phases/phases.md). Us
 | J2 | Offline order → reopen → sync | Offline → New Order → kill + reopen → online → sync | Toast "Saved on this device"; pending badge survives restart; **exactly one** order after sync; Sync details empty | S4 | Code + tests built; device run pending |
 | J3 | Production + staff + web | Mobile status → Sewing; assign Kofi; web board + dashboard | Chip updates; assignee visible on web; Tailor edits only assigned items | S3, S6, S7 | Code done; device + browser run pending |
 | J4 | Extra payment → receipt | Record GH₵300 MoMo → balance → receipt → share | Outstanding GH₵300; receipt totals + method + business header; offline = "recorded on device" | S5 | Code done; device run pending |
-| J5 | Invite → role → limited UI | Owner invites Kofi as Tailor → accept → Kofi's nav | Plain role summary; Kofi sees no Staff/Subscription, Payments hidden, assigned work only; web shows Accepted | S7 | Code done; device + browser run pending |
+| J5 | Invite → role → limited UI | Owner invites Kofi as Tailor → accept → Kofi's nav | Plain role summary; Kofi sees no Staff or License page, Payments hidden, assigned work only; web shows Accepted | S7 | Code done; device + browser run pending |
 
 **Every journey:** SyncChip accurate (from S4) · empty/loading/error states on touched screens · status = colour + text + icon · GH₵/date/phone per [content-and-states.md](content-and-states.md) · no invented backend features · solo path never forces staff setup.
