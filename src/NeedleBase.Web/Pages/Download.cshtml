@@ -1,0 +1,95 @@
+@page "/download"
+@model NeedleBase.Web.Pages.DownloadModel
+@{
+    Layout = "_LayoutLanding";
+    ViewData["Title"] = "Download the Android app — NeedleBase";
+    ViewData["MetaDescription"] = "Download the NeedleBase Android app for tailors and fashion workshops in Ghana and West Africa. No card needed. Three steps to install.";
+    ViewData["Canonical"] = Model.CanonicalUrl;
+    ViewData["OgImage"] = Model.OgImageUrl;
+    ViewData["CspNonce"] = Model.CspNonce;
+    ViewData["PreloadHero"] = false;
+}
+
+<header class="lp-dl__top">
+    <a class="lp-brand lp-dl__brand" href="/" aria-label="NeedleBase home — software for tailors and fashion workshops">
+        <img class="lp-brand__logo" src="~/images/needlebase-logo-nav.png" asp-append-version="true" width="390" height="82" alt="NeedleBase" />
+    </a>
+    <a class="lp-text-link" href="/">Back to NeedleBase</a>
+</header>
+
+<main id="main" class="lp-dl">
+    <article class="lp-dl__card">
+        <p class="lp-kicker"><span class="lp-kicker__dot" aria-hidden="true"></span> Android only</p>
+        <h1>Download the Android app</h1>
+        <p class="lp-dl__lead">NeedleBase keeps customers, measurements, orders and payments on your phone, even when there's no data. No card is needed to download it.</p>
+
+        @if (Model.LookupFailed && Model.Stable is null && Model.Beta is null)
+        {
+            <p class="lp-dl__notice">We couldn't look up the latest app file just now. Get it from our <a class="lp-text-link" href="@Model.ReleasesUrl" rel="noopener" target="_blank">GitHub releases</a>.</p>
+            <p>
+                <a class="lp-btn lp-btn--primary lp-btn--xl" href="@Model.ReleasesUrl" rel="noopener" target="_blank">
+                    Open GitHub releases
+                    <span class="lp-btn__arrow" aria-hidden="true">→</span>
+                </a>
+            </p>
+        }
+        else if (Model.Stable is null && Model.Beta is null)
+        {
+            <p class="lp-dl__notice">No Android app file is published yet. When one is, it will appear here. You can also check <a class="lp-text-link" href="@Model.ReleasesUrl" rel="noopener" target="_blank">GitHub releases</a>.</p>
+        }
+        else
+        {
+            @if (Model.Stable is null)
+            {
+                <p class="lp-dl__notice">A stable Android app isn't published yet. You can try the beta below, or see every version on <a class="lp-text-link" href="@Model.ReleasesUrl" rel="noopener" target="_blank">GitHub releases</a>.</p>
+            }
+            else
+            {
+                <p>
+                    <a class="lp-btn lp-btn--primary lp-btn--xl" href="@Model.Stable.DownloadUrl" rel="noopener" target="_blank">
+                        Download NeedleBase @Model.Stable.Version
+                        <span class="lp-btn__arrow" aria-hidden="true">→</span>
+                    </a>
+                </p>
+                <p class="lp-dl__meta">@DownloadModel.FileMeta(Model.Stable) It comes from our <a class="lp-text-link" href="@Model.ReleasesUrl" rel="noopener" target="_blank">GitHub releases</a>. Android only — there is no iPhone app yet.</p>
+            }
+
+            @if (Model.Beta is not null)
+            {
+                if (Model.Stable is null)
+                {
+                    <p class="lp-dl__cta">
+                        <span class="lp-dl__beta-badge">Beta</span>
+                        <a class="lp-btn lp-btn--primary lp-btn--xl" href="@Model.Beta.DownloadUrl" rel="noopener" target="_blank">
+                            Download NeedleBase @Model.Beta.Version (Beta)
+                            <span class="lp-btn__arrow" aria-hidden="true">→</span>
+                        </a>
+                    </p>
+                    <p class="lp-dl__meta">This is a test version and may have bugs. @DownloadModel.FileMeta(Model.Beta) It comes from our <a class="lp-text-link" href="@Model.ReleasesUrl" rel="noopener" target="_blank">GitHub releases</a>. Android only — there is no iPhone app yet.</p>
+                }
+                else
+                {
+                    <div class="lp-dl__beta">
+                        <p class="lp-dl__beta-title"><span class="lp-dl__beta-badge">Beta</span> NeedleBase @Model.Beta.Version</p>
+                        <p>
+                            <a class="lp-btn lp-btn--ghost" href="@Model.Beta.DownloadUrl" rel="noopener" target="_blank">
+                                Download the beta
+                                <span class="lp-btn__arrow" aria-hidden="true">→</span>
+                            </a>
+                        </p>
+                        <p class="lp-dl__note">This is a test version and may have bugs. @DownloadModel.FileMeta(Model.Beta)</p>
+                    </div>
+                }
+            }
+        }
+
+        <h2>How to install</h2>
+        <ol class="lp-dl__steps">
+            <li>Download the app file to your phone.</li>
+            <li>Allow install from this source when Android asks.</li>
+            <li>Open the file to install, then open NeedleBase.</li>
+        </ol>
+
+        <p class="lp-dl__help">Need help? Message us on WhatsApp at <a class="lp-text-link" href="@Model.WhatsAppUrl" rel="noopener" target="_blank">@Model.WhatsAppDisplay</a>.</p>
+    </article>
+</main>

@@ -5,7 +5,7 @@ How NeedleBase is built, tested, released and deployed from GitHub Actions.
 | File | What |
 |---|---|
 | `.github/workflows/ci.yml` | Every PR and push to other branches (main runs it inside Release): detect changes, build + test only the affected parts, Android Debug build, vulnerable-package check. |
-| `.github/workflows/release.yml` | Every push to main (or manual run): CI, site package + idempotent migration SQL, deploy to MonsterASP; **only when the app changed**: auto version, signed APK + `update.json`, tag `mobile-v<version>` + GitHub pre-release, optional Google Play upload. |
+| `.github/workflows/release.yml` | Every push to main (or manual run): CI, site package + idempotent migration SQL, deploy to MonsterASP; **only when the app changed**: auto version, signed APK + `update.json`, tag `mobile-v<version>` + GitHub release (Beta by default; Stable when *channel* is stable, which also uploads `needlebase.apk`), optional Google Play upload. A *promote_to_stable* run marks a tested Beta as Stable with no new build. |
 | `.github/scripts/detect-changes.sh` | The one rule set for "what changed" (used by both workflows; runnable locally). |
 | `.github/actions/setup-dotnet-maui` | .NET 9 SDK + maui-android workload + NuGet, cached. |
 | `.github/scripts/iis-deploy/` | Web Deploy to the one MonsterASP site: `Deploy-Site.ps1` (direct msdeploy: deploy, backup, restore), `WebDeploy.psm1` (package checks, skip rules, endpoint and connection parsing), `Wait-Healthy.ps1`. Tests: `.github/scripts/test-iis-deploy.ps1`, run by `test-scripts.sh`. |
@@ -95,11 +95,15 @@ git push origin main
 - **Server-only push** (Api, Web, Infrastructure, landing page, workflows): CI → migration SQL + site deploy. No
   version bump, no APK, **no tag, no GitHub Release**. The run itself (Actions tab) is the record of the deploy.
 - **App push** (Mobile, Mobile.Data, Domain, Application, mobile build scripts, shared build settings): additionally
-  a new version, signed APK + `update.json`, tag **`mobile-v<version>`** and a GitHub **pre-release**. When the same
+  a new version, signed APK + `update.json`, tag **`mobile-v<version>`** and a GitHub **Beta** (pre-release). When the same
   push also changed the server, the release is made only after the deploy succeeded.
-- **Pre-releases:** every CI release is a pre-release. When you have tested it, open it on GitHub → *Edit* → untick
-  *Set as a pre-release* → *Update release*. Installed apps are offered pre-releases too (the Api takes the newest
-  non-draft release with an `update.json`, pre-release or not; old `v*` releases still count).
+- **Beta and Stable:** a push always publishes a Beta. A manual run with *build_android* and *channel* = stable
+  publishes a Stable release, sets it as GitHub's latest, and also attaches `needlebase.apk` so
+  `/releases/latest/download/needlebase.apk` works. To promote a tested Beta without a new build, run the workflow
+  with *promote_to_stable* (optional *promote_tag*). You can still edit the release on GitHub by hand; add
+  `needlebase.apk` if you want the fixed-name latest link. The site's `/download` page looks up both via the GitHub
+  API (cached ~12 minutes) and never presents a Beta as stable. Installed apps are offered Betas too (the Api takes
+  the newest non-draft release with an `update.json`, pre-release or not; old `v*` releases still count).
 - **One run per push:** CI runs inside the Release workflow; `ci.yml` runs only for pull requests and other branches.
   Pushes that touch only `docs/`, `*.md` or `.cursor/` start nothing. Workflow-made tags never start a workflow.
 
@@ -125,15 +129,16 @@ the same run reuses the version already tagged on that commit and updates the ex
 2. Deploy (site changed): migration SQL (one transaction; nothing deployed if it fails) → server settings written
    into the site package → site into `/` → `/api/health/ready` and `/` must answer 200. A failed step restores
    the previous files (see *Failure behaviour*).
-3. App changed: tag `mobile-v<version>` + GitHub pre-release with the APK, `update.json` (APK address, SHA-256,
-   size, signing certificate, minimum build), the migration SQL if the Api changed too, and `SHA256SUMS`. Installed
-   apps ask their Api (`/api/mobile/update`), which serves the newest release's `update.json`. The commit message
-   becomes the release notes. Play upload if enabled.
+3. App changed: tag `mobile-v<version>` + GitHub release (Beta, or Stable when *channel* is stable) with the APK,
+   `update.json` (APK address, SHA-256, size, signing certificate, minimum build), `needlebase.apk` on Stable, the
+   migration SQL if the Api changed too, and `SHA256SUMS`. Installed apps ask their Api (`/api/mobile/update`), which
+   serves the newest release's `update.json`. The commit message becomes the release notes. Play upload if enabled.
 
-Manual run (Actions → Release → Run workflow): inputs *build_android* (default off) and *bump*
-(patch/minor/major). From `main` it rebuilds and redeploys the site; from an older commit or tag it **rolls the site
-back** to that code. The app is built only when *build_android* is ticked (it then gets a new, higher version even
-from an old ref, so phones can install it).
+Manual run (Actions → Release → Run workflow): inputs *build_android* (default off), *bump* (patch/minor/major),
+*channel* (beta/stable), *promote_to_stable* and *promote_tag*. From `main` it rebuilds and redeploys the site; from
+an older commit or tag it **rolls the site back** to that code. The app is built only when *build_android* is ticked
+(it then gets a new, higher version even from an old ref, so phones can install it). A *promote_to_stable* run does
+not rebuild or redeploy; do not tick it together with *build_android*.
 
 ### Server packages
 
@@ -169,7 +174,7 @@ The runner copies are deleted at the end and never uploaded (the server `web.con
 
 ### Compared with AssetTag
 
-Kept from AssetTag: push to main = deploy, and an app release (`mobile-v*` tag, pre-release) only when the app changed, one connection secret used for migrations and the running Api, app
+Kept from AssetTag: push to main = deploy, and an app release (`mobile-v*` tag, Beta by default) only when the app changed, one connection secret used for migrations and the running Api, app
 settings written by CI (nothing on the panel), change detection, signed APK as a GitHub Release asset.
 Different on purpose: one site and one app (Web `/`, Api `/api` in the same process) instead of two sites, idempotent SQL via psql instead of
 `dotnet ef database update`, secrets written into `web.config` only in the deploy job (never in an uploaded

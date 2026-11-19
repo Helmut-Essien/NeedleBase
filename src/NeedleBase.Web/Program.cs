@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.StaticFiles;
 using NeedleBase.Web.Handlers;
 using NeedleBase.Web.Hosting;
 using NeedleBase.Web.Services;
+using NeedleBase.Web.Downloads;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,12 @@ builder.Services.AddTransient<TokenRefreshHandler>();
 builder.Services.AddTransient<UnauthorizedRedirectHandler>();
 builder.Services.AddScoped<INeedleBaseApi, NeedleBaseApi>();
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient(GitHubAndroidReleaseCatalog.HttpClientName, client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(8);
+});
+builder.Services.AddSingleton<IAndroidReleaseCatalog, GitHubAndroidReleaseCatalog>();
+
 
 // Api:BaseUrl is required — never hardcode production hosts.
 // CreateBuilder already loads env vars / user secrets; do not re-read after this check.
@@ -152,6 +159,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AllowAnonymousToPage("/Terms");
     options.Conventions.AllowAnonymousToPage("/Privacy");
     options.Conventions.AllowAnonymousToPage("/Index"); // public marketing landing
+    options.Conventions.AllowAnonymousToPage("/Download");
 });
 
 if (hostApi)

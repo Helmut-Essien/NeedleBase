@@ -39,10 +39,22 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = await response.Content.ReadAsStringAsync();
 
-        Assert.Contains("Stop chasing notebooks.", html);
-        Assert.Contains("For tailors, seamstresses", html);
-        Assert.Contains("Built for tailors, seamstresses and fashion workshop owners", html);
-        Assert.Contains("Get set up for my workshop", html);
+        Assert.Contains("Every customer's measurements, on your phone.", html);
+        Assert.Contains("No more flipping through old books.", html);
+        Assert.Contains("For tailors and fashion workshops in Ghana", html);
+        Assert.Contains("Works even when there's no data.", html);
+        Assert.DoesNotContain("no sign-up form", html);
+        Assert.Contains("Have staff? Paid plans on WhatsApp", html);
+        Assert.Contains("Android · Made in Ghana · No card needed", html);
+        Assert.DoesNotContain("Free · Android · No card needed", html);
+        Assert.Contains("Sample of the NeedleBase phone app.", html);
+        Assert.Contains("data-lp-sticky-download", html);
+        Assert.Contains("For tailors in Ghana", html);
+        Assert.Contains("Download the free app", html);
+        Assert.Contains("Have staff? Get a paid plan on WhatsApp", html);
+        Assert.Contains("Start free on your phone.", html);
+        Assert.DoesNotContain("Stop chasing notebooks.", html);
+        Assert.DoesNotContain("Get set up for my workshop", html);
         Assert.Contains("The headaches of a busy fashion workshop", html);
         Assert.DoesNotContain("sewing shops", html);
         Assert.Contains("Who is NeedleBase for?", html);
@@ -66,7 +78,12 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("lp-brand", html);
         Assert.DoesNotContain("needlebase-mark-on-dark", html);
         Assert.Contains("Account/Register", html);
-        Assert.Contains("github.com/Helmut-Essien/NeedleBase/releases/latest", html);
+        Assert.Contains("href=\"/download\"", html);
+        Assert.Contains("Your workshop at a glance", html);
+        Assert.Contains("Sample of the app's home screen", html);
+        Assert.Contains("A tailor in Kumasi, Ghana, sewing at a machine.", html);
+        Assert.Contains("Traditional kente weaving in Accra, Ghana.", html);
+        Assert.Contains("viewport-fit=cover", html);
         Assert.DoesNotContain("nb-sidebar", html);
 
         // Sales CTAs: WhatsApp + email
@@ -81,18 +98,20 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.DoesNotContain("\"@@type\": \"Offer\"", html);
 
         // Single primary hero CTA
-        Assert.Contains("Get set up for my workshop", html);
-        Assert.Contains("Chat with us on WhatsApp", html);
+        Assert.Contains("Download the free app", html);
+        Assert.Contains("or chat with us on WhatsApp", html);
         Assert.Contains("data-lp-hero-cta", html);
         var heroStart = html.IndexOf("id=\"top\"", StringComparison.Ordinal);
         var heroEnd = html.IndexOf("id=\"problems\"", heroStart >= 0 ? heroStart : 0, StringComparison.Ordinal);
         Assert.True(heroStart >= 0 && heroEnd > heroStart, "hero bounds");
         var hero = html[heroStart..heroEnd];
-        Assert.Contains("Get set up for my workshop", hero);
-        Assert.Contains("Run your fashion workshop from one place.", hero);
-        Assert.Contains("Opens a WhatsApp chat with us", hero);
+        Assert.Contains("Download the free app", hero);
+        Assert.Contains("Have staff? Get a paid plan on WhatsApp", hero);
+        Assert.Contains("Every customer's measurements, on your phone.", hero);
         Assert.DoesNotContain("Get NeedleBase on WhatsApp", hero);
-        Assert.Contains("Already have a key?", hero);
+        Assert.DoesNotContain("Already have a key?", hero);
+        Assert.DoesNotContain("licence key", hero);
+        Assert.DoesNotContain("Account/Register", hero);
         Assert.Single(Regex.Matches(hero, "lp-btn--primary"));
 
         // Footer: no logo image; contact + pricing
@@ -100,11 +119,13 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         var footerEnd = html.IndexOf("</footer>", footerStart >= 0 ? footerStart : 0, StringComparison.Ordinal);
         Assert.True(footerStart >= 0 && footerEnd > footerStart, "footer missing");
         var footer = html[footerStart..(footerEnd + "</footer>".Length)];
-        Assert.Contains("NeedleBase by HelmutCode", footer);
+        Assert.Contains("NeedleBase by HelmutCode Solutions", footer);
         Assert.Contains("Pricing", footer);
         Assert.Contains("Contact", footer);
         Assert.Contains("WhatsApp", footer);
         Assert.Contains("mailto:helmutessien@gmail.com", footer);
+        Assert.Contains("Help", footer);
+        Assert.Contains("Send us feedback", footer);
         Assert.Contains("href=\"/Terms\"", footer);
         Assert.Contains("href=\"/Privacy\"", footer);
         Assert.Contains("href=\"/account/delete\"", footer);
@@ -121,32 +142,44 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("Choose Starter", html);
         Assert.Contains("Choose Workshop", html);
         Assert.Contains("Choose Production", html);
-        Assert.Contains("Download the app", html);
+        Assert.Contains("Download the free app", html);
         Assert.Contains("Prices exclude VAT", html);
         Assert.Contains("To start a paid plan, message us on WhatsApp or email and we will send a licence key", html);
-        Assert.Contains("GH₵ 0", html);
-        Assert.Contains("GH₵ 50", html);
-        Assert.Contains("GH₵ 150", html);
-        Assert.Contains("GH₵ 300", html);
-        Assert.Contains("GH₵ 140", html);
-        Assert.Contains("GH₵ 430", html);
-        Assert.Contains("GH₵ 850", html);
-        Assert.Contains("GH₵ 500", html);
-        Assert.Contains("GH₵ 1,500", html);
-        Assert.Contains("GH₵ 3,000", html);
+        Assert.Contains("GH₵0", html);
+        Assert.Contains("GH₵50", html);
+        Assert.Contains("GH₵150", html);
+        Assert.Contains("GH₵300", html);
+        Assert.Contains("GH₵140", html);
+        Assert.Contains("GH₵430", html);
+        Assert.Contains("GH₵850", html);
+        Assert.Contains("GH₵500", html);
+        Assert.Contains("GH₵1,500", html);
+        Assert.Contains("GH₵3,000", html);
         Assert.Contains("You plus 2 staff", html);
         Assert.Contains("You plus 8 staff", html);
         Assert.Contains("You plus 20 staff", html);
         Assert.Contains("Save a copy of your records", html);
         Assert.Contains("Not included", html);
-        Assert.Contains("Staff can&#x27;t join", html);
-        Assert.Contains("Not on a computer or the website", html);
-        Assert.Contains("doesn&#x27;t free a slot", html);
-        Assert.Contains("Records stay on that phone only", html);
-        Assert.Contains("No summary emails", html);
+        Assert.Contains("One phone only", html);
+        Assert.Contains("No staff and no computer", html);
+        Assert.Contains("Records stay on that phone unless you save a copy", html);
         Assert.Contains("If you move to a paid plan, your records come with you.", html);
+        Assert.Contains("Coming soon: staff job and due emails, weekly and monthly summaries, photos, PDF receipts, reports", html);
+        Assert.Contains("Coming soon: a monthly summary email", html);
+        Assert.Contains("Coming soon: more photo storage", html);
+        Assert.DoesNotContain("(coming soon)", html);
+        Assert.Contains("12 months for the price of 10", html);
+        Assert.Contains("Every 3 months", html);
+        Assert.Contains("Monthly, every 3 months or yearly.", html);
+        Assert.DoesNotContain("Quarterly", html);
+        Assert.DoesNotContain(">Download the app<", html);
+        Assert.DoesNotContain("Download app<", html);
+        Assert.DoesNotContain("On one phone", html);
+        Assert.Contains("−2 months", html);
+        Assert.Contains("Save two months", html);
+        Assert.Contains("Tailoring shop software for Ghana and West Africa", html);
         Assert.Contains("How do I get started?", html);
-        Assert.Contains("use it free on one phone straight away", html);
+        Assert.Contains("Download the free app and use it on your phone straight away", html);
         Assert.Contains("What can't I do on Free?", html);
         Assert.Contains("deleting one doesn't give the space back", html);
         Assert.Contains("NeedleBase doesn't keep a copy", html);
@@ -160,10 +193,22 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.DoesNotContain("349", html);
         Assert.DoesNotContain("649", html);
         Assert.Contains("The headaches of a busy fashion workshop", html);
-        Assert.Contains("Three steps to get NeedleBase", html);
-        Assert.Contains("Ready to organise your fashion workshop?", html);
+        Assert.Contains("How to get started", html);
+        Assert.Contains("Add your customers and orders", html);
+        Assert.Contains("Ready for staff or a computer?", html);
+        Assert.Contains("Ready to put your next order in one place?", html);
+        Assert.Contains("See an order", html);
+        Assert.Contains("Sample order", html);
+        Assert.Contains("Kofi, tailor", html);
+        Assert.Contains("Works with no data", html);
+        Assert.Contains("No hidden fees", html);
+        Assert.Contains("Pay your way", html);
+        Assert.Contains("Made in Ghana by HelmutCode Solutions.", html);
+        Assert.Contains("Photos and sample orders are for illustration.", html);
         Assert.DoesNotContain("Get NeedleBase on WhatsApp", html);
         Assert.DoesNotContain("Sample prices", html);
+        Assert.DoesNotContain("Message us for a licence key", html);
+        Assert.DoesNotContain("MoMo", html);
 
         // Benefits deck: four cards, HUD, mobile swipe hint (behaviour is CSS/JS).
         Assert.Contains("id=\"benefits\"", html);
@@ -171,8 +216,8 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("data-lp-deck-stage", html);
         Assert.Contains("data-lp-deck-dot", html);
         Assert.Contains("data-lp-deck-pos", html);
-        Assert.Contains("Swipe to see the next card.", html);
-        Assert.Contains("Scroll to deal the next card.", html);
+        Assert.DoesNotContain("Swipe to see the next card.", html);
+        Assert.DoesNotContain("Scroll to deal the next card.", html);
         Assert.Contains("data-lp-deck-hint", html);
         Assert.Contains("Previous card", html);
         Assert.Contains("Next card", html);
@@ -195,6 +240,7 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("<loc>https://needlebase.example/</loc>", xml);
         Assert.Contains("<loc>https://needlebase.example/Account/Register</loc>", xml);
         Assert.Contains("<loc>https://needlebase.example/account/delete</loc>", xml);
+        Assert.Contains("<loc>https://needlebase.example/download</loc>", xml);
         Assert.DoesNotContain("/Dashboard", xml);
         Assert.DoesNotContain("/Orders", xml);
     }

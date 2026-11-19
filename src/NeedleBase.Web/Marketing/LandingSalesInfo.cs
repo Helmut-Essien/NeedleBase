@@ -23,11 +23,22 @@ public static class LandingSalesInfo
     public static string WhatsAppUrlForPlan(string planName) =>
         WhatsAppUrl($"Hello, I'd like the {planName} plan for NeedleBase for my shop");
 
+    public static string WhatsAppUrlForPaidPlan() =>
+        WhatsAppUrl("Hello, I'd like a paid plan for NeedleBase for my shop");
+
+    public static string WhatsAppHelpUrl() =>
+        WhatsAppUrl("Hello, I need help with NeedleBase");
+
+    public static string WhatsAppFeedbackUrl() =>
+        WhatsAppUrl("Hello, I'd like to send feedback about NeedleBase");
+
     public static string MailtoUrl(string? subject = null)
     {
         var s = Uri.EscapeDataString(subject ?? EmailSubject);
         return $"mailto:{Email}?subject={s}";
     }
+
+    public static string MailtoFeedbackUrl() => MailtoUrl("Feedback on NeedleBase");
 
     public static IReadOnlyList<LandingPlan> Plans { get; } =
     [
@@ -40,18 +51,15 @@ public static class LandingSalesInfo
             YearlyGhs: 0,
             Highlights:
             [
-                "On one phone",
-                "Up to 10 customers and 20 orders",
-                "Send messages on WhatsApp",
-                "Save a copy of your records"
+                new("Up to 10 customers and 20 orders"),
+                new("Send messages on WhatsApp"),
+                new("Save a copy of your records")
             ],
             Limitations:
             [
-                "Staff can't join",
-                "Not on a computer or the website",
-                "Deleting a customer or an order doesn't free a slot",
-                "Records stay on that phone only — if it's lost or the app is removed, they're gone unless you saved a copy",
-                "No summary emails"
+                "One phone only",
+                "No staff and no computer",
+                "Records stay on that phone unless you save a copy"
             ],
             Footnote: "If you move to a paid plan, your records come with you.",
             Featured: false,
@@ -65,13 +73,13 @@ public static class LandingSalesInfo
             YearlyGhs: 500,
             Highlights:
             [
-                "You plus 2 staff",
-                "Unlimited customers and orders",
-                "Works on all your shop's phones and computers",
-                "Your records are kept safe online",
-                "A monthly summary email",
-                "Your shop's phone number on receipts"
+                new("You plus 2 staff"),
+                new("Unlimited customers and orders"),
+                new("Works on all your shop's phones and computers"),
+                new("Your records are kept safe online"),
+                new("Your shop's phone number on receipts")
             ],
+            ComingSoonNote: "Coming soon: a monthly summary email",
             Featured: false),
         new LandingPlan(
             Id: "workshop",
@@ -82,14 +90,10 @@ public static class LandingSalesInfo
             YearlyGhs: 1_500,
             Highlights:
             [
-                "You plus 8 staff",
-                "Everything in Starter",
-                "Staff get an email when a job is given to them or is due",
-                "Weekly and monthly summaries, including money owed",
-                "Photos",
-                "PDF receipts",
-                "Profit and monthly reports"
+                new("You plus 8 staff"),
+                new("Everything in Starter")
             ],
+            ComingSoonNote: "Coming soon: staff job and due emails, weekly and monthly summaries, photos, PDF receipts, reports",
             Featured: true),
         new LandingPlan(
             Id: "production",
@@ -100,14 +104,16 @@ public static class LandingSalesInfo
             YearlyGhs: 3_000,
             Highlights:
             [
-                "You plus 20 staff",
-                "Everything in Workshop",
-                "More photo storage",
-                "A setup call"
+                new("You plus 20 staff"),
+                new("Everything in Workshop"),
+                new("A setup call")
             ],
+            ComingSoonNote: "Coming soon: more photo storage",
             Featured: false)
     ];
 }
+
+public sealed record LandingHighlight(string Text, bool ComingSoon = false);
 
 public sealed record LandingPlan(
     string Id,
@@ -116,22 +122,23 @@ public sealed record LandingPlan(
     int MonthlyGhs,
     int QuarterlyGhs,
     int YearlyGhs,
-    IReadOnlyList<string> Highlights,
+    IReadOnlyList<LandingHighlight> Highlights,
     bool Featured,
     bool IsFree = false,
     IReadOnlyList<string>? Limitations = null,
-    string? Footnote = null)
+    string? Footnote = null,
+    string? ComingSoonNote = null)
 {
     public IReadOnlyList<string> LimitationItems => Limitations ?? [];
 
     public int YearlySavingGhs => MonthlyGhs <= 0 ? 0 : (MonthlyGhs * 12) - YearlyGhs;
 
     public string MonthlyAlt =>
-        IsFree ? "" : $"or GH₵ {QuarterlyGhs.ToString("N0")} / quarter · GH₵ {YearlyGhs.ToString("N0")} / year";
+        IsFree ? "" : $"or GH₵{QuarterlyGhs.ToString("N0")} / 3 months · GH₵{YearlyGhs.ToString("N0")} / year";
 
     public string QuarterlyAlt =>
-        IsFree ? "" : $"or GH₵ {MonthlyGhs.ToString("N0")} / month · GH₵ {YearlyGhs.ToString("N0")} / year";
+        IsFree ? "" : $"or GH₵{MonthlyGhs.ToString("N0")} / month · GH₵{YearlyGhs.ToString("N0")} / year";
 
     public string YearlyAlt =>
-        YearlySavingGhs <= 0 ? "" : $"That's 10 months for the price of 12 (save GH₵ {YearlySavingGhs.ToString("N0")})";
+        YearlySavingGhs <= 0 ? "" : $"12 months for the price of 10 (save GH₵{YearlySavingGhs.ToString("N0")})";
 }

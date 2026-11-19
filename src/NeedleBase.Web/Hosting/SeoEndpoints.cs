@@ -12,6 +12,7 @@ public static class SeoEndpoints
         "/Account/Register",
         "/Terms",
         "/Privacy",
+        "/download",
         "/account/delete"
     ];
 

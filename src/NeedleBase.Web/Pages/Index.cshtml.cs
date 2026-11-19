@@ -10,8 +10,6 @@ namespace NeedleBase.Web.Pages;
 [AllowAnonymous]
 public class IndexModel(IConfiguration configuration) : PageModel
 {
-    public const string AndroidLatestReleaseUrl = "https://github.com/Helmut-Essien/NeedleBase/releases/latest";
-
     public string? SiteOrigin { get; private set; }
     public string CanonicalUrl { get; private set; } = "/";
     public string OgImageUrl { get; private set; } = "/images/og-needlebase.png";

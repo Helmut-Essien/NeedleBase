@@ -4,13 +4,18 @@
 @{
     Layout = "_LayoutLanding";
     ViewData["Title"] = "NeedleBase — Tailoring shop software for Ghana & West Africa";
-    ViewData["MetaDescription"] = "NeedleBase is tailoring shop software for tailors, seamstresses, dressmakers and fashion workshop owners in Ghana and West Africa. Keep customers, measurements, orders and payments in one place — on the phone even without internet. Message us on WhatsApp.";
+    ViewData["MetaDescription"] = "NeedleBase keeps customers, measurements, orders and payments in one place, even without data. Start free on your phone.";
     ViewData["Canonical"] = Model.CanonicalUrl;
     ViewData["OgImage"] = Model.OgImageUrl;
     ViewData["CspNonce"] = Model.CspNonce;
+    ViewData["PreloadHero"] = true;
     var origin = Model.SiteOrigin ?? "";
-    var apk = IndexModel.AndroidLatestReleaseUrl;
+    var download = "/download";
     var wa = Model.WhatsAppUrl;
+    var paidWa = LandingSalesInfo.WhatsAppUrlForPaidPlan();
+    var helpWa = LandingSalesInfo.WhatsAppHelpUrl();
+    var feedbackWa = LandingSalesInfo.WhatsAppFeedbackUrl();
+    var feedbackMail = LandingSalesInfo.MailtoFeedbackUrl();
     var mail = Model.MailtoUrl;
     string Srcset(string stem, string ext, params int[] widths) =>
         string.Join(", ", widths.Select(w => $"/img/landing/{stem}-{w}.{ext} {w}w"));
@@ -30,9 +35,9 @@
         <a href="#how" data-lp-nav-link>How it works</a>
         <a href="#pricing" data-lp-nav-link>Pricing</a>
         <a href="#contact" data-lp-nav-link>Contact</a>
-        <a class="lp-btn lp-btn--ghost" asp-page="/Account/Login">Sign in</a>
-        <a class="lp-btn lp-btn--ghost lp-nav__cta" data-lp-nav-cta href="#pricing">Get started</a>
-        <a class="lp-nav__quiet" href="@apk" rel="noopener" target="_blank">Download app</a>
+        <a asp-page="/Account/Register">Register</a>
+        <a asp-page="/Account/Login">Sign in</a>
+        <a class="lp-btn lp-btn--ghost lp-nav__cta" data-lp-nav-cta data-lp-download href="@download">Download the free app</a>
     </nav>
     <button type="button" class="lp-nav__menu" data-lp-menu aria-expanded="false" aria-controls="lp-drawer" aria-label="Open menu">
         <span></span><span></span><span></span>
@@ -45,193 +50,96 @@
         <a href="#how" data-lp-close data-lp-nav-link>How it works</a>
         <a href="#pricing" data-lp-close data-lp-nav-link>Pricing</a>
         <a href="#contact" data-lp-close data-lp-nav-link>Contact</a>
+        <a asp-page="/Account/Register" data-lp-close>Register</a>
         <a asp-page="/Account/Login" data-lp-close>Sign in</a>
-        <a class="lp-btn lp-btn--ghost lp-nav__cta" data-lp-nav-cta href="#pricing" data-lp-close>Get started</a>
-        <a class="lp-nav__quiet" href="@apk" rel="noopener" target="_blank" data-lp-close>Download app</a>
+        <a class="lp-btn lp-btn--ghost lp-nav__cta" data-lp-nav-cta data-lp-download href="@download" data-lp-close>Download the free app</a>
     </nav>
 </div>
 
 <main id="main">
     <section id="top" class="lp-hero" aria-labelledby="hero-title">
-        <div class="lp-hero__media" data-lp-parallax-y>
+        <div class="lp-hero__media lp-hero__media--mobile">
             <picture>
-                <source media="(max-width: 899px) and (orientation: portrait)" type="image/avif"
-                        srcset="@Srcset("hero-takoradi-mobile", "avif", 480, 768, 960, 1280)" sizes="100vw" />
-                <source media="(max-width: 899px) and (orientation: portrait)" type="image/webp"
-                        srcset="@Srcset("hero-takoradi-mobile", "webp", 480, 768, 960, 1280)" sizes="100vw" />
-                <source media="(max-width: 899px) and (orientation: portrait)"
-                        srcset="@Srcset("hero-takoradi-mobile", "jpg", 480, 768, 960, 1280)" sizes="100vw" />
+                <source type="image/avif" srcset="@Srcset("contact-kumasi", "avif", 480, 720, 960, 1280, 1600)" sizes="100vw" />
+                <source type="image/webp" srcset="@Srcset("contact-kumasi", "webp", 480, 720, 960, 1280, 1600)" sizes="100vw" />
+                <img src="/img/landing/contact-kumasi-960.jpg"
+                     srcset="@Srcset("contact-kumasi", "jpg", 480, 720, 960, 1280, 1600)"
+                     sizes="100vw"
+                     width="960" height="1440"
+                     alt="A tailor in Kumasi, Ghana, sewing at a machine."
+                     fetchpriority="high" decoding="async" />
+            </picture>
+        </div>
+        <div class="lp-hero__media lp-hero__media--desk" data-lp-parallax-y>
+            <picture>
                 <source type="image/avif" srcset="@Srcset("hero-takoradi", "avif", 640, 960, 1280, 1600, 1920, 2560)" sizes="100vw" />
                 <source type="image/webp" srcset="@Srcset("hero-takoradi", "webp", 640, 960, 1280, 1600, 1920, 2560)" sizes="100vw" />
                 <img src="/img/landing/hero-takoradi-1280.jpg"
                      srcset="@Srcset("hero-takoradi", "jpg", 640, 960, 1280, 1600, 1920, 2560)"
                      sizes="100vw"
                      width="1280" height="852"
-                     alt="A seamstress in Takoradi, Ghana, sewing at a machine in a roadside workshop. Workshop photography — not a NeedleBase customer."
-                     fetchpriority="high" decoding="async" />
+                     alt="A seamstress in Takoradi, Ghana, sewing at a machine in a roadside workshop."
+                     loading="lazy" decoding="async" />
             </picture>
         </div>
         <div class="lp-hero__veil" aria-hidden="true"></div>
         <div class="lp-hero__grid">
             <div class="lp-hero__copy">
-                <p class="lp-kicker"><span class="lp-kicker__dot" aria-hidden="true"></span> For tailors, seamstresses, dressmakers &amp; fashion workshops</p>
-                <h1 id="hero-title">Stop chasing notebooks.<br /><span class="lp-hero__accent">Run your fashion workshop from one place.</span></h1>
-                <p class="lp-lead lp-lead--desktop">
-                    Built for tailors, seamstresses and fashion workshop owners in Ghana and West Africa.
-                    Keep each customer's measurements, orders and payments in one place — on the phone in the workroom,
-                    even with no internet, and on the computer for you.
+                <p class="lp-kicker"><span class="lp-kicker__dot" aria-hidden="true"></span>
+                    <span class="lp-kicker__full">For tailors and fashion workshops in Ghana</span>
+                    <span class="lp-kicker__short">For tailors in Ghana</span>
                 </p>
-                <p class="lp-lead lp-lead--mobile">
-                    For tailors, seamstresses and fashion workshop owners in Ghana and West Africa.
-                    Measurements, orders and payments in one place — on your phone, even with no internet.
-                </p>
+                <h1 id="hero-title">Every customer's measurements, on your phone. <span class="lp-hero__accent">No more flipping through old books.</span></h1>
+                <p class="lp-lead">Works even when there's no data.</p>
                 <div class="lp-hero__cta">
-                    <a class="lp-btn lp-btn--primary lp-btn--xl" data-lp-hero-cta href="@wa" rel="noopener" target="_blank"
-                       aria-label="Get set up for my workshop — opens a WhatsApp chat with us">
-                        Get set up for my workshop
+                    <a class="lp-btn lp-btn--primary lp-btn--xl" data-lp-hero-cta data-lp-download href="@download">
+                        Download the free app
                         <span class="lp-btn__arrow" aria-hidden="true">→</span>
                     </a>
+                    <a class="lp-hero__secondary" href="@paidWa" rel="noopener" target="_blank">
+                        <span class="lp-hero__secondary-desk">Have staff? Get a paid plan on WhatsApp</span>
+                        <span class="lp-hero__secondary-mob">Have staff? Paid plans on WhatsApp <span aria-hidden="true">→</span></span>
+                    </a>
                 </div>
-                <p class="lp-fine lp-fine--wa">
-                    <span class="lp-wa-hint">
-                        <svg class="lp-wa-hint__icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path fill="currentColor" d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.39-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.2 8.2 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.25-8.24zM8.68 7.53c-.16-.36-.34-.37-.49-.37h-.42c-.15 0-.38.05-.58.29-.2.24-.76.74-.76 1.81s.78 2.1.89 2.24c.1.15 1.52 2.43 3.76 3.31 1.87.73 2.25.58 2.66.55.4-.04 1.31-.54 1.5-1.05.18-.52.18-.96.13-1.05-.05-.1-.19-.15-.4-.26-.2-.12-1.31-.65-1.51-.72-.2-.08-.35-.11-.5.12-.15.22-.57.72-.7.87-.13.15-.26.16-.47.05-.2-.1-.87-.32-1.65-1.02-.61-.54-1.02-1.21-1.14-1.41-.12-.2-.01-.31.09-.41.09-.09.2-.24.3-.36.1-.12.13-.2.2-.34.06-.13.03-.25-.02-.35-.05-.1-.5-1.2-.68-1.64z"/>
-                        </svg>
-                        Opens a WhatsApp chat with us — we'll set you up and email your licence key.
-                    </span>
-                    <span class="lp-fine__signin">Already have a key? <a class="lp-text-link" asp-page="/Account/Register">Register your shop</a> · <a class="lp-text-link" asp-page="/Account/Login">Sign in</a></span>
-                </p>
-                <ul class="lp-trust" aria-label="What you get">
-                    <li>Phone keeps working with no internet</li>
-                    <li>Staff join only when you invite them</li>
-                    <li>See who is sewing which order</li>
-                </ul>
+                <p class="lp-hero__trust">Android · Made in Ghana · No card needed</p>
             </div>
             <div class="lp-hero__device">
-                <div class="lp-device-scene">
-                    <div class="lp-device lp-device--phone" data-lp-tilt aria-hidden="true">
-                        <div class="lp-device__bezel">
-                            <div class="lp-device__notch"></div>
-                            <!-- Recreated from NeedleBase.Mobile/Views/HomePage.xaml + HomeViewModel (sample data, not a live shop). -->
-                            <div class="lp-home">
-                                <div class="lp-home__chrome">
-                                    <span class="lp-home__time">9:41</span>
-                                    <span class="lp-home__sys">
-                                        <svg class="lp-home__ico lp-home__ico--signal" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M2 22h4V10H2v12zm6 0h4V2H8v20zm6 0h4V14h-4v8zm6 0h4V6h-4v16z"/></svg><svg class="lp-home__ico lp-home__ico--wifi" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg><svg class="lp-home__ico lp-home__ico--battery" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M17 5.33C17 4.6 16.4 4 15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33V15h10V5.33zM7 16v3.67C7 20.4 7.6 21 8.33 21h7.33c.74 0 1.34-.6 1.34-1.33V16H7z"/></svg>
-                                    </span>
-                                </div>
-                                <div class="lp-home__scroll">
-                                    <div class="lp-home__header">
-                                        <span class="lp-home__avatar">A</span>
-                                        <span class="lp-home__who">
-                                            <span class="lp-home__greet">Good morning, Ama</span>
-                                            <span class="lp-home__biz">Ama's Workshop</span>
-                                        </span>
-                                    </div>
-                                    <div class="lp-home__sync">
-                                        <span class="lp-home__dot"></span>
-                                        <span class="lp-home__sync-copy">
-                                            <span class="lp-home__sync-title">Synced</span>
-                                            <span class="lp-home__sync-detail">Up to date</span>
-                                        </span>
-                                    </div>
-                                    <div class="lp-home__kpis">
-                                        <div class="lp-home__kpi">
-                                            <span class="lp-home__kpi-label">ACTIVE ORDERS</span>
-                                            <span class="lp-home__kpi-num">6</span>
-                                            <span class="lp-home__kpi-cap">New to Ready</span>
-                                        </div>
-                                        <div class="lp-home__kpi lp-home__kpi--ready">
-                                            <span class="lp-home__kpi-label">READY TO COLLECT</span>
-                                            <span class="lp-home__kpi-num">2</span>
-                                            <span class="lp-home__kpi-cap">Waiting for pickup</span>
-                                        </div>
-                                    </div>
-                                    <p class="lp-home__h">Quick actions</p>
-                                    <div class="lp-home__actions">
-                                        <div class="lp-home__action"><svg class="lp-home__ico lp-home__ico--person-add" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span>Add customer</span></div>
-                                        <div class="lp-home__action"><svg class="lp-home__ico lp-home__ico--receipt" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19.5 3.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2v14H3v3c0 1.66 1.34 3 3 3h12c1.66 0 3-1.34 3-3V2l-1.5 1.5zM15 20H6c-.55 0-1-.45-1-1v-1h10v2zm4-1c0 .55-.45 1-1 1s-1-.45-1-1v-3H8V5h11v14z"/></svg><span>New order</span></div>
-                                        <div class="lp-home__action"><svg class="lp-home__ico lp-home__ico--payments" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19 14V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-9-1c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-6v11c0 1.1-.9 2-2 2H4v-2h17V7h2z"/></svg><span>Payment</span></div>
-                                        <div class="lp-home__action"><svg class="lp-home__ico lp-home__ico--straighten" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2v8z"/></svg><span>Measure</span></div>
-                                    </div>
-                                    <div class="lp-home__card">
-                                        <div class="lp-home__card-head">
-                                            <p class="lp-home__h lp-home__h--inline">Orders in progress</p>
-                                            <span class="lp-home__link">View all</span>
-                                        </div>
-                                        <div class="lp-home__stage">
-                                            <span class="lp-home__stage-name">New</span>
-                                            <span class="lp-home__bar lp-home__bar--1of6"><span class="lp-home__bar-fill lp-home__bar-fill--new"></span></span>
-                                            <span class="lp-home__count">1</span>
-                                        </div>
-                                        <div class="lp-home__stage">
-                                            <span class="lp-home__stage-name">Cutting</span>
-                                            <span class="lp-home__bar lp-home__bar--1of6"><span class="lp-home__bar-fill lp-home__bar-fill--cutting"></span></span>
-                                            <span class="lp-home__count">1</span>
-                                        </div>
-                                        <div class="lp-home__stage">
-                                            <span class="lp-home__stage-name">Sewing</span>
-                                            <span class="lp-home__bar lp-home__bar--2of6"><span class="lp-home__bar-fill lp-home__bar-fill--sewing"></span></span>
-                                            <span class="lp-home__count">2</span>
-                                        </div>
-                                        <div class="lp-home__stage">
-                                            <span class="lp-home__stage-name">Fitting</span>
-                                            <span class="lp-home__bar lp-home__bar--0"><span class="lp-home__bar-fill lp-home__bar-fill--fitting"></span></span>
-                                            <span class="lp-home__count">0</span>
-                                        </div>
-                                        <div class="lp-home__stage">
-                                            <span class="lp-home__stage-name">Ready</span>
-                                            <span class="lp-home__bar lp-home__bar--2of6"><span class="lp-home__bar-fill lp-home__bar-fill--ready"></span></span>
-                                            <span class="lp-home__count">2</span>
-                                        </div>
-                                    </div>
-                                    <p class="lp-home__h">Needs attention</p>
-                                    <div class="lp-home__attn">
-                                        <span class="lp-home__attn-av">A</span>
-                                        <span class="lp-home__attn-copy">
-                                            <span class="lp-home__attn-name">Ama</span>
-                                            <span class="lp-home__attn-detail">#7N3K2P8H · 07 Nov 2026</span>
-                                        </span>
-                                        <span class="lp-home__badge lp-home__badge--overdue"><svg class="lp-home__ico lp-home__ico--schedule" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg><span>Overdue</span></span>
-                                    </div>
-                                    <div class="lp-home__attn">
-                                        <span class="lp-home__attn-av">K</span>
-                                        <span class="lp-home__attn-copy">
-                                            <span class="lp-home__attn-name">Kofi</span>
-                                            <span class="lp-home__attn-detail">#C4Q9M2TW · 10 Nov 2026</span>
-                                        </span>
-                                        <span class="lp-home__badge lp-home__badge--ready"><svg class="lp-home__ico lp-home__ico--check" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg><span>Ready to collect</span></span>
-                                    </div>
-                                    <div class="lp-home__signout">Sign out</div>
-                                </div>
-                                <div class="lp-home__tabs">
-                                    <span class="lp-home__tab is-active"><svg class="lp-home__ico lp-home__ico--home" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></span>
-                                    <span class="lp-home__tab"><svg class="lp-home__ico lp-home__ico--people" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg><span>Customers</span></span>
-                                    <span class="lp-home__tab"><svg class="lp-home__ico lp-home__ico--receipt" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19.5 3.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2 7.5 3.5 6 2v14H3v3c0 1.66 1.34 3 3 3h12c1.66 0 3-1.34 3-3V2l-1.5 1.5zM15 20H6c-.55 0-1-.45-1-1v-1h10v2zm4-1c0 .55-.45 1-1 1s-1-.45-1-1v-3H8V5h11v14z"/></svg><span>Orders</span></span>
-                                    <span class="lp-home__tab"><svg class="lp-home__ico lp-home__ico--payments" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19 14V6c0-1.1-.9-2-2-2H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zm-9-1c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm13-6v11c0 1.1-.9 2-2 2H4v-2h17V7h2z"/></svg><span>Payments</span></span>
-                                    <span class="lp-home__tab"><svg class="lp-home__ico lp-home__ico--menu" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg><span>More</span></span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="lp-spool" aria-hidden="true">
-                        <span class="lp-spool__back"></span>
-                        <span class="lp-spool__thread"></span>
-                        <span class="lp-spool__front"></span>
-                    </div>
-                </div>
-                <p class="lp-device__cap">Sample of the NeedleBase phone app — not a live shop.</p>
+                <p class="lp-sr-only">Sample of the NeedleBase phone app.</p>
+                <partial name="_AppHomeMockup" model="@(true)" />
             </div>
         </div>
-        <p class="lp-hero__credit">Workshop photography, Takoradi — not a NeedleBase customer.</p>
+    </section>
+
+    <section class="lp-glance" aria-labelledby="glance-title">
+        <div class="lp-glance__inner">
+            <h2 id="glance-title">Your workshop at a glance</h2>
+            <partial name="_AppHomeMockup" model="@(false)" />
+            <p class="lp-glance__caption">Sample of the app's home screen</p>
+        </div>
+    </section>
+
+    <section class="lp-promises" aria-label="What you can count on">
+        <ul class="lp-promises__list">
+            <li>
+                <p class="lp-promises__title">Works with no data</p>
+                <p>Take orders and measurements offline.</p>
+            </li>
+            <li>
+                <p class="lp-promises__title">No hidden fees</p>
+                <p>We never take a cut of your payments.</p>
+            </li>
+            <li>
+                <p class="lp-promises__title">Pay your way</p>
+                <p>Monthly, every 3 months or yearly.</p>
+            </li>
+        </ul>
     </section>
 
     <section id="problems" class="lp-section lp-section--problems lp-mesh lp-mesh--light" aria-labelledby="problems-title">
         <div class="lp-section__inner">
             <div class="lp-section__head" data-lp-reveal>
-                <p class="lp-eyebrow">Sound familiar?</p>
                 <h2 id="problems-title">The headaches of a busy fashion workshop</h2>
-                <p class="lp-section__lead">If you run a tailor shop, seamstress bench or clothing workshop, these will sound familiar.</p>
+                <p class="lp-section__lead">Lost books, slipped dates, unclear balances — these will sound familiar.</p>
             </div>
             <ul class="lp-pain" data-lp-reveal>
                 <li>
@@ -256,7 +164,7 @@
                 </li>
             </ul>
             <p class="lp-section__nudge" data-lp-reveal>
-                If that sounds like your workshop, <a class="lp-text-link" href="@wa" rel="noopener" target="_blank">message us</a> and we'll help you start.
+                If that sounds like your workshop, <a class="lp-text-link" href="@download">download the free app</a> and start on your phone.
             </p>
         </div>
     </section>
@@ -264,10 +172,9 @@
     <section id="benefits" class="lp-deck" data-lp-deck aria-labelledby="benefits-title">
         <div class="lp-deck__sticky">
             <div class="lp-deck__head">
-                <p class="lp-eyebrow">What changes</p>
                 <h2 id="benefits-title">One place for the work that fills your day</h2>
-                <p class="lp-section__lead">Tools that match how a tailor or fashion workshop actually runs. <span class="lp-deck__hint lp-deck__hint--desk">Scroll to deal the next card.</span><span class="lp-deck__hint lp-deck__hint--hand">Swipe to see the next card.</span></p>
-                <p class="lp-sr-only">Four features follow as cards. On a large screen, scroll to bring each card to the front. On a phone, swipe left or right between cards, or use the card buttons. If you prefer reduced motion, you can still move between cards without animated motion.</p>
+                <p class="lp-section__lead">Tools that match how a tailor or fashion workshop actually runs.</p>
+                <p class="lp-sr-only">Four feature cards follow. Use the previous and next buttons to move between them, or swipe on a phone.</p>
             </div>
             <div class="lp-deck__stage-wrap">
             <p class="lp-deck__swipe-hint" data-lp-deck-hint aria-hidden="true"><span>Swipe</span></p>
@@ -281,10 +188,9 @@
                                  srcset="@Srcset("split-workshop", "jpg", 640, 960, 1280)"
                                  sizes="(min-width: 860px) 50vw, 100vw"
                                  width="1280" height="720"
-                                 alt="Generated photograph of a Ghanaian fashion workshop, with seamstresses sewing and cutting colourful wax-print fabric. Not a real customer or testimonial."
+                                 alt="Generated photograph of a Ghanaian fashion workshop, with seamstresses sewing and cutting colourful wax-print fabric."
                                  loading="lazy" decoding="async" />
                         </picture>
-                        <p class="lp-photo-credit">Generated workshop photograph — not a real customer or testimonial.</p>
                     </div>
                     <div class="lp-deck__copy">
                         <span class="lp-deck__idx">01 / 04</span>
@@ -304,7 +210,7 @@
                                 <li>Ready</li>
                                 <li>Collected</li>
                             </ol>
-                            <p class="lp-mini__meta">Due Friday · sample of an order's stages — not a live shop.</p>
+                            <p class="lp-mini__meta">Due Friday · Sample</p>
                         </div>
                     </div>
                 </div>
@@ -318,10 +224,9 @@
                                  srcset="@Srcset("split-measure", "jpg", 640, 960, 1152)"
                                  sizes="(min-width: 860px) 50vw, 100vw"
                                  width="1152" height="864"
-                                 alt="Generated photograph of a Ghanaian seamstress measuring a client in a workshop. Not a real customer or testimonial."
+                                 alt="Generated photograph of a Ghanaian seamstress measuring a client in a workshop."
                                  loading="lazy" decoding="async" />
                         </picture>
-                        <p class="lp-photo-credit">Generated workshop photograph — not a real customer or testimonial.</p>
                     </div>
                     <div class="lp-deck__copy">
                         <span class="lp-deck__idx">02 / 04</span>
@@ -351,10 +256,9 @@
                                  srcset="@Srcset("split-fabric", "jpg", 640, 960, 1280)"
                                  sizes="(min-width: 860px) 50vw, 100vw"
                                  width="1280" height="720"
-                                 alt="Generated photograph of ankara and kente fabric, a measuring tape, shears and a phone on a workshop table. Not a real shop's records."
+                                 alt="Generated photograph of ankara and kente fabric, a measuring tape, shears and a phone on a workshop table."
                                  loading="lazy" decoding="async" />
                         </picture>
-                        <p class="lp-photo-credit">Generated workshop photograph — not a real shop's records.</p>
                     </div>
                     <div class="lp-deck__copy">
                         <span class="lp-deck__idx">03 / 04</span>
@@ -383,10 +287,9 @@
                                  srcset="@Srcset("split-owner", "jpg", 640, 960, 1152)"
                                  sizes="(min-width: 860px) 50vw, 100vw"
                                  width="1152" height="864"
-                                 alt="Generated photograph of a Ghanaian workshop owner checking a phone beside a laptop and rolls of fabric. Not a real customer or testimonial."
+                                 alt="Generated photograph of a Ghanaian workshop owner checking a phone beside a laptop and rolls of fabric."
                                  loading="lazy" decoding="async" />
                         </picture>
-                        <p class="lp-photo-credit">Generated workshop photograph — not a real customer or testimonial.</p>
                     </div>
                     <div class="lp-deck__copy">
                         <span class="lp-deck__idx">04 / 04</span>
@@ -398,7 +301,7 @@
                                 <span class="lp-ui__pill">Sample</span>
                             </div>
                             <p class="lp-deck__sync"><span class="lp-deck__dot"></span> Saved on this phone — no internet just now</p>
-                            <p class="lp-mini__meta">Updates the shop when you're back online · sample — not a live shop.</p>
+                            <p class="lp-mini__meta">Updates when you're back online · Sample</p>
                         </div>
                     </div>
                 </div>
@@ -420,9 +323,42 @@
                 </button>
             </div>
             <p class="lp-deck__nudge">
-                Ready to try it in your workshop? <a class="lp-text-link" href="@wa" rel="noopener" target="_blank">Message us for a licence key</a>
-                — or <a class="lp-text-link" asp-page="/Account/Register">register</a> if you already have one.
+                Ready to try it? <a class="lp-text-link" href="@download">Download the free app</a>
             </p>
+        </div>
+    </section>
+
+    <section id="demo" class="lp-section lp-section--demo" aria-labelledby="demo-title">
+        <div class="lp-section__inner">
+            <div class="lp-section__head" data-lp-reveal>
+                <h2 id="demo-title">See an order</h2>
+                <p class="lp-section__lead">A walkthrough of a sample order, from first cut through to collection.</p>
+            </div>
+            <article class="lp-order" data-lp-reveal aria-label="Sample order">
+                <p class="lp-order__sample">Sample order</p>
+                <header class="lp-order__top">
+                    <div>
+                        <h3>Kaba &amp; slit</h3>
+                        <p>For Ama · due Friday</p>
+                    </div>
+                    <p class="lp-order__now">Sewing</p>
+                </header>
+                <ol class="lp-order__stages">
+                    <li class="is-done">New</li>
+                    <li class="is-done">Cutting</li>
+                    <li class="is-now">Sewing</li>
+                    <li>Finishing</li>
+                    <li>Ready</li>
+                    <li>Collected</li>
+                </ol>
+                <dl class="lp-order__facts">
+                    <div><dt>Assigned to</dt><dd>Kofi, tailor</dd></div>
+                    <div><dt>Total</dt><dd>GH₵250</dd></div>
+                    <div><dt>Deposit</dt><dd>GH₵150</dd></div>
+                    <div><dt>Balance</dt><dd>GH₵100</dd></div>
+                </dl>
+                <p class="lp-order__note">On a paid plan, every phone and computer updates when you're back online.</p>
+            </article>
         </div>
     </section>
 
@@ -430,25 +366,24 @@
         <div class="lp-hand__row">
             <div>
                 <div class="lp-hand__head lp-section__head lp-section__head--left" data-lp-reveal>
-                    <p class="lp-eyebrow">How to get started</p>
-                    <h2 id="how-title">Three steps to get NeedleBase</h2>
-                    <p class="lp-section__lead">No long form first. Message us about your workshop, then we send your licence key.</p>
+                    <h2 id="how-title">How to get started</h2>
+                    <p class="lp-section__lead">Start on your phone today. Add staff later, when you need them.</p>
                 </div>
                 <ol class="lp-hand">
                     <li data-lp-reveal>
                         <span class="lp-hand__num" aria-hidden="true">01</span>
-                        <h3>Message us</h3>
-                        <p>WhatsApp <a class="lp-text-link" href="@wa" rel="noopener" target="_blank">@Model.WhatsAppDisplay</a> or email <a class="lp-text-link" href="@mail">@Model.Email</a>. Tell us about your tailor shop or fashion workshop and which plan you want.</p>
+                        <h3>Download the free app</h3>
+                        <p>Use it on your phone straight away. No form and no key. <a class="lp-text-link" href="@download">Download the free app</a>.</p>
                     </li>
                     <li data-lp-reveal>
                         <span class="lp-hand__num" aria-hidden="true">02</span>
-                        <h3>Get your licence key</h3>
-                        <p>We send your licence key by email. Use that same email when you register the shop.</p>
+                        <h3>Add your customers and orders</h3>
+                        <p>Up to 10 customers and 20 orders on Free.</p>
                     </li>
                     <li data-lp-reveal>
                         <span class="lp-hand__num" aria-hidden="true">03</span>
-                        <h3>Register, invite, download</h3>
-                        <p><a class="lp-text-link" asp-page="/Account/Register">Register your shop</a>, invite your managers and tailors, and <a class="lp-text-link" href="@apk" rel="noopener" target="_blank">download the Android app</a> for the workroom.</p>
+                        <h3>Ready for staff or a computer?</h3>
+                        <p><a class="lp-text-link" href="@paidWa" rel="noopener" target="_blank">Message us on WhatsApp</a>, pick a plan, and we email your key. Your records come with you.</p>
                     </li>
                 </ol>
             </div>
@@ -474,12 +409,12 @@
                     </div>
                     <div class="lp-device__base"><span></span></div>
                 </div>
-                <p class="lp-device__cap lp-device__cap--light">Sample of the NeedleBase computer screen — not a live shop.</p>
+                <p class="lp-device__cap lp-device__cap--light">Sample computer screen</p>
             </div>
         </div>
     </section>
 
-    <section class="lp-kente-wrap" aria-label="Kente weaving in Accra">
+    <section class="lp-kente-wrap" aria-labelledby="about-title">
         <div class="lp-kente">
             <div class="lp-kente__media">
                 <picture>
@@ -489,15 +424,14 @@
                          srcset="@Srcset("band-kente", "jpg", 480, 720, 960, 1280, 1600)"
                          sizes="100vw"
                          width="960" height="1440"
-                         alt="A craftsman weaving kente cloth on a traditional loom in Accra, Ghana. Workshop photography — not a NeedleBase customer."
+                         alt="A craftsman weaving kente cloth on a traditional loom in Accra, Ghana."
                          loading="lazy" decoding="async" />
                 </picture>
             </div>
             <div class="lp-kente__veil" aria-hidden="true"></div>
             <div class="lp-kente__copy" data-lp-reveal>
-                <p class="lp-eyebrow">Made for this work</p>
-                <p class="lp-kente__line">Built for workshops in Ghana and West Africa — not a desk in another country.</p>
-                <p class="lp-photo-credit lp-photo-credit--on-dark">Kente weaving, Accra — not a NeedleBase customer.</p>
+                <h2 id="about-title" class="lp-kente__line">Made in Ghana by HelmutCode Solutions.</h2>
+                <p>We built NeedleBase for tailors, seamstresses and dressmakers who want their records safe and simple.</p>
             </div>
         </div>
     </section>
@@ -507,16 +441,20 @@
             <div class="lp-section__head lp-section__head--left" data-lp-reveal>
                 <p class="lp-eyebrow">Pricing</p>
                 <h2 id="pricing-title">Simple plans in Ghana cedis</h2>
-                <p class="lp-section__lead">Plans for tailors, seamstresses, dressmakers and fashion workshop owners. A year costs the same as 10 months. Prices exclude VAT.</p>
+                <p class="lp-section__lead">A year costs the same as 10 months. Prices exclude VAT.</p>
             </div>
             <div class="lp-pricing-wrap" data-lp-reveal>
                 <div class="lp-bill" role="radiogroup" aria-label="Billing period">
                     <input type="radio" name="lp-bill" id="lp-bill-month" checked />
                     <label class="lp-bill__opt" for="lp-bill-month">Monthly</label>
                     <input type="radio" name="lp-bill" id="lp-bill-quarter" />
-                    <label class="lp-bill__opt" for="lp-bill-quarter">Quarterly</label>
+                    <label class="lp-bill__opt" for="lp-bill-quarter">Every 3 months</label>
                     <input type="radio" name="lp-bill" id="lp-bill-year" />
-                    <label class="lp-bill__opt" for="lp-bill-year">Yearly <span class="lp-bill__save">Save two months</span></label>
+                    <label class="lp-bill__opt lp-bill__opt--year" for="lp-bill-year">
+                        <span class="lp-bill__year">Yearly</span>
+                        <span class="lp-bill__save lp-bill__save--full">Save two months</span>
+                        <span class="lp-bill__save lp-bill__save--short">−2 months</span>
+                    </label>
                 </div>
                 <div class="lp-pricing">
                     @foreach (var plan in Model.Plans)
@@ -526,15 +464,15 @@
                             <h3>@plan.Name</h3>
                             <p class="lp-plan__tag">@plan.Tagline</p>
                             <p class="lp-plan__price lp-plan__price--month">
-                                <span class="lp-plan__amount">GH₵ @plan.MonthlyGhs.ToString("N0")</span>
+                                <span class="lp-plan__amount">GH₵@plan.MonthlyGhs.ToString("N0")</span>
                                 <span class="lp-plan__per">/ month</span>
                             </p>
                             <p class="lp-plan__price lp-plan__price--quarter">
-                                <span class="lp-plan__amount">GH₵ @plan.QuarterlyGhs.ToString("N0")</span>
-                                <span class="lp-plan__per">/ quarter</span>
+                                <span class="lp-plan__amount">GH₵@plan.QuarterlyGhs.ToString("N0")</span>
+                                <span class="lp-plan__per">/ 3 months</span>
                             </p>
                             <p class="lp-plan__price lp-plan__price--year">
-                                <span class="lp-plan__amount">GH₵ @plan.YearlyGhs.ToString("N0")</span>
+                                <span class="lp-plan__amount">GH₵@plan.YearlyGhs.ToString("N0")</span>
                                 <span class="lp-plan__per">/ year</span>
                             </p>
                             @if (!plan.IsFree)
@@ -546,9 +484,13 @@
                             <ul class="lp-plan__list">
                                 @foreach (var h in plan.Highlights)
                                 {
-                                    <li>@h</li>
+                                    <li>@h.Text</li>
                                 }
                             </ul>
+                            @if (!string.IsNullOrEmpty(plan.ComingSoonNote))
+                            {
+                                <p class="lp-plan__soon">@plan.ComingSoonNote</p>
+                            }
                             @if (plan.LimitationItems.Count > 0)
                             {
                                 <p class="lp-plan__limits-label">Not included</p>
@@ -566,10 +508,10 @@
                             @if (plan.IsFree)
                             {
                                 <a class="lp-btn lp-btn--ghost lp-btn--lg"
-                                   href="@apk" rel="noopener" target="_blank"
-                                   title="Download the NeedleBase Android app"
-                                   aria-label="Download the app for the Free plan">
-                                    Download the app
+                                   data-lp-download
+                                   href="@download"
+                                   title="Download the free NeedleBase Android app">
+                                    Download the free app
                                 </a>
                             }
                             else
@@ -586,7 +528,7 @@
                 </div>
             </div>
             <p class="lp-pricing__note" data-lp-reveal>
-                Prices exclude VAT. To start a paid plan, message us on WhatsApp or email and we will send a licence key. The Free plan runs on your phone — download the app to get started.
+                Prices exclude VAT. To start a paid plan, message us on WhatsApp or email and we will send a licence key. The Free plan runs on your phone — download the free app to get started.
             </p>
         </div>
     </section>
@@ -606,11 +548,11 @@
                 </details>
                 <details>
                     <summary>How do I get started?</summary>
-                    <div class="lp-faq__body"><p>Download the app (in the menu, the footer, or the Free plan) and use it free on one phone straight away. You don't need to register or enter a licence key. When you want staff, the website, or your records kept safe online, message us on WhatsApp or email and we will send a licence key.</p></div>
+                    <div class="lp-faq__body"><p>Download the free app and use it on your phone straight away. No form and no key. Add your customers and orders — up to 10 customers and 20 orders on Free. When you need staff or a computer, message us on WhatsApp, pick a plan, and we email your key. Your records come with you.</p></div>
                 </details>
                 <details>
                     <summary>How much does NeedleBase cost?</summary>
-                    <div class="lp-faq__body"><p>Free is GH₵0. Starter is GH₵50 a month, Workshop GH₵150, and Production GH₵300. You can also pay by the quarter or the year (a year costs the same as 10 months). Prices exclude VAT. Download the app to use Free on your phone, or message us for a paid-plan licence key.</p></div>
+                    <div class="lp-faq__body"><p>Free is GH₵0. Starter is GH₵50 a month, Workshop GH₵150, and Production GH₵300. You can also pay every 3 months or by the year (a year costs the same as 10 months). Prices exclude VAT. Download the free app to use Free on your phone, or message us for a paid-plan licence key.</p></div>
                 </details>
                 <details>
                     <summary>What can't I do on Free?</summary>
@@ -638,7 +580,19 @@
 
     <section id="contact" class="lp-cta-wrap" aria-labelledby="cta-title">
         <div class="lp-cta">
-            <div class="lp-cta__media">
+            <div class="lp-cta__media lp-cta__media--mobile">
+                <picture>
+                    <source type="image/avif" srcset="@Srcset("band-kente", "avif", 480, 720, 960, 1280, 1600)" sizes="100vw" />
+                    <source type="image/webp" srcset="@Srcset("band-kente", "webp", 480, 720, 960, 1280, 1600)" sizes="100vw" />
+                    <img src="/img/landing/band-kente-960.jpg"
+                         srcset="@Srcset("band-kente", "jpg", 480, 720, 960, 1280, 1600)"
+                         sizes="100vw"
+                         width="960" height="1440"
+                         alt="Traditional kente weaving in Accra, Ghana."
+                         loading="lazy" decoding="async" />
+                </picture>
+            </div>
+            <div class="lp-cta__media lp-cta__media--desk">
                 <picture>
                     <source type="image/avif" srcset="@Srcset("contact-kumasi", "avif", 480, 720, 960, 1280, 1600)" sizes="100vw" />
                     <source type="image/webp" srcset="@Srcset("contact-kumasi", "webp", 480, 720, 960, 1280, 1600)" sizes="100vw" />
@@ -646,43 +600,40 @@
                          srcset="@Srcset("contact-kumasi", "jpg", 480, 720, 960, 1280, 1600)"
                          sizes="100vw"
                          width="960" height="1440"
-                         alt="A tailor in Kumasi, Ghana, sewing on a machine with ankara fabric at hand. Workshop photography — not a NeedleBase customer."
+                         alt="A tailor in Kumasi, Ghana, sewing on a machine with ankara fabric at hand."
                          loading="lazy" decoding="async" />
                 </picture>
             </div>
             <div class="lp-cta__veil" aria-hidden="true"></div>
             <div class="lp-cta__inner" data-lp-reveal>
-                <h2 id="cta-title">Ready to organise your fashion workshop?</h2>
-                <p>Message us on WhatsApp or email. We'll send your licence key, then you register and invite your team.</p>
+                <h2 id="cta-title">Ready to put your next order in one place?</h2>
+                <p>Start on your phone today. When you need staff, chat with us and we'll help you pick a plan.</p>
                 <div class="lp-hero__cta">
-                    <a class="lp-btn lp-btn--primary lp-btn--lg" href="@wa" rel="noopener" target="_blank"
-                       aria-label="Chat with us on WhatsApp">Chat with us on WhatsApp</a>
-                    <a class="lp-btn lp-btn--ghost lp-btn--lg" href="@mail">Email us</a>
+                    <a class="lp-btn lp-btn--primary lp-btn--lg" data-lp-download href="@download">Download the free app</a>
+                    <a class="lp-btn lp-btn--ghost lp-btn--lg" href="@paidWa" rel="noopener" target="_blank">or chat with us on WhatsApp</a>
                 </div>
                 <p class="lp-fine">
                     WhatsApp <a class="lp-text-link" href="@wa" rel="noopener" target="_blank">@Model.WhatsAppDisplay</a>
-                    · <a class="lp-text-link" href="@mail">@Model.Email</a><br />
-                    Already have a licence key? <a class="lp-text-link" asp-page="/Account/Register">Register your shop</a>
-                    · <a class="lp-text-link" asp-page="/Account/Login">Sign in</a>
+                    · <a class="lp-text-link" href="@mail">@Model.Email</a>
                 </p>
-                <p class="lp-photo-credit lp-photo-credit--on-dark">Workshop photography, Kumasi — not a NeedleBase customer.</p>
             </div>
         </div>
     </section>
+    <p class="lp-illustrate">Photos and sample orders are for illustration.</p>
 </main>
 
 <footer class="lp-footer">
     <div class="lp-footer__grid">
         <div class="lp-footer__brand">
-            <p class="lp-footer__brand-text">NeedleBase by HelmutCode</p>
-            <p>Tailoring shop software for Ghana &amp; West Africa · Measure · Cut · Sew · Deliver</p>
+            <p class="lp-footer__brand-text">NeedleBase by HelmutCode Solutions</p>
+            <p>Tailoring shop software for Ghana and West Africa · Measure · Cut · Sew · Deliver</p>
         </div>
         <nav class="lp-footer__col" aria-label="Product">
             <h2 class="lp-footer__heading">Product</h2>
             <a class="lp-footer__link" href="#how">How it works</a>
             <a class="lp-footer__link" href="#pricing">Pricing</a>
             <a class="lp-footer__link" href="#faq">Questions</a>
-            <a class="lp-footer__link" href="@apk" rel="noopener" target="_blank">Download app</a>
+            <a class="lp-footer__link" data-lp-download href="@download">Download the free app</a>
         </nav>
         <nav class="lp-footer__col" aria-label="Account">
             <h2 class="lp-footer__heading">Account</h2>
@@ -697,10 +648,16 @@
             <a class="lp-footer__link" href="#contact">Contact</a>
             <a class="lp-footer__link" href="@wa" rel="noopener" target="_blank">WhatsApp</a>
             <a class="lp-footer__link" href="@mail">Email</a>
+            <a class="lp-footer__link" href="@helpWa" rel="noopener" target="_blank">Help</a>
+            <a class="lp-footer__link" href="@feedbackWa" rel="noopener" target="_blank">Send us feedback</a>
         </nav>
     </div>
     <p class="lp-footer__legal">© 2026 NeedleBase</p>
 </footer>
+
+<aside class="lp-sticky-download" data-lp-sticky-download aria-hidden="true" inert>
+    <a class="lp-btn lp-btn--primary" href="@download">Download the free app</a>
+</aside>
 
 
 @{ var ldType = "application/ld+json"; }
@@ -723,13 +680,13 @@
         "areaServed": ["GH", "West Africa"],
         "availableLanguage": ["en"]
       }],
-      "parentOrganization": { "@@type": "Organization", "name": "HelmutCode" }
+      "parentOrganization": { "@@type": "Organization", "name": "HelmutCode Solutions" }
     },
     {
       "@@type": "WebSite",
       "name": "NeedleBase",
       "url": "@origin",
-      "description": "Tailoring shop software for tailors, seamstresses, dressmakers and fashion workshop owners in Ghana and West Africa — customers, measurements, orders and payments on phone and computer."
+      "description": "NeedleBase keeps customers, measurements, orders and payments in one place, even without data. Start free on your phone."
     },
     {
       "@@type": "SoftwareApplication",
@@ -737,12 +694,12 @@
       "applicationCategory": "BusinessApplication",
       "applicationSubCategory": "Tailoring shop software",
       "operatingSystem": "Android, Web",
-      "description": "Tailor app and fashion workshop software for Ghana and West Africa: customers, measurements, orders, payments and a phone app that works without internet.",
+      "description": "Customers, measurements, orders and payments on your phone, even without data. Start free on your phone.",
       "audience": {
         "@@type": "Audience",
-        "audienceType": "Tailors, seamstresses, dressmakers and clothing or fashion workshop owners"
+        "audienceType": "Tailors, seamstresses, dressmakers and fashion workshop owners"
       },
-      "downloadUrl": "@apk",
+      "downloadUrl": "@origin/download",
       "url": "@origin"
     },
     {
@@ -750,8 +707,8 @@
       "name": "NeedleBase",
       "operatingSystem": "Android",
       "applicationCategory": "BusinessApplication",
-      "downloadUrl": "@apk",
-      "description": "Android tailor app for NeedleBase fashion workshops: orders, customers, measurements and payments — works without internet and updates the shop when you are back online."
+      "downloadUrl": "@origin/download",
+      "description": "Android app for NeedleBase: orders, customers, measurements and payments — works without data. Start free on your phone."
     },
     {
       "@@type": "FAQPage",
@@ -764,12 +721,12 @@
         {
           "@@type": "Question",
           "name": "How do I get started?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "Download the app (in the menu, the footer, or the Free plan) and use it free on one phone straight away. You don't need to register or enter a licence key. When you want staff, the website, or your records kept safe online, message us on WhatsApp or email and we will send a licence key." }
+          "acceptedAnswer": { "@@type": "Answer", "text": "Download the free app and use it on your phone straight away. No form and no key. Add your customers and orders — up to 10 customers and 20 orders on Free. When you need staff or a computer, message us on WhatsApp, pick a plan, and we email your key. Your records come with you." }
         },
         {
           "@@type": "Question",
           "name": "How much does NeedleBase cost?",
-          "acceptedAnswer": { "@@type": "Answer", "text": "Free is GH₵0. Starter is GH₵50 a month, Workshop GH₵150, and Production GH₵300. You can also pay by the quarter or the year (a year costs the same as 10 months). Prices exclude VAT. Download the app to use Free on your phone, or message us for a paid-plan licence key." }
+          "acceptedAnswer": { "@@type": "Answer", "text": "Free is GH₵0. Starter is GH₵50 a month, Workshop GH₵150, and Production GH₵300. You can also pay every 3 months or by the year (a year costs the same as 10 months). Prices exclude VAT. Download the free app to use Free on your phone, or message us for a paid-plan licence key." }
         },
         {
           "@@type": "Question",

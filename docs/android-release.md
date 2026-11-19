@@ -18,8 +18,13 @@ build scripts; [ci-cd.md](ci-cd.md#what-builds-when)) or when a manual run ticks
 then the last `mobile-v*` tag + patch; to release a new **minor or major** version, set `NeedleBaseVersion` in
 `src/NeedleBase.Mobile/NeedleBase.Mobile.csproj` (e.g. `0.2.0`, `1.0.0`) and push, or run the workflow with
 *build_android* and *bump* = minor/major. The csproj may never be behind the last tag's major.minor (the run fails).
-Each build becomes tag `mobile-v<version>` and a GitHub **pre-release**; promote it on GitHub when tested
-(Edit → untick *Set as a pre-release*).
+Each build from a push to main becomes tag `mobile-v<version>` and a GitHub **Beta** (pre-release). To publish a
+**Stable** release, either run the workflow with *build_android* and *channel* = stable (also uploads a fixed-name
+`needlebase.apk`), or, after testing a Beta, run the workflow with *promote_to_stable* (optional *promote_tag*; leave
+it blank to promote the newest Beta). The site's `/download` page shows the latest Stable as the main file and the
+latest Beta as a clearly labelled beta. Until a Stable release exists, `/download` offers the Beta only and does not
+call it stable. The latest Stable APK is also at
+`https://github.com/Helmut-Essien/NeedleBase/releases/latest/download/needlebase.apk`.
 
 ## Upload keystore (once, kept by you)
 
@@ -64,16 +69,16 @@ enabled) in GitHub Actions and attach it, with `update.json`, to the GitHub Rele
   handed out.
 - Keep versionCodes increasing across both channels: the first Play upload must be higher than any sideloaded
   build. Set the `VERSION_CODE_OFFSET` variable if you ever need to jump ahead of earlier codes.
-- Sideloaded phones update themselves (next section). The first install comes from the APK on the GitHub Releases
-  page (`https://github.com/Helmut-Essien/NeedleBase/releases`).
+- Sideloaded phones update themselves (next section). The first install comes from the site's `/download` page, or
+  from the APK on the GitHub Releases page (`https://github.com/Helmut-Essien/NeedleBase/releases`).
 
 ## Updates (in-app, sideload builds)
 
 **How it works (like AssetTag).** Each release attaches `needlebase-<version>-<code>.apk` and `update.json` to the
 GitHub Release. The app asks its own Api, `GET /api/mobile/update` (anonymous); the Api reads the repository's
 releases from the GitHub API (`GitHub:Owner` / `GitHub:Repository` in the Api's appsettings, optional
-`GitHub:Token`), takes the newest non-draft release that has an `update.json` (pre-releases included: every CI
-release starts as one; old `v*` releases count too) and returns it. It caches the answer for 5 minutes (GitHub allows 60 anonymous calls an
+`GitHub:Token`), takes the newest non-draft release that has an `update.json` (Betas included: every push starts as a pre-release;
+old `v*` releases count too) and returns it. It caches the answer for 5 minutes (GitHub allows 60 anonymous calls an
 hour) and keeps serving the last good answer for up to an hour if GitHub is unreachable; with nothing to serve it
 answers 503 and the app keeps its last copy. The app (More › *Check for updates*, and automatically when it comes to the foreground,
 5 s after start, at most every 6 h):

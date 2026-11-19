@@ -1,9 +1,12 @@
 # Release, AssetTag style: every push to main builds and deploys what changed since the PREVIOUS PUSH. Nobody types a
-# tag. The Android app ships (version bump, signed APK, update.json, tag mobile-v<version>, GitHub PRE-release) ONLY
+# tag. The Android app ships (version bump, signed APK, update.json, tag mobile-v<version>, GitHub release) ONLY
 # when the app or code it depends on changed: Mobile, Mobile.Data, Domain, Application, the mobile build scripts or
 # shared build settings (.github/scripts/detect-changes.sh). Api/Web/Infrastructure/landing/workflow-only pushes run
-# CI, migrate and deploy the site, and create no tag and no release. Releases are pre-releases: promote one by hand
-# on GitHub (Edit > untick "Set as a pre-release"); the in-app updater offers pre-releases too.
+# CI, migrate and deploy the site, and create no tag and no release. New APKs from a push are always a Beta
+# (pre-release). A manual run can publish a Stable release (channel = stable), which also uploads a fixed-name
+# needlebase.apk for https://github.com/Helmut-Essien/NeedleBase/releases/latest/download/needlebase.apk. To turn a
+# tested Beta into Stable without a new build, run the workflow with promote_to_stable (optional promote_tag). The
+# in-app updater offers both; /download shows Stable as the main file and Beta separately.
 #
 # Version (.github/scripts/next-version.sh): highest mobile-v* tag (old v* tags if none) + patch, or NeedleBaseVersion
 # from src/NeedleBase.Mobile/NeedleBase.Mobile.csproj when that is higher; never backwards. versionCode = run number +
@@ -11,8 +14,9 @@
 #
 #   git push origin main                                   -> CI + deploy of the changed server parts; APK if the app changed
 #   Actions > Release > Run workflow (from main)           -> rebuild + redeploy the site; tick build_android for an APK
-#                                                             (bump: patch | minor | major)
+#                                                             (bump: patch | minor | major; channel: beta | stable)
 #   Actions > Release > Run workflow (from an older commit/tag) -> roll the site back to that code (no APK unless ticked)
+#   Actions > Release > Run workflow, tick promote_to_stable   -> mark a Beta as Stable and add needlebase.apk (no new build)
 # Secrets and variables: docs/ci-cd.md.
 name: Release
 
@@ -23,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       build_android:
-        description: Also build and release a new Android APK (mobile-v tag, pre-release)
+        description: Also build and release a new Android APK (mobile-v tag)
         type: boolean
         default: false
       bump:
@@ -31,6 +35,19 @@ on:
         type: choice
         options: [patch, minor, major]
         default: patch
+      channel:
+        description: Beta (pre-release, default) or Stable (GitHub latest, also uploads needlebase.apk). Ignored when no APK is built.
+        type: choice
+        options: [beta, stable]
+        default: beta
+      promote_to_stable:
+        description: Promote an existing mobile-v* Beta to Stable and upload needlebase.apk (no new APK, no site deploy). Do not tick with build_android.
+        type: boolean
+        default: false
+      promote_tag:
+        description: Tag to promote (e.g. mobile-v0.1.2). Leave blank to promote the newest Beta that has an APK.
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -58,6 +75,9 @@ jobs:
       mobile: ${{ steps.changes.outputs.mobile }}
       version: ${{ steps.v.outputs.version }}
       code: ${{ steps.v.outputs.code }}
+      channel: ${{ steps.channel.outputs.channel }}
+      prerelease: ${{ steps.channel.outputs.prerelease }}
+      make_latest: ${{ steps.channel.outputs.make_latest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -72,11 +92,18 @@ jobs:
           EVENT: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
           BUILD_ANDROID: ${{ inputs.build_android }}
+          PROMOTE: ${{ inputs.promote_to_stable }}
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+          if [[ "$EVENT" == "workflow_dispatch" && "$PROMOTE" == "true" && "$BUILD_ANDROID" == "true" ]]; then
+            echo "::error::Choose either promote_to_stable or build_android, not both."; exit 1
+          fi
+          if [[ "$EVENT" == "workflow_dispatch" && "$PROMOTE" == "true" ]]; then
+            out=$(printf 'core=false\napi=false\nweb=false\nmobile=false')
+            echo "Promote-only run: no CI, no deploy, no new APK." >> "$GITHUB_STEP_SUMMARY"
+          elif [[ "$EVENT" == "workflow_dispatch" ]]; then
             mobile=false; [[ "$BUILD_ANDROID" == "true" ]] && mobile=true
             out=$(printf 'core=true\napi=true\nweb=true\nmobile=%s' "$mobile")
             echo "Manual run: site rebuilt and redeployed; Android: $mobile" >> "$GITHUB_STEP_SUMMARY"
@@ -121,10 +148,32 @@ jobs:
           fi
           { echo "version=$version"; echo "code=$code"; } >> "$GITHUB_OUTPUT"
           echo "### NeedleBase Android $version (versionCode $code), tag mobile-v$version" >> "$GITHUB_STEP_SUMMARY"
+      - id: channel
+        env:
+          EVENT: ${{ github.event_name }}
+          CHANNEL: ${{ inputs.channel || 'beta' }}
+        run: |
+          set -euo pipefail
+          channel=beta
+          if [[ "$EVENT" == "workflow_dispatch" && "$CHANNEL" == "stable" ]]; then
+            channel=stable
+          fi
+          if [[ "$channel" == "stable" ]]; then
+            echo "channel=stable" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+            echo "make_latest=true" >> "$GITHUB_OUTPUT"
+            echo "Android channel: stable (GitHub latest, uploads needlebase.apk)" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "channel=beta" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "make_latest=false" >> "$GITHUB_OUTPUT"
+            echo "Android channel: beta (pre-release)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
   ci:
     name: CI
     needs: meta
+    if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.promote_to_stable) }}
     uses: ./.github/workflows/ci.yml
     with:
       core: ${{ needs.meta.outputs.core }}
@@ -299,10 +348,11 @@ jobs:
   github-release:
     name: GitHub Release
     needs: [meta, ci, android, server, deploy]
-    # Only when an APK was built: tag mobile-v<version> + a PRE-release (promote it by hand on GitHub). Waits for the
-    # deploy when the same push also changed the server, and is skipped if anything failed. Server-only pushes
-    # create no tag and no release. Rerun-safe: a rerun reuses the version already tagged on this commit and the
-    # release action updates the existing release instead of making a second one.
+    # Only when an APK was built: tag mobile-v<version> and a GitHub release. Pushes always publish a Beta
+    # (pre-release). A manual run with channel=stable publishes a Stable release (make_latest, plus needlebase.apk).
+    # Waits for the deploy when the same push also changed the server, and is skipped if anything failed.
+    # Server-only pushes create no tag and no release. Rerun-safe: a rerun reuses the version already tagged on
+    # this commit and the release action updates the existing release instead of making a second one.
     if: >-
       always() && needs.android.result == 'success'
       && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -326,18 +376,29 @@ jobs:
           API: ${{ needs.ci.outputs.api }}
           WEB: ${{ needs.ci.outputs.web }}
           MOBILE: ${{ needs.ci.outputs.mobile }}
+          CHANNEL: ${{ needs.meta.outputs.channel }}
         run: |
           set -euo pipefail
           mkdir -p dist
           if [[ -f dist/needlebase-migrate.sql ]]; then mv dist/needlebase-migrate.sql "dist/needlebase-$VERSION-migrate.sql"; fi
+          if [[ "$CHANNEL" == "stable" && -f "dist/needlebase-$VERSION-$CODE.apk" ]]; then
+            cp "dist/needlebase-$VERSION-$CODE.apk" dist/needlebase.apk
+          fi
           shopt -s nullglob
           files=(dist/*)
           if (( ${#files[@]} > 0 )); then (cd dist && sha256sum -- * > SHA256SUMS); fi
           {
-            echo "NeedleBase Android $VERSION (pre-release; promote it on GitHub when tested). Same push also deployed: Api=$API Web=$WEB."
+            if [[ "$CHANNEL" == "stable" ]]; then
+              echo "NeedleBase Android $VERSION (stable). Same push also deployed: Api=$API Web=$WEB."
+            else
+              echo "NeedleBase Android $VERSION (Beta; promote it with Actions > Release > promote_to_stable, or on GitHub when tested). Same push also deployed: Api=$API Web=$WEB."
+            fi
             echo
             if [[ "$MOBILE" == true ]]; then
               echo "**Sideload (Android, versionCode $CODE):** download \`needlebase-$VERSION-$CODE.apk\` and run \`adb install -r needlebase-$VERSION-$CODE.apk\`, or copy it to the phone and open it (allow \"Install unknown apps\" for the app you open it with). It installs over the previous version and keeps the phone's data. Check the file with \`sha256sum -c SHA256SUMS --ignore-missing\`."
+              if [[ "$CHANNEL" == "stable" ]]; then
+                echo "The same file is also attached as \`needlebase.apk\` for https://github.com/${{ github.repository }}/releases/latest/download/needlebase.apk."
+              fi
               echo
               if [[ -f "dist/needlebase-$VERSION-$CODE.aab" ]]; then
                 echo "**Google Play:** \`needlebase-$VERSION-$CODE.aab\` (same upload key, no in-app updater)."
@@ -356,14 +417,55 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: NeedleBase Android ${{ needs.meta.outputs.version }}
           body_path: notes.md
-          prerelease: true
-          make_latest: false
+          prerelease: ${{ needs.meta.outputs.prerelease }}
+          make_latest: ${{ needs.meta.outputs.make_latest }}
           files: |
             dist/*.apk
             dist/*.aab
             dist/*.sql
             dist/update.json
             dist/SHA256SUMS
+
+  promote:
+    name: Promote Android release to stable
+    if: github.event_name == 'workflow_dispatch' && inputs.promote_to_stable
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Mark the Beta as Stable and upload needlebase.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ inputs.promote_tag }}
+        run: |
+          set -euo pipefail
+          tag="${TAG:-}"
+          tag="${tag#"${tag%%[![:space:]]*}"}"
+          tag="${tag%"${tag##*[![:space:]]}"}"
+          if [[ -z "$tag" ]]; then
+            tag=$(gh release list -R "$REPO" --limit 30 --json tagName,isPrerelease,isDraft               --jq '[.[] | select(.isPrerelease == true and .isDraft == false and (.tagName | startswith("mobile-v"))) | .tagName][0]' )
+            [[ -n "$tag" && "$tag" != "null" ]] || { echo "::error::No Beta (pre-release) with a mobile-v* tag was found to promote."; exit 1; }
+            echo "No promote_tag given; using the newest Beta: $tag"
+          fi
+          gh release view "$tag" -R "$REPO" >/dev/null             || { echo "::error::Release $tag was not found."; exit 1; }
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          if ! gh release download "$tag" -R "$REPO" --pattern 'needlebase*.apk' --dir "$tmp"; then
+            echo "::error::Release $tag has no needlebase*.apk asset to promote."; exit 1
+          fi
+          if [[ -f "$tmp/needlebase.apk" ]]; then
+            apk="$tmp/needlebase.apk"
+          else
+            apk=$(ls -1 "$tmp"/needlebase-*.apk | head -n 1)
+            [[ -n "$apk" ]] || { echo "::error::Release $tag has no needlebase*.apk asset to promote."; exit 1; }
+            cp "$apk" "$tmp/needlebase.apk"
+            apk="$tmp/needlebase.apk"
+          fi
+          gh release upload "$tag" -R "$REPO" "$apk" --clobber
+          gh release edit "$tag" -R "$REPO" --prerelease=false --latest
+          echo "Promoted $tag to stable. /download and https://github.com/$REPO/releases/latest/download/needlebase.apk now point at this file." >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     name: Deploy to MonsterASP

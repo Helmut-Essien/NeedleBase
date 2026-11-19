@@ -36,8 +36,8 @@ So every setting below, Api and Web, goes into the one site.
 | `JwtSettings__Issuer` / `JwtSettings__Audience` | no | Defaults `NeedleBaseApi` / `NeedleBaseClient`. |
 | `JwtSettings__AccessTokenExpirationMinutes` / `RefreshTokenExpirationDays` | no | Defaults 60 / 7. |
 | `FrontendBaseUrl` | **yes**, automatic | https address of the Web app (links in emails). The release writes it from `SITE_URL` into the site's `web.config`; set it yourself only for a manual deploy. |
-| `GitHub__Owner` / `GitHub__Repository` | no | Defaults `Helmut-Essien` / `NeedleBase` (appsettings.json): where `GET /api/mobile/update` reads the Android `update.json` (newest GitHub Release, like AssetTag). |
-| `GitHub__Token` | no | Only for a private repository or if the 60-calls-an-hour anonymous GitHub limit is ever hit (answers are cached 5 minutes). A read-only fine-grained token (Contents: read). Set it on the panel; never commit it. |
+| `GitHub__Owner` / `GitHub__Repository` | no | Defaults `Helmut-Essien` / `NeedleBase` (appsettings.json): where `GET /api/mobile/update` reads the Android `update.json`, and where the public `/download` page looks up the latest Stable and Beta APKs. |
+| `GitHub__Token` | no | Only for a private repository or if the 60-calls-an-hour anonymous GitHub limit is ever hit (the Api caches update answers for 5 minutes; `/download` caches for 12 minutes and keeps a last-good answer for up to an hour). A read-only fine-grained token (Contents: read). Set it on the panel; never commit it. |
 | `Platform__BaseUrl` | **yes**\* | https Platform licensing address (release: `PLATFORM_BASE_URL` variable). |
 | `Platform__IntegrationKey` | **yes**\* | Secret from Platform for the `NEEDLEBASE` service (release: `PLATFORM_INTEGRATION_KEY` secret; without both, the release writes `Platform__RequireLicenseKey=false`). |
 | `Platform__TokenIssuer` | recommended | Expected licence-token issuer; empty = not checked (warning). |

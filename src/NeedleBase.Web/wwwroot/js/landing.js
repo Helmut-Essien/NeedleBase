@@ -221,7 +221,8 @@
 
   // Gentle hero parallax (off under reduced motion / low-power via `reduce`).
   const heroMedia = document.querySelector('[data-lp-parallax-y]');
-  if (heroMedia && !reduce && !window.matchMedia('(update: slow)').matches) {
+  const mqDesktop = window.matchMedia('(min-width: 900px)');
+  if (heroMedia && !reduce && !window.matchMedia('(update: slow)').matches && mqDesktop.matches) {
     let ticking = false;
     const apply = () => {
       ticking = false;
@@ -755,5 +756,41 @@
   }
 
 
+
+
+  // Mobile sticky download bar: show after the hero leaves, hide near the closing CTA/footer.
+  const stickyBar = document.querySelector('[data-lp-sticky-download]');
+  const heroSection = document.querySelector('#top');
+  const closeSection = document.querySelector('#contact') || document.querySelector('.lp-footer');
+  const pricingSection = document.querySelector('#pricing');
+  const otherDownloads = [...document.querySelectorAll('[data-lp-download]')];
+  if (stickyBar && heroSection && 'IntersectionObserver' in window) {
+    const mqSticky = window.matchMedia('(max-width: 899px)');
+    const isVisible = (el, pad) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.bottom > pad && r.top < (window.innerHeight - pad);
+    };
+    const syncSticky = () => {
+      const heroInView = isVisible(heroSection, 32);
+      const closeInView = isVisible(closeSection, 48);
+      const pricingInView = isVisible(pricingSection, 24);
+      const otherDownloadVisible = otherDownloads.some((el) => isVisible(el, 0));
+      const show = mqSticky.matches && !heroInView && !closeInView && !pricingInView && !otherDownloadVisible;
+      stickyBar.classList.toggle('is-visible', show);
+      stickyBar.setAttribute('aria-hidden', show ? 'false' : 'true');
+      if (show) stickyBar.removeAttribute('inert');
+      else stickyBar.setAttribute('inert', '');
+    };
+    const io = new IntersectionObserver(() => { syncSticky(); }, { threshold: 0, rootMargin: '80px 0px 0px 0px' });
+    io.observe(heroSection);
+    if (closeSection) io.observe(closeSection);
+    if (pricingSection) io.observe(pricingSection);
+    otherDownloads.forEach((el) => io.observe(el));
+    window.addEventListener('scroll', syncSticky, { passive: true });
+    window.addEventListener('resize', syncSticky);
+    if (typeof mqSticky.addEventListener === 'function') mqSticky.addEventListener('change', syncSticky);
+    syncSticky();
+  }
 
 })();
