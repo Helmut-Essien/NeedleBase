@@ -41,7 +41,7 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
 
         Assert.Contains("Every customer's measurements, on your phone.", html);
         Assert.Contains("No more flipping through old books.", html);
-        Assert.Contains("For tailors and fashion workshops in Ghana", html);
+        Assert.Contains("NeedleBase for tailors and fashion workshops in Ghana", html);
         Assert.Contains("Works even when there's no data.", html);
         Assert.DoesNotContain("no sign-up form", html);
         Assert.Contains("Have staff? Paid plans on WhatsApp", html);
@@ -49,7 +49,18 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.DoesNotContain("Free · Android · No card needed", html);
         Assert.Contains("Sample of the NeedleBase phone app.", html);
         Assert.Contains("data-lp-sticky-download", html);
-        Assert.Contains("For tailors in Ghana", html);
+        Assert.Contains("NeedleBase for tailors in Ghana", html);
+        Assert.Contains("href=\"#lp-drawer\"", html);
+        Assert.Contains("lp-drawer__close", html);
+        Assert.Contains("data-lp-drawer-outside", html);
+        var lcpHeroStart = html.IndexOf("lp-hero", StringComparison.Ordinal);
+        var glanceStart = html.IndexOf("lp-glance", StringComparison.Ordinal);
+        Assert.True(lcpHeroStart >= 0 && glanceStart > lcpHeroStart);
+        var lcpHeroHtml = html.Substring(lcpHeroStart, glanceStart - lcpHeroStart);
+        Assert.Contains("fetchpriority=\"high\"", lcpHeroHtml);
+        Assert.Contains("contact-kumasi", lcpHeroHtml);
+        Assert.DoesNotContain("loading=\"lazy\"", lcpHeroHtml.Substring(0, lcpHeroHtml.IndexOf("lp-hero__media--desk", StringComparison.Ordinal)));
+        Assert.Contains("aria-label=\"Menu\"", html);
         Assert.Contains("Download the free app", html);
         Assert.Contains("Have staff? Get a paid plan on WhatsApp", html);
         Assert.Contains("Start free on your phone.", html);
@@ -210,15 +221,16 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.DoesNotContain("Message us for a licence key", html);
         Assert.DoesNotContain("MoMo", html);
 
-        // Benefits deck: four cards, HUD, mobile swipe hint (behaviour is CSS/JS).
+        // Benefits deck: four cards, HUD, scroll-deal hint (behaviour is CSS/JS).
         Assert.Contains("id=\"benefits\"", html);
         Assert.Contains("One place for the work that fills your day", html);
         Assert.Contains("data-lp-deck-stage", html);
         Assert.Contains("data-lp-deck-dot", html);
         Assert.Contains("data-lp-deck-pos", html);
-        Assert.DoesNotContain("Swipe to see the next card.", html);
-        Assert.DoesNotContain("Scroll to deal the next card.", html);
+        Assert.Contains("Scroll to deal the next card", html);
+        Assert.DoesNotContain("swipe on a phone", html);
         Assert.Contains("data-lp-deck-hint", html);
+        Assert.Contains(">Scroll<", html);
         Assert.Contains("Previous card", html);
         Assert.Contains("Next card", html);
         Assert.Equal(4, Regex.Matches(html, "data-lp-deck-card").Count);

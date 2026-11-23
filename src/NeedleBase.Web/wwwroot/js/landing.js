@@ -1,76 +1,138 @@
 (() => {
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  // Mobile landing drawer. Without JS the toggle is href="#lp-drawer" and CSS :target opens it.
+  // With JS: dialog semantics, inert outside, focus trap, Escape / backdrop / close / link.
   const menu = document.querySelector('[data-lp-menu]');
   const drawer = document.getElementById('lp-drawer');
   const backdrop = document.getElementById('lp-drawer-backdrop');
   if (menu && drawer) {
-    let lastFocus = null;
+    const body = document.body;
+    const outside = document.querySelectorAll('[data-lp-drawer-outside]');
+    let scrollY = 0;
+    const mobileNav = window.matchMedia('(max-width: 899.98px)');
     const focusables = () =>
       [...drawer.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')]
-        .filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
-
-    const setOpen = (open) => {
-      if (open) {
-        drawer.hidden = false;
-        if (backdrop) backdrop.hidden = false;
-        requestAnimationFrame(() => {
-          drawer.classList.add('is-open');
-          backdrop?.classList.add('is-open');
-        });
-      } else {
-        drawer.classList.remove('is-open');
-        backdrop?.classList.remove('is-open');
-        const hide = () => {
-          drawer.hidden = true;
-          if (backdrop) backdrop.hidden = true;
-          drawer.removeEventListener('transitionend', hide);
-        };
-        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) hide();
-        else drawer.addEventListener('transitionend', hide, { once: true });
-        setTimeout(hide, 320);
-      }
-      menu.setAttribute('aria-expanded', open ? 'true' : 'false');
-      menu.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-      document.body.classList.toggle('lp-nav-open', open);
-      if (open) {
-        lastFocus = document.activeElement;
-        const first = focusables()[0] || drawer;
-        requestAnimationFrame(() => first.focus());
-      } else if (lastFocus && typeof lastFocus.focus === 'function') {
-        lastFocus.focus();
-        lastFocus = null;
+        .filter((el) => el.getClientRects().length > 0 && !el.hasAttribute('disabled'));
+    const isOpen = () => body.classList.contains('lp-nav-open');
+    const setInert = (on) => {
+      outside.forEach((el) => {
+        if (on) el.setAttribute('inert', '');
+        else el.removeAttribute('inert');
+      });
+    };
+    const clearHash = () => {
+      if (location.hash === '#lp-drawer') {
+        history.replaceState(history.state, '', location.pathname + location.search);
       }
     };
+    const open = () => {
+      if (isOpen() || !mobileNav.matches) return;
+      clearHash();
+      scrollY = window.scrollY;
+      body.style.position = 'fixed';
+      body.style.top = `-${scrollY}px`;
+      body.style.width = '100%';
+      drawer.hidden = false;
+      if (backdrop) backdrop.hidden = false;
+      body.classList.add('lp-nav-open');
+      drawer.classList.add('is-open');
+      backdrop?.classList.add('is-open');
+      menu.setAttribute('aria-expanded', 'true');
+      menu.setAttribute('aria-label', 'Close menu');
+      drawer.setAttribute('role', 'dialog');
+      drawer.setAttribute('aria-modal', 'true');
+      if (!drawer.hasAttribute('tabindex')) drawer.setAttribute('tabindex', '-1');
+      setInert(true);
+      const list = focusables();
+      requestAnimationFrame(() => (list[0] || drawer).focus({ preventScroll: true }));
+    };
+    const close = (restore) => {
+      if (!isOpen()) return;
+      body.classList.remove('lp-nav-open');
+      drawer.classList.remove('is-open');
+      backdrop?.classList.remove('is-open');
+      body.style.position = '';
+      body.style.top = '';
+      body.style.width = '';
+      window.scrollTo(0, scrollY);
+      menu.setAttribute('aria-expanded', 'false');
+      menu.setAttribute('aria-label', 'Open menu');
+      drawer.removeAttribute('role');
+      drawer.removeAttribute('aria-modal');
+      setInert(false);
+      const hide = () => {
+        drawer.hidden = true;
+        if (backdrop) backdrop.hidden = true;
+        drawer.removeEventListener('transitionend', hide);
+      };
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) hide();
+      else {
+        drawer.addEventListener('transitionend', hide, { once: true });
+        setTimeout(hide, 320);
+      }
+      clearHash();
+      if (restore !== false) menu.focus({ preventScroll: true });
+    };
 
-    menu.addEventListener('click', () => setOpen(drawer.hidden));
-    backdrop?.addEventListener('click', () => setOpen(false));
-    drawer.querySelectorAll('[data-lp-close]').forEach((a) =>
-      a.addEventListener('click', () => setOpen(false)));
+    menu.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (isOpen()) close();
+      else open();
+    });
+    // Space activates role=button links (no-JS fallback uses <a>)
+    document.addEventListener('keydown', (e) => {
+      const t = e.target;
+      if ((e.key === ' ' || e.key === 'Spacebar') && t.getAttribute && t.getAttribute('role') === 'button' && t.tagName === 'A' && (t === menu || drawer.contains(t))) {
+        e.preventDefault();
+        t.click();
+      }
+    });
+    backdrop?.addEventListener('click', (e) => {
+      e.preventDefault();
+      close();
+    });
+    drawer.querySelectorAll('[data-lp-close]').forEach((el) => {
+      el.addEventListener('click', (e) => {
+        if (el.getAttribute('href') === '#' || el.classList.contains('lp-drawer__close')) e.preventDefault();
+        close(el.classList.contains('lp-drawer__close') ? true : false);
+      });
+    });
 
     document.addEventListener('keydown', (e) => {
-      if (drawer.hidden) return;
+      if (!isOpen()) return;
       if (e.key === 'Escape') {
         e.preventDefault();
-        setOpen(false);
+        close();
         return;
       }
       if (e.key !== 'Tab') return;
       const list = focusables();
-      if (list.length === 0) return;
+      if (list.length < 2) {
+        e.preventDefault();
+        (list[0] || drawer).focus();
+        return;
+      }
       const first = list[0];
       const last = list[list.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
+      if (!drawer.contains(document.activeElement)) {
+        e.preventDefault();
+        first.focus();
+      } else if (e.shiftKey && document.activeElement === first) {
         e.preventDefault();
         last.focus();
       } else if (!e.shiftKey && document.activeElement === last) {
         e.preventDefault();
         first.focus();
-      } else if (!drawer.contains(document.activeElement) && !menu.contains(document.activeElement)) {
-        e.preventDefault();
-        first.focus();
       }
     });
+
+    const onMq = () => { if (!mobileNav.matches) close(false); };
+    if (mobileNav.addEventListener) mobileNav.addEventListener('change', onMq);
+    else mobileNav.addListener(onMq);
+    if (location.hash === '#lp-drawer' && mobileNav.matches) open();
+    window.addEventListener('pageshow', (e) => { if (e.persisted) close(false); });
+    window.addEventListener('pagehide', () => close(false));
   }
 
   // Highlight the nav link for the section currently in view
@@ -239,10 +301,8 @@
   }
 
 
-  // Benefits card deck.
-  // Desktop (>768px): vertical scroll-driven deal (unchanged).
-  // Mobile: stacked (Tinder-style) deck — pointer swipes fly the top card off
-  // or bring the previous card back on top. No nested scroller, no page hijack.
+  // Benefits card deck: vertical scroll-driven deal on all viewports
+  // (same pinned sticky behaviour on phone and desktop). Reduced motion → static list.
   const deckRoot = document.querySelector('[data-lp-deck]');
   if (deckRoot) {
     const stage = deckRoot.querySelector('[data-lp-deck-stage]') || deckRoot.querySelector('.lp-deck__stage');
@@ -254,8 +314,6 @@
     const nextBtn = deckRoot.querySelector('[data-lp-deck-next]');
     const n = cards.length;
     const mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const mqStack = window.matchMedia('(max-width: 768px)');
-
     let mode = null;
     let ticking = false;
     let hintGone = false;
@@ -282,7 +340,6 @@
     const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
     const ease = (t) => t * t * (3 - 2 * t);
     const prefersReduce = () => mqReduce.matches;
-    const isStack = () => mqStack.matches;
     const motion = () => (prefersReduce() ? 'auto' : 'smooth');
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -443,7 +500,9 @@
         }
         card.style.setProperty('--card-z', String(20 + i));
       });
-      setCurrent(clamp(Math.floor(scaled + 1.001), 1, n) - 1);
+      const idx = clamp(Math.floor(scaled + 1.001), 1, n) - 1;
+      setCurrent(idx);
+      if (scaled > 0.12) dismissHint();
     };
 
     const onWinScroll = () => {
@@ -709,17 +768,15 @@
     };
 
     const armDeck = () => {
-      const next = isStack() ? 'stack' : (prefersReduce() ? 'static' : 'pinned');
+      const next = prefersReduce() ? 'static' : 'pinned';
       if (next === mode) {
         if (mode === 'pinned') renderPinned();
-        if (mode === 'stack') applyLayout();
         return;
       }
       if (mode === 'pinned') leavePinned();
       if (mode === 'stack') leaveStack();
       mode = next;
-      if (mode === 'stack') enterStack();
-      else if (mode === 'pinned') enterPinned();
+      if (mode === 'pinned') enterPinned();
       else enterStatic();
     };
 
@@ -727,31 +784,16 @@
       d.addEventListener('click', () => {
         const i = parseInt(d.getAttribute('data-lp-deck-dot'), 10) - 1;
         if (Number.isNaN(i)) return;
-        if (mode === 'stack' && i === current) return;
         goTo(i);
       });
     });
-    if (prevBtn) prevBtn.addEventListener('click', () => {
-      if (mode === 'stack') {
-        if (busy || drag) return;
-        if (current <= 0) bounce(1);
-        else goTo(current - 1);
-      } else goTo(current - 1);
-    });
-    if (nextBtn) nextBtn.addEventListener('click', () => {
-      if (mode === 'stack') {
-        if (busy || drag) return;
-        if (current >= n - 1) bounce(-1);
-        else goTo(current + 1);
-      } else goTo(current + 1);
-    });
+    if (prevBtn) prevBtn.addEventListener('click', () => goTo(current - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => goTo(current + 1));
 
     armDeck();
     if (typeof mqReduce.addEventListener === 'function') mqReduce.addEventListener('change', armDeck);
-    if (typeof mqStack.addEventListener === 'function') mqStack.addEventListener('change', armDeck);
     window.addEventListener('resize', () => {
-      if (mode === 'stack') applyLayout();
-      else if (mode === 'pinned') onWinScroll();
+      if (mode === 'pinned') onWinScroll();
     }, { passive: true });
   }
 

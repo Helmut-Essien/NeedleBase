@@ -438,12 +438,12 @@ a { color: var(--nb-brand-primary-dark); }
 .nb-nav a:focus-visible { outline-offset: 2px; }
 .nb-nav a[aria-current="page"] { background: var(--nb-brand-primary-dark); color: #fff; box-shadow: -3px -3px 8px var(--nb-hi), 4px 4px 10px rgba(36, 122, 43, .35); }
 .nb-nav-foot { margin-top: auto; padding-top: 1.5rem; }
-.nb-user { display: flex; align-items: center; gap: 0.625rem; padding: 0.625rem 0.75rem; border-radius: 16px; box-shadow: var(--nb-raise-sm); border: 1px solid var(--nb-edge); }
+.nb-user { display: flex; flex-wrap: wrap; align-items: center; gap: 0.625rem; padding: 0.625rem 0.75rem; border-radius: 16px; box-shadow: var(--nb-raise-sm); border: 1px solid var(--nb-edge); }
 .nb-avatar { width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--nb-brand-primary-light); color: var(--nb-brand-primary-dark); display: grid; place-items: center; font-weight: 600; font-size: 0.8125rem; box-shadow: var(--nb-inset); }
 .nb-user__name { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
 .nb-user__name small { display: block; color: var(--nb-text-tertiary); font-weight: 400; font-size: 0.75rem; }
 .nb-user form { margin: 0; }
-.nb-signout { border: 1px solid var(--nb-edge); background: var(--nb-base); border-radius: 12px; padding: 0.375rem 0.625rem; font: inherit; font-size: 0.8125rem; font-weight: 500; color: var(--nb-brand-primary-dark); box-shadow: var(--nb-raise-sm); cursor: pointer; transition: box-shadow .15s; }
+.nb-signout { border: 1px solid var(--nb-edge); background: var(--nb-base); border-radius: 12px; padding: 0.375rem 0.625rem; font: inherit; font-size: 0.8125rem; font-weight: 500; color: var(--nb-brand-primary-dark); box-shadow: var(--nb-raise-sm); cursor: pointer; transition: box-shadow .15s; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; min-height: 36px; }
 .nb-signout:hover { background: #E6ECE8; } .nb-signout:active { box-shadow: var(--nb-inset); }
 .nb-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .nb-main { flex: 1; width: 100%; max-width: 76rem; padding: 2.5rem 3rem 2rem 2rem; }
@@ -469,6 +469,26 @@ a { color: var(--nb-brand-primary-dark); }
   .nb-sidebar { overscroll-behavior: contain; }
   .nb-main { padding: 1.5rem 1rem; }
   .nb-footer { padding: 1rem 1rem 2rem; }
+  /* Stack user actions under name so long names + Password/Sign out aren't cramped */
+  .nb-user {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    grid-template-areas:
+      "avatar name"
+      "actions actions";
+    align-items: center;
+    column-gap: 0.625rem;
+    row-gap: 0.5rem;
+  }
+  .nb-user .nb-avatar { grid-area: avatar; }
+  .nb-user .nb-user__name { grid-area: name; }
+  .nb-user > .nb-signout,
+  .nb-user > form {
+    grid-column: 1 / -1;
+  }
+  .nb-user > .nb-signout { width: 100%; }
+  .nb-user > form { display: block; width: 100%; margin: 0; }
+  .nb-user > form .nb-signout { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }

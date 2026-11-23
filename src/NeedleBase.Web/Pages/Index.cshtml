@@ -20,7 +20,7 @@
     string Srcset(string stem, string ext, params int[] widths) =>
         string.Join(", ", widths.Select(w => $"/img/landing/{stem}-{w}.{ext} {w}w"));
 }
-<header class="lp-nav" role="banner">
+<header class="lp-nav" role="banner" data-lp-drawer-outside>
     <a class="lp-nav__brand" href="#top" aria-label="NeedleBase home — software for tailors and fashion workshops">
         <span class="lp-brand">
             <picture>
@@ -39,12 +39,15 @@
         <a asp-page="/Account/Login">Sign in</a>
         <a class="lp-btn lp-btn--ghost lp-nav__cta" data-lp-nav-cta data-lp-download href="@download">Download the free app</a>
     </nav>
-    <button type="button" class="lp-nav__menu" data-lp-menu aria-expanded="false" aria-controls="lp-drawer" aria-label="Open menu">
+    <a class="lp-nav__menu" href="#lp-drawer" role="button" data-lp-menu aria-expanded="false" aria-controls="lp-drawer" aria-label="Open menu">
         <span></span><span></span><span></span>
-    </button>
+    </a>
 </header>
-<div id="lp-drawer-backdrop" class="lp-drawer-backdrop" hidden data-lp-close-backdrop></div>
-<div id="lp-drawer" class="lp-drawer" hidden>
+<a id="lp-drawer-backdrop" class="lp-drawer-backdrop" href="#" hidden data-lp-close-backdrop aria-label="Close menu" tabindex="-1"></a>
+<div id="lp-drawer" class="lp-drawer" hidden aria-label="Menu">
+    <a class="lp-drawer__close" href="#" role="button" data-lp-close aria-label="Close menu">
+        <svg class="lp-drawer__close-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </a>
     <nav aria-label="Mobile">
         <a href="#problems" data-lp-close data-lp-nav-link>Why NeedleBase</a>
         <a href="#how" data-lp-close data-lp-nav-link>How it works</a>
@@ -56,7 +59,7 @@
     </nav>
 </div>
 
-<main id="main">
+<main id="main" data-lp-drawer-outside>
     <section id="top" class="lp-hero" aria-labelledby="hero-title">
         <div class="lp-hero__media lp-hero__media--mobile">
             <picture>
@@ -67,7 +70,7 @@
                      sizes="100vw"
                      width="960" height="1440"
                      alt="A tailor in Kumasi, Ghana, sewing at a machine."
-                     fetchpriority="high" loading="lazy" decoding="async" />
+                     fetchpriority="high" decoding="async" />
             </picture>
         </div>
         <div class="lp-hero__media lp-hero__media--desk" data-lp-parallax-y>
@@ -86,8 +89,8 @@
         <div class="lp-hero__grid">
             <div class="lp-hero__copy">
                 <p class="lp-kicker"><span class="lp-kicker__dot" aria-hidden="true"></span>
-                    <span class="lp-kicker__full">For tailors and fashion workshops in Ghana</span>
-                    <span class="lp-kicker__short">For tailors in Ghana</span>
+                    <span class="lp-kicker__full">NeedleBase for tailors and fashion workshops in Ghana</span>
+                    <span class="lp-kicker__short">NeedleBase for tailors in Ghana</span>
                 </p>
                 <h1 id="hero-title">Every customer's measurements, on your phone. <span class="lp-hero__accent">No more flipping through old books.</span></h1>
                 <p class="lp-lead">Works even when there's no data.</p>
@@ -174,10 +177,10 @@
             <div class="lp-deck__head">
                 <h2 id="benefits-title">One place for the work that fills your day</h2>
                 <p class="lp-section__lead">Tools that match how a tailor or fashion workshop actually runs.</p>
-                <p class="lp-sr-only">Four feature cards follow. Use the previous and next buttons to move between them, or swipe on a phone.</p>
+                <p class="lp-sr-only">Four feature cards follow. Scroll to deal the next card, or use the previous and next buttons.</p>
             </div>
             <div class="lp-deck__stage-wrap">
-            <p class="lp-deck__swipe-hint" data-lp-deck-hint aria-hidden="true"><span>Swipe</span></p>
+            <p class="lp-deck__swipe-hint" data-lp-deck-hint aria-hidden="true"><span>Scroll</span></p>
             <div class="lp-deck__stage" data-lp-deck-stage>
                 <div class="lp-deck__card" data-lp-deck-card>
                     <div class="lp-deck__media">
@@ -622,7 +625,7 @@
     <p class="lp-illustrate">Photos and sample orders are for illustration.</p>
 </main>
 
-<footer class="lp-footer">
+<footer class="lp-footer" data-lp-drawer-outside>
     <div class="lp-footer__grid">
         <div class="lp-footer__brand">
             <p class="lp-footer__brand-text">NeedleBase by HelmutCode Solutions</p>

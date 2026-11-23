@@ -1,4 +1,4 @@
-/* Public landing v20 — mobile benefits deck is a stacked Tinder-style swipe pile; desktop keeps the vertical deal. CSP-safe (no inline). */
+/* Public landing — benefits deck is a scroll-driven vertical deal on all viewports. CSP-safe (no inline). */
 :root {
   /* App tokens (Colors.xaml / site.css), polished for marketing */
   --lp-cream: #f4f2ec;            /* warm off-white derived from AppBackground #F4F6F5 */
@@ -251,6 +251,7 @@ a:hover { color: var(--lp-terracotta); }
   display: inline-flex; flex-direction: column; justify-content: center; gap: 5px;
   background: transparent; border: 0; padding: 0.65rem; cursor: pointer;
   min-width: 2.75rem; min-height: 2.75rem;
+  text-decoration: none; color: inherit;
 }
 .lp-nav__menu span { display: block; width: 22px; height: 2px; background: var(--lp-cream); border-radius: 2px; }
 
@@ -258,15 +259,19 @@ a:hover { color: var(--lp-terracotta); }
   position: fixed;
   inset: 0;
   z-index: 38;
+  display: block;
   background: rgba(14, 23, 18, 0.62);
   border: 0;
   padding: 0;
   cursor: pointer;
   opacity: 0;
   visibility: hidden;
+  text-decoration: none;
   transition: opacity 0.28s var(--lp-ease), visibility 0.28s;
 }
-.lp-drawer-backdrop.is-open { opacity: 1; visibility: visible; }
+.lp-drawer-backdrop.is-open,
+body.lp-nav-open .lp-drawer-backdrop { opacity: 1; visibility: visible; }
+/* :target opens without JS; JS uses .is-open + body.lp-nav-open */
 .lp-drawer {
   position: fixed;
   top: 0; right: 0; bottom: 0;
@@ -276,13 +281,42 @@ a:hover { color: var(--lp-terracotta); }
   color: var(--lp-ink);
   padding: 4.5rem 1.25rem 1.5rem;
   overflow-y: auto;
+  overscroll-behavior: contain;
   transform: translateX(105%);
-  transition: transform 0.28s var(--lp-ease);
+  visibility: hidden;
+  transition: transform 0.28s var(--lp-ease), visibility 0s linear 0.28s;
   box-shadow: -16px 0 40px rgba(14, 23, 18, 0.25);
 }
-.lp-drawer.is-open { transform: translateX(0); }
+.lp-drawer.is-open,
+.lp-drawer:target,
+body.lp-nav-open .lp-drawer {
+  transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.28s var(--lp-ease);
+}
+.lp-drawer.is-open[hidden],
+.lp-drawer:target[hidden] { display: block !important; }
+.lp-drawer__close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: inline-grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 50%;
+  color: var(--lp-ink);
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.lp-drawer__close:hover { background: rgba(14, 23, 18, 0.08); }
+.lp-drawer__close-icon { width: 24px; height: 24px; display: block; }
 .lp-drawer nav { display: flex; flex-direction: column; gap: 0.15rem; }
-.lp-drawer a {
+.lp-drawer nav a {
   display: flex; align-items: center;
   min-height: 2.75rem;
   padding: 0.65rem 0.75rem;
@@ -291,11 +325,11 @@ a:hover { color: var(--lp-terracotta); }
   font-weight: 700;
   border-radius: 0.7rem;
 }
-.lp-drawer a:hover { background: var(--lp-cream-dark); color: var(--lp-terracotta-deep); }
-.lp-drawer a[aria-current="true"],
-.lp-drawer a[aria-current="location"] {
+.lp-drawer nav a:hover { background: var(--lp-cream-dark); color: var(--lp-terracotta-deep); }
+.lp-drawer nav a[aria-current="true"],
+.lp-drawer nav a[aria-current="location"] {
   background: #e8f5e9;
-  color: var(--lp-terracotta-deep);
+  color: #14521a; /* ≥4.5:1 on #e8f5e9 */
 }
 .lp-drawer .lp-btn { justify-content: center; margin-top: 0.4rem; color: var(--lp-ink); border-color: var(--lp-ink); }
 .lp-drawer .lp-btn:hover { color: var(--lp-terracotta-deep); border-color: var(--lp-terracotta); }
@@ -307,6 +341,14 @@ a:hover { color: var(--lp-terracotta); }
 }
 .lp-drawer .lp-nav__quiet { font-weight: 600; color: var(--lp-muted); }
 body.lp-nav-open { overflow: hidden; }
+/* No-JS :target — show backdrop when drawer is targeted */
+body:has(#lp-drawer:target) { overflow: hidden; }
+body:has(#lp-drawer:target) .lp-drawer-backdrop[hidden],
+body:has(#lp-drawer:target) .lp-drawer-backdrop {
+  display: block !important;
+  opacity: 1;
+  visibility: visible;
+}
 
 @media (min-width: 900px) {
   .lp-nav__links { display: flex; }
@@ -474,9 +516,14 @@ body.lp-nav-open { overflow: hidden; }
 @media (max-width: 899px) {
   .lp-hero {
     background: #0c1410;
+    min-height: 88svh;
+    height: auto;
+    max-height: none;
+    overflow: hidden; /* clip scaled media only; copy can grow the section */
   }
   .lp-hero__veil {
-    background: linear-gradient(180deg, rgba(12, 20, 16, 0.94) 0%, rgba(12, 20, 16, 0.9) 46%, rgba(12, 20, 16, 0.62) 64%, rgba(12, 20, 16, 0.78) 100%);
+    /* Stronger top for copy contrast; lighter bottom third so the photo reads */
+    background: linear-gradient(180deg, rgba(12, 20, 16, 0.94) 0%, rgba(12, 20, 16, 0.88) 42%, rgba(12, 20, 16, 0.45) 72%, rgba(12, 20, 16, 0.55) 100%);
   }
   .lp-hero__grid {
     display: flex;
@@ -486,15 +533,10 @@ body.lp-nav-open { overflow: hidden; }
     gap: 0;
     padding: calc(var(--lp-nav-top) + var(--lp-nav-h) + 0.75rem) var(--lp-gutter) 1.5rem;
     min-height: 88svh;
-    height: 88svh;
-    max-height: 88svh;
+    height: auto;
+    max-height: none;
     box-sizing: border-box;
-    overflow: hidden;
-  }
-  .lp-hero {
-    min-height: 88svh;
-    height: 88svh;
-    max-height: 88svh;
+    overflow: visible;
   }
   .lp-hero__copy { max-width: none; }
   .lp-kicker {
@@ -583,7 +625,7 @@ body.lp-nav-open { overflow: hidden; }
 @media (max-width: 374.98px) {
   .lp-kicker__full { display: none; }
   .lp-kicker__short { display: inline; }
-  .lp-kicker { font-size: 0.75rem; white-space: nowrap; }
+  .lp-kicker { font-size: 0.75rem; white-space: normal; }
 }
 
 @media (min-width: 900px) {
@@ -1299,7 +1341,7 @@ body.lp-nav-open { overflow: hidden; }
   margin-top: 1.1rem;
 }
 
-/* —— Benefits: card deck (v20: stacked swipe on mobile, vertical deal on desktop) —— */
+/* —— Benefits: card deck (scroll-driven vertical deal on phone and desktop) —— */
 .lp-deck {
   --lp-deck-n: 4;
   position: relative;
@@ -1575,18 +1617,20 @@ body.lp-nav-open { overflow: hidden; }
   .lp-deck__copy { padding: 1.4rem 1.5rem 1.35rem; justify-content: center; overflow: visible; }
 }
 
-/* Mobile: normal-height section, stacked Tinder-style deck (pointer swipes). */
+/* Mobile: same scroll-pinned deal as desktop; denser cards + visible arrows. */
 @media (max-width: 768px) {
   .lp-deck {
-    height: auto;
+    /* Keep tall scroll runway so cards deal on page scroll */
+    height: calc(100svh + (var(--lp-deck-n) - 1) * 95svh);
     overflow-x: clip;
   }
   .lp-deck__sticky {
-    position: static;
-    height: auto;
-    overflow: visible;
-    padding-top: clamp(3.25rem, 8vw, 5.5rem);
-    padding-bottom: 2.75rem;
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    overflow: hidden;
+    padding-top: calc(var(--lp-nav-h) + 1rem);
+    padding-bottom: 1.1rem;
   }
   .lp-deck__hint--desk { display: none; }
   .lp-deck__hint--hand { display: inline; }
@@ -1594,64 +1638,31 @@ body.lp-nav-open { overflow: hidden; }
     width: 100%;
     max-width: 24rem;
     margin-inline: auto;
-    flex: 0 0 auto;
-    overflow-x: clip;
-    overflow-y: visible;
+    flex: 1 1 auto;
+    min-height: 0;
   }
-  /* Without JS: a simple vertical list. With JS (.is-stack): a single pile. */
   .lp-deck__stage {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.25rem;
-    height: auto;
-    overflow: visible;
-  }
-  .lp-deck.is-js .lp-deck__card:not(:first-child) { --card-t: none; }
-  .lp-deck.is-stack .lp-deck__stage {
-    display: grid;
-    justify-items: center;
-    align-items: stretch;
-    gap: 0;
-    padding-bottom: 3.1rem;
-    touch-action: pan-y;
-    overflow: visible;
-  }
-  .lp-deck__card {
     position: relative;
-    inset: auto;
-    width: min(92%, 22.5rem);
-    max-width: 22.5rem;
-    margin-inline: auto;
-    transform-origin: 50% 80%;
-    pointer-events: auto;
-    will-change: transform;
-    grid-template-columns: 1fr;
-    grid-template-rows: 9.25rem 1fr;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-  .lp-deck.is-stack .lp-deck__card {
-    grid-area: 1 / 1;
-    margin-inline: 0;
-    width: min(92%, 22.5rem);
+    width: 100%;
     height: 100%;
-    min-height: 100%;
-    align-self: stretch;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .lp-deck.is-js .lp-deck__card:not(:first-child) { --card-t: translateY(108%); }
+  .lp-deck__card {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+    transform-origin: 50% 100%;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(8.5rem, 38%) 1fr;
     pointer-events: none;
-    transition: transform 0.5s var(--lp-ease);
   }
-  .lp-deck.is-stack .lp-deck__card.is-top {
-    pointer-events: auto;
-    touch-action: pan-y;
-    cursor: grab;
-  }
-  .lp-deck.is-stack.is-dragging .lp-deck__card {
-    transition: none;
-    cursor: grabbing;
-  }
+  .lp-deck__card.is-top { pointer-events: auto; }
   .lp-deck__media,
-  .lp-deck__media img { min-height: 0; height: 9.25rem; }
+  .lp-deck__media img { min-height: 0; height: 100%; max-height: none; }
   .lp-deck__arrow { display: grid; }
   .lp-deck__hud {
     display: grid;
@@ -1697,6 +1708,34 @@ body.lp-nav-open { overflow: hidden; }
     opacity: 0;
     visibility: hidden;
   }
+  /* No-JS fallback on phone: stack as a plain list (JS turns on .is-js + pinned) */
+  .lp-deck:not(.is-js):not(.is-static) .lp-deck__stage,
+  .lp-deck.is-static .lp-deck__stage {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    height: auto;
+    overflow: visible;
+  }
+  .lp-deck:not(.is-js):not(.is-static) .lp-deck__card,
+  .lp-deck.is-static .lp-deck__card {
+    position: relative;
+    inset: auto;
+    pointer-events: auto;
+    transform: none;
+  }
+  .lp-deck.is-static,
+  .lp-deck:not(.is-js):not(.is-static) {
+    height: auto;
+  }
+  .lp-deck.is-static .lp-deck__sticky,
+  .lp-deck:not(.is-js):not(.is-static) .lp-deck__sticky {
+    position: static;
+    height: auto;
+    overflow: visible;
+    padding-top: clamp(3.25rem, 8vw, 5.5rem);
+    padding-bottom: 2.75rem;
+  }
 }
 @media (max-width: 599px) {
   .lp-deck__head { margin-bottom: 0.55rem; }
@@ -1733,10 +1772,14 @@ body.lp-nav-open { overflow: hidden; }
   .lp-deck__swipe-hint { display: none !important; }
 }
 
-/* Mobile + reduced motion: keep the stacked pile, but skip fly/spring motion. */
+/* Mobile + reduced motion: static card list (same as desktop reduce). */
 @media (prefers-reduced-motion: reduce) and (max-width: 768px) {
-  .lp-deck { overflow-x: clip; }
+  .lp-deck,
+  .lp-deck.is-static { height: auto !important; }
   .lp-deck__sticky {
+    position: static;
+    height: auto;
+    overflow: visible;
     padding-top: clamp(3.25rem, 8vw, 5.5rem);
     padding-bottom: 2.75rem;
   }
@@ -1744,36 +1787,33 @@ body.lp-nav-open { overflow: hidden; }
     width: 100%;
     max-width: 24rem;
     margin-inline: auto;
-    overflow-x: clip;
-    overflow-y: visible;
+    flex: 0 0 auto;
+    overflow: visible;
   }
-  .lp-deck.is-stack .lp-deck__stage {
-    display: grid;
-    justify-items: center;
-    padding-bottom: 3.1rem;
-    touch-action: pan-y;
+  .lp-deck__stage {
+    position: static;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    overflow: visible;
   }
-  .lp-deck.is-stack .lp-deck__card {
-    grid-area: 1 / 1;
-    width: min(92%, 22.5rem);
-    grid-template-columns: 1fr;
-    grid-template-rows: 9.25rem 1fr;
-    transition: none !important;
+  .lp-deck__card {
+    position: relative !important;
+    inset: auto;
+    transform: none !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
     will-change: auto;
+    --card-dim: 0;
+    grid-template-rows: 9.25rem 1fr;
   }
-  .lp-deck__card::after { transition: none; }
+  .lp-deck__card::after { display: none; }
   .lp-deck__media,
   .lp-deck__media img { min-height: 0; height: 9.25rem; }
-  .lp-deck__hud { display: grid; }
-  .lp-deck__nudge { display: block; }
-  .lp-deck__arrow { display: grid; }
-  .lp-deck__swipe-hint {
-    display: inline-flex !important;
-    transition: none;
-  }
-  .lp-deck__swipe-hint.is-gone {
-    display: none !important;
-  }
+  .lp-deck__hud,
+  .lp-deck__nudge,
+  .lp-deck__swipe-hint { display: none !important; }
 }
 
 /* Body links inside later sections: stay inline so sentences don't break around 44px flex links. */

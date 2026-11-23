@@ -51,7 +51,7 @@
     <link rel="stylesheet" href="~/css/landing.css" asp-append-version="true" />
 </head>
 <body class="lp">
-    <a class="lp-skip" href="#main">Skip to main content</a>
+    <a class="lp-skip" href="#main" data-lp-drawer-outside>Skip to main content</a>
     @RenderBody()
     <script src="~/js/landing.js" asp-append-version="true" defer></script>
     @await RenderSectionAsync("Scripts", required: false)
