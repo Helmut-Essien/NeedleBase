@@ -835,4 +835,103 @@
     syncSticky();
   }
 
+  // Hero H1 accent: rotate “No more …” phrases (paused off-screen / hidden / slow update).
+  const rotateRoot = document.querySelector('[data-lp-rotate]');
+  if (rotateRoot) {
+    const viewport = rotateRoot.querySelector('[data-lp-rotate-viewport]');
+    const items = [...rotateRoot.querySelectorAll('.lp-hero__rotate-item')];
+    const mqSlow = window.matchMedia('(update: slow)');
+    let sizeRaf = 0;
+    const sizeViewport = () => {
+      if (!viewport || !items.length) return;
+      let max = 0;
+      for (let i = 0; i < items.length; i++) {
+        max = Math.max(max, items[i].offsetHeight);
+      }
+      if (max > 0) {
+        if (viewport.style.minHeight !== max + 'px') {
+          viewport.style.minHeight = max + 'px';
+        }
+        // Lock items to absolute so later ticks only change opacity/transform (no layout).
+        viewport.classList.add('is-sized');
+      }
+    };
+    const scheduleSize = () => {
+      if (sizeRaf) return;
+      sizeRaf = requestAnimationFrame(() => {
+        sizeRaf = 0;
+        sizeViewport();
+      });
+    };
+    // Defer measure to next frame to avoid forced reflow during parse/defer boot.
+    scheduleSize();
+    if (typeof ResizeObserver !== 'undefined' && viewport) {
+      const ro = new ResizeObserver(scheduleSize);
+      ro.observe(viewport);
+    } else {
+      window.addEventListener('resize', scheduleSize, { passive: true });
+    }
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(scheduleSize).catch(() => {});
+    }
+
+    if (!reduce && !mqSlow.matches && items.length > 1) {
+      let index = items.findIndex((el) => el.classList.contains('is-active'));
+      if (index < 0) index = 0;
+      let timer = 0;
+      let exitTimer = 0;
+      let inView = false;
+      const INTERVAL_MS = 3500;
+      const clearTimer = () => {
+        if (timer) {
+          clearInterval(timer);
+          timer = 0;
+        }
+      };
+      const clearExit = () => {
+        if (exitTimer) {
+          clearTimeout(exitTimer);
+          exitTimer = 0;
+        }
+      };
+      const tick = () => {
+        const current = items[index];
+        const next = (index + 1) % items.length;
+        clearExit();
+        current.classList.remove('is-active');
+        current.classList.add('is-exit');
+        items[next].classList.add('is-active');
+        exitTimer = window.setTimeout(() => {
+          current.classList.remove('is-exit');
+          exitTimer = 0;
+        }, 300);
+        index = next;
+      };
+      const sync = () => {
+        clearTimer();
+        if (inView && !document.hidden && !mqSlow.matches) {
+          timer = window.setInterval(tick, INTERVAL_MS);
+        }
+      };
+      const hero = document.getElementById('top') || rotateRoot;
+      if ('IntersectionObserver' in window) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            inView = entries.some((e) => e.isIntersecting);
+            sync();
+          },
+          { threshold: 0.15 }
+        );
+        io.observe(hero);
+      } else {
+        inView = true;
+        sync();
+      }
+      document.addEventListener('visibilitychange', sync);
+      if (typeof mqSlow.addEventListener === 'function') {
+        mqSlow.addEventListener('change', sync);
+      }
+    }
+  }
+
 })();

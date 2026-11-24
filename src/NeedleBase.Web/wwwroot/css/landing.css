@@ -371,9 +371,14 @@ body:has(#lp-drawer:target) .lp-drawer-backdrop {
   inset: 0;
   z-index: 0;
   overflow: hidden;
-  will-change: transform;
   transform: scale(1.06);
   transform-origin: 70% 40%;
+}
+/* Promote a layer only while desktop parallax is armed — permanent will-change wastes memory on phones. */
+@media (min-width: 900px) {
+  html.lp-motion-on .lp-hero__media[data-lp-parallax-y] {
+    will-change: transform;
+  }
 }
 .lp-hero__media picture,
 .lp-hero__media img {
@@ -437,6 +442,80 @@ body:has(#lp-drawer:target) .lp-drawer-backdrop {
   text-wrap: pretty;
 }
 .lp-hero__accent { display: block; color: var(--lp-gold-soft); }
+.lp-hero__accent[data-lp-rotate] {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  font-family: var(--lp-serif);
+  font-weight: 600;
+  font-optical-sizing: auto;
+  letter-spacing: -0.02em;
+}
+.lp-hero__rotate {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  contain: layout;
+  /* Fallback before JS measures the tallest phrase. */
+  min-height: 2.4em;
+}
+.lp-hero__rotate-item {
+  display: block;
+  margin: 0;
+  color: inherit;
+  transition: opacity 0.28s var(--lp-ease), transform 0.28s var(--lp-ease);
+}
+/* No-JS / before measure: active item in normal flow so the H1 still has height. */
+.lp-hero__rotate-item:not(.is-active) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  opacity: 0;
+  transform: translateY(0.35em);
+  pointer-events: none;
+  visibility: hidden;
+}
+.lp-hero__rotate-item.is-active {
+  position: relative;
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+}
+.lp-hero__rotate-item.is-exit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  opacity: 0;
+  transform: translateY(-0.35em);
+  visibility: visible;
+  pointer-events: none;
+}
+/* After JS measures: keep every item absolute so ticks only paint (no layout). */
+.lp-hero__rotate.is-sized .lp-hero__rotate-item,
+.lp-hero__rotate.is-sized .lp-hero__rotate-item.is-active,
+.lp-hero__rotate.is-sized .lp-hero__rotate-item.is-exit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  width: 100%;
+}
+@media (prefers-reduced-motion: reduce), (update: slow) {
+  .lp-hero__rotate-item { transition: none; }
+  .lp-hero__rotate-item:not(.is-active) {
+    display: none;
+    position: static;
+    visibility: hidden;
+  }
+  .lp-hero__rotate-item.is-exit { display: none; }
+  .lp-hero__rotate.is-sized .lp-hero__rotate-item.is-active {
+    position: relative;
+    width: auto;
+  }
+}
 .lp-lead { margin: 0 0 1.25rem; font-size: 1.05rem; color: #e8ecea; max-width: 36rem; text-wrap: pretty; }
 .lp-nowrap { white-space: nowrap; }
 .lp-lead--desktop { display: none; }
@@ -516,14 +595,22 @@ body:has(#lp-drawer:target) .lp-drawer-backdrop {
 @media (max-width: 899px) {
   .lp-hero {
     background: #0c1410;
-    min-height: 88svh;
+    min-height: 100svh;
     height: auto;
     max-height: none;
     overflow: hidden; /* clip scaled media only; copy can grow the section */
   }
   .lp-hero__veil {
-    /* Stronger top for copy contrast; lighter bottom third so the photo reads */
-    background: linear-gradient(180deg, rgba(12, 20, 16, 0.94) 0%, rgba(12, 20, 16, 0.88) 42%, rgba(12, 20, 16, 0.45) 72%, rgba(12, 20, 16, 0.55) 100%);
+    /* Soft bands: readable at top (kicker), mid (headline), bottom (CTA); photo still visible */
+    background: linear-gradient(
+      180deg,
+      rgba(12, 20, 16, 0.78) 0%,
+      rgba(12, 20, 16, 0.42) 22%,
+      rgba(12, 20, 16, 0.55) 48%,
+      rgba(12, 20, 16, 0.4) 62%,
+      rgba(12, 20, 16, 0.82) 82%,
+      rgba(12, 20, 16, 0.94) 100%
+    );
   }
   .lp-hero__grid {
     display: flex;
@@ -531,18 +618,41 @@ body:has(#lp-drawer:target) .lp-drawer-backdrop {
     align-items: stretch;
     justify-content: flex-start;
     gap: 0;
-    padding: calc(var(--lp-nav-top) + var(--lp-nav-h) + 0.75rem) var(--lp-gutter) 1.5rem;
-    min-height: 88svh;
+    padding: calc(var(--lp-nav-top) + var(--lp-nav-h) + 0.5rem) var(--lp-gutter) max(1.5rem, env(safe-area-inset-bottom, 0px));
+    min-height: 100svh;
     height: auto;
     max-height: none;
     box-sizing: border-box;
     overflow: visible;
   }
-  .lp-hero__copy { max-width: none; }
+  .lp-hero__copy {
+    max-width: none;
+    flex: 1 1 auto;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 0;
+  }
+  .lp-hero__mid {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+    padding: 0.25rem 0;
+  }
+  .lp-hero__actions {
+    flex: 0 0 auto;
+    padding-top: 0.25rem;
+  }
   .lp-kicker {
-    margin: 0 0 0.75rem;
+    flex: 0 0 auto;
+    margin: 0;
     font-size: 0.82rem;
     padding: 0.28rem 0.7rem;
+    align-self: flex-start;
   }
   .lp-hero h1 {
     font-size: clamp(1.875rem, 7.6vw, 2.125rem);
@@ -552,7 +662,7 @@ body:has(#lp-drawer:target) .lp-drawer-backdrop {
     margin: 0 0 0.75rem;
   }
   .lp-lead {
-    margin: 0 0 1.5rem;
+    margin: 0;
     font-size: 1rem;
     line-height: 1.5;
     max-width: 34ch;
@@ -635,12 +745,29 @@ body:has(#lp-drawer:target) .lp-drawer-backdrop {
     padding: calc(var(--lp-nav-top) + var(--lp-nav-h) + 1.4rem) var(--lp-gutter) 2.75rem;
     gap: 1.5rem;
   }
-  .lp-hero__copy { max-width: 37.5rem; }
+  .lp-hero__copy {
+    max-width: 37.5rem;
+    display: block;
+    flex: initial;
+    justify-content: initial;
+    gap: initial;
+    min-height: initial;
+  }
+  .lp-hero__mid,
+  .lp-hero__actions { display: contents; }
   .lp-hero h1 {
     text-wrap: wrap;
-    max-width: 18ch;
+    max-width: none;
   }
   .lp-hero__accent { display: inline; }
+  .lp-hero__accent[data-lp-rotate] {
+    display: block;
+    width: 100%;
+    max-width: 22rem;
+    margin-top: 0.45rem;
+    font-size: clamp(1.55rem, 1.2rem + 0.9vw, 2.15rem);
+    line-height: 1.15;
+  }
   .lp-hero__device { justify-self: end; margin-top: 2.25rem; margin-right: 0.25rem; }
   .lp-device-scene { width: min(20rem, 38vw); }
   .lp-device--phone { width: min(18.5rem, 34vw); }
@@ -2510,8 +2637,7 @@ html.lp-motion-on .lp-spool {
     margin: 0;
     object-fit: cover;
     object-position: center 32%;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 26%, #000 100%);
-    mask-image: linear-gradient(to bottom, transparent 0%, #000 26%, #000 100%);
+    /* No CSS mask — veil already handles contrast; masks are costly on mobile GPUs. */
   }
   .lp-hero .lp-spool { display: none; }
 }
