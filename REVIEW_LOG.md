@@ -390,3 +390,37 @@ None — Ensure seed from iteration 2 held.
 - Do not push until asked
 - Next product step: upgrading from Free (plans step 4)
 - Pre-existing XA0033 OpenJDK warning; unrelated Api flakes
+
+---
+
+# Unpushed range Ralph (`origin/PlanNameCatalogue..HEAD`) — 25 Nov 2026
+
+Scope: 3 local commits ahead of upstream — Free phone-only mode (plans step 3) + prior Free Ralph hardening/verdict.
+
+Commits: `715b2ee`, `bf83799`, `2caf5bd` (+ this log).
+
+## Iteration 1 — clean
+
+### Reviews run
+1. Bugbot 2. Edge cases 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+None — Free Ralph iterations 1–3 already closed wipe-gate, fail-closed reserve, Ensure seed, More usage refresh, diction.
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Lifetime undercount after deletes + lost FreeModeStates | Residual; Ensure floors at remaining rows (`EnsureAsync` + `Ensure_SeedsCountersFromExistingRows_NotZero`) |
+| Sync gate vs SecureStorage before startup | Cold start restores gate before `ShowMainAsync`; Free has no tokens for push (Security) |
+| PlanCatalog/staff interaction with Free | Free never calls Platform/API; no cross-path defect (Bugbot/Security) |
+
+### Final verdict
+- Bugbot: CLEAN on unpushed Free range
+- Edge: FreeMode 8/8; FreePlanLimits 5/5; PlanCatalog+StaffPlanLimits filter 46 green
+- Security: no medium+
+- Senior: priors hold (atomic reserve, Ensure seed, DI)
+- UI/UX: welcome diction + Free banner / More Save a copy / Leave Free confirm adequate
+
+### Residual notes
+- Do not push until you ask
+- Next product step: upgrading from Free (plans step 4)
