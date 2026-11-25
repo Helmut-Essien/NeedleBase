@@ -365,3 +365,28 @@ None verified. Iteration 3 = confirm clean.
 
 ### Residual notes
 - Same XA0033 / unrelated Api flakes as iteration 1
+
+## Iteration 3 — clean
+
+### Reviews run
+1. Bugbot 2. Edge (Ensure seed verified) 3. Security (iter2 clean held) 4. Senior 5. UI/UX
+
+### Findings fixed
+None — Ensure seed from iteration 2 held.
+
+### Findings dismissed
+| Finding | Evidence |
+|---------|----------|
+| Lifetime undercount after deleted rows + lost FreeModeStates | Residual; unknowable; Ensure floors at remaining rows (`EnsureAsync` + test) |
+
+### Final verdict
+- Bugbot: CLEAN on Free mode (715b2ee + bf83799)
+- Edge: wipe gate, fail-closed, reserve/release, Ensure seed — 8 FreeMode tests green
+- Security: no medium+
+- Senior: atomic reserve; AppStartup Ensure; DI registered
+- UI/UX: welcome diction; More usage refresh; FreeSetup SR description; prior Low closed
+
+### Residual notes
+- Do not push until asked
+- Next product step: upgrading from Free (plans step 4)
+- Pre-existing XA0033 OpenJDK warning; unrelated Api flakes
