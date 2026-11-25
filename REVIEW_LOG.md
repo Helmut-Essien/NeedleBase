@@ -217,3 +217,30 @@ Working tree: clean aside from untracked backups/scratchpad. Slice commits: `482
 
 ### Remaining open
 Re-run five passes (iteration 2) after the accept-invite reload fix.
+
+## Iteration 2 — 25 Nov 2026 (clean)
+
+### Reviews run
+1. Bugbot 2. Edge cases 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+None — no verified defects after accept-invite reload.
+
+### Findings dismissed
+| Finding | Evidence |
+|---------|----------|
+| Interleaved race harness for attach-during-accept | Row locks + post-lock reload; residual test polish only (Security Review) |
+| `.cursor/ralph/done` deleted locally | Not part of staff-limits slice |
+
+### Final verdict
+- Bugbot: no bugs
+- Edge cases: StaffPlanLimits + 6 PlanLimits API tests + full StaffApiTests (28) pass
+- Security: no medium+ issues; accept/invite/reactivate all resolve plan after business `FOR UPDATE`
+- Senior: consistent lock + Resolve pattern; Owner-only mutations; O(1) counts under lock
+- UI/UX: STAFF_LIMIT detail surfaces via web `ActionError` / mobile `ForProblem`; alert semantics already present; usage meters deferred to step 5
+
+### Residual notes for humans
+- Step 5 can show staff usage (e.g. “2/2 staff”) on License/Staff screens
+- Optional: timing test for attach-vs-accept interleaving
+- Next plan step: Free mode on the phone
+- Do not commit `.cursor/ralph/` scratch state
