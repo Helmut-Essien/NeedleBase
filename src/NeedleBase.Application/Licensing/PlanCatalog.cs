@@ -51,7 +51,8 @@ public sealed record PlanResolution(PlanEntitlements Entitlements, string? Store
 
 /// <summary>
 /// Maps a Platform plan code (and licence flags) to NeedleBase limits and features.
-/// Does not enforce anything — staff caps and Free mode are later steps.
+/// Staff caps are enforced via <see cref="Staff.StaffPlanLimits"/> on invite/accept/reactivate.
+/// Free mode is a later step.
 /// </summary>
 public static class PlanCatalog
 {

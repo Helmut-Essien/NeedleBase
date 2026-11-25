@@ -9,6 +9,7 @@ public static class StaffErrorMessages
     public const string InviteRevoked = "INVITE_REVOKED";
     public const string InviteEmailInUse = "INVITE_EMAIL_IN_USE";
     public const string InviteLimit = "INVITE_LIMIT";
+    public const string StaffLimit = "STAFF_LIMIT";
     public const string RoleInvalid = "STAFF_ROLE_INVALID";
     public const string StaffNotFound = "STAFF_NOT_FOUND";
     public const string StaffSelf = "STAFF_SELF";
@@ -30,6 +31,7 @@ public static class StaffErrorMessages
         InviteRevoked => "This invite was cancelled. Ask the shop owner for a new one.",
         InviteEmailInUse => "That email already has a NeedleBase account. Use a different email for this invite.",
         InviteLimit => "Too many open invites. Cancel some before sending more.",
+        StaffLimit => "Your plan's staff limit is full. Turn someone's access off, or upgrade your plan, before adding more people.",
         RoleInvalid => "Pick Manager or Tailor.",
         StaffNotFound => "We couldn't find that team member.",
         StaffSelf => "You can't change your own access.",

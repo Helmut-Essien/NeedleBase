@@ -88,4 +88,4 @@ The admin still needs to add the `starter`, `workshop` and `production` plans to
 
 ## Pricing (decided, not built)
 
-Plan prices and feature limits (Free / Starter / Workshop / Production) are decided. PlanCatalog (step 1) is built; staff-limit enforcement, Free mode and later steps are not enforced yet. The source of truth is [needlebase-plans](../.cursor/skills/needlebase-plans/SKILL.md). A short price table also lives in the README section [Pricing (decided, not built)](../README.md#pricing-decided-not-built). The published Terms and the public landing page show these prices (updated 18 November 2026).
+Plan prices and feature limits (Free / Starter / Workshop / Production) are decided. PlanCatalog and server staff caps (steps 1–2) are built; Free mode and later steps are not built yet. The source of truth is [needlebase-plans](../.cursor/skills/needlebase-plans/SKILL.md). A short price table also lives in the README section [Pricing (decided, not built)](../README.md#pricing-decided-not-built). The published Terms and the public landing page show these prices (updated 18 November 2026).

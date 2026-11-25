@@ -2,17 +2,18 @@
 name: needlebase-plans
 description: >-
   Decided NeedleBase pricing, plan limits, PlanCatalog rules, and the
-  implementation order. PlanCatalog (step 1) is built. Staff-limit
-  enforcement, Free mode, and later steps are not built. The published
-  Terms and the landing-page prices were updated on 18 November 2026.
-  Use when talking about Free, Starter, Workshop or Production, enforcing
-  plan limits, upgrading a shop, or how licence plans from Platform are
-  applied. Do not start the next build step until the user asks.
+  implementation order. PlanCatalog (step 1) and staff-limit enforcement
+  (step 2) are built. Free mode and later steps are not built. The
+  published Terms and the landing-page prices were updated on
+  18 November 2026. Use when talking about Free, Starter, Workshop or
+  Production, enforcing plan limits, upgrading a shop, or how licence
+  plans from Platform are applied. Do not start the next build step
+  until the user asks.
 ---
 
 # NeedleBase plans
 
-**Status: decided.** PlanCatalog (step 1) is built in `Application/Licensing/PlanCatalog.cs`. Staff-limit enforcement, Free mode, and later steps are **not built** — do not start them until the user asks. The published Terms and the public landing page already show these prices (updated 18 November 2026). Do not change those public prices or the published Terms again unless the user asks.
+**Status: decided.** PlanCatalog (step 1) and staff-limit enforcement (step 2) are built. Free mode and later steps are **not built** — do not start them until the user asks. The published Terms and the public landing page already show these prices (updated 18 November 2026). Do not change those public prices or the published Terms again unless the user asks.
 
 Purpose: the decided prices, limits, and how NeedleBase will apply a plan name from Platform.
 
@@ -54,10 +55,10 @@ Built in `Application/Licensing/PlanCatalog.cs` (`PlanCodes`, `PlanEntitlements`
 - Look up the code in lowercase (trim first).
 - **Complimentary** keys (`LicenseIsComplimentary`) are unlimited, regardless of the stored plan.
 - **Trial** keys (`LicenseIsTrial`) act as **Starter** until expiry, even if the key carries `workshop` or `production`. After the trial ends and Platform clears the trial flag (usually on conversion), the carried plan applies. NeedleBase does not offer a free trial of paid features; this rule is only for a trial key Platform may still issue.
-- An **unknown or blank** plan on a licensed shop **fails closed to Starter**, never to unlimited. `PlanResolution.WasUnknownPlan` is true so callers can log `StoredPlan` (logging is wired when enforcement starts in step 2).
+- An **unknown or blank** plan on a licensed shop **fails closed to Starter**, never to unlimited. Invite/accept/reactivate log `WasUnknownPlan` via `StaffService` / `AuthService`.
 - **Keyless** shops (created before licensing, or registered without a key when that is allowed) stay **unlimited**. Do not lock them to Free.
 - **Free** is phone-only and never touches Platform (see below).
-- On **downgrade**, keep the staff the shop already has and block new invites until the shop is under the new cap (enforced in step 2).
+- On **downgrade**, keep the staff the shop already has and block new invites (and accept/reactivate) until the shop is under the new cap (`StaffPlanLimits` + `STAFF_LIMIT`).
 - A **lapsed** shop is read-only (existing behaviour) and can still export.
 
 ## Free (phone only)
@@ -75,7 +76,7 @@ Do not start the next build step until the user asks. Steps 1–6 are enough to 
 | # | Step | Size | What to build |
 |---|------|------|----------------|
 | 1 | PlanCatalog | S | **Done (25 Nov 2026).** `Application/Licensing/PlanCatalog.cs` maps `starter` / `workshop` / `production` to staff limits and features. Keyless and complimentary → unlimited; trial → Starter; unknown/blank on a keyed shop → Starter (`WasUnknownPlan` for logging). Tests: `Application.Tests/PlanCatalogTests`. |
-| 2 | Staff limits on the server | M | Refuse inviting or accepting staff past the plan's cap, with a clear message. Downgrade keeps existing staff and blocks new invites. The read-only lock for lapsed shops stays as it is. Customer and order limits are not checked on the server (only Free has them). |
+| 2 | Staff limits on the server | M | **Done (25 Nov 2026).** `StaffPlanLimits` + `STAFF_LIMIT` on invite, accept-invite and reactivate (Owner not counted; pending invites reserve seats; business row lock). Downgrade keeps existing staff and blocks new seats. Keyless/complimentary stay unlimited. Read-only lock unchanged. Tests: `StaffPlanLimitsTests`, `StaffApiTests.PlanLimits`. |
 | 3 | Free mode on the phone | L | The first screen offers "Use free on this phone" next to signing in, entering a licence key, or joining with an invite. Local counters that never count down. "Save a copy". |
 | 4 | Upgrading from Free | L | The Owner enters a licence key, the phone's records move to the new online shop, and the first sync uploads them. If the app closes halfway, it picks up again safely. |
 | 5 | Export and usage display | M | Paid shops and lapsed read-only shops can export. The License page shows the plan and usage. Free shows meters such as "7/10 customers". Receipts show the shop's phone number. |

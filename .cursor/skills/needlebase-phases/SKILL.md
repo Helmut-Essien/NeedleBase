@@ -28,7 +28,7 @@ Status and acceptance live in [phases.md](phases.md). The backlog of skill-vs-co
 
 ## Where things are
 
-- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete; device/browser journeys 2–5 still need verification. PlanCatalog (plans step 1) is built; staff limits and Free mode are not.
+- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete; device/browser journeys 2–5 still need verification. PlanCatalog and server staff caps (plans steps 1–2) are built; Free mode is not.
 - Code that doesn't meet the skills yet, ranked: [code-gaps.md](code-gaps.md). G1, G2, G4, G5, G6, G10 are done; G3, G7, G8, G9, G11 are deferred ops/scale items.
 - Add-entity checklist: [needlebase-domain](../needlebase-domain/SKILL.md#add-entity-checklist-single-source).
 

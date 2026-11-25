@@ -611,8 +611,7 @@ public sealed partial class AuthService : IAuthService
             return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.InviteEmailInUse), StaffErrorMessages.InviteEmailInUse);
         }
 
-        var business = await _db.Businesses.AsNoTracking().FirstOrDefaultAsync(b => b.Id == found.BusinessId, cancellationToken);
-        if (business is null)
+        if (!await _db.Businesses.AsNoTracking().AnyAsync(b => b.Id == found.BusinessId, cancellationToken))
         {
             return AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.InviteNotFound), StaffErrorMessages.InviteNotFound);
         }
@@ -632,10 +631,12 @@ public sealed partial class AuthService : IAuthService
         };
 
         AuthResult? failure = null;
+        Business? lockedBusiness = null;
         var strategy = _db.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
             failure = null;
+            lockedBusiness = null;
             await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
             try
             {
@@ -647,6 +648,31 @@ public sealed partial class AuthService : IAuthService
                 if (!invite.IsPendingAt(now))
                 {
                     failure = AuthResult.Fail(StaffErrorMessages.For(StaffErrorMessages.InviteUsed), StaffErrorMessages.InviteUsed);
+                    await tx.RollbackAsync(cancellationToken);
+                    return;
+                }
+
+                // Serialize against invite/reactivate so two accepts can't pass a plan staff cap together.
+                // Reload licence fields after the lock (same pattern as StaffService invite/reactivate).
+                await _db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT 1 FROM \"Businesses\" WHERE \"Id\" = {invite.BusinessId} FOR UPDATE", cancellationToken);
+                var business = await _db.Businesses.AsNoTracking().FirstAsync(b => b.Id == invite.BusinessId, cancellationToken);
+                lockedBusiness = business;
+                var resolution = PlanCatalog.Resolve(business);
+                if (resolution.WasUnknownPlan)
+                {
+                    _logger.LogWarning(
+                        "Shop {ShopId} has unexpected license plan {Plan}; applying Starter staff limits.",
+                        business.Id,
+                        resolution.StoredPlan ?? "(blank)");
+                }
+
+                var activeNonOwner = await _db.StaffMemberships.IgnoreQueryFilters()
+                    .CountAsync(m => m.BusinessId == invite.BusinessId && m.IsActive && m.Role != BusinessRole.Owner, cancellationToken);
+                if (!StaffPlanLimits.CanAddOne(resolution.Entitlements, activeNonOwner))
+                {
+                    failure = AuthResult.Fail(
+                        StaffErrorMessages.For(StaffErrorMessages.StaffLimit), StaffErrorMessages.StaffLimit);
                     await tx.RollbackAsync(cancellationToken);
                     return;
                 }
@@ -679,7 +705,7 @@ public sealed partial class AuthService : IAuthService
         }
 
         _throttle.RecordSuccess(InviteThrottleKey, ipAddress);
-        return await IssueTokensAsync(user, business, found.Role, ipAddress, cancellationToken);
+        return await IssueTokensAsync(user, lockedBusiness!, found.Role, ipAddress, cancellationToken);
     }
 
     public async Task<AuthResult> ChangePasswordAsync(

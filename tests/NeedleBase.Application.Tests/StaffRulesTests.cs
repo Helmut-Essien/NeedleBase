@@ -74,6 +74,7 @@ public class StaffRolesTests
     [InlineData(StaffErrorMessages.InviteUsed)]
     [InlineData(StaffErrorMessages.PasswordIncorrect)]
     [InlineData(StaffErrorMessages.StaffOwner)]
+    [InlineData(StaffErrorMessages.StaffLimit)]
     public void Every_code_has_friendly_copy(string code)
     {
         var text = StaffErrorMessages.For(code);

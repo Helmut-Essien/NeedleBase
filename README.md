@@ -283,7 +283,7 @@ Shops are licensed through Platform. See [docs/platform-licensing.md](docs/platf
 
 ## Pricing (decided, not built)
 
-These prices and limits are decided. **PlanCatalog** (step 1) maps plan codes to entitlements in code; staff caps, Free mode and later steps are **not enforced** yet. The public landing page and the published Terms show these prices (updated 18 November 2026). Prices are in Ghana cedis and **do not include VAT**. The full plan (PlanCatalog rules, implementation order, risks, and how this works with Platform) is in [.cursor/skills/needlebase-plans/SKILL.md](.cursor/skills/needlebase-plans/SKILL.md).
+These prices and limits are decided. **PlanCatalog** maps plan codes to entitlements; **staff caps** are enforced on the server (invite/accept/reactivate). Free mode and later steps are **not built** yet. The public landing page and the published Terms show these prices (updated 18 November 2026). Prices are in Ghana cedis and **do not include VAT**. The full plan (PlanCatalog rules, implementation order, risks, and how this works with Platform) is in [.cursor/skills/needlebase-plans/SKILL.md](.cursor/skills/needlebase-plans/SKILL.md).
 
 | Plan | Price | Who | What it includes |
 |------|-------|-----|------------------|
@@ -308,5 +308,5 @@ A year costs 10 months. There is no free trial and no founding-shop discount. A 
 | [docs/whatsapp-setup.md](docs/whatsapp-setup.md) | Tap-to-send and automatic WhatsApp setup |
 | [docs/legal/](docs/legal/) | Privacy Policy, Terms, and internal legal notes |
 | [docs/landing-photos/README.md](docs/landing-photos/README.md) | Landing-page photo sources |
-| [.cursor/skills/needlebase-plans/SKILL.md](.cursor/skills/needlebase-plans/SKILL.md) | Decided plans, limits and the implementation order (PlanCatalog built; enforcement not yet) |
+| [.cursor/skills/needlebase-plans/SKILL.md](.cursor/skills/needlebase-plans/SKILL.md) | Decided plans, limits and the implementation order (PlanCatalog + staff caps built; Free not yet) |
 | [.cursor/skills/](.cursor/skills/) | Agent skills and standing rules |

@@ -1,17 +1,19 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Audit;
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Errors;
 using NeedleBase.Application.Contracts.Staff;
+using NeedleBase.Application.Email;
+using NeedleBase.Application.Licensing;
 using NeedleBase.Application.Staff;
 using NeedleBase.Domain.Entities;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Infrastructure.Identity;
 using NeedleBase.Infrastructure.Persistence;
-using NeedleBase.Application.Email;
-using Microsoft.Extensions.Options;
 
 namespace NeedleBase.Infrastructure.Staff;
 
@@ -32,12 +34,13 @@ public sealed class StaffService : IStaffService
     private readonly IAuditLog _audit;
     private readonly IEmailSender _email;
     private readonly IOptionsMonitor<Email.EmailOptions> _emailOptions;
+    private readonly ILogger<StaffService> _logger;
 
     /// <summary>Most orders moved in one reassignment (one transaction); the Owner can repeat for the rest.</summary>
     public const int MaxReassign = 2000;
 
     public StaffService(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ICurrentUser currentUser, IClock clock, IAuditLog audit,
-        IEmailSender email, IOptionsMonitor<Email.EmailOptions> emailOptions)
+        IEmailSender email, IOptionsMonitor<Email.EmailOptions> emailOptions, ILogger<StaffService> logger)
     {
         _email = email;
         _emailOptions = emailOptions;
@@ -46,6 +49,7 @@ public sealed class StaffService : IStaffService
         _currentUser = currentUser;
         _clock = clock;
         _audit = audit;
+        _logger = logger;
     }
 
     public async Task<StaffOverviewDto> GetOverviewAsync(CancellationToken cancellationToken = default)
@@ -116,38 +120,84 @@ public sealed class StaffService : IStaffService
 
         var now = _clock.UtcNow;
         var normalized = email.ToUpperInvariant();
-        var open = await _db.Invitations
-            .Where(i => i.AcceptedAtUtc == null && i.RevokedAtUtc == null && i.ExpiresAtUtc > now)
-            .ToListAsync(cancellationToken);
+        string? failCode = null;
+        Invitation? invite = null;
+        string? code = null;
+        string businessName = "Your shop";
 
-        // Inviting the same email again replaces the old code (lost message, wrong role).
-        foreach (var same in open.Where(i => i.Email.ToUpperInvariant() == normalized))
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            same.Revoke(now);
+            failCode = null;
+            invite = null;
+            code = null;
+            _db.ChangeTracker.Clear();
+            await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                // Serialize invite vs accept vs reactivate against the plan staff cap.
+                await _db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT 1 FROM \"Businesses\" WHERE \"Id\" = {businessId} FOR UPDATE", cancellationToken);
+                var business = await _db.Businesses.AsNoTracking().FirstAsync(b => b.Id == businessId, cancellationToken);
+                businessName = business.Name;
+                var resolution = PlanCatalog.Resolve(business);
+                LogUnknownPlan(business.Id, resolution);
+
+                var open = await _db.Invitations
+                    .Where(i => i.AcceptedAtUtc == null && i.RevokedAtUtc == null && i.ExpiresAtUtc > now)
+                    .ToListAsync(cancellationToken);
+
+                // Inviting the same email again replaces the old code (lost message, wrong role).
+                foreach (var same in open.Where(i => i.Email.ToUpperInvariant() == normalized))
+                {
+                    same.Revoke(now);
+                }
+
+                var pendingOthers = open.Count(i => i.RevokedAtUtc is null);
+                if (pendingOthers >= MaxPendingInvites)
+                {
+                    failCode = StaffErrorMessages.InviteLimit;
+                    await tx.RollbackAsync(cancellationToken);
+                    return;
+                }
+
+                var activeNonOwner = await CountActiveNonOwnerAsync(businessId, cancellationToken);
+                if (!StaffPlanLimits.CanAddOne(resolution.Entitlements, activeNonOwner, pendingOthers))
+                {
+                    failCode = StaffErrorMessages.StaffLimit;
+                    await tx.RollbackAsync(cancellationToken);
+                    return;
+                }
+
+                code = InviteCodes.NewCode();
+                invite = Invitation.Create(IdGenerator.NewId(), businessId, email, request.Name, role!,
+                    InviteCodes.Hash(code)!, _currentUser.UserId!, now);
+                _db.Invitations.Add(invite);
+                await _db.SaveChangesAsync(cancellationToken);
+                await tx.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await tx.RollbackAsync(cancellationToken);
+                throw;
+            }
+        });
+
+        if (failCode is not null)
+        {
+            return StaffResult<CreatedInvitationDto>.Fail(failCode);
         }
 
-        if (open.Count(i => i.RevokedAtUtc is null) >= MaxPendingInvites)
-        {
-            return StaffResult<CreatedInvitationDto>.Fail(StaffErrorMessages.InviteLimit);
-        }
-
-        var code = InviteCodes.NewCode();
-        var invite = Invitation.Create(IdGenerator.NewId(), businessId, email, request.Name, role!,
-            InviteCodes.Hash(code)!, _currentUser.UserId!, now);
-        _db.Invitations.Add(invite);
-        await _db.SaveChangesAsync(cancellationToken);
         await _audit.WriteAsync(new AuditEntry(AuditActions.StaffInvited, $"Invited someone as {role} ({AuditMask.Email(email)})",
-            businessId, _currentUser.UserId, _currentUser.Role, "staff_invite", invite.Id), cancellationToken: cancellationToken);
+            businessId, _currentUser.UserId, _currentUser.Role, "staff_invite", invite!.Id), cancellationToken: cancellationToken);
         var emailed = false;
         if (_email.IsConfigured)
         {
-            var businessName = await _db.Businesses.AsNoTracking().Where(b => b.Id == businessId).Select(b => b.Name)
-                .FirstOrDefaultAsync(cancellationToken) ?? "Your shop";
-            emailed = _email.TryQueue(EmailTemplates.Invite(invite.Email, invite.Name, businessName, invite.Role, code,
+            emailed = _email.TryQueue(EmailTemplates.Invite(invite.Email, invite.Name, businessName, invite.Role, code!,
                 invite.ExpiresAtUtc, _emailOptions.CurrentValue.AppBaseUrl));
         }
 
-        return StaffResult<CreatedInvitationDto>.Ok(new CreatedInvitationDto(ToDto(invite, now), code, emailed));
+        return StaffResult<CreatedInvitationDto>.Ok(new CreatedInvitationDto(ToDto(invite, now), code!, emailed));
     }
 
     public async Task<StaffResult<bool>> RevokeInvitationAsync(string invitationId, CancellationToken cancellationToken = default)
@@ -193,19 +243,97 @@ public sealed class StaffService : IStaffService
         }, cancellationToken);
 
     public Task<StaffResult<StaffMemberDto>> SetActiveAsync(string userId, bool active, CancellationToken cancellationToken = default) =>
-        ApplyMemberChangeAsync(userId, m =>
-        {
-            if (active)
-            {
-                m.Reactivate();
-            }
-            else
+        active
+            ? ReactivateUnderPlanCapAsync(userId, cancellationToken)
+            : ApplyMemberChangeAsync(userId, m =>
             {
                 m.Deactivate();
-            }
+                return null;
+            }, cancellationToken);
 
-            return null;
-        }, cancellationToken);
+    /// <summary>Reactivate under the business row lock so two reactivations can't pass the plan staff cap together.</summary>
+    private async Task<StaffResult<StaffMemberDto>> ReactivateUnderPlanCapAsync(string userId, CancellationToken cancellationToken)
+    {
+        var businessId = RequireBusiness();
+        if (string.Equals(userId, _currentUser.UserId, StringComparison.Ordinal))
+        {
+            return StaffResult<StaffMemberDto>.Fail(StaffErrorMessages.StaffSelf);
+        }
+
+        string? failCode = null;
+        var strategy = _db.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            failCode = null;
+            _db.ChangeTracker.Clear();
+            await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
+            try
+            {
+                await _db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT 1 FROM \"Businesses\" WHERE \"Id\" = {businessId} FOR UPDATE", cancellationToken);
+                var business = await _db.Businesses.AsNoTracking().FirstAsync(b => b.Id == businessId, cancellationToken);
+                var resolution = PlanCatalog.Resolve(business);
+                LogUnknownPlan(business.Id, resolution);
+
+                var membership = await _db.StaffMemberships.FirstOrDefaultAsync(m => m.UserId == userId, cancellationToken);
+                if (membership is null)
+                {
+                    failCode = StaffErrorMessages.StaffNotFound;
+                    await tx.RollbackAsync(cancellationToken);
+                    return;
+                }
+
+                if (membership.Role == BusinessRole.Owner)
+                {
+                    failCode = StaffErrorMessages.StaffOwner;
+                    await tx.RollbackAsync(cancellationToken);
+                    return;
+                }
+
+                if (!membership.IsActive)
+                {
+                    var activeNonOwner = await CountActiveNonOwnerAsync(businessId, cancellationToken);
+                    var pending = await CountPendingInvitesAsync(businessId, _clock.UtcNow, cancellationToken);
+                    if (!StaffPlanLimits.CanAddOne(resolution.Entitlements, activeNonOwner, pending))
+                    {
+                        failCode = StaffErrorMessages.StaffLimit;
+                        await tx.RollbackAsync(cancellationToken);
+                        return;
+                    }
+
+                    membership.Reactivate();
+                    var user = await _userManager.FindByIdAsync(userId);
+                    if (user is null)
+                    {
+                        failCode = StaffErrorMessages.StaffNotFound;
+                        await tx.RollbackAsync(cancellationToken);
+                        return;
+                    }
+
+                    var stamped = await _userManager.UpdateSecurityStampAsync(user);
+                    if (!stamped.Succeeded)
+                    {
+                        throw new InvalidOperationException("Couldn't update the team member's sign-in.");
+                    }
+                }
+
+                await tx.CommitAsync(cancellationToken);
+            }
+            catch
+            {
+                await tx.RollbackAsync(cancellationToken);
+                throw;
+            }
+        });
+
+        if (failCode is not null)
+        {
+            return StaffResult<StaffMemberDto>.Fail(failCode);
+        }
+
+        var overview = await GetOverviewAsync(cancellationToken);
+        return StaffResult<StaffMemberDto>.Ok(overview.Members.First(m => m.UserId == userId));
+    }
 
     private async Task<StaffResult<StaffMemberDto>> ApplyMemberChangeAsync(
         string userId, Func<StaffMembership, string?> change, CancellationToken cancellationToken)
@@ -353,6 +481,29 @@ public sealed class StaffService : IStaffService
         string.IsNullOrEmpty(_currentUser.BusinessId)
             ? throw new InvalidOperationException("No business on this request.")
             : _currentUser.BusinessId;
+
+    private Task<int> CountActiveNonOwnerAsync(string businessId, CancellationToken cancellationToken) =>
+        _db.StaffMemberships.CountAsync(
+            m => m.BusinessId == businessId && m.IsActive && m.Role != BusinessRole.Owner,
+            cancellationToken);
+
+    private Task<int> CountPendingInvitesAsync(string businessId, DateTimeOffset now, CancellationToken cancellationToken) =>
+        _db.Invitations.CountAsync(
+            i => i.BusinessId == businessId && i.AcceptedAtUtc == null && i.RevokedAtUtc == null && i.ExpiresAtUtc > now,
+            cancellationToken);
+
+    private void LogUnknownPlan(string businessId, PlanResolution resolution)
+    {
+        if (!resolution.WasUnknownPlan)
+        {
+            return;
+        }
+
+        _logger.LogWarning(
+            "Shop {ShopId} has unexpected license plan {Plan}; applying Starter staff limits.",
+            businessId,
+            resolution.StoredPlan ?? "(blank)");
+    }
 
     private static InvitationDto ToDto(Invitation i, DateTimeOffset now) =>
         new(i.Id, i.Email, i.Name, i.Role, i.StatusAt(now), i.CreatedAtUtc, i.ExpiresAtUtc, i.AcceptedAtUtc);

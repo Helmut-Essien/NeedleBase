@@ -191,3 +191,29 @@ None.
 - UI/UX: N/A (no UI)
 
 Working tree: clean aside from untracked backups/scratchpad. Slice commits: `4824e72`, `0173f3e` (+ this log).
+
+---
+
+# Staff limits (plans step 2) Ralph review log
+
+## Iteration 1 — 25 Nov 2026
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| High | Accept-invite resolved plan from pre-transaction `Business` snapshot while counting staff after `FOR UPDATE` | Bugbot + Security: `AuthService.cs` previously loaded business at ~614 then `PlanCatalog.Resolve(business)` after lock without reload; invite/reactivate already reload (`StaffService.cs` 141–143, 274–275). Race: keyless load → attach Starter → accept could still see unlimited | Reload `Business` after business `FOR UPDATE` before `PlanCatalog.Resolve`; use locked entity for tokens (`AuthService.AcceptInviteAsync`) |
+
+### Findings dismissed (with evidence)
+| Finding | Why |
+|---------|-----|
+| Keyless/complimentary unlimited | Product rule; Platform-controlled complimentary; `AttachLicense` only path for keyed plans |
+| Owner counted in cap | `CountActiveNonOwnerAsync` / accept count exclude `BusinessRole.Owner` |
+| STAFF_LIMIT leaks plan internals | Detail is generic copy only (`StaffErrorMessages.cs`); web `ApiResult.Message` uses Problem detail; mobile `ForProblem` |
+| Staff usage meter / upgrade CTA on Staff UI | Step 5 (export and usage display); existing error banner shows STAFF_LIMIT copy (`StaffPage` / web `ActionError` + `role="alert"`) |
+| Concurrent race test for stale-plan accept | Existing `Accept_invite_refused_when_plan_staff_cap_already_full` covers post-attach refuse; true interleaving needs timing harness — residual |
+
+### Remaining open
+Re-run five passes (iteration 2) after the accept-invite reload fix.

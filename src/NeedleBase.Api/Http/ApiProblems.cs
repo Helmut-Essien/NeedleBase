@@ -138,6 +138,7 @@ public static class ApiProblems
             StaffErrorMessages.InviteNotFound or StaffErrorMessages.StaffNotFound => (StatusCodes.Status404NotFound, "Not found"),
             StaffErrorMessages.InviteExpired or StaffErrorMessages.InviteRevoked => (StatusCodes.Status410Gone, "Invite no longer valid"),
             StaffErrorMessages.InviteUsed or StaffErrorMessages.InviteEmailInUse or StaffErrorMessages.InviteLimit
+                or StaffErrorMessages.StaffLimit
                 => (StatusCodes.Status409Conflict, "Can't do that"),
             StaffErrorMessages.StaffSelf or StaffErrorMessages.StaffOwner => (StatusCodes.Status403Forbidden, "Not allowed"),
             StaffErrorMessages.ResetUnavailable => (StatusCodes.Status503ServiceUnavailable, "Email not set up"),
