@@ -369,6 +369,28 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
+        // Free→online orphan recovery: intent was set before register-business. Prefer remap over
+        // AcceptOwnerChange wipe if the user signs in from Welcome instead of Go online.
+        var upgradeIntent = await _secureStorage.GetAsync(FreeUpgradeIntentKey);
+        if (!string.IsNullOrWhiteSpace(upgradeIntent) && await IsFreeModeAsync())
+        {
+            await WriteFreeUpgradePendingAsync(
+                upgradeIntent, payload.User, payload.AccessToken, payload.RefreshToken);
+            await StoreTokensAsync(new TokenResponse(payload.AccessToken, payload.RefreshToken));
+            try
+            {
+                await CompleteFreeUpgradeAsync(upgradeIntent, payload.User, cancellationToken);
+                return payload.User;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Free upgrade via sign-in failed: {ex.Message}");
+                LastErrorMessage =
+                    "Your online shop was created, but moving Free records didn't finish. Close and reopen the app to complete it.";
+                return null;
+            }
+        }
+
         if (!await AcceptOwnerChangeAsync(payload.User, payload.RefreshToken, cancellationToken))
         {
             return null;

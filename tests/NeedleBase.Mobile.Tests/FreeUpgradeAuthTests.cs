@@ -224,6 +224,52 @@ public class FreeUpgradeAuthTests
         await storage.SetAsync(AuthService.FreeUpgradePendingKey, json);
     }
 
+    [Fact]
+    public async Task Login_WithFreeUpgradeIntent_RemapsWithoutWipe()
+    {
+        var storage = new MemoryStorage();
+        await storage.SetAsync(AuthService.FreeModeKey, "1");
+        await storage.SetAsync(AuthService.BusinessIdKey, "01FREEFROM0000000000000001");
+        await storage.SetAsync(AuthService.FreeUpgradeIntentKey, "01FREEFROM0000000000000001");
+        await storage.SetAsync(AuthService.UserIdKey, "01FREEUSER0000000000000001");
+        await storage.SetAsync(AuthService.BusinessNameKey, "Ama Stitches");
+        await storage.SetAsync(AuthService.FirstNameKey, "Owner");
+        await storage.SetAsync(AuthService.SurnameKey, string.Empty);
+        await storage.SetAsync(AuthService.RoleKey, "Owner");
+        await storage.SetAsync(AuthService.EmailKey, string.Empty);
+
+        var loginJson = JsonSerializer.Serialize(
+            new
+            {
+                accessToken = "login-access",
+                refreshToken = "login-refresh",
+                user = OnlineUser()
+            },
+            Camel);
+        var handler = new SequenceHandler(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(loginJson, Encoding.UTF8, "application/json")
+            });
+        var upgrade = new RecordingFreeUpgrade();
+        var database = new NoopDatabase();
+        var auth = new AuthService(
+            new StubFactory(handler),
+            storage,
+            database,
+            new NoopFreeModeLocalService(),
+            upgrade,
+            Options.Create(new ApiSettings()));
+
+        var result = await auth.LoginAsync(new LoginRequest("owner@shop.test", "Password1!"));
+
+        Assert.NotNull(result);
+        Assert.Equal(1, upgrade.RemapCalls);
+        Assert.Equal(0, database.Wipes);
+        Assert.False(await auth.IsFreeModeAsync());
+        Assert.Null(await storage.GetAsync(AuthService.FreeUpgradeIntentKey));
+    }
+
     private static AuthService NewAuth(
         MemoryStorage storage, HttpMessageHandler handler, IFreeUpgradeLocalService upgrade) =>
         new(

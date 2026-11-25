@@ -492,8 +492,31 @@ Continued in iteration 3.
 | JWT ↔ pending cross-check | Same-device; Security residual |
 
 ### Remaining open
-Re-run five passes (iteration 4).
+Continued in iteration 4.
+
+## Iteration 4
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| Medium | Welcome Sign in with intent still wiped Free rows | Bugbot residual (validator removed as High); `LoginAsync`→`AcceptOwnerChangeAsync` wipe; REGISTER_FAILED copy says sign in | `LoginAsync` remaps via intent+Free without wipe; test `Login_WithFreeUpgradeIntent_RemapsWithoutWipe` |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security medium+ | CLEAN — intent same-device; login recovery requires valid credentials; sync JWT-scoped |
+| Bugbot orphan via Welcome Sign in as High | Validator removed; still closed as Medium above for defense in depth |
+| Edge: REGISTER_FAILED for weak password also tries login | Login fails without credentials; no tenancy escape (Security) |
+| UI: PasswordField + MaxLength + Remask | Already fixed iter1; terms SemanticProperties; busy/CanSubmit |
+| Senior: transactional remap + pending tokens | In place; intent before network is correct crash model |
+
+### Remaining open
+Re-run five passes (iteration 5) for clean verdict.
 
 ### Residual notes
 - XA0033 OpenJDK parse warning on Mobile Android build (environment)
 - Do not push until asked
+- Normal Register (not Go online / not intent login) while Free can still wipe — documented alternate path; More → Go online is the Free upgrade path
