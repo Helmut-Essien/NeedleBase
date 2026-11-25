@@ -42,6 +42,14 @@
         Shell.TabBarIsVisible="False"
         Shell.NavBarIsVisible="False" />
 
+    <ShellContent
+        Title="Free on this phone"
+        Route="FreeSetupPage"
+        ContentTemplate="{DataTemplate views:FreeSetupPage}"
+        FlyoutItemIsVisible="False"
+        Shell.TabBarIsVisible="False"
+        Shell.NavBarIsVisible="False" />
+
     <TabBar Route="main"
             Shell.TabBarBackgroundColor="White"
             Shell.TabBarForegroundColor="{StaticResource Primary}"

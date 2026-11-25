@@ -36,7 +36,18 @@
                 <Label Text="{Binding LicenseBanner}" FontSize="14" TextColor="{StaticResource Charcoal}" LineBreakMode="WordWrap" />
             </Border>
 
-            <!-- 2. SyncChip (Slice 4): honest sync state; tap for details -->
+            <!-- Free (phone only): no sync — honest local-only banner -->
+            <Border x:Name="FreeBanner" IsVisible="False" BackgroundColor="White" Stroke="{StaticResource Gray300}"
+                    StrokeThickness="1" StrokeShape="RoundRectangle 12" Padding="14"
+                    SemanticProperties.Description="Free on this phone. Records stay on this device only.">
+                <VerticalStackLayout Spacing="2">
+                    <Label Text="Free on this phone" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                    <Label Text="Records stay on this device only. NeedleBase does not sync or back them up — use Save a copy in More."
+                           FontSize="13" TextColor="{StaticResource Gray600}" LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- 2. SyncChip (Slice 4): honest sync state; tap for details (hidden in Free) -->
             <Border x:Name="SyncChip" x:DataType="vm:SyncStatusViewModel" BackgroundColor="White" Stroke="{StaticResource Gray300}"
                     StrokeThickness="1" StrokeShape="RoundRectangle 12" Padding="14"
                     SemanticProperties.Description="{Binding ChipText, StringFormat='Sync status: {0}. Opens sync details'}">
@@ -190,9 +201,10 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Sign out stays reachable at the bottom of Home -->
-            <Button Style="{StaticResource SecondaryButton}"
-                        Text="Sign out"
+            <!-- Sign out / leave Free stays reachable at the bottom of Home -->
+            <Button x:Name="SignOutButton"
+                    Style="{StaticResource SecondaryButton}"
+                    Text="Sign out"
                     CornerRadius="10"
                     HeightRequest="48"
                     FontSize="15"

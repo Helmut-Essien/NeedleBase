@@ -78,7 +78,7 @@ setup problem (logged).
 
 See `.cursor/skills/needlebase-phases/code-gaps.md`, section "Platform licensing".
 
-Shops that were created before licensing, and shops that do not yet have a key, stay unlimited. A planned **Free** tier (phone only, no account, no licence key, tight customer and order limits) is **not built**. Do not start locking shops without a key to Free limits until that work is requested.
+Shops that were created before licensing, and shops that do not yet have a key, stay unlimited. **Free** (phone only, no account, no licence key, tight customer and order limits) is built on the phone and never touches Platform. Do not lock keyless online shops to Free limits.
 
 ## Platform product plans (built)
 
@@ -88,4 +88,4 @@ The admin still needs to add the `starter`, `workshop` and `production` plans to
 
 ## Pricing (decided, not built)
 
-Plan prices and feature limits (Free / Starter / Workshop / Production) are decided. PlanCatalog and server staff caps (steps 1–2) are built; Free mode and later steps are not built yet. The source of truth is [needlebase-plans](../.cursor/skills/needlebase-plans/SKILL.md). A short price table also lives in the README section [Pricing (decided, not built)](../README.md#pricing-decided-not-built). The published Terms and the public landing page show these prices (updated 18 November 2026).
+Plan prices and feature limits (Free / Starter / Workshop / Production) are decided. PlanCatalog, server staff caps and Free phone-only mode (steps 1–3) are built; upgrading from Free and later steps are not. The source of truth is [needlebase-plans](../.cursor/skills/needlebase-plans/SKILL.md). A short price table also lives in the README section [Pricing (decided; Free + staff caps built)](../README.md#pricing-decided-free--staff-caps-built). The published Terms and the public landing page show these prices (updated 18 November 2026).

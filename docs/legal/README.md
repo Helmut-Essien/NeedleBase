@@ -31,7 +31,7 @@ The published Terms (`terms-and-conditions.md`, web `/Terms`, and MAUI `TermsPag
 
 The Terms now include the published plan prices (excluding VAT), a 30-day notice before a price change, Free-plan rules (one phone, 10 customers and 20 orders ever created, no NeedleBase sync or backup, "Save a copy"), export for paid and lapsed read-only shops, and one-year hosted retention after a paid shop lapses. Complimentary or specially agreed keys can still be agreed in writing. The Privacy Policy was checked and left unchanged: a written-request copy and "no particular format" still sit alongside product export, and one-year retention already matches.
 
-**Still pending:** the Play Store privacy form. Plan limits, Free mode, export, "Save a copy", paid-plan emails, and Workshop/Production features (photos, PDF receipts, reports) are **not built**, even though the Terms and the landing page now describe them.
+**Still pending:** the Play Store privacy form. Free phone-only mode and "Save a copy" are built. Paid export, usage meters, upgrading from Free, paid-plan emails, and Workshop/Production features (photos, PDF receipts, reports) are **not built**, even though the Terms and the landing page describe them.
 
 ## Contacts and facts already confirmed
 

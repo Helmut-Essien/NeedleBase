@@ -433,6 +433,12 @@ public sealed class SyncService
             return;
         }
 
+        // Free (phone only) never syncs — do not call the hosted API.
+        if (NeedleBase.Mobile.Data.Sync.LocalFreeModeGate.IsActive)
+        {
+            return;
+        }
+
         _lastBusinessId = businessId;
         if (!IsOnline || _sessionExpired || _blockedState is not null)
         {

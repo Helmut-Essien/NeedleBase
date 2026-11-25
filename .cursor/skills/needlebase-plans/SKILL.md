@@ -2,24 +2,23 @@
 name: needlebase-plans
 description: >-
   Decided NeedleBase pricing, plan limits, PlanCatalog rules, and the
-  implementation order. PlanCatalog (step 1) and staff-limit enforcement
-  (step 2) are built. Free mode and later steps are not built. The
-  published Terms and the landing-page prices were updated on
-  18 November 2026. Use when talking about Free, Starter, Workshop or
-  Production, enforcing plan limits, upgrading a shop, or how licence
-  plans from Platform are applied. Do not start the next build step
-  until the user asks.
+  implementation order. Steps 1–3 are built (PlanCatalog, staff caps,
+  Free phone-only mode). Later steps are not built. The published Terms
+  and the landing-page prices were updated on 18 November 2026. Use when
+  talking about Free, Starter, Workshop or Production, enforcing plan
+  limits, upgrading a shop, or how licence plans from Platform are
+  applied. Do not start the next build step until the user asks.
 ---
 
 # NeedleBase plans
 
-**Status: decided.** PlanCatalog (step 1) and staff-limit enforcement (step 2) are built. Free mode and later steps are **not built** — do not start them until the user asks. The published Terms and the public landing page already show these prices (updated 18 November 2026). Do not change those public prices or the published Terms again unless the user asks.
+**Status: decided.** PlanCatalog (step 1), staff-limit enforcement (step 2) and Free phone-only mode (step 3) are built. Later steps are **not built** — do not start them until the user asks. The published Terms and the public landing page already show these prices (updated 18 November 2026). Do not change those public prices or the published Terms again unless the user asks.
 
 Purpose: the decided prices, limits, and how NeedleBase will apply a plan name from Platform.
 
 Follow [standing-rules.md](../standing-rules.md) on every change in this repo.
 
-A short price table also lives in the README section [Pricing (decided, not built)](../../../README.md#pricing-decided-not-built). This skill is the full plan, including PlanCatalog rules, the build order, risks, and how it works with Platform.
+A short price table also lives in the README section [Pricing (decided; Free + staff caps built)](../../../README.md#pricing-decided-free--staff-caps-built). This skill is the full plan, including PlanCatalog rules, the build order, risks, and how it works with Platform.
 
 ## How it works with Platform
 
@@ -77,7 +76,7 @@ Do not start the next build step until the user asks. Steps 1–6 are enough to 
 |---|------|------|----------------|
 | 1 | PlanCatalog | S | **Done (25 Nov 2026).** `Application/Licensing/PlanCatalog.cs` maps `starter` / `workshop` / `production` to staff limits and features. Keyless and complimentary → unlimited; trial → Starter; unknown/blank on a keyed shop → Starter (`WasUnknownPlan` for logging). Tests: `Application.Tests/PlanCatalogTests`. |
 | 2 | Staff limits on the server | M | **Done (25 Nov 2026).** `StaffPlanLimits` + `STAFF_LIMIT` on invite, accept-invite and reactivate (Owner not counted; pending invites reserve seats; business row lock). Downgrade keeps existing staff and blocks new seats. Keyless/complimentary stay unlimited. Read-only lock unchanged. Tests: `StaffPlanLimitsTests`, `StaffApiTests.PlanLimits`. |
-| 3 | Free mode on the phone | L | The first screen offers "Use free on this phone" next to signing in, entering a licence key, or joining with an invite. Local counters that never count down. "Save a copy". |
+| 3 | Free mode on the phone | L | **Done (25 Nov 2026).** Welcome offers "Use free on this phone" separate from Sign in / Register with a licence key / Join a shop with an invite (invite is for online staff only). Local ULID shop, Owner session without tokens, `FreeModeStates` lifetime counters, sync skipped via `LocalFreeModeGate`, caps on customer/order create, More → Save a copy, Free banner on Home. Tests: `FreeModeLocalServiceTests`, `FreePlanLimitsTests`. |
 | 4 | Upgrading from Free | L | The Owner enters a licence key, the phone's records move to the new online shop, and the first sync uploads them. If the app closes halfway, it picks up again safely. |
 | 5 | Export and usage display | M | Paid shops and lapsed read-only shops can export. The License page shows the plan and usage. Free shows meters such as "7/10 customers". Receipts show the shop's phone number. |
 | 6 | Paid emails | M | Starter: a monthly summary email to the Owner. Workshop and Production: that monthly summary, plus a weekly summary to the Owner that includes the balances owed, and emails to staff when an order is assigned or due. |
@@ -89,7 +88,7 @@ Do not start the next build step until the user asks. Steps 1–6 are enough to 
 - Until the NeedleBase product in Platform has the `starter` / `workshop` / `production` plans, and any old names such as "Pro" are mapped onto them, NeedleBase must fail closed to Starter for a blank or unknown plan, not unlimited. Platform already has the remap tool; the admin still has to add those plans and map old names.
 - Platform's server default for `MaxDevices` is still 3. Set NeedleBase's `DefaultMaxDevices` to **1** (one shop per key) in Platform's admin. Until that is set, new NeedleBase keys get 3.
 - A plan change on a live key is picked up on the next re-check (within a day, or sooner if the Owner re-enters the key). Edit the same key's plan; do not revoke and issue a new one, which would disconnect the shop.
-- The published Terms and the landing page now promise export, the Free "Save a copy" action, and Workshop and Production features (photos, PDF receipts, and profit and monthly reports) that are not built yet. Do not sell Workshop or Production until step 7 works. Do not change the public landing-page prices or the published Terms again unless the user asks.
+- The published Terms and the landing page promise paid export and Workshop/Production features (photos, PDF receipts, and profit and monthly reports) that are not built yet. Free "Save a copy" is built. Do not sell Workshop or Production until step 7 works. Do not change the public landing-page prices or the published Terms again unless the user asks.
 
 ## Related
 

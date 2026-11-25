@@ -105,6 +105,7 @@ public sealed class LocalDbContext : DbContext
     public DbSet<DeviceInfo> DeviceInfo => Set<DeviceInfo>();
     public DbSet<SyncDeferredItem> SyncDeferred => Set<SyncDeferredItem>();
     public DbSet<LocalWhatsAppConsent> WhatsAppConsents => Set<LocalWhatsAppConsent>();
+    public DbSet<FreeModeState> FreeModeStates => Set<FreeModeState>();
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
         optionsBuilder.AddInterceptors(LocalDataVersionInterceptor.Instance, LocalDataVersionTransactionInterceptor.Instance);
@@ -271,6 +272,14 @@ public sealed class LocalDbContext : DbContext
             e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id);
             e.Property(x => x.DeviceId).HasMaxLength(FieldLimits.Id).IsRequired();
             e.Property(x => x.PullCursor).HasMaxLength(2000);
+        });
+
+        builder.Entity<FreeModeState>(e =>
+        {
+            e.ToTable("FreeModeStates");
+            e.HasKey(x => x.BusinessId);
+            e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.ShopName).HasMaxLength(FieldLimits.CustomerName).IsRequired();
         });
     }
 }

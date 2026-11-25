@@ -18,6 +18,8 @@ public static class RecordErrorMessages
     public const string PaymentExceedsBalance = "PAYMENT_EXCEEDS_BALANCE";
     public const string PaymentOrderLocked = "PAYMENT_ORDER_LOCKED";
     public const string PaymentForbidden = "PAYMENT_FORBIDDEN";
+    public const string FreeCustomerLimit = "FREE_CUSTOMER_LIMIT";
+    public const string FreeOrderLimit = "FREE_ORDER_LIMIT";
 
     public static string Code(RecordError error) => error switch
     {
@@ -41,6 +43,8 @@ public static class RecordErrorMessages
         RecordError.PaymentOrderLocked => PaymentOrderLocked,
         RecordError.PaymentForbidden => PaymentForbidden,
         RecordError.SubscriptionReadOnly => NeedleBase.Application.Licensing.LicenseErrors.ReadOnly,
+        RecordError.FreeCustomerLimit => FreeCustomerLimit,
+        RecordError.FreeOrderLimit => FreeOrderLimit,
         _ => Validation
     };
 
@@ -63,6 +67,8 @@ public static class RecordErrorMessages
         RecordError.PaymentExceedsBalance => "That's more than what's left to pay on this order.",
         RecordError.PaymentOrderLocked => "This order is cancelled, so no payments can be recorded.",
         RecordError.PaymentForbidden => "Only the owner or a manager can record payments.",
+        RecordError.FreeCustomerLimit => NeedleBase.Application.Licensing.FreePlanLimits.CustomerLimitReachedMessage,
+        RecordError.FreeOrderLimit => NeedleBase.Application.Licensing.FreePlanLimits.OrderLimitReachedMessage,
         _ => "Check the details and try again."
     };
 }

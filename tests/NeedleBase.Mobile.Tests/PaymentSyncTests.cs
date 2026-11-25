@@ -480,7 +480,7 @@ public class PaymentSyncTests
     }
 
     [Fact]
-    public void Migrator_LatestVersion_IsWhatsAppConsent() => Assert.Equal(10, LocalSchemaMigrator.LatestVersion);
+    public void Migrator_LatestVersion_IncludesFreeMode() => Assert.Equal(11, LocalSchemaMigrator.LatestVersion);
 
     // ------------------------------------------------------------------ helpers
 

@@ -294,3 +294,47 @@ None — prior High (stale Business on accept-invite) already fixed in `a9830f7`
 - Do not push until you ask
 - Next product step: Free mode on the phone
 - Do not commit `.cursor/ralph/scratchpad.md`
+
+---
+
+# Free mode (plans step 3) Ralph — 25 Nov 2026
+
+Scope: uncommitted Free phone-only mode (welcome diction, local session, lifetime caps, Save a copy, sync skip).
+
+## Iteration 1
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Fix |
+|----------|---------|-----|
+| Critical | Failed wipe cleared `LocalFreeModeGate` while Free SecureStorage keys remained (`LocalDatabaseService.WipeAsync` finally) | Clear Free gate only when wipe succeeds |
+| High | Missing `FreeModeStates` row fail-open (unlimited creates) | `TryReserve*` fails closed when gate active and row missing; AppStartup recreates row from shop name |
+| High | Check-then-increment not atomic (crash/TOCTOU undercount) | Atomic SQL `UPDATE … + 1 WHERE count < Max` reserve; release on create failure |
+| Medium | More Free usage meters stale on re-appear | Refresh `_freeUsageLabel` when returning to More in Free |
+| Medium | Cap path ran for every online create (`_freeMode != null`) | Reserve no-ops unless `LocalFreeModeGate.IsFreeBusiness` |
+| Low | FreeSetup Start lacked SR description | `SemanticProperties.Description` on Start button |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security: Save a copy PII in JSON | User-initiated backup; UI discloses; sanitized cache filename (Security Review) |
+| Security: Free/online session confusion | `StartFreeMode` clears tokens; `StoreSession` clears Free; mutually exclusive (Security Review) |
+| Double Start Free | `IsBusy` + `IsFreeModeAsync` reject (`FreeSetupViewModel`, `AuthService`) |
+| Save a copy large payload | Bounded by 10/20 Free caps |
+| Login Free vs invite confusion | Copy separates Free from "Join a shop with an invite" (`LoginPage.xaml`) |
+| Shop name max 200 via CustomerName | Matches EF; grapheme vs UTF-16 polish only |
+
+### Tests added/updated
+- `FreeModeLocalServiceTests`: missing-row fail-closed, failed-wipe keeps gate, reserve/release
+- Migrator latest = 11 (`PaymentSyncTests`)
+- Mobile.Tests 333 green; FreePlanLimits 5 green
+
+### Remaining open
+Re-run five passes (iteration 2) after these fixes.
+
+### Residual notes
+- Pre-existing XA0033 OpenJDK parse warning on full Android Release
+- Occasional flaky Api WhatsApp/email timing tests (unrelated; pass on retry)
+- Do not push until asked

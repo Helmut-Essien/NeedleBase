@@ -221,6 +221,19 @@ public static class LocalSchemaMigrator
         CREATE INDEX IF NOT EXISTS "IX_WhatsAppConsents_Pending" ON "WhatsAppConsents" ("BusinessId") WHERE "PendingOptedIn" IS NOT NULL;
         """;
 
+    /// <summary>
+    /// Version 11 = Free (phone only): lifetime customer/order counters that never decrease on delete.
+    /// </summary>
+    private const string V11FreeMode = """
+        CREATE TABLE IF NOT EXISTS "FreeModeStates" (
+            "BusinessId" TEXT NOT NULL CONSTRAINT "PK_FreeModeStates" PRIMARY KEY,
+            "ShopName" TEXT NOT NULL,
+            "CustomersEverCreated" INTEGER NOT NULL,
+            "OrdersEverCreated" INTEGER NOT NULL,
+            "CreatedAtUtc" TEXT NOT NULL
+        );
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
@@ -234,6 +247,7 @@ public static class LocalSchemaMigrator
         V8Payments,
         V9MeasurementTakenAt,
         V10WhatsAppConsent,
+        V11FreeMode,
     ];
 
     public static int LatestVersion => Steps.Length;

@@ -21,6 +21,16 @@ public interface IAuthService
     Task<TokenRefreshResult> RefreshIfStaleAsync(string? staleAccessToken, CancellationToken cancellationToken = default) =>
         RefreshAsync(cancellationToken);
     Task<bool> HasStoredTokensAsync();
+
+    /// <summary>True when this device is using Free (phone only) — no account, no tokens.</summary>
+    Task<bool> IsFreeModeAsync() => Task.FromResult(false);
+
+    /// <summary>
+    /// Starts Free on this phone: local Owner session, no account. Null + <see cref="LastErrorMessage"/> on failure.
+    /// </summary>
+    Task<AuthUserDto?> StartFreeModeAsync(string shopName, CancellationToken cancellationToken = default) =>
+        Task.FromResult<AuthUserDto?>(null);
+
     Task ClearTokensAsync();
     /// <summary>Returns false if local data wipe failed (session kept).</summary>
     Task<bool> LogoutAsync(CancellationToken cancellationToken = default);

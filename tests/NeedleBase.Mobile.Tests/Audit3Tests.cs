@@ -136,7 +136,7 @@ public partial class SyncEdgeCaseTests
         await storage.SetAsync(AuthService.LocalDataOwnerKey, "U1|B1");
         var database = new CountingDatabase();
         var body = """{"status":401,"code":"ACCOUNT_DEACTIVATED"}""";
-        var auth = new AuthService(new StubFactory(new StubHandler(HttpStatusCode.Unauthorized, body)), storage, database, Options.Create(new ApiSettings()));
+        var auth = new AuthService(new StubFactory(new StubHandler(HttpStatusCode.Unauthorized, body)), storage, database, new NoopFreeModeLocalService(), Options.Create(new ApiSettings()));
 
         var result = await auth.RefreshAsync();
 
@@ -158,7 +158,7 @@ public partial class SyncEdgeCaseTests
         var storage = new MemoryStorage();
         await storage.SetAsync(AuthService.RefreshTokenKey, "r");
         var auth = new AuthService(new StubFactory(new StubHandler(HttpStatusCode.Unauthorized, """{"code":"INVALID_TOKEN"}""")),
-            storage, new CountingDatabase(), Options.Create(new ApiSettings()));
+            storage, new CountingDatabase(), new NoopFreeModeLocalService(), Options.Create(new ApiSettings()));
 
         var result = await auth.RefreshAsync();
 

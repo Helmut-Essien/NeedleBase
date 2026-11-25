@@ -20,6 +20,12 @@ internal static class SyncQueueWriter
 {
     public static async Task<bool> EnqueueAsync(LocalDbContext db, CancellationToken cancellationToken)
     {
+        // Free (phone only) never syncs — do not queue hosted pushes.
+        if (LocalFreeModeGate.IsActive)
+        {
+            return false;
+        }
+
         var entries = db.ChangeTracker.Entries()
             .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted &&
                         e.Entity is Customer or MeasurementProfile or Order or Payment)

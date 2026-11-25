@@ -4,7 +4,7 @@ NeedleBase is the operating system for tailors, seamstresses, dressmakers and fa
 
 **Stack:** .NET 9 · ASP.NET Core API · Razor Pages web · .NET MAUI (Android) + SQLite · Clean Architecture · ULID string IDs (NUlid)
 
-**In this README:** [What it does](#what-it-does) · [Domain model](#domain-model) · [Implementation slices](#implementation-slices) · [Solution layout](#solution-layout) · [Local development](#local-development) · [Account deletion](#account-deletion) · [Legal and licensing](#legal-and-licensing) · [Pricing (decided, not built)](#pricing-decided-not-built) · [Further documentation](#further-documentation)
+**In this README:** [What it does](#what-it-does) · [Domain model](#domain-model) · [Implementation slices](#implementation-slices) · [Solution layout](#solution-layout) · [Local development](#local-development) · [Account deletion](#account-deletion) · [Legal and licensing](#legal-and-licensing) · [Pricing (decided; Free + staff caps built)](#pricing-decided-free--staff-caps-built) · [Further documentation](#further-documentation)
 
 ## What it does
 
@@ -126,7 +126,7 @@ Most slices are built. Confirm with the user before starting later work. Accepta
 | **5** Payments | **Built** (device journeys not yet verified) | Record deposits/payments, balances, receipts; conflict-safe sync + UI resolution |
 | **6** Web oversight | **Built** (browser journey not yet verified) | Sidebar shell; Dashboard; Production board; Orders via Api HTTP |
 | **7** Staff + roles | **Built** (device journey not yet verified) | Invitations, role policies, role-filtered mobile/web nav, password reset when email is configured |
-| **8** Licensing and access | **Built** for Platform licence keys, daily recheck, a grace period and the read-only lock. WhatsApp tap-to-send and automatic sending are in code. **Not built:** plan feature limits and the Free phone-only tier. | Licence key attach, status banners, read-only when a licence lapses. Plan limits and a no-account Free mode are decided but not enforced. |
+| **8** Licensing and access | **Built** for Platform licence keys, daily recheck, a grace period and the read-only lock. WhatsApp tap-to-send and automatic sending are in code. PlanCatalog, server staff caps and Free phone-only mode (plans steps 1–3) are built. **Not built:** upgrading from Free, paid export/usage meters, paid emails, Workshop/Production features. | Licence key attach, status banners, read-only when a licence lapses. Free = phone only, no account. |
 
 ## Solution layout
 
@@ -281,7 +281,7 @@ Published Privacy Policy and Terms live in [docs/legal/](docs/legal/). The same 
 
 Shops are licensed through Platform. See [docs/platform-licensing.md](docs/platform-licensing.md). WhatsApp setup: [docs/whatsapp-setup.md](docs/whatsapp-setup.md).
 
-## Pricing (decided, not built)
+## Pricing (decided; Free + staff caps built)
 
 These prices and limits are decided. **PlanCatalog** maps plan codes to entitlements; **staff caps** are enforced on the server (invite/accept/reactivate). Free mode and later steps are **not built** yet. The public landing page and the published Terms show these prices (updated 18 November 2026). Prices are in Ghana cedis and **do not include VAT**. The full plan (PlanCatalog rules, implementation order, risks, and how this works with Platform) is in [.cursor/skills/needlebase-plans/SKILL.md](.cursor/skills/needlebase-plans/SKILL.md).
 
@@ -294,7 +294,9 @@ These prices and limits are decided. **PlanCatalog** maps plan codes to entitlem
 
 A year costs 10 months. There is no free trial and no founding-shop discount. A referral offer is planned. When a paid shop stops paying, the existing read-only lock applies and the shop can still export.
 
-**Not built yet:** the Free phone-only mode (no account); the first paid upload of data already on the phone; server checks for plan limits; usage counters and upgrade prompts; export and "Save a copy"; and the paid-plan emails listed above. Workshop and Production features (photos, PDF receipts, and profit and monthly reports) are also not built, though they are listed on the landing page and in the Terms. Automatic WhatsApp template messages exist in code but are **not** a sold plan feature until Meta verifies the business.
+**Built (25 Nov 2026):** PlanCatalog; server staff caps; Free phone-only mode (no account, local counters, Save a copy, welcome-path diction).
+
+**Not built yet:** upgrading from Free (first paid upload of data already on the phone); paid export and usage meters; upgrade prompts on the License page; and the paid-plan emails listed above. Workshop and Production features (photos, PDF receipts, and profit and monthly reports) are also not built, though they are listed on the landing page and in the Terms. Automatic WhatsApp template messages exist in code but are **not** a sold plan feature until Meta verifies the business.
 
 ## Further documentation
 

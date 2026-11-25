@@ -77,6 +77,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<IAuthService, AuthService>();
         builder.Services.AddSingleton<INavigationService, NavigationService>();
         builder.Services.AddSingleton<ILocalDatabaseService, LocalDatabaseService>();
+        builder.Services.AddSingleton<IFreeModeLocalService, FreeModeLocalService>();
+        builder.Services.AddSingleton<IFreeCopyService, FreeCopyService>();
         builder.Services.AddSingleton<ICustomerLocalService, CustomerLocalService>();
         builder.Services.AddSingleton<IMeasurementLocalService, MeasurementLocalService>();
         builder.Services.AddSingleton<IOrderLocalService, OrderLocalService>();
@@ -106,6 +108,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<AccessRevokedService>();
 
         builder.Services.AddTransient<LoginViewModel>();
+        builder.Services.AddTransient<FreeSetupViewModel>();
         builder.Services.AddTransient<RegisterViewModel>();
         builder.Services.AddSingleton<HomeViewModel>();
         builder.Services.AddSingleton<CustomersViewModel>();
@@ -123,6 +126,7 @@ public static class MauiProgram
         builder.Services.AddTransient<PaymentReceiptViewModel>();
 
         builder.Services.AddTransient<LoginPage>();
+        builder.Services.AddTransient<FreeSetupPage>();
         builder.Services.AddTransient<RegisterPage>();
         builder.Services.AddTransient<TermsPage>();
         builder.Services.AddTransient<PrivacyPage>();

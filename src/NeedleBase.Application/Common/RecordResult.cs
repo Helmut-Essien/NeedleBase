@@ -35,7 +35,11 @@ public enum RecordError
     /// <summary>Only the owner or a manager can record or void payments.</summary>
     PaymentForbidden,
     /// <summary>The shop's license has lapsed past its grace period: new changes are paused (viewing still works).</summary>
-    SubscriptionReadOnly
+    SubscriptionReadOnly,
+    /// <summary>Free on this phone: lifetime customer cap reached (deletes do not free a slot).</summary>
+    FreeCustomerLimit,
+    /// <summary>Free on this phone: lifetime order cap reached (deletes do not free a slot).</summary>
+    FreeOrderLimit
 }
 
 /// <summary>A failure without a value type; converts to any <see cref="RecordResult{T}"/>.</summary>

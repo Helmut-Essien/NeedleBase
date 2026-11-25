@@ -11,7 +11,10 @@ namespace NeedleBase.Mobile.ViewModels;
 
 public partial class MeasurementEditViewModel : BaseViewModel, IBackAware, IQueryAttributable
 {
-    private const string SavedCopy = "Saved on this device. Will sync when you're online.";
+    private static string SavedCopy =>
+        NeedleBase.Mobile.Data.Sync.LocalFreeModeGate.IsActive
+            ? "Saved on this phone. Free does not sync — use Save a copy in More if you want a backup."
+            : "Saved on this device. Will sync when you're online.";
     private const decimal CmPerInch = 2.54m;
 
     private readonly IMeasurementLocalService _measurements;

@@ -11,7 +11,10 @@ namespace NeedleBase.Mobile.ViewModels;
 public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAttributable
 {
     private bool _returnSelects;
-    private const string SavedCopy = "Saved on this device. Will sync when you're online.";
+    private static string SavedCopy =>
+        NeedleBase.Mobile.Data.Sync.LocalFreeModeGate.IsActive
+            ? "Saved on this phone. Free does not sync — use Save a copy in More if you want a backup."
+            : "Saved on this device. Will sync when you're online.";
     private readonly ICustomerLocalService _customers;
     private readonly IAuthService _auth;
     private bool _initialized;

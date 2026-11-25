@@ -2,10 +2,14 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Auth;
 using NeedleBase.Application.Contracts.Errors;
+using NeedleBase.Domain.Common;
+using NeedleBase.Domain.Enums;
 using NeedleBase.Mobile.Configuration;
 using NeedleBase.Mobile.Data.Services;
+using NeedleBase.Mobile.Data.Sync;
 
 namespace NeedleBase.Mobile.Services;
 
@@ -20,6 +24,9 @@ public sealed class AuthService : IAuthService
     public const string FirstNameKey = "first_name";
     public const string SurnameKey = "surname";
     public const string RoleKey = "role";
+
+    /// <summary>"1" when Free (phone only) is active — no access/refresh tokens.</summary>
+    public const string FreeModeKey = "free_mode";
 
     /// <summary>Who the local SQLite data belongs to ("userId|businessId"). Not cleared when a session expires.</summary>
     public const string LocalDataOwnerKey = "local_data_owner";
@@ -41,17 +48,20 @@ public sealed class AuthService : IAuthService
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ISecureStorageService _secureStorage;
     private readonly ILocalDatabaseService _localDatabase;
+    private readonly IFreeModeLocalService _freeMode;
     private readonly ApiSettings _apiSettings;
 
     public AuthService(
         IHttpClientFactory httpClientFactory,
         ISecureStorageService secureStorage,
         ILocalDatabaseService localDatabase,
+        IFreeModeLocalService freeMode,
         IOptions<ApiSettings> apiSettings)
     {
         _httpClientFactory = httpClientFactory;
         _secureStorage = secureStorage;
         _localDatabase = localDatabase;
+        _freeMode = freeMode;
         _apiSettings = apiSettings.Value;
     }
 
@@ -488,12 +498,90 @@ public sealed class AuthService : IAuthService
         return !string.IsNullOrWhiteSpace(access) && !string.IsNullOrWhiteSpace(refresh);
     }
 
+    public async Task<bool> IsFreeModeAsync()
+    {
+        var flag = await _secureStorage.GetAsync(FreeModeKey);
+        return flag == "1";
+    }
+
+    public async Task<AuthUserDto?> StartFreeModeAsync(string shopName, CancellationToken cancellationToken = default)
+    {
+        LastErrorMessage = null;
+        var name = shopName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            LastErrorMessage = "Enter your shop name.";
+            return null;
+        }
+
+        if (name.Length > FieldLimits.CustomerName)
+        {
+            LastErrorMessage = $"Shop name can be at most {FieldLimits.CustomerName} characters.";
+            return null;
+        }
+
+        if (await IsFreeModeAsync())
+        {
+            LastErrorMessage = "You're already using Free on this phone.";
+            return null;
+        }
+
+        if (await HasStoredTokensAsync())
+        {
+            LastErrorMessage = "Sign out of your online shop first, then you can use Free on this phone.";
+            return null;
+        }
+
+        var businessId = IdGenerator.NewId();
+        var userId = IdGenerator.NewId();
+        var owner = userId + "|" + businessId;
+        var previous = await _secureStorage.GetAsync(LocalDataOwnerKey);
+        if (!string.IsNullOrEmpty(previous) && previous != owner)
+        {
+            var pending = await _localDatabase.CountUnsyncedAsync(cancellationToken);
+            if (pending > 0 && (OtherAccountDataPrompt is null || !await OtherAccountDataPrompt(pending)))
+            {
+                LastErrorMessage = OtherAccountCancelledMessage;
+                return null;
+            }
+
+            if (!await _localDatabase.WipeAsync(cancellationToken))
+            {
+                LastErrorMessage = "Local data from another account couldn't be cleared.";
+                return null;
+            }
+        }
+
+        // Free never stores tokens — drop any leftover online session keys first.
+        await ClearTokensAsync();
+
+        var now = DateTimeOffset.UtcNow;
+        await _freeMode.CreateAsync(businessId, name, now, cancellationToken);
+
+        await _secureStorage.SetAsync(FreeModeKey, "1");
+        await _secureStorage.SetAsync(LocalDataOwnerKey, owner);
+        await _secureStorage.SetAsync(BusinessIdKey, businessId);
+        SetBusinessIdCache(businessId);
+        await _secureStorage.SetAsync(BusinessNameKey, name);
+        await _secureStorage.SetAsync(UserIdKey, userId);
+        await _secureStorage.SetAsync(EmailKey, string.Empty);
+        await _secureStorage.SetAsync(FirstNameKey, "Owner");
+        await _secureStorage.SetAsync(SurnameKey, string.Empty);
+        await _secureStorage.SetAsync(RoleKey, BusinessRole.Owner);
+        InvalidateUserCache();
+        LocalFreeModeGate.Set(businessId);
+
+        return new AuthUserDto(userId, string.Empty, "Owner", string.Empty, businessId, name, BusinessRole.Owner);
+    }
+
     public Task ClearTokensAsync()
     {
         SetBusinessIdCache(null);
         InvalidateUserCache();
+        LocalFreeModeGate.Clear();
         _secureStorage.Remove(AccessTokenKey);
         _secureStorage.Remove(RefreshTokenKey);
+        _secureStorage.Remove(FreeModeKey);
         _secureStorage.Remove(BusinessIdKey);
         _secureStorage.Remove(BusinessNameKey);
         _secureStorage.Remove(UserIdKey);
@@ -598,6 +686,10 @@ public sealed class AuthService : IAuthService
             await ClearTokensAsync();
             throw new InvalidOperationException("Local data from another account couldn't be cleared.");
         }
+
+        // Online account replaces Free on this phone.
+        LocalFreeModeGate.Clear();
+        _secureStorage.Remove(FreeModeKey);
 
         await _secureStorage.SetAsync(LocalDataOwnerKey, owner);
         _secureStorage.Remove(AccessRevokedKey);

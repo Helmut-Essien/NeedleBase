@@ -12,10 +12,12 @@ namespace NeedleBase.Mobile.Data.Services;
 public sealed class CustomerLocalService : ICustomerLocalService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IFreeModeLocalService? _freeMode;
 
-    public CustomerLocalService(IServiceScopeFactory scopeFactory)
+    public CustomerLocalService(IServiceScopeFactory scopeFactory, IFreeModeLocalService? freeMode = null)
     {
         _scopeFactory = scopeFactory;
+        _freeMode = freeMode;
     }
 
     public async Task<IReadOnlyList<CustomerListItemDto>> SearchAsync(
@@ -213,6 +215,19 @@ public sealed class CustomerLocalService : ICustomerLocalService
             }
         }
 
+        var reservedFreeSlot = false;
+        if (_freeMode is not null)
+        {
+            var freeLimit = await _freeMode.TryReserveCustomerSlotAsync(businessId, cancellationToken)
+                .ConfigureAwait(false);
+            if (freeLimit.HasValue)
+            {
+                return freeLimit.Value;
+            }
+
+            reservedFreeSlot = NeedleBase.Mobile.Data.Sync.LocalFreeModeGate.IsFreeBusiness(businessId);
+        }
+
         try
         {
             var entity = Customer.Create(
@@ -227,17 +242,29 @@ public sealed class CustomerLocalService : ICustomerLocalService
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return MapDetail(entity, 0);
         }
-        catch (NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+        catch (Exception ex)
         {
-            return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
-        }
-        catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
-        {
-            return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
-        }
-        catch (ArgumentException ex)
-        {
-            return RecordResult.Fail(RecordError.Validation, ex.Message);
+            if (reservedFreeSlot && _freeMode is not null)
+            {
+                await _freeMode.ReleaseCustomerSlotAsync(businessId, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (ex is NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+            {
+                return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
+            }
+
+            if (LocalStorageErrors.IsStorageFull(ex))
+            {
+                return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
+            }
+
+            if (ex is ArgumentException arg)
+            {
+                return RecordResult.Fail(RecordError.Validation, arg.Message);
+            }
+
+            throw;
         }
     }
 

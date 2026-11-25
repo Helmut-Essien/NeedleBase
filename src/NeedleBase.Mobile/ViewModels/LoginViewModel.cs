@@ -17,11 +17,22 @@ public partial class LoginViewModel : BaseViewModel
         _authService = authService;
         _authService.OtherAccountDataPrompt ??= AuthPrompts.OtherAccountAsync;
         _navigation = navigation;
-        Title = "Sign in";
+        Title = "Welcome";
 
         WeakReferenceMessenger.Default.Register<ClearAuthSensitiveStateMessage>(
             this,
             static (recipient, _) => ((LoginViewModel)recipient).ClearSensitiveFields());
+    }
+
+    [RelayCommand]
+    private async Task UseFreeAsync()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        await Shell.Current.GoToAsync("//FreeSetupPage");
     }
 
     [ObservableProperty]

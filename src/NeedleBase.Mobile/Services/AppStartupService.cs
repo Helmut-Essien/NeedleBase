@@ -1,4 +1,5 @@
 using NeedleBase.Mobile.Data.Services;
+using NeedleBase.Mobile.Data.Sync;
 
 namespace NeedleBase.Mobile.Services;
 
@@ -10,6 +11,7 @@ public sealed class AppStartupService
     private readonly IAuthService _authService;
     private readonly INavigationService _navigation;
     private readonly ILocalDatabaseService _localDatabase;
+    private readonly IFreeModeLocalService _freeMode;
     private readonly AccessRevokedService _accessRevoked;
     private readonly SubscriptionStatusStore? _subscription;
     private bool _started;
@@ -18,6 +20,7 @@ public sealed class AppStartupService
         IAuthService authService,
         INavigationService navigation,
         ILocalDatabaseService localDatabase,
+        IFreeModeLocalService freeMode,
         AccessRevokedService accessRevoked,
         SubscriptionStatusStore? subscription = null)
     {
@@ -25,6 +28,7 @@ public sealed class AppStartupService
         _authService = authService;
         _navigation = navigation;
         _localDatabase = localDatabase;
+        _freeMode = freeMode;
         _accessRevoked = accessRevoked;
     }
 
@@ -61,6 +65,34 @@ public sealed class AppStartupService
                 // A revoke seen earlier whose wipe didn't finish (app killed, storage error): finish it first.
                 if (await _accessRevoked.HandleAsync(host))
                 {
+                    return;
+                }
+
+                // Free (phone only): no tokens, no refresh — restore the in-memory gate and open the app.
+                if (await _authService.IsFreeModeAsync())
+                {
+                    var freeBusinessId = await _authService.GetBusinessIdAsync();
+                    if (string.IsNullOrWhiteSpace(freeBusinessId))
+                    {
+                        await _authService.ClearTokensAsync();
+                        await _navigation.ShowLoginAsync();
+                        return;
+                    }
+
+                    // Caps need a FreeModeStates row — recreate from the stored shop name if it was lost.
+                    if (!await _freeMode.ExistsAsync(freeBusinessId))
+                    {
+                        var shopName = (await _authService.GetCachedUserAsync())?.BusinessName;
+                        if (string.IsNullOrWhiteSpace(shopName))
+                        {
+                            shopName = "Shop";
+                        }
+
+                        await _freeMode.CreateAsync(freeBusinessId, shopName, DateTimeOffset.UtcNow);
+                    }
+
+                    LocalFreeModeGate.Set(freeBusinessId);
+                    await _navigation.ShowMainAsync();
                     return;
                 }
 
@@ -104,7 +136,7 @@ public sealed class AppStartupService
             {
                 System.Diagnostics.Debug.WriteLine($"Startup failed: {ex.Message}");
 
-                var hasSession = await _authService.HasStoredTokensAsync();
+                var hasSession = await _authService.HasStoredTokensAsync() || await _authService.IsFreeModeAsync();
                 if (!hasSession)
                 {
                     await host.DisplayAlert(
@@ -114,7 +146,7 @@ public sealed class AppStartupService
                     continue;
                 }
 
-                // Tokens exist — retry; do not treat as logged out.
+                // Session exists — retry; do not treat as logged out.
                 await host.DisplayAlert(
                     "Startup Error",
                     "The app could not finish starting. Your session is still saved.",

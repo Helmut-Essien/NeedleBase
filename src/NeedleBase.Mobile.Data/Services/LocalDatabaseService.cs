@@ -47,7 +47,15 @@ public sealed class LocalDatabaseService : ILocalDatabaseService
     {
         try
         {
-            return await WipeCoreAsync(cancellationToken).ConfigureAwait(false);
+            var ok = await WipeCoreAsync(cancellationToken).ConfigureAwait(false);
+            // Only clear Free when wipe succeeded. A failed Leave Free must keep the gate so
+            // sync stays suppressed while free_mode keys remain in SecureStorage.
+            if (ok)
+            {
+                NeedleBase.Mobile.Data.Sync.LocalFreeModeGate.Clear();
+            }
+
+            return ok;
         }
         finally
         {

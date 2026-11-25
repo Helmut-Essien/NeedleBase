@@ -13,10 +13,12 @@ namespace NeedleBase.Mobile.Data.Services;
 public sealed class OrderLocalService : IOrderLocalService
 {
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IFreeModeLocalService? _freeMode;
 
-    public OrderLocalService(IServiceScopeFactory scopeFactory)
+    public OrderLocalService(IServiceScopeFactory scopeFactory, IFreeModeLocalService? freeMode = null)
     {
         _scopeFactory = scopeFactory;
+        _freeMode = freeMode;
     }
 
     public async Task<IReadOnlyList<OrderListItemDto>> SearchAsync(
@@ -252,6 +254,19 @@ public sealed class OrderLocalService : IOrderLocalService
             return Fail(OrderError.Invalid, "no lines");
         }
 
+        var reservedFreeSlot = false;
+        if (_freeMode is not null)
+        {
+            var freeLimit = await _freeMode.TryReserveOrderSlotAsync(businessId, cancellationToken)
+                .ConfigureAwait(false);
+            if (freeLimit.HasValue)
+            {
+                return freeLimit.Value;
+            }
+
+            reservedFreeSlot = NeedleBase.Mobile.Data.Sync.LocalFreeModeGate.IsFreeBusiness(businessId);
+        }
+
         try
         {
             var profileIds = OrderLineFactory.ProfileIds(request.Lines);
@@ -268,6 +283,11 @@ public sealed class OrderLocalService : IOrderLocalService
             var (lines, lineError) = OrderLineFactory.Build(businessId, id, request.Lines, profilesById);
             if (lines is null)
             {
+                if (reservedFreeSlot && _freeMode is not null)
+                {
+                    await _freeMode.ReleaseOrderSlotAsync(businessId, cancellationToken).ConfigureAwait(false);
+                }
+
                 return Fail(lineError, null);
             }
 
@@ -283,6 +303,11 @@ public sealed class OrderLocalService : IOrderLocalService
                 now);
             if (OrderLineFactory.TotalMismatch(request.TotalAmount, entity.TotalAmount))
             {
+                if (reservedFreeSlot && _freeMode is not null)
+                {
+                    await _freeMode.ReleaseOrderSlotAsync(businessId, cancellationToken).ConfigureAwait(false);
+                }
+
                 return Fail(OrderError.TotalMismatch, null);
             }
 
@@ -298,21 +323,34 @@ public sealed class OrderLocalService : IOrderLocalService
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return await GetByIdAsync(businessId, entity.Id, cancellationToken).ConfigureAwait(false);
         }
-        catch (NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+        catch (Exception ex)
         {
-            return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
-        }
-        catch (Exception ex) when (LocalStorageErrors.IsStorageFull(ex))
-        {
-            return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
-        }
-        catch (ArgumentException ex)
-        {
-            return Fail(OrderLineFactory.FromException(ex), ex.Message);
-        }
-        catch (DbUpdateException ex)
-        {
-            return Fail(OrderError.Invalid, ex.InnerException?.Message ?? ex.Message);
+            if (reservedFreeSlot && _freeMode is not null)
+            {
+                await _freeMode.ReleaseOrderSlotAsync(businessId, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (ex is NeedleBase.Mobile.Data.Sync.SubscriptionReadOnlyException)
+            {
+                return RecordResult.Fail(RecordError.SubscriptionReadOnly, NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage);
+            }
+
+            if (LocalStorageErrors.IsStorageFull(ex))
+            {
+                return RecordResult.Fail(RecordError.StorageFull, LocalStorageErrors.StorageFullMessage);
+            }
+
+            if (ex is ArgumentException arg)
+            {
+                return Fail(OrderLineFactory.FromException(arg), arg.Message);
+            }
+
+            if (ex is DbUpdateException dbEx)
+            {
+                return Fail(OrderError.Invalid, dbEx.InnerException?.Message ?? dbEx.Message);
+            }
+
+            throw;
         }
     }
 
