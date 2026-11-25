@@ -132,6 +132,61 @@ public class FreeUpgradeAuthTests
         Assert.Null(await storage.GetAsync(AuthService.FreeUpgradePendingKey));
     }
 
+    [Fact]
+    public async Task UpgradeFromFree_RegisterFailed_SignsInAndRemapsWithoutWipe()
+    {
+        var storage = new MemoryStorage();
+        await storage.SetAsync(AuthService.FreeModeKey, "1");
+        await storage.SetAsync(AuthService.BusinessIdKey, "01FREEFROM0000000000000001");
+        await storage.SetAsync(AuthService.BusinessNameKey, "Ama Stitches");
+        await storage.SetAsync(AuthService.UserIdKey, "01FREEUSER0000000000000001");
+        await storage.SetAsync(AuthService.FirstNameKey, "Owner");
+        await storage.SetAsync(AuthService.SurnameKey, string.Empty);
+        await storage.SetAsync(AuthService.RoleKey, "Owner");
+        await storage.SetAsync(AuthService.EmailKey, string.Empty);
+
+        var loginJson = JsonSerializer.Serialize(
+            new
+            {
+                accessToken = "login-access",
+                refreshToken = "login-refresh",
+                user = OnlineUser()
+            },
+            Camel);
+        var handler = new SequenceHandler(
+            new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent(
+                    """{"code":"REGISTER_FAILED","title":"Unable to register"}""",
+                    Encoding.UTF8,
+                    "application/json")
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(loginJson, Encoding.UTF8, "application/json")
+            });
+        var upgrade = new RecordingFreeUpgrade();
+        var database = new NoopDatabase();
+        var auth = new AuthService(
+            new StubFactory(handler),
+            storage,
+            database,
+            new NoopFreeModeLocalService(),
+            upgrade,
+            Options.Create(new ApiSettings()));
+
+        var result = await auth.UpgradeFromFreeAsync(SampleRequest());
+
+        Assert.NotNull(result);
+        Assert.Equal(OnlineUser().BusinessId, result!.BusinessId);
+        Assert.Equal(2, handler.Calls);
+        Assert.Equal(1, upgrade.RemapCalls);
+        Assert.Equal(0, database.Wipes);
+        Assert.False(await auth.IsFreeModeAsync());
+        Assert.Null(await storage.GetAsync(AuthService.FreeUpgradeIntentKey));
+        Assert.Null(await storage.GetAsync(AuthService.FreeUpgradePendingKey));
+    }
+
     private static AuthUserDto OnlineUser() => new(
         "01ONLINEUSER00000000000001",
         "owner@shop.test",
@@ -209,6 +264,23 @@ public class FreeUpgradeAuthTests
         }
     }
 
+    private sealed class SequenceHandler(params HttpResponseMessage[] responses) : HttpMessageHandler
+    {
+        private int _index;
+        public int Calls;
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref Calls);
+            var i = Interlocked.Increment(ref _index) - 1;
+            var response = i < responses.Length
+                ? responses[i]
+                : new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            return Task.FromResult(response);
+        }
+    }
+
     private sealed class StubFactory(HttpMessageHandler handler) : IHttpClientFactory
     {
         public HttpClient CreateClient(string name) =>
@@ -248,8 +320,16 @@ public class FreeUpgradeAuthTests
 
     private sealed class NoopDatabase : ILocalDatabaseService
     {
+        public int Wipes;
+
         public Task MigrateAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-        public Task<bool> WipeAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
+
+        public Task<bool> WipeAsync(CancellationToken cancellationToken = default)
+        {
+            Wipes++;
+            return Task.FromResult(true);
+        }
+
         public Task<int> CountUnsyncedAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
     }
 }

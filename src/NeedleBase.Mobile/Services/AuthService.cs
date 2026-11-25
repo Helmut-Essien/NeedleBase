@@ -33,6 +33,12 @@ public sealed class AuthService : IAuthService
     /// </summary>
     public const string FreeUpgradePendingKey = "free_upgrade_pending";
 
+    /// <summary>
+    /// Free BusinessId written before <c>register-business</c> so a kill after the server creates the shop
+    /// but before the pending blob is written can still finish via sign-in + remap (no wipe).
+    /// </summary>
+    public const string FreeUpgradeIntentKey = "free_upgrade_intent";
+
     /// <summary>Who the local SQLite data belongs to ("userId|businessId"). Not cleared when a session expires.</summary>
     public const string LocalDataOwnerKey = "local_data_owner";
 
@@ -622,6 +628,10 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
+        // Intent before the network call: if the shop is created but the pending blob never lands,
+        // a later REGISTER_FAILED can sign in and remap without wiping Free rows.
+        await _secureStorage.SetAsync(FreeUpgradeIntentKey, fromBusinessId);
+
         var client = CreateAuthClient();
         using var response = await client.PostAsJsonAsync(
             "api/auth/register-business",
@@ -631,7 +641,13 @@ public sealed class AuthService : IAuthService
 
         if (!response.IsSuccessStatusCode)
         {
-            LastErrorMessage = AuthErrorMessages.ForRegister(await ApiProblem.ReadAsync(response, cancellationToken));
+            var problem = await ApiProblem.ReadAsync(response, cancellationToken);
+            if (await TryFinishUpgradeViaLoginAsync(request, fromBusinessId, problem, cancellationToken) is { } recovered)
+            {
+                return recovered;
+            }
+
+            LastErrorMessage = AuthErrorMessages.ForRegister(problem);
             return null;
         }
 
@@ -703,6 +719,63 @@ public sealed class AuthService : IAuthService
         }
     }
 
+    /// <summary>
+    /// After register failed because the email already exists (orphan shop from a prior attempt),
+    /// sign in with the same password and finish remap without <see cref="StoreSessionAsync"/> wipe.
+    /// </summary>
+    private async Task<AuthUserDto?> TryFinishUpgradeViaLoginAsync(
+        RegisterBusinessRequest request,
+        string fromBusinessId,
+        ApiProblem problem,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(problem.Code, "REGISTER_FAILED", StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var intent = await _secureStorage.GetAsync(FreeUpgradeIntentKey);
+        if (!string.Equals(intent, fromBusinessId, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var client = CreateAuthClient();
+        using var response = await client.PostAsJsonAsync(
+            "api/auth/login",
+            new LoginRequest(request.Email.Trim(), request.Password),
+            JsonOptions,
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<AuthResponsePayload>(JsonOptions, cancellationToken);
+        if (payload?.AccessToken is null || payload.RefreshToken is null || payload.User is null)
+        {
+            return null;
+        }
+
+        await WriteFreeUpgradePendingAsync(
+            fromBusinessId, payload.User, payload.AccessToken, payload.RefreshToken);
+        await StoreTokensAsync(new TokenResponse(payload.AccessToken, payload.RefreshToken));
+
+        try
+        {
+            await CompleteFreeUpgradeAsync(fromBusinessId, payload.User, cancellationToken);
+            return payload.User;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Free upgrade via login failed: {ex.Message}");
+            LastErrorMessage =
+                "Your online shop was created, but moving Free records didn't finish. Close and reopen the app to complete it.";
+            return null;
+        }
+    }
+
     private async Task CompleteFreeUpgradeAsync(
         string fromBusinessId, AuthUserDto user, CancellationToken cancellationToken)
     {
@@ -730,6 +803,7 @@ public sealed class AuthService : IAuthService
         await _secureStorage.SetAsync(RoleKey, user.Role);
         InvalidateUserCache();
         _secureStorage.Remove(FreeUpgradePendingKey);
+        _secureStorage.Remove(FreeUpgradeIntentKey);
     }
 
     private async Task WriteFreeUpgradePendingAsync(
@@ -788,6 +862,7 @@ public sealed class AuthService : IAuthService
         _secureStorage.Remove(RefreshTokenKey);
         _secureStorage.Remove(FreeModeKey);
         _secureStorage.Remove(FreeUpgradePendingKey);
+        _secureStorage.Remove(FreeUpgradeIntentKey);
         _secureStorage.Remove(BusinessIdKey);
         _secureStorage.Remove(BusinessNameKey);
         _secureStorage.Remove(UserIdKey);

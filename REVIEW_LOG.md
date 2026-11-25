@@ -473,7 +473,26 @@ None from iteration 1 — continued in iteration 2.
 | JWT ↔ pending business_id cross-check | Same-device SecureStorage; sync JWT-scoped (Security residual) |
 
 ### Remaining open
-Re-run five passes (iteration 3) after these fixes.
+Continued in iteration 3.
+
+## Iteration 3
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| High | Orphan shop before pending write | Bugbot; kill/fail between register-business success and WritePending; normal Login wipes via AcceptOwnerChange | `FreeUpgradeIntentKey` before POST; on `REGISTER_FAILED` + matching intent, login then Complete without wipe; test |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security: tokens in pending blob | CLEAN — same SecureStorage trust boundary as access/refresh keys |
+| JWT ↔ pending cross-check | Same-device; Security residual |
+
+### Remaining open
+Re-run five passes (iteration 4).
 
 ### Residual notes
 - XA0033 OpenJDK parse warning on Mobile Android build (environment)
