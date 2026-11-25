@@ -458,7 +458,7 @@ public partial class SyncEdgeCaseTests
     {
         var storage = new MemoryStorage();
         var database = new CountingDatabase();
-        var auth = new AuthService(new StubFactory(new StubHandler(HttpStatusCode.OK, "{}")), storage, database, new NoopFreeModeLocalService(), Options.Create(new ApiSettings()));
+        var auth = new AuthService(new StubFactory(new StubHandler(HttpStatusCode.OK, "{}")), storage, database, new NoopFreeModeLocalService(), new NoopFreeUpgradeLocalService(), Options.Create(new ApiSettings()));
         var user = new AuthUserDto("U1", "a@b.c", "A", "B", "B1", "Biz", "Owner");
 
         await auth.StoreSessionAsync(user);
@@ -480,7 +480,7 @@ public partial class SyncEdgeCaseTests
         await storage.SetAsync(AuthService.AccessTokenKey, "old");
         await storage.SetAsync(AuthService.RefreshTokenKey, "r1");
         var handler = new RefreshHandler();
-        var auth = new AuthService(new StubFactory(handler), storage, new CountingDatabase(), new NoopFreeModeLocalService(), Options.Create(new ApiSettings()));
+        var auth = new AuthService(new StubFactory(handler), storage, new CountingDatabase(), new NoopFreeModeLocalService(), new NoopFreeUpgradeLocalService(), Options.Create(new ApiSettings()));
 
         var results = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => auth.RefreshIfStaleAsync("old")));
 

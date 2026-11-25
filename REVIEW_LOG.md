@@ -424,3 +424,37 @@ None — Free Ralph iterations 1–3 already closed wipe-gate, fail-closed reser
 ### Residual notes
 - Do not push until you ask
 - Next product step: upgrading from Free (plans step 4)
+
+---
+
+# Free → online upgrade (plans step 4) Ralph — 25 Nov 2026
+
+Scope: working-tree Free upgrade slice (`FreeUpgradeLocalService`, `UpgradeFromFreeAsync` / resume, `FreeUpgradePage`, startup, docs).
+
+## Iteration 1
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| High | Retry Go online re-calls `register-business` after pending exists | Bugbot; server `FindByEmail` fails (`Infrastructure/Identity/AuthService.cs:85-88`); `UpgradeFromFreeAsync` always POSTed | Short-circuit to `CompleteFreeUpgradeAsync` when pending+tokens (`AuthService.cs`); test `UpgradeFromFree_WhenPendingAndTokens_CompletesWithoutRegisterCall` |
+| High | Failed resume falls into Free + re-arms gate despite tokens | Bugbot; `AppStartupService` after `TryResume` false → `IsFreeModeAsync` | `HasPendingFreeUpgradeAsync`; alert+retry while pending remains |
+| Medium | Multi-table remap not transactional | Security optional; kill mid-UPDATE leaves mixed BusinessIds | `BeginTransaction` around remap UPDATEs |
+| Medium | Password fields lacked show/hide + MaxLength | UI vs `PasswordField` / RegisterPage | `PasswordField` + MaxLength; Remask on disappear |
+| Low | Empty `{}` pending treated as valid | Deserialize without JsonException | Validate FromBusinessId/User ids; clear poison blob |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security medium+ | Security review: parameterized SQL, no secrets in pending, JWT sync tenancy |
+| Remap JWT ↔ pending cross-check | Local SecureStorage only; sync uses JWT business (Security) |
+| Normal Register from Free could wipe | Pre-existing path; More Go online is the Free path (Security) |
+
+### Remaining open
+Re-run five passes on post-fix tree (iteration 2).
+
+### Residual notes
+- XA0033 OpenJDK parse warning on Mobile Android build (environment)
+- Do not push until asked

@@ -102,7 +102,7 @@ public partial class SyncEdgeCaseTests
         await storage.SetAsync(AuthService.LocalDataOwnerKey, "OLD|B0");
         var database = new PendingDatabase(3);
         var json = """{"accessToken":"a","refreshToken":"r","user":{"userId":"U2","email":"x@y.z","firstName":"A","surname":"B","businessId":"B2","businessName":"Biz","role":"Owner"}}""";
-        var auth = new AuthService(new StubFactory(new StubHandler(HttpStatusCode.OK, json)), storage, database, new NoopFreeModeLocalService(), Options.Create(new ApiSettings()));
+        var auth = new AuthService(new StubFactory(new StubHandler(HttpStatusCode.OK, json)), storage, database, new NoopFreeModeLocalService(), new NoopFreeUpgradeLocalService(), Options.Create(new ApiSettings()));
         int? asked = null;
         if (answer is { } a)
         {

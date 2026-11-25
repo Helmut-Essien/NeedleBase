@@ -116,7 +116,7 @@ public partial class SyncEdgeCaseTests
     {
         var storage = new MemoryStorage();
         await storage.SetAsync(AuthService.BusinessIdKey, "B1");
-        var auth = new AuthService(new StubFactory(new StubHandler(HttpStatusCode.OK, "{}")), storage, new CountingDatabase(), new NoopFreeModeLocalService(), Options.Create(new ApiSettings()));
+        var auth = new AuthService(new StubFactory(new StubHandler(HttpStatusCode.OK, "{}")), storage, new CountingDatabase(), new NoopFreeModeLocalService(), new NoopFreeUpgradeLocalService(), Options.Create(new ApiSettings()));
 
         Assert.Equal("B1", await auth.GetBusinessIdAsync());
         await storage.SetAsync(AuthService.BusinessIdKey, "B-other");

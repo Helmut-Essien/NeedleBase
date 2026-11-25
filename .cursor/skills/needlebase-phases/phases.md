@@ -12,7 +12,7 @@ Status and acceptance for each implementation slice. Most slices are built. Conf
 | 5 | Payments + balances + receipts (conflict-safe) | Code done 22 Oct 2026; Journey 1 steps 6–7 and Journey 4 not yet verified on a device |
 | 6 | Web dashboard + production board | Code done 22 Oct 2026; Journey 3 (phone change → web) not yet verified with a signed-in phone and browser |
 | 7 | Staff invites + role-limited UI | Code done 26 Oct 2026; Journey 5 not yet verified on a device or in a browser |
-| 8 | Licensing, WhatsApp and polish | Platform licensing, the read-only lock, WhatsApp (tap-to-send + automatic sending) and pending-sync badges are built and committed. **Plans steps 1–3 built (25 Nov 2026):** PlanCatalog, server staff caps, Free phone-only mode. **Not built:** upgrading from Free and later plan steps (see [needlebase-plans](../needlebase-plans/SKILL.md)). |
+| 8 | Licensing, WhatsApp and polish | Platform licensing, the read-only lock, WhatsApp (tap-to-send + automatic sending) and pending-sync badges are built and committed. **Plans steps 1–4 built (25 Nov 2026):** PlanCatalog, server staff caps, Free phone-only mode, upgrade from Free. **Not built:** export/usage display and later plan steps (see [needlebase-plans](../needlebase-plans/SKILL.md)). |
 
 ---
 
@@ -168,7 +168,7 @@ Tests: `LicensingApiTests`, `PlatformLicenseClientTests`, `LicensingRulesTests`,
 
 **Account deletion (built, 13 Nov 2026).** `POST /api/me/delete-account`, the website `/account/delete`, and the phone app at More → Your account → Delete account. A staff delete removes that login; an owner delete closes the shop and removes shop data. Still open: no automatic purge one year after a shop simply stops using NeedleBase; this repo has no Platform API to release a closed shop's licence key.
 
-**Pricing and plan limits (in progress).** Free / Starter / Workshop / Production as in [needlebase-plans](../needlebase-plans/SKILL.md). **Steps 1–3 done 25 Nov 2026** — PlanCatalog; server staff caps (`StaffPlanLimits`, `STAFF_LIMIT` on invite/accept/reactivate); Free phone-only mode (local counters, Save a copy, clear welcome diction). Upgrading from Free and later steps are not built; keyless online shops stay unlimited for staff. The published Terms and the public landing page were updated on 18 November 2026 to show the decided prices and features; the Play Store privacy form is still pending. Platform's product plan catalog is already built; the admin still needs to add the `starter`, `workshop` and `production` plans to NeedleBase and set its default device limit to 1.
+**Pricing and plan limits (in progress).** Free / Starter / Workshop / Production as in [needlebase-plans](../needlebase-plans/SKILL.md). **Steps 1–4 done 25 Nov 2026** — PlanCatalog; server staff caps; Free phone-only mode; upgrade from Free (licence key, remap, resume-safe first sync). Export/usage display and later steps are not built; keyless online shops stay unlimited for staff. The published Terms and the public landing page were updated on 18 November 2026 to show the decided prices and features; the Play Store privacy form is still pending. Platform's product plan catalog is already built; the admin still needs to add the `starter`, `workshop` and `production` plans to NeedleBase and set its default device limit to 1.
 
 ## Out of scope until explicitly requested
 
@@ -179,7 +179,7 @@ Production readiness, code side (3 Nov 2026, status refreshed 15 Nov 2026): SQLi
 env-based signing and release guards (`docs/android-release.md`). Slices 4–7, published legal pages, Platform licensing and account deletion are built.
 Still needed before launch: Play Console listing and a signed production build, a lawyer's review of the legal pages,
 an accountant's advice on VAT, and (if required) Data Protection Commission registration. Device/browser journeys 2–5 are not yet verified. PlanCatalog,
-server staff caps and Free phone-only mode are built; upgrading from Free and later plan steps are not. Details: code-gaps.md "Production readiness".
+server staff caps, Free phone-only mode and upgrading from Free are built; export/usage and later plan steps are not. Details: code-gaps.md "Production readiness".
 
 CI/CD (3 Nov 2026, G3): GitHub Actions builds/tests only the affected parts with one required "CI result" check;
 tag `vX.Y.Z` releases a signed sideload APK + Play AAB, migration SQL and checksums, then deploys Api/Web to

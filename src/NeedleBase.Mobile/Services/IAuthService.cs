@@ -31,6 +31,24 @@ public interface IAuthService
     Task<AuthUserDto?> StartFreeModeAsync(string shopName, CancellationToken cancellationToken = default) =>
         Task.FromResult<AuthUserDto?>(null);
 
+    /// <summary>
+    /// Free → online: register with a licence key, keep local records (remap BusinessId), first sync uploads them.
+    /// Resume-safe if the app is killed mid-way. Null + <see cref="LastErrorMessage"/> on failure.
+    /// </summary>
+    Task<AuthUserDto?> UpgradeFromFreeAsync(RegisterBusinessRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult<AuthUserDto?>(null);
+
+    /// <summary>
+    /// True when a Free→online upgrade left a pending blob (register succeeded; remap/session may still be due).
+    /// </summary>
+    Task<bool> HasPendingFreeUpgradeAsync() => Task.FromResult(false);
+
+    /// <summary>
+    /// Finishes a Free upgrade left incomplete (tokens + pending flag). True when the online session is ready.
+    /// </summary>
+    Task<bool> TryResumeFreeUpgradeAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(false);
+
     Task ClearTokensAsync();
     /// <summary>Returns false if local data wipe failed (session kept).</summary>
     Task<bool> LogoutAsync(CancellationToken cancellationToken = default);

@@ -68,6 +68,29 @@ public sealed class AppStartupService
                     return;
                 }
 
+                // Free → online upgrade left unfinished (kill mid-remap): finish before Free/token branches.
+                // If pending remains after a failed resume, do not open Free with tokens still stored —
+                // that would re-arm LocalFreeModeGate and strand the online shop.
+                if (await _authService.HasPendingFreeUpgradeAsync())
+                {
+                    if (await _authService.TryResumeFreeUpgradeAsync())
+                    {
+                        await _navigation.ShowMainAsync();
+                        return;
+                    }
+
+                    if (await _authService.HasPendingFreeUpgradeAsync())
+                    {
+                        await host.DisplayAlert(
+                            "Couldn't finish going online",
+                            "Your online shop was created, but moving Free records on this phone didn't finish. Tap Retry to try again.",
+                            "Retry");
+                        continue;
+                    }
+
+                    // Pending cleared (e.g. tokens never stored) — fall through to Free / login.
+                }
+
                 // Free (phone only): no tokens, no refresh — restore the in-memory gate and open the app.
                 if (await _authService.IsFreeModeAsync())
                 {

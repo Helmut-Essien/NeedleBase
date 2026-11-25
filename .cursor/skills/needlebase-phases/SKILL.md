@@ -2,11 +2,11 @@
 name: needlebase-phases
 description: >-
   NeedleBase slice status, acceptance lists, later work, and the code-gaps
-  backlog. Most slices are built. PlanCatalog, staff caps and Free mode
-  (plans steps 1–3) are built; later plan steps are not. Use when checking
-  what is built, planning later work, confirming acceptance, or picking a
-  code gap to fix. Confirm with the user before starting a new slice or
-  later-work item.
+  backlog. Most slices are built. PlanCatalog, staff caps, Free mode and
+  upgrade from Free (plans steps 1–4) are built; later plan steps are not.
+  Use when checking what is built, planning later work, confirming
+  acceptance, or picking a code gap to fix. Confirm with the user before
+  starting a new slice or later-work item.
 ---
 
 # NeedleBase Implementation Phases
@@ -29,7 +29,7 @@ Status and acceptance live in [phases.md](phases.md). The backlog of skill-vs-co
 
 ## Where things are
 
-- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete; device/browser journeys 2–5 still need verification. PlanCatalog, server staff caps and Free phone-only mode (plans steps 1–3) are built; upgrading from Free and later plan steps are not.
+- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete; device/browser journeys 2–5 still need verification. PlanCatalog, server staff caps, Free phone-only mode and upgrading from Free (plans steps 1–4) are built; export/usage and later plan steps are not.
 - Code that doesn't meet the skills yet, ranked: [code-gaps.md](code-gaps.md). G1, G2, G4, G5, G6, G10 are done; G3, G7, G8, G9, G11 are deferred ops/scale items.
 - Add-entity checklist: [needlebase-domain](../needlebase-domain/SKILL.md#add-entity-checklist-single-source).
 

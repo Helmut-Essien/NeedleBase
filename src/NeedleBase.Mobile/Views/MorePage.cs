@@ -182,8 +182,12 @@ public sealed class MorePage : ContentPage
                         Ui.LinkRow("Save a copy", MaterialIcons.SaveAlt, SaveCopyAsync, "MoreSaveCopy",
                             "Keep your own backup — NeedleBase does not sync Free records"),
                         Ui.Divider(),
+                        Ui.LinkRow("Go online with a licence key", MaterialIcons.CloudUpload,
+                            () => Shell.Current.GoToAsync(nameof(FreeUpgradePage)), "MoreGoOnline",
+                            "Keep the records on this phone and sync them to your online shop"),
+                        Ui.Divider(),
                         Ui.Body(
-                            "Free has no account, sync, website or staff invites. To go online later, register with a licence key (upgrade from Free is a later step).")
+                            "Free has no account, sync, website or staff invites until you go online with a licence key.")
                     }
                 })
             }

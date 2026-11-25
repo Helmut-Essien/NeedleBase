@@ -28,6 +28,11 @@ public sealed class AuthService : IAuthService
     /// <summary>"1" when Free (phone only) is active — no access/refresh tokens.</summary>
     public const string FreeModeKey = "free_mode";
 
+    /// <summary>
+    /// JSON blob while Free→online upgrade is in flight (survives kill between register and remap/session).
+    /// </summary>
+    public const string FreeUpgradePendingKey = "free_upgrade_pending";
+
     /// <summary>Who the local SQLite data belongs to ("userId|businessId"). Not cleared when a session expires.</summary>
     public const string LocalDataOwnerKey = "local_data_owner";
 
@@ -49,6 +54,7 @@ public sealed class AuthService : IAuthService
     private readonly ISecureStorageService _secureStorage;
     private readonly ILocalDatabaseService _localDatabase;
     private readonly IFreeModeLocalService _freeMode;
+    private readonly IFreeUpgradeLocalService _freeUpgrade;
     private readonly ApiSettings _apiSettings;
 
     public AuthService(
@@ -56,12 +62,14 @@ public sealed class AuthService : IAuthService
         ISecureStorageService secureStorage,
         ILocalDatabaseService localDatabase,
         IFreeModeLocalService freeMode,
+        IFreeUpgradeLocalService freeUpgrade,
         IOptions<ApiSettings> apiSettings)
     {
         _httpClientFactory = httpClientFactory;
         _secureStorage = secureStorage;
         _localDatabase = localDatabase;
         _freeMode = freeMode;
+        _freeUpgrade = freeUpgrade;
         _apiSettings = apiSettings.Value;
     }
 
@@ -574,6 +582,191 @@ public sealed class AuthService : IAuthService
         return new AuthUserDto(userId, string.Empty, "Owner", string.Empty, businessId, name, BusinessRole.Owner);
     }
 
+    public async Task<AuthUserDto?> UpgradeFromFreeAsync(
+        RegisterBusinessRequest request, CancellationToken cancellationToken = default)
+    {
+        LastErrorMessage = null;
+        if (!await IsFreeModeAsync())
+        {
+            LastErrorMessage = "Go online is only for Free on this phone.";
+            return null;
+        }
+
+        var fromBusinessId = await GetBusinessIdAsync();
+        if (string.IsNullOrWhiteSpace(fromBusinessId))
+        {
+            LastErrorMessage = "Couldn't find this Free shop on the phone.";
+            return null;
+        }
+
+        // Register already succeeded earlier — finish remap/session; do not call register-business again
+        // (email is taken and the online shop already exists).
+        var existingPending = await ReadFreeUpgradePendingAsync();
+        if (existingPending is not null && await HasStoredTokensAsync())
+        {
+            if (!string.Equals(existingPending.FromBusinessId, fromBusinessId, StringComparison.Ordinal))
+            {
+                LastErrorMessage =
+                    "A different Free shop is waiting to finish going online. Close and reopen the app.";
+                return null;
+            }
+
+            try
+            {
+                await CompleteFreeUpgradeAsync(existingPending.FromBusinessId, existingPending.User, cancellationToken);
+                return existingPending.User;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Free upgrade resume via Go online failed: {ex.Message}");
+                LastErrorMessage =
+                    "Your online shop was created, but moving Free records didn't finish. Close and reopen the app to complete it.";
+                return null;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(request.LicenseKey))
+        {
+            LastErrorMessage = "Enter the licence key from your welcome email.";
+            return null;
+        }
+
+        var client = CreateAuthClient();
+        using var response = await client.PostAsJsonAsync(
+            "api/auth/register-business",
+            request,
+            JsonOptions,
+            cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            LastErrorMessage = AuthErrorMessages.ForRegister(await ApiProblem.ReadAsync(response, cancellationToken));
+            return null;
+        }
+
+        var payload = await response.Content.ReadFromJsonAsync<AuthResponsePayload>(JsonOptions, cancellationToken);
+        if (payload?.AccessToken is null || payload.RefreshToken is null || payload.User is null)
+        {
+            LastErrorMessage = "Couldn't finish registering the online shop. Try again.";
+            return null;
+        }
+
+        // Tokens first so a kill mid-remap can resume without burning the licence slot again.
+        await StoreTokensAsync(new TokenResponse(payload.AccessToken, payload.RefreshToken));
+        await WriteFreeUpgradePendingAsync(fromBusinessId, payload.User);
+
+        try
+        {
+            await CompleteFreeUpgradeAsync(fromBusinessId, payload.User, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Free upgrade incomplete: {ex.Message}");
+            LastErrorMessage =
+                "Your online shop was created, but moving Free records didn't finish. Close and reopen the app to complete it.";
+            return null;
+        }
+
+        return payload.User;
+    }
+
+    public async Task<bool> HasPendingFreeUpgradeAsync() =>
+        await ReadFreeUpgradePendingAsync() is not null;
+
+    public async Task<bool> TryResumeFreeUpgradeAsync(CancellationToken cancellationToken = default)
+    {
+        var pending = await ReadFreeUpgradePendingAsync();
+        if (pending is null)
+        {
+            return false;
+        }
+
+        if (!await HasStoredTokensAsync())
+        {
+            // Register never finished storing tokens — stay on Free; user can tap Go online again.
+            _secureStorage.Remove(FreeUpgradePendingKey);
+            return false;
+        }
+
+        try
+        {
+            await CompleteFreeUpgradeAsync(pending.FromBusinessId, pending.User, cancellationToken);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Free upgrade resume failed: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task CompleteFreeUpgradeAsync(
+        string fromBusinessId, AuthUserDto user, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fromBusinessId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(user.BusinessId);
+
+        // Idempotent: no-op when rows already use the online BusinessId.
+        await _freeUpgrade.RemapBusinessIdAsync(fromBusinessId, user.BusinessId, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Keep local SQLite — do not wipe. Online session replaces Free flags.
+        LocalFreeModeGate.Clear();
+        _secureStorage.Remove(FreeModeKey);
+
+        var owner = user.UserId + "|" + user.BusinessId;
+        await _secureStorage.SetAsync(LocalDataOwnerKey, owner);
+        _secureStorage.Remove(AccessRevokedKey);
+        await _secureStorage.SetAsync(BusinessIdKey, user.BusinessId);
+        SetBusinessIdCache(user.BusinessId);
+        await _secureStorage.SetAsync(BusinessNameKey, user.BusinessName);
+        await _secureStorage.SetAsync(UserIdKey, user.UserId);
+        await _secureStorage.SetAsync(EmailKey, user.Email);
+        await _secureStorage.SetAsync(FirstNameKey, user.FirstName);
+        await _secureStorage.SetAsync(SurnameKey, user.Surname);
+        await _secureStorage.SetAsync(RoleKey, user.Role);
+        InvalidateUserCache();
+        _secureStorage.Remove(FreeUpgradePendingKey);
+    }
+
+    private async Task WriteFreeUpgradePendingAsync(string fromBusinessId, AuthUserDto user)
+    {
+        var json = JsonSerializer.Serialize(new FreeUpgradePending(fromBusinessId, user), JsonOptions);
+        await _secureStorage.SetAsync(FreeUpgradePendingKey, json);
+    }
+
+    private async Task<FreeUpgradePending?> ReadFreeUpgradePendingAsync()
+    {
+        var raw = await _secureStorage.GetAsync(FreeUpgradePendingKey);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        try
+        {
+            var pending = JsonSerializer.Deserialize<FreeUpgradePending>(raw, JsonOptions);
+            if (pending is null
+                || string.IsNullOrWhiteSpace(pending.FromBusinessId)
+                || pending.User is null
+                || string.IsNullOrWhiteSpace(pending.User.BusinessId)
+                || string.IsNullOrWhiteSpace(pending.User.UserId))
+            {
+                _secureStorage.Remove(FreeUpgradePendingKey);
+                return null;
+            }
+
+            return pending;
+        }
+        catch (JsonException)
+        {
+            _secureStorage.Remove(FreeUpgradePendingKey);
+            return null;
+        }
+    }
+
+    private sealed record FreeUpgradePending(string FromBusinessId, AuthUserDto User);
+
     public Task ClearTokensAsync()
     {
         SetBusinessIdCache(null);
@@ -582,6 +775,7 @@ public sealed class AuthService : IAuthService
         _secureStorage.Remove(AccessTokenKey);
         _secureStorage.Remove(RefreshTokenKey);
         _secureStorage.Remove(FreeModeKey);
+        _secureStorage.Remove(FreeUpgradePendingKey);
         _secureStorage.Remove(BusinessIdKey);
         _secureStorage.Remove(BusinessNameKey);
         _secureStorage.Remove(UserIdKey);

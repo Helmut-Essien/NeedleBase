@@ -78,6 +78,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<INavigationService, NavigationService>();
         builder.Services.AddSingleton<ILocalDatabaseService, LocalDatabaseService>();
         builder.Services.AddSingleton<IFreeModeLocalService, FreeModeLocalService>();
+        builder.Services.AddSingleton<IFreeUpgradeLocalService, FreeUpgradeLocalService>();
         builder.Services.AddSingleton<IFreeCopyService, FreeCopyService>();
         builder.Services.AddSingleton<ICustomerLocalService, CustomerLocalService>();
         builder.Services.AddSingleton<IMeasurementLocalService, MeasurementLocalService>();
@@ -109,6 +110,7 @@ public static class MauiProgram
 
         builder.Services.AddTransient<LoginViewModel>();
         builder.Services.AddTransient<FreeSetupViewModel>();
+        builder.Services.AddTransient<FreeUpgradeViewModel>();
         builder.Services.AddTransient<RegisterViewModel>();
         builder.Services.AddSingleton<HomeViewModel>();
         builder.Services.AddSingleton<CustomersViewModel>();
@@ -127,6 +129,7 @@ public static class MauiProgram
 
         builder.Services.AddTransient<LoginPage>();
         builder.Services.AddTransient<FreeSetupPage>();
+        builder.Services.AddTransient<FreeUpgradePage>();
         builder.Services.AddTransient<RegisterPage>();
         builder.Services.AddTransient<TermsPage>();
         builder.Services.AddTransient<PrivacyPage>();

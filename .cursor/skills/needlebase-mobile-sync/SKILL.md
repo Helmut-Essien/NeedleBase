@@ -29,7 +29,7 @@ UX copy/states: [needlebase-uiux offline-sync](../needlebase-uiux/offline-sync.m
 4. **Token honesty** — `TokenRefreshResult.IsTransientFailure` must not clear tokens or wipe queue. Background sync fails quietly on transient auth errors.
 5. **No duplicate entities** — Push results must be idempotent (client op ids / ULID primary keys). Re-sync after reopen must not create duplicates (Journey 2).
 6. **Payments** — Never silently overwrite conflicting payment records. Surface conflict UI; prefer explicit choice or “keep both + flag”.
-7. **BusinessId** — Queue items and pull filters always include active business.
+7. **BusinessId** — Queue items and pull filters always include active business. Free phone-only mode sets `LocalFreeModeGate` so push/pull and queue writes are skipped; upgrading from Free remaps every local `BusinessId` to the online shop id, clears the gate, then the first sync uploads `ServerKnown=false` rows (adoption).
 8. **DeletedItem** — Server records deletes for pull; mobile removes local rows by type+id+business.
 9. **User messaging** — Pending = “Waiting to sync”; success toast after local save = “Saved on this device”.
 10. **Speed** — Single orchestrator + semaphores (no concurrent SQLite thrash); batch push/pull (e.g. 200); one `SaveChanges` per batch when safe; skip no-op patches; index queue for pending counts; short scopes via `CreateScope()`; propagate cancellation. Full rules: [code-quality-performance](../needlebase-architecture/code-quality-performance.md).

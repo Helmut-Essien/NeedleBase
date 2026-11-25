@@ -12,6 +12,8 @@ using NeedleBase.Mobile.Data.Sync;
 
 namespace NeedleBase.Mobile.Tests;
 
+/// <summary>Static <see cref="LocalFreeModeGate"/> must not run these in parallel with other Free tests.</summary>
+[Collection("LocalFreeModeGate")]
 public class FreeModeLocalServiceTests
 {
     [Fact]
