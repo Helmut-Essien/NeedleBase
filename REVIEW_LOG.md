@@ -168,3 +168,26 @@ None — no verified defects.
 - Step 2 must call `PlanCatalog.Resolve` (not `ForCode` alone) and combine with `SubscriptionRules` / read-only / `IsClosed`.
 - Full `NeedleBase.sln` Release still fails Android **XA0033** (OpenJDK `17.0.21.0.3` version parse) — pre-existing, unrelated.
 - Do not commit `.cursor/file-backups/` or `.cursor/ralph/scratchpad.md`.
+
+## Iteration 3 — 25 Nov 2026 (clean)
+
+### Reviews run
+1. Bugbot 2. Edge cases 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+None.
+
+### Findings dismissed
+| Finding | Evidence |
+|---------|----------|
+| Untracked `.cursor/file-backups/` / `.cursor/ralph/` | Not in branch commits; local only; ignored |
+| No production callers of PlanCatalog | Intentional for step 1; grep shows only `PlanCatalog.cs` + tests |
+
+### Final verdict
+- Bugbot: no bugs
+- Edge cases: 32 PlanCatalog tests pass
+- Security: no medium+ issues (fail-closed, precedence, no secrets)
+- Senior: clean (immutable catalog, O(1), no IO/concurrency surface)
+- UI/UX: N/A (no UI)
+
+Working tree: clean aside from untracked backups/scratchpad. Slice commits: `4824e72`, `0173f3e` (+ this log).
