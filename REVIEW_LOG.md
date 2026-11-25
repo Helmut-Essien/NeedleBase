@@ -258,3 +258,39 @@ Same residual notes as iteration 2; no new verified defects.
 
 ### Final verdict
 All five passes clean. Accept-invite post-lock Business reload confirmed (`AuthService.cs` ~657–672). Plan-limit API tests 6/6 and StaffPlanLimits 9/9 pass.
+
+---
+
+# Unpushed range Ralph (`origin/main..HEAD`) — 25 Nov 2026
+
+Scope: 6 local commits not on origin — PlanCatalog (step 1) + staff caps (step 2).
+
+Commits: `4824e72`, `0173f3e`, `d3dd6bb`, `a9830f7`, `66ec415`, `15ba850` (+ this log).
+
+## Iteration 1 — clean
+
+### Reviews run
+1. Bugbot 2. Edge cases 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+None — prior High (stale Business on accept-invite) already fixed in `a9830f7`.
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Keyless/complimentary unlimited | Product rule; Platform-only complimentary (`Business.AttachLicense`) |
+| Same-email re-invite blocked at cap | Intentional; invite tx rolls back so no partial revoke (Bugbot) |
+| Staff UI usage meters | Step 5; `STAFF_LIMIT` already shown via web `ActionError` / mobile `ForProblem` |
+| Attach-vs-accept timing harness | Residual polish; locks + post-lock reload close the bug |
+
+### Final verdict
+- Bugbot: no bugs on unpushed implementation
+- Edge: PlanCatalog + StaffPlanLimits unit tests (41 filtered) and 6 PlanLimits API tests pass
+- Security: no medium+; fail-closed PlanCatalog; invite/accept/reactivate resolve after `FOR UPDATE`
+- Senior: shared `StaffPlanLimits` / `PlanCatalog.Resolve`; Owner-only staff mutations; O(1) counts under lock
+- UI/UX: no new screens; error copy + existing alert banners adequate for this slice
+
+### Residual notes
+- Do not push until you ask
+- Next product step: Free mode on the phone
+- Do not commit `.cursor/ralph/scratchpad.md`
