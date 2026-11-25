@@ -20,7 +20,15 @@ public sealed record SubscriptionStatusDto
     /// <summary>The banner is an Owner task (attach a key) and is not shown to other staff.</summary>
     public bool OwnerOnly { get; init; }
 
+    /// <summary>Raw plan string from Platform (may be blank or unknown).</summary>
     public string? Plan { get; init; }
+
+    /// <summary>Resolved plan code from <c>PlanCatalog</c> (<c>starter</c>, <c>workshop</c>, <c>production</c>, or <c>unlimited</c>).</summary>
+    public string? PlanCode { get; init; }
+
+    /// <summary>Plain-language plan name for the License page (e.g. Starter).</summary>
+    public string? PlanDisplayName { get; init; }
+
     public bool IsTrial { get; init; }
     public bool IsComplimentary { get; init; }
     public DateTimeOffset? ExpiresAtUtc { get; init; }
@@ -31,7 +39,29 @@ public sealed record SubscriptionStatusDto
     public string? KeyHint { get; init; }
     public DateTimeOffset? LastCheckedUtc { get; init; }
 
-    public static SubscriptionStatusDto Unlocked { get; } = new() { State = NeedleBase.Application.Licensing.SubscriptionStates.Active };
+    /// <summary>Max staff excluding the Owner; null when unlimited.</summary>
+    public int? MaxStaffExcludingOwner { get; init; }
+
+    /// <summary>Active staff excluding the Owner.</summary>
+    public int StaffUsedExcludingOwner { get; init; }
+
+    /// <summary>Open (unexpired, unrevoked) invites that reserve staff seats.</summary>
+    public int PendingInviteCount { get; init; }
+
+    /// <summary>Paid / keyless / complimentary shops may export (including while read-only).</summary>
+    public bool CanExport { get; init; }
+
+    /// <summary>Whether receipts should show the shop phone number.</summary>
+    public bool ShopPhoneOnReceipts { get; init; }
+
+    public static SubscriptionStatusDto Unlocked { get; } = new()
+    {
+        State = NeedleBase.Application.Licensing.SubscriptionStates.Active,
+        PlanCode = NeedleBase.Application.Licensing.PlanCodes.Unlimited,
+        PlanDisplayName = "Unlimited",
+        CanExport = true,
+        ShopPhoneOnReceipts = true
+    };
 }
 
 /// <summary>Owner: attach a license key to an existing shop (same checks as registration, email = the Owner's).</summary>

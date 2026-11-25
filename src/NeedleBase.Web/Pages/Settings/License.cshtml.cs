@@ -72,6 +72,31 @@ public class LicenseModel : AppPageModel
         return await LoadAsync(cancellationToken);
     }
 
+    public async Task<IActionResult> OnPostExportAsync(CancellationToken cancellationToken)
+    {
+        if (!User.IsOwner())
+        {
+            return await LoadAsync(cancellationToken);
+        }
+
+        var result = await _api.DownloadExportAsync(cancellationToken);
+        if (!result.IsSuccess)
+        {
+            if (result.Status == System.Net.HttpStatusCode.Unauthorized)
+            {
+                return Fail(result)!;
+            }
+
+            ActionError = result.Unreachable
+                ? ApiResult<string>.OfflineMessage
+                : result.Message;
+            return await LoadAsync(cancellationToken);
+        }
+
+        var file = result.Value;
+        return File(file.Bytes, "application/json", file.FileName);
+    }
+
     private async Task<IActionResult> LoadAsync(CancellationToken cancellationToken)
     {
         if (!User.IsOwner())

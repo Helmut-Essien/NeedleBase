@@ -77,6 +77,13 @@ public sealed class FakeApi : INeedleBaseApi
     public Func<string, ApiResult<SubscriptionStatusDto>>? Attach { get; set; }
     public Task<ApiResult<SubscriptionStatusDto>> GetSubscriptionAsync(CancellationToken c = default) { Calls.Enqueue("subscription"); return Task.FromResult(Subscription()); }
     public Task<ApiResult<SubscriptionStatusDto>> AttachLicenseAsync(string key, CancellationToken c = default) { Calls.Enqueue("attach:" + key); return Task.FromResult(Attach?.Invoke(key) ?? throw new InvalidOperationException("Attach not stubbed")); }
+    public Func<ApiResult<(byte[] Bytes, string FileName)>>? Export { get; set; }
+    public Task<ApiResult<(byte[] Bytes, string FileName)>> DownloadExportAsync(CancellationToken c = default)
+    {
+        Calls.Enqueue("export");
+        return Task.FromResult(Export?.Invoke()
+            ?? ApiResult<(byte[] Bytes, string FileName)>.Ok((System.Text.Encoding.UTF8.GetBytes("{}"), "export.json")));
+    }
     public AuditQuery? LastActivityQuery { get; private set; }
     public Task<ApiResult<PaginatedResponse<AuditEventDto>>> ListActivityAsync(AuditQuery q, CancellationToken c = default) { Calls.Enqueue("activity"); LastActivityQuery = q; return Task.FromResult(Activity(q)); }
 }

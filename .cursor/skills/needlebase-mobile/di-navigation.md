@@ -34,6 +34,6 @@ Pages resolve their VM with `ServiceHelper.GetRequiredService<TViewModel>()` in 
 - **Free:** Login → Use free on this phone → `FreeSetupPage`; `AuthService.StartFreeModeAsync` seeds a local ULID BusinessId + `LocalFreeModeGate` (sync skipped). More → Save a copy.
 - **Upgrade:** More → Go online with a licence key → `FreeUpgradePage` → `UpgradeFromFreeAsync` (register-business, remap BusinessId, clear Free without wipe). `free_upgrade_pending` + `TryResumeFreeUpgradeAsync` on startup if killed mid-way. `ShowMainAsync` starts sync so `ServerKnown=false` rows upload.
 
-License / plan-usage meters on the phone are **not** built. See [needlebase-plans](../needlebase-plans/SKILL.md).
+Owner More shows plan/staff usage from the last sync and **Export shop data** (`GET /api/export`). Free Home/More show compact meters (`7/10 customers · 3/20 orders`). See [needlebase-plans](../needlebase-plans/SKILL.md).
 
 Primary/fallback Api URLs come from configuration; never hard-code production hosts.

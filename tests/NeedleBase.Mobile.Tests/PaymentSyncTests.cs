@@ -321,6 +321,8 @@ public class PaymentSyncTests
         var receipt = (await payments.GetReceiptAsync(Biz, id))!;
         var text = receipt.ToShareText("Ama Stitches");
         Assert.StartsWith("Ama Stitches\nPayment receipt", text);
+        var withPhone = receipt.ToShareText("Ama Stitches", " +233200000000 ");
+        Assert.StartsWith("Ama Stitches\n+233200000000\nPayment receipt", withPhone);
         Assert.Contains("Amount: GH₵ 300.00", text);
         Assert.Contains("Method: Mobile Money", text);
         Assert.Contains("Order total: GH₵ 800.00", text);

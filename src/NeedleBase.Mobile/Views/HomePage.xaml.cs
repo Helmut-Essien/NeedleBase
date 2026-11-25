@@ -1,3 +1,5 @@
+using NeedleBase.Application.Licensing;
+using NeedleBase.Mobile.Data.Services;
 using NeedleBase.Mobile.Services;
 using NeedleBase.Mobile.ViewModels;
 
@@ -32,7 +34,8 @@ public partial class HomePage : ContentPage
     {
         try
         {
-            var free = await ServiceHelper.GetRequiredService<IAuthService>().IsFreeModeAsync();
+            var auth = ServiceHelper.GetRequiredService<IAuthService>();
+            var free = await auth.IsFreeModeAsync();
             FreeBanner.IsVisible = free;
             SyncChip.IsVisible = !free;
             SignOutButton.Text = free ? "Leave Free on this phone" : "Sign out";
@@ -41,10 +44,44 @@ public partial class HomePage : ContentPage
                 free
                     ? "Leave Free on this phone and clear records on this device"
                     : "Sign out of this business");
+
+            if (free)
+            {
+                await FillFreeMetersAsync(auth);
+            }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Home Free chrome failed: {ex.Message}");
+        }
+    }
+
+    private async Task FillFreeMetersAsync(IAuthService auth)
+    {
+        try
+        {
+            var businessId = await auth.GetBusinessIdAsync();
+            if (string.IsNullOrWhiteSpace(businessId))
+            {
+                FreeUsageMeters.Text = FreePlanLimits.UsageMeters(0, 0);
+                return;
+            }
+
+            var (customers, orders) = await ServiceHelper.GetRequiredService<IFreeModeLocalService>()
+                .GetUsageAsync(businessId);
+            FreeUsageMeters.Text = FreePlanLimits.UsageMeters(customers, orders);
+            SemanticProperties.SetDescription(
+                FreeBanner,
+                $"Free on this phone. {FreeUsageMeters.Text}. Records stay on this device only.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Home Free meters failed: {ex.Message}");
+            // Do not show 0/10 — that looks like an empty shop when the read failed.
+            FreeUsageMeters.Text = "Usage unavailable right now";
+            SemanticProperties.SetDescription(
+                FreeBanner,
+                "Free on this phone. Usage unavailable right now. Records stay on this device only.");
         }
     }
 

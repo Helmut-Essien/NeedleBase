@@ -101,6 +101,20 @@ public static class PlanCatalog
         ExtraPhotoStorage = true
     };
 
+    /// <summary>Plain-language name for License / usage UI.</summary>
+    public static string DisplayName(PlanEntitlements entitlements)
+    {
+        ArgumentNullException.ThrowIfNull(entitlements);
+        return entitlements.Code switch
+        {
+            PlanCodes.Starter => "Starter",
+            PlanCodes.Workshop => "Workshop",
+            PlanCodes.Production => "Production",
+            PlanCodes.Unlimited => "Unlimited",
+            _ => "Starter"
+        };
+    }
+
     /// <summary>Known paid plan for a normalised code, or null if blank/unknown.</summary>
     public static PlanEntitlements? ForCode(string? planCode)
     {

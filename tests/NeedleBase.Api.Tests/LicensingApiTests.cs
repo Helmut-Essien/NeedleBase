@@ -184,6 +184,114 @@ public sealed class LicensingApiTests : IClassFixture<NeedleBaseApiFactory>
         Assert.Equal(SubscriptionStates.Active, dto!.State);
         Assert.False(dto.IsReadOnly);
         Assert.Equal("…ABCD", dto.KeyHint);
+        // Unknown Platform plan "Standard" fails closed to Starter with export.
+        Assert.Equal(PlanCodes.Starter, dto.PlanCode);
+        Assert.Equal("Starter", dto.PlanDisplayName);
+        Assert.True(dto.CanExport);
+        Assert.Equal(2, dto.MaxStaffExcludingOwner);
+        Assert.Equal(0, dto.StaffUsedExcludingOwner);
+        Assert.Equal(0, dto.PendingInviteCount);
+    }
+
+    [Fact]
+    public async Task Export_Owner_DownloadsJson_IncludingWhileReadOnly_NonOwnerForbidden()
+    {
+        var (factory, client, _) = Licensed();
+        var email = NewEmail("export");
+        var (token, businessId) = await RegisterOkAsync(client, email, "NB-KEY-EXPORT");
+
+        using (var create = await client.SendAsync(Authorized(HttpMethod.Post, "/api/customers", token,
+                   new CreateCustomerRequest { Name = "Ama Mensah", Phone = "+233201111111" })))
+        {
+            Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        }
+
+        string tailorToken;
+        using (var invite = await client.SendAsync(Authorized(HttpMethod.Post, "/api/staff/invitations", token,
+                   new NeedleBase.Application.Contracts.Staff.CreateInvitationRequest
+                   {
+                       Email = NewEmail("tailor"),
+                       Role = NeedleBase.Domain.Enums.BusinessRole.Tailor,
+                       Name = "Kofi"
+                   })))
+        {
+            Assert.Equal(HttpStatusCode.OK, invite.StatusCode);
+            var created = await invite.Content.ReadFromJsonAsync<NeedleBase.Application.Contracts.Staff.CreatedInvitationDto>(Json);
+            using var accept = await client.PostAsJsonAsync("/api/auth/accept-invite",
+                new AcceptInviteRequest
+                {
+                    Code = created!.Code,
+                    FirstName = "Kofi",
+                    Surname = "Boateng",
+                    Password = "Passw0rd!"
+                }, Json);
+            Assert.Equal(HttpStatusCode.OK, accept.StatusCode);
+            using var doc = JsonDocument.Parse(await accept.Content.ReadAsStringAsync());
+            tailorToken = doc.RootElement.GetProperty("accessToken").GetString()!;
+        }
+
+        using (var refused = await client.SendAsync(Authorized(HttpMethod.Get, "/api/export", tailorToken)))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        }
+
+        using (var export = await client.SendAsync(Authorized(HttpMethod.Get, "/api/export", token)))
+        {
+            Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+            Assert.Equal("application/json", export.Content.Headers.ContentType?.MediaType);
+            var name = export.Content.Headers.ContentDisposition?.FileNameStar
+                ?? export.Content.Headers.ContentDisposition?.FileName;
+            Assert.NotNull(name);
+            Assert.EndsWith(".json", name!.Trim().Trim('"'), StringComparison.OrdinalIgnoreCase);
+            var body = await export.Content.ReadAsStringAsync();
+            Assert.Contains("NeedleBase shop export", body, StringComparison.Ordinal);
+            Assert.Contains("Ama Mensah", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("LicenseKey", body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("NB-KEY-EXPORT", body, StringComparison.Ordinal);
+        }
+
+        await MakeInvalidAsync(factory, businessId, DateTimeOffset.UtcNow.AddDays(-40));
+        using (var status = await client.SendAsync(Authorized(HttpMethod.Get, "/api/subscription", token)))
+        {
+            var dto = await status.Content.ReadFromJsonAsync<SubscriptionStatusDto>(Json);
+            Assert.True(dto!.IsReadOnly);
+            Assert.True(dto.CanExport);
+        }
+
+        using (var exportWhilePaused = await client.SendAsync(Authorized(HttpMethod.Get, "/api/export", token)))
+        {
+            Assert.Equal(HttpStatusCode.OK, exportWhilePaused.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Subscription_CountsPendingInvites_AsReservedSeats()
+    {
+        var (_, client, _) = Licensed();
+        var (token, _) = await RegisterOkAsync(client, NewEmail("pending"), "NB-KEY-PENDING");
+
+        // Prime the 30 s status cache before the invite; invite must bust it so pending seats show immediately.
+        using (var primed = await client.SendAsync(Authorized(HttpMethod.Get, "/api/subscription", token)))
+        {
+            Assert.Equal(HttpStatusCode.OK, primed.StatusCode);
+        }
+
+        using (var invite = await client.SendAsync(Authorized(HttpMethod.Post, "/api/staff/invitations", token,
+                   new NeedleBase.Application.Contracts.Staff.CreateInvitationRequest
+                   {
+                       Email = NewEmail("wait"),
+                       Role = NeedleBase.Domain.Enums.BusinessRole.Manager,
+                       Name = "Esi"
+                   })))
+        {
+            Assert.Equal(HttpStatusCode.OK, invite.StatusCode);
+        }
+
+        using var status = await client.SendAsync(Authorized(HttpMethod.Get, "/api/subscription", token));
+        var dto = await status.Content.ReadFromJsonAsync<SubscriptionStatusDto>(Json);
+        Assert.Equal(0, dto!.StaffUsedExcludingOwner);
+        Assert.Equal(1, dto.PendingInviteCount);
+        Assert.Equal(2, dto.MaxStaffExcludingOwner);
     }
 
     [Theory]

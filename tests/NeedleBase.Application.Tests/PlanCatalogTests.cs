@@ -18,6 +18,15 @@ public sealed class PlanCatalogTests
         return b;
     }
 
+    [Fact]
+    public void DisplayName_for_known_entitlements()
+    {
+        Assert.Equal("Starter", PlanCatalog.DisplayName(PlanCatalog.ForCode(PlanCodes.Starter)!));
+        Assert.Equal("Workshop", PlanCatalog.DisplayName(PlanCatalog.ForCode(PlanCodes.Workshop)!));
+        Assert.Equal("Production", PlanCatalog.DisplayName(PlanCatalog.ForCode(PlanCodes.Production)!));
+        Assert.Equal("Unlimited", PlanCatalog.DisplayName(PlanCatalog.Resolve(null, null, false, false).Entitlements));
+    }
+
     [Theory]
     [InlineData("starter", PlanCodes.Starter, 2)]
     [InlineData("STARTER", PlanCodes.Starter, 2)]

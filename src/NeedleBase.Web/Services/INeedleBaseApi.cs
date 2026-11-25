@@ -70,6 +70,9 @@ public interface INeedleBaseApi
 
     /// <summary>Owner: attach a license key (shops created before licensing, or a replacement key).</summary>
     Task<ApiResult<SubscriptionStatusDto>> AttachLicenseAsync(string licenseKey, CancellationToken cancellationToken = default);
+
+    /// <summary>Owner: download a JSON export of the shop's Business Data (works while read-only).</summary>
+    Task<ApiResult<(byte[] Bytes, string FileName)>> DownloadExportAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Order list filters (server-side paging/filtering).</summary>

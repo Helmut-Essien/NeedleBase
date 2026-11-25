@@ -91,6 +91,41 @@ public class LicensePageTests
     }
 
     [Fact]
+    public async Task Export_returns_file_for_owner_and_is_blocked_for_non_owner()
+    {
+        var api = new FakeApi
+        {
+            Export = () => ApiResult<(byte[] Bytes, string FileName)>.Ok(
+                (System.Text.Encoding.UTF8.GetBytes("{\"format\":\"NeedleBase shop export\"}"), "shop.json"))
+        };
+        var owner = Pages.With(new LicensePage(api, Cache()), BusinessRole.Owner);
+        var file = Assert.IsType<FileContentResult>(await owner.OnPostExportAsync(default));
+        Assert.Equal("application/json", file.ContentType);
+        Assert.Equal("shop.json", file.FileDownloadName);
+        Assert.Contains("export", api.Calls);
+
+        var tailorApi = new FakeApi();
+        var tailor = Pages.With(new LicensePage(tailorApi, Cache()), BusinessRole.Tailor);
+        await tailor.OnPostExportAsync(default);
+        Assert.Empty(tailorApi.Calls);
+        Assert.NotNull(tailor.PageError);
+    }
+
+    [Fact]
+    public async Task Export_failure_shows_action_error()
+    {
+        var api = new FakeApi
+        {
+            Export = () => ApiResult<(byte[] Bytes, string FileName)>.Fail(
+                new ApiProblem(403, "EXPORT_NOT_ALLOWED", "x", "Export isn't available on this plan.",
+                    new Dictionary<string, string[]>()))
+        };
+        var page = Pages.With(new LicensePage(api, Cache()), BusinessRole.Owner);
+        Assert.IsType<PageResult>(await page.OnPostExportAsync(default));
+        Assert.Equal("Export isn't available on this plan.", page.ActionError);
+    }
+
+    [Fact]
     public async Task Banner_status_is_cached_and_failures_show_nothing()
     {
         var cache = Cache();

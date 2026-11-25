@@ -604,3 +604,67 @@ None — no new verified High/Medium findings.
 - XA0033 OpenJDK parse warning (environment)
 - Normal Register while Free can still wipe — documented alternate path
 - Commits this unpushed Ralph: `e10b5f7` (+ this log); prior Free-upgrade commits unchanged
+
+## Export / usage display (plans step 5) — Iteration 1 — 25 Nov 2026
+
+### Slice
+Working-tree export/usage: `GET /api/export`, `BusinessExportService`, subscription plan/staff meters, Free Home/More meters, receipt shop phone, web License download, mobile More export.
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| Medium | More online plan/usage never refreshes on re-appear | Bugbot; `MorePage.OnAppearing` early-return only refreshed Free meters | Keep `_planUsageLabel`; refresh `PlanUsageLine()` on re-appear |
+| Medium | Staff meter ignored pending invites (seat reservations) | Bugbot; `StaffPlanLimits.CanAddOne` vs `LicenseService` active-only count | `PendingInviteCount` on DTO; count open invites; web/mobile copy; invalidate license cache on invite/revoke/accept/deactivate/reactivate |
+| Medium | Home Free meters showed `0/10` on load failure | Edge/UI; `HomePage.FillFreeMetersAsync` catch | Honest "Usage unavailable right now" + SR description |
+| Medium | No API/web tests for export authz/read-only/plan fields | Senior/Security test gap | `LicensingApiTests` export + pending; `LicensePageTests` export; receipt phone share; `ShopExportApi.SafeFileName` |
+| Low | Mobile export shown without `CanExport` UI gate | Security residual (server still enforces) | Hide More export when `CanExport == false` |
+| Low | Content-Disposition path segment → cache file | Security residual / edge | `ShopExportApi.SafeFileName` + web `SafeExportFileName` |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security medium+ (authz/tenancy/PII/CSV) | Owner-only + `AllowWhenReadOnly`; JWT business id; JSON not CSV; no license secrets in payload |
+| Manager sees export | `StaffRoles.CanManage` is Owner-only |
+| `ShopPhoneOnReceipts` not checked on receipt VM | All paid entitlements set `ShopPhoneOnReceipts = true`; Free has no online receipts path |
+| Export loads all orders into memory | Acceptable for v1 shop sizes; residual note if Production shops grow huge |
+| BusinessExportService in Infrastructure (not Application) | Matches `LicenseService` controller pattern |
+| Unicode shop name → stem "shop" | Sanitised stem; Content-Disposition still unique by date |
+
+### Remaining open
+None verified High/Medium after fixes. Re-run five passes as iteration 2.
+
+### Residual notes
+- Full `NeedleBase.sln` Android TFM still hits XA0033 OpenJDK parse (environment); verify with `-f net9.0` / non-android projects
+- Do not push until asked
+- On-device QA: More plan line after sync; Free meters; export share sheet
+
+## Export / usage display — Iteration 2 — clean
+
+### Reviews run
+1. Bugbot (recheck) 2. Edge 3. Security 4. Senior 5. UI/UX
+
+### Findings fixed
+None — no new verified High/Medium findings.
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Bugbot High/Medium | CLEAN on recheck of Ralph fixes |
+| Security medium+ | Prior review holds; SafeFileName + CanExport UI are defense-in-depth only |
+| Edge: pending cache after invite | Covered by Invalidate + `Subscription_CountsPendingInvites_AsReservedSeats` |
+| UI: Home failure meters | Honest copy; More Free path unchanged |
+
+### Final verdict
+- Bugbot: CLEAN
+- Edge: Application Free/PlanCatalog 39; LicensingApi 24; StaffApi 28; LicensePage 11; Mobile ShopExport+receipt 9
+- Security: CLEAN (Owner export, tenancy, no secrets)
+- Senior: cache invalidation on seat changes; export tests landed
+- UI/UX: plan refresh + pending copy + Free failure honesty
+
+### Residual notes
+- XA0033 OpenJDK on full Android TFM (environment)
+- Do not push until asked
+- On-device QA still recommended for More/Home meters and export share

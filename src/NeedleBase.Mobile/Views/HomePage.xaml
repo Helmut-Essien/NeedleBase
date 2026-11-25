@@ -36,12 +36,14 @@
                 <Label Text="{Binding LicenseBanner}" FontSize="14" TextColor="{StaticResource Charcoal}" LineBreakMode="WordWrap" />
             </Border>
 
-            <!-- Free (phone only): no sync — honest local-only banner -->
+            <!-- Free (phone only): no sync — honest local-only banner + lifetime meters -->
             <Border x:Name="FreeBanner" IsVisible="False" BackgroundColor="White" Stroke="{StaticResource Gray300}"
                     StrokeThickness="1" StrokeShape="RoundRectangle 12" Padding="14"
                     SemanticProperties.Description="Free on this phone. Records stay on this device only.">
                 <VerticalStackLayout Spacing="2">
                     <Label Text="Free on this phone" FontSize="15" FontAttributes="Bold" TextColor="{StaticResource Charcoal}" />
+                    <Label x:Name="FreeUsageMeters" Text="0/10 customers · 0/20 orders" FontSize="14" FontAttributes="Bold"
+                           TextColor="{StaticResource Charcoal}" AutomationId="HomeFreeUsage" />
                     <Label Text="Records stay on this device only. NeedleBase does not sync or back them up — use Save a copy in More."
                            FontSize="13" TextColor="{StaticResource Gray600}" LineBreakMode="WordWrap" />
                 </VerticalStackLayout>

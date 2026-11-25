@@ -22,4 +22,15 @@ public class FreePlanLimitsTests
         Assert.Contains("10", message);
         Assert.Equal(full, message.Contains("Delete does not free", StringComparison.Ordinal));
     }
+
+    [Fact]
+    public void UsageMeters_AreCompact()
+    {
+        Assert.Equal("7/10 customers", FreePlanLimits.CustomerMeter(7));
+        Assert.Equal("3/20 orders", FreePlanLimits.OrderMeter(3));
+        Assert.Equal("7/10 customers · 3/20 orders", FreePlanLimits.UsageMeters(7, 3));
+        Assert.Equal("10/10 customers", FreePlanLimits.CustomerMeter(99));
+        Assert.Equal("0/10 customers", FreePlanLimits.CustomerMeter(-3));
+        Assert.Equal("0/20 orders", FreePlanLimits.OrderMeter(int.MinValue));
+    }
 }

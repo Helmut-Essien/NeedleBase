@@ -70,21 +70,23 @@ public sealed record LocalPaymentReceipt(
     string CustomerPhone,
     OrderPaymentsDto Totals)
 {
-    /// <summary>Plain-text receipt for the share sheet (WhatsApp/SMS). Business name is added by the app.</summary>
-    public string ToShareText(string businessName)
+    /// <summary>Plain-text receipt for the share sheet (WhatsApp/SMS). Business name (and phone when set) are added by the app.</summary>
+    public string ToShareText(string businessName, string? businessPhone = null)
     {
         var p = Payment.Payment;
-        var lines = new List<string>
+        var lines = new List<string> { businessName };
+        if (!string.IsNullOrWhiteSpace(businessPhone))
         {
-            businessName,
-            "Payment receipt",
-            string.Empty,
-            $"Customer: {CustomerName}",
-            $"Order #{OrderDisplayRef}",
-            $"Date: {Money.Date(p.RecordedAtUtc)}",
-            $"Amount: {p.AmountDisplay}",
-            $"Method: {p.MethodDisplay}",
-        };
+            lines.Add(businessPhone.Trim());
+        }
+
+        lines.Add("Payment receipt");
+        lines.Add(string.Empty);
+        lines.Add($"Customer: {CustomerName}");
+        lines.Add($"Order #{OrderDisplayRef}");
+        lines.Add($"Date: {Money.Date(p.RecordedAtUtc)}");
+        lines.Add($"Amount: {p.AmountDisplay}");
+        lines.Add($"Method: {p.MethodDisplay}");
         // The note is an internal record (references, staff remarks): it never leaves the phone on a receipt.
         if (p.IsVoided)
         {

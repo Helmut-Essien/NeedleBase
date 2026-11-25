@@ -85,6 +85,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IOrderLocalService, OrderLocalService>();
         builder.Services.AddSingleton<IPaymentLocalService, PaymentLocalService>();
         builder.Services.AddSingleton<SubscriptionStatusStore>();
+        builder.Services.AddSingleton<ShopExportApi>();
         // In-app updates (sideload builds; docs/android-release.md "Updates"). Play builds compile the installer out.
         builder.Services.AddHttpClient(NeedleBase.Mobile.Services.Updates.AppUpdateService.HttpClientName, client =>
         {

@@ -13,15 +13,24 @@ public sealed class MorePage : ContentPage
     private readonly IAuthService _auth;
     private readonly IFreeModeLocalService _freeMode;
     private readonly IFreeCopyService _freeCopy;
+    private readonly ShopExportApi _export;
     private readonly ContentView _dynamicSlot = new();
     private string? _modeKey;
     private Label? _freeUsageLabel;
+    private Label? _planUsageLabel;
+    private bool _exporting;
 
-    public MorePage(IAuthService auth, AppUpdateService updates, IFreeModeLocalService freeMode, IFreeCopyService freeCopy)
+    public MorePage(
+        IAuthService auth,
+        AppUpdateService updates,
+        IFreeModeLocalService freeMode,
+        IFreeCopyService freeCopy,
+        ShopExportApi export)
     {
         _auth = auth;
         _freeMode = freeMode;
         _freeCopy = freeCopy;
+        _export = export;
         var body = new VerticalStackLayout { Spacing = 8 };
         body.Add(Ui.Heading("More"));
         body.Add(_dynamicSlot);
@@ -144,10 +153,14 @@ public sealed class MorePage : ContentPage
             var key = isFree ? "free" : (role ?? "none");
             if (key == _modeKey && _dynamicSlot.Content is not null)
             {
-                // Keep the Free usage meters current when returning to More after creating records.
+                // Keep meters current when returning to More after creates or a sync that refreshed the plan.
                 if (isFree && _freeUsageLabel is not null)
                 {
                     await FillFreeUsageAsync(_freeUsageLabel);
+                }
+                else if (!isFree && _planUsageLabel is not null)
+                {
+                    _planUsageLabel.Text = PlanUsageLine();
                 }
 
                 return;
@@ -164,6 +177,7 @@ public sealed class MorePage : ContentPage
 
     private View BuildFreeSlot()
     {
+        _planUsageLabel = null;
         _freeUsageLabel = Ui.Body();
         _freeUsageLabel.AutomationId = "MoreFreeUsage";
         _ = FillFreeUsageAsync(_freeUsageLabel);
@@ -206,8 +220,8 @@ public sealed class MorePage : ContentPage
             }
 
             var (customers, orders) = await _freeMode.GetUsageAsync(businessId);
-            label.Text =
-                FreePlanLimits.CustomerLimitMessage(customers) + " " + FreePlanLimits.OrderLimitMessage(orders);
+            label.Text = FreePlanLimits.UsageMeters(customers, orders)
+                + "\nDeleting a customer or order does not free a slot.";
         }
         catch (Exception ex)
         {
@@ -218,6 +232,7 @@ public sealed class MorePage : ContentPage
 
     private View BuildOnlineSlot(string? role)
     {
+        _freeUsageLabel = null;
         var root = new VerticalStackLayout();
         if (StaffRoles.CanView(role))
         {
@@ -235,6 +250,26 @@ public sealed class MorePage : ContentPage
             }));
         }
 
+        if (StaffRoles.CanManage(role))
+        {
+            root.Add(Ui.Heading("License", 2));
+            var licenseChildren = new VerticalStackLayout { Children = { CreatePlanUsageLabel() } };
+            // Hide when the last sync said export is off; null status still offers it (server enforces).
+            var canExport = NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current?.CanExport != false;
+            if (canExport)
+            {
+                licenseChildren.Add(Ui.Divider());
+                licenseChildren.Add(Ui.LinkRow(
+                    "Export shop data",
+                    MaterialIcons.Download,
+                    ExportOnlineAsync,
+                    "MoreExport",
+                    "Download a JSON copy of customers, orders and payments"));
+            }
+
+            root.Add(Ui.Card(licenseChildren));
+        }
+
         root.Add(Ui.Heading("This device", 2));
         root.Add(Ui.Card(Ui.LinkRow("Sync details", MaterialIcons.Sync, () => Shell.Current.GoToAsync(nameof(SyncDetailsPage)), "MoreSyncDetails",
             "What's waiting to sync, problems and conflicts")));
@@ -250,5 +285,78 @@ public sealed class MorePage : ContentPage
             }
         }));
         return root;
+    }
+
+    private Label CreatePlanUsageLabel()
+    {
+        _planUsageLabel = Ui.Body(PlanUsageLine());
+        _planUsageLabel.AutomationId = "MorePlanUsage";
+        return _planUsageLabel;
+    }
+
+    private static string PlanUsageLine()
+    {
+        var status = NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current;
+        if (status is null)
+        {
+            return "Plan and usage appear after the next sync.";
+        }
+
+        var plan = status.PlanDisplayName ?? status.Plan ?? "Plan";
+        string line;
+        if (status.MaxStaffExcludingOwner is { } max)
+        {
+            line = $"{plan}: {status.StaffUsedExcludingOwner}/{max} staff (Owner not counted).";
+        }
+        else
+        {
+            line = $"{plan}: {status.StaffUsedExcludingOwner} staff used (unlimited).";
+        }
+
+        if (status.PendingInviteCount > 0)
+        {
+            var inviteWord = status.PendingInviteCount == 1 ? "invite" : "invites";
+            line += $" {status.PendingInviteCount} {inviteWord} waiting.";
+        }
+
+        return line;
+    }
+
+    private async Task ExportOnlineAsync()
+    {
+        if (_exporting)
+        {
+            return;
+        }
+
+        _exporting = true;
+        try
+        {
+            var (bytes, fileName, error) = await _export.DownloadAsync();
+            if (bytes is null || string.IsNullOrWhiteSpace(fileName))
+            {
+                await DisplayAlert("Export", error ?? "Couldn't download the export.", "OK");
+                return;
+            }
+
+            var dir = Path.Combine(FileSystem.CacheDirectory, "exports");
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, fileName);
+            await File.WriteAllBytesAsync(path, bytes);
+            await Share.Default.RequestAsync(new ShareFileRequest
+            {
+                Title = "Export shop data",
+                File = new ShareFile(path)
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"More: export failed: {ex.Message}");
+            await DisplayAlert("Export", "Couldn't share the export. Try again.", "OK");
+        }
+        finally
+        {
+            _exporting = false;
+        }
     }
 }

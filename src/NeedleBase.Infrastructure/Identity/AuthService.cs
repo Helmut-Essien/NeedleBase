@@ -414,7 +414,8 @@ public sealed partial class AuthService : IAuthService
                     user.Surname,
                     business.Id,
                     business.Name,
-                    membership.Role);
+                    membership.Role,
+                    business.Phone);
 
                 return AuthResult.Ok(tokens, dto);
             }
@@ -538,7 +539,8 @@ public sealed partial class AuthService : IAuthService
             tracked.Surname,
             business.Id,
             business.Name,
-            role);
+            role,
+            business.Phone);
 
         return AuthResult.Ok(tokens, dto);
     }
@@ -704,6 +706,7 @@ public sealed partial class AuthService : IAuthService
             return failure;
         }
 
+        _licenses.Invalidate(found.BusinessId);
         _throttle.RecordSuccess(InviteThrottleKey, ipAddress);
         return await IssueTokensAsync(user, lockedBusiness!, found.Role, ipAddress, cancellationToken);
     }

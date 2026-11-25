@@ -9,6 +9,18 @@ public static class FreePlanLimits
     public const int MaxCustomersEver = 10;
     public const int MaxOrdersEver = 20;
 
+    /// <summary>Compact meter for Home / More, e.g. <c>7/10 customers</c>.</summary>
+    public static string CustomerMeter(int used) =>
+        $"{Math.Clamp(used, 0, MaxCustomersEver)}/{MaxCustomersEver} customers";
+
+    /// <summary>Compact meter for Home / More, e.g. <c>3/20 orders</c>.</summary>
+    public static string OrderMeter(int used) =>
+        $"{Math.Clamp(used, 0, MaxOrdersEver)}/{MaxOrdersEver} orders";
+
+    /// <summary>One-line meters: <c>7/10 customers · 3/20 orders</c>.</summary>
+    public static string UsageMeters(int customersUsed, int ordersUsed) =>
+        $"{CustomerMeter(customersUsed)} · {OrderMeter(ordersUsed)}";
+
     public static string CustomerLimitMessage(int used) =>
         used >= MaxCustomersEver
             ? $"Free on this phone allows {MaxCustomersEver} customers. You've used them all. Delete does not free a slot — register a shop with a licence key to keep going online."

@@ -144,7 +144,8 @@ public sealed class LicenseService
         await _audit.WriteAsync(new AuditEntry(AuditActions.LicenseAttached,
                 $"License key {SubscriptionRules.KeyHint(licenseKey)} added", business.Id, userId, BusinessRole.Owner, "business", business.Id),
             cancellationToken: cancellationToken).ConfigureAwait(false);
-        return (SubscriptionRules.Compute(business, now, _options.CurrentValue.LockGraceDays), null, null);
+        // Fresh enriched status (plan display + staff usage) after invalidate.
+        return (await GetStatusAsync(business.Id, cancellationToken).ConfigureAwait(false), null, null);
     }
 
     /// <summary>Status for everyone in the shop (cached 30 s; attach and re-check clear it).</summary>
@@ -156,10 +157,44 @@ public sealed class LicenseService
         }
 
         var business = await _db.Businesses.AsNoTracking().FirstOrDefaultAsync(b => b.Id == businessId, cancellationToken).ConfigureAwait(false);
-        var status = business is null
-            ? SubscriptionStatusDto.Unlocked
-            : SubscriptionRules.Compute(business, _clock.UtcNow, _options.CurrentValue.LockGraceDays,
-                keyReadable: business.LicenseKeyProtected is null || TryUnprotect(business.LicenseKeyProtected) is not null);
+        if (business is null)
+        {
+            _cache.Set(CacheKey(businessId), SubscriptionStatusDto.Unlocked, StatusTtl);
+            return SubscriptionStatusDto.Unlocked;
+        }
+
+        var status = SubscriptionRules.Compute(business, _clock.UtcNow, _options.CurrentValue.LockGraceDays,
+            keyReadable: business.LicenseKeyProtected is null || TryUnprotect(business.LicenseKeyProtected) is not null);
+
+        var resolution = PlanCatalog.Resolve(business);
+        var entitlements = resolution.Entitlements;
+        var now = _clock.UtcNow;
+        var staffUsed = await _db.StaffMemberships.AsNoTracking()
+            .CountAsync(
+                m => m.BusinessId == businessId && m.IsActive && m.Role != BusinessRole.Owner,
+                cancellationToken)
+            .ConfigureAwait(false);
+        // Same open-invite predicate as StaffService seat reservations.
+        var pendingInvites = await _db.Invitations.AsNoTracking()
+            .CountAsync(
+                i => i.BusinessId == businessId
+                     && i.AcceptedAtUtc == null
+                     && i.RevokedAtUtc == null
+                     && i.ExpiresAtUtc > now,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        status = status with
+        {
+            PlanCode = entitlements.Code,
+            PlanDisplayName = PlanCatalog.DisplayName(entitlements),
+            MaxStaffExcludingOwner = entitlements.MaxStaffExcludingOwner,
+            StaffUsedExcludingOwner = staffUsed,
+            PendingInviteCount = pendingInvites,
+            CanExport = entitlements.Export,
+            ShopPhoneOnReceipts = entitlements.ShopPhoneOnReceipts
+        };
+
         _cache.Set(CacheKey(businessId), status, StatusTtl);
         return status;
     }

@@ -37,10 +37,29 @@
             {
                 <dt class="col-sm-4">Key</dt><dd class="col-sm-8">@s.KeyHint</dd>
             }
-            @if (!string.IsNullOrEmpty(s.Plan))
-            {
-                <dt class="col-sm-4">Plan</dt><dd class="col-sm-8">@s.Plan</dd>
-            }
+            <dt class="col-sm-4">Plan</dt>
+            <dd class="col-sm-8">
+                @(string.IsNullOrEmpty(s.PlanDisplayName) ? (s.Plan ?? "—") : s.PlanDisplayName)
+                @if (!string.IsNullOrEmpty(s.Plan) && !string.Equals(s.Plan, s.PlanCode, StringComparison.OrdinalIgnoreCase) && s.PlanDisplayName is not null)
+                {
+                    <span class="nb-meta"> (from Platform: @s.Plan)</span>
+                }
+            </dd>
+            <dt class="col-sm-4">Staff</dt>
+            <dd class="col-sm-8">
+                @if (s.MaxStaffExcludingOwner is { } max)
+                {
+                    <text>@s.StaffUsedExcludingOwner / @max (Owner not counted)</text>
+                }
+                else
+                {
+                    <text>@s.StaffUsedExcludingOwner used (unlimited)</text>
+                }
+                @if (s.PendingInviteCount > 0)
+                {
+                    <text> · @s.PendingInviteCount @(s.PendingInviteCount == 1 ? "invite" : "invites") waiting</text>
+                }
+            </dd>
             @if (s.KeyHint is not null)
             {
                 <dt class="col-sm-4">Expires</dt><dd class="col-sm-8">@(s.ExpiresAtUtc is null ? "No end date" : Date(s.ExpiresAtUtc))</dd>
@@ -52,6 +71,17 @@
             }
         </dl>
     </section>
+
+    @if (s.CanExport)
+    {
+        <section class="nb-card" aria-labelledby="export-heading">
+            <h2 id="export-heading" class="nb-section-title">Export</h2>
+            <p class="nb-meta">Download a JSON copy of your customers, measurements, orders and payments. You can still export while new changes are paused.</p>
+            <form method="post" asp-page-handler="Export">
+                <button type="submit" class="btn nb-btn-primary" data-pending-text="Preparing…">Download export</button>
+            </form>
+        </section>
+    }
 
     <section class="nb-card" aria-labelledby="key-heading">
         <h2 id="key-heading" class="nb-section-title">@(s.KeyHint is null ? "Add your license key" : "Replace the license key")</h2>

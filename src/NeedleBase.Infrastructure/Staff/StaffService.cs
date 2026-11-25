@@ -34,16 +34,18 @@ public sealed class StaffService : IStaffService
     private readonly IAuditLog _audit;
     private readonly IEmailSender _email;
     private readonly IOptionsMonitor<Email.EmailOptions> _emailOptions;
+    private readonly Licensing.LicenseService _licenses;
     private readonly ILogger<StaffService> _logger;
 
     /// <summary>Most orders moved in one reassignment (one transaction); the Owner can repeat for the rest.</summary>
     public const int MaxReassign = 2000;
 
     public StaffService(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ICurrentUser currentUser, IClock clock, IAuditLog audit,
-        IEmailSender email, IOptionsMonitor<Email.EmailOptions> emailOptions, ILogger<StaffService> logger)
+        IEmailSender email, IOptionsMonitor<Email.EmailOptions> emailOptions, Licensing.LicenseService licenses, ILogger<StaffService> logger)
     {
         _email = email;
         _emailOptions = emailOptions;
+        _licenses = licenses;
         _db = db;
         _userManager = userManager;
         _currentUser = currentUser;
@@ -197,6 +199,7 @@ public sealed class StaffService : IStaffService
                 invite.ExpiresAtUtc, _emailOptions.CurrentValue.AppBaseUrl));
         }
 
+        _licenses.Invalidate(businessId);
         return StaffResult<CreatedInvitationDto>.Ok(new CreatedInvitationDto(ToDto(invite, now), code!, emailed));
     }
 
@@ -220,6 +223,7 @@ public sealed class StaffService : IStaffService
             await _db.SaveChangesAsync(cancellationToken);
             await _audit.WriteAsync(new AuditEntry(AuditActions.StaffInviteRevoked, "Cancelled an invite",
                 businessId, _currentUser.UserId, _currentUser.Role, "staff_invite", invite.Id), cancellationToken: cancellationToken);
+            _licenses.Invalidate(businessId);
         }
 
         return StaffResult<bool>.Ok(true);
@@ -331,6 +335,7 @@ public sealed class StaffService : IStaffService
             return StaffResult<StaffMemberDto>.Fail(failCode);
         }
 
+        _licenses.Invalidate(businessId);
         var overview = await GetOverviewAsync(cancellationToken);
         return StaffResult<StaffMemberDto>.Ok(overview.Members.First(m => m.UserId == userId));
     }
@@ -338,7 +343,7 @@ public sealed class StaffService : IStaffService
     private async Task<StaffResult<StaffMemberDto>> ApplyMemberChangeAsync(
         string userId, Func<StaffMembership, string?> change, CancellationToken cancellationToken)
     {
-        RequireBusiness();
+        var businessId = RequireBusiness();
         if (string.Equals(userId, _currentUser.UserId, StringComparison.Ordinal))
         {
             return StaffResult<StaffMemberDto>.Fail(StaffErrorMessages.StaffSelf);
@@ -374,6 +379,11 @@ public sealed class StaffService : IStaffService
             if (!stamped.Succeeded)
             {
                 throw new InvalidOperationException("Couldn't update the team member's sign-in.");
+            }
+
+            if (membership.IsActive != oldActive)
+            {
+                _licenses.Invalidate(businessId);
             }
         }
 

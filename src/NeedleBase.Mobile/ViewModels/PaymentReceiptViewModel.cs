@@ -31,6 +31,11 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
     private LocalPaymentReceipt? receipt;
 
     [ObservableProperty] private string businessName = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBusinessPhone))]
+    private string? businessPhone;
+
     [ObservableProperty] private string totalText = string.Empty;
     [ObservableProperty] private string paidText = string.Empty;
     [ObservableProperty] private string balanceText = string.Empty;
@@ -46,6 +51,7 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
 
     public bool HasReceipt => Receipt is not null;
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
+    public bool HasBusinessPhone => !string.IsNullOrWhiteSpace(BusinessPhone);
     public bool CanVoid => CanManage && Receipt is { Payment.IsVoided: false };
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
@@ -85,6 +91,7 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
             }
 
             BusinessName = user?.BusinessName ?? string.Empty;
+            BusinessPhone = string.IsNullOrWhiteSpace(user?.BusinessPhone) ? null : user.BusinessPhone.Trim();
             var receipt = await _payments.GetReceiptAsync(businessId, PaymentId);
             if (receipt is null)
             {
@@ -116,7 +123,7 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
         await Share.Default.RequestAsync(new ShareTextRequest
         {
             Title = "Payment receipt",
-            Text = Receipt.ToShareText(BusinessName)
+            Text = Receipt.ToShareText(BusinessName, BusinessPhone)
         });
     }
 

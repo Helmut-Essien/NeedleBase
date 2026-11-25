@@ -107,7 +107,8 @@ public sealed record AuthUserDto(
     string Surname,
     string BusinessId,
     string BusinessName,
-    string Role);
+    string Role,
+    string? BusinessPhone = null);
 
 public sealed class InviteCodeRequest
 {

@@ -140,8 +140,48 @@ public sealed class NeedleBaseApi : INeedleBaseApi
     public Task<ApiResult<SubscriptionStatusDto>> AttachLicenseAsync(string licenseKey, CancellationToken cancellationToken = default) =>
         SendAsync<SubscriptionStatusDto>(HttpMethod.Post, "api/subscription/license", new AttachLicenseRequest { LicenseKey = licenseKey }, cancellationToken);
 
+    public async Task<ApiResult<(byte[] Bytes, string FileName)>> DownloadExportAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var client = _factory.CreateClient(ClientName);
+            using var response = await client.GetAsync("api/export", cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                var problem = await ApiProblem.ReadAsync(response, cancellationToken).ConfigureAwait(false);
+                return IsUnreachable(problem)
+                    ? ApiResult<(byte[] Bytes, string FileName)>.Offline()
+                    : ApiResult<(byte[] Bytes, string FileName)>.Fail(problem);
+            }
+
+            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            var raw = response.Content.Headers.ContentDisposition?.FileNameStar
+                ?? response.Content.Headers.ContentDisposition?.FileName;
+            var name = SafeExportFileName(raw) ?? "needlebase-export.json";
+
+            return ApiResult<(byte[] Bytes, string FileName)>.Ok((bytes, name));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            _logger.LogWarning(ex, "Export download failed");
+            return ApiResult<(byte[] Bytes, string FileName)>.Offline();
+        }
+    }
+
     internal static bool IsUnreachable(ApiProblem problem) =>
         problem.Status is 502 or 503 or 504 && problem.Code is null && problem.Detail is null;
+
+    /// <summary>Basename only — never turn Content-Disposition into a path.</summary>
+    internal static string? SafeExportFileName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var leaf = Path.GetFileName(name.Trim().Trim('"').Replace('\\', '/'));
+        return string.IsNullOrWhiteSpace(leaf) || leaf is "." or ".." ? null : leaf;
+    }
 
     private static void Append(StringBuilder url, string name, string? value)
     {

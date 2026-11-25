@@ -19,6 +19,7 @@ public sealed class AuthService : IAuthService
     public const string RefreshTokenKey = "refresh_token";
     public const string BusinessIdKey = "business_id";
     public const string BusinessNameKey = "business_name";
+    public const string BusinessPhoneKey = "business_phone";
     public const string UserIdKey = "user_id";
     public const string EmailKey = "email";
     public const string FirstNameKey = "first_name";
@@ -836,6 +837,15 @@ public sealed class AuthService : IAuthService
         await _secureStorage.SetAsync(BusinessIdKey, user.BusinessId);
         SetBusinessIdCache(user.BusinessId);
         await _secureStorage.SetAsync(BusinessNameKey, user.BusinessName);
+        if (string.IsNullOrWhiteSpace(user.BusinessPhone))
+        {
+            _secureStorage.Remove(BusinessPhoneKey);
+        }
+        else
+        {
+            await _secureStorage.SetAsync(BusinessPhoneKey, user.BusinessPhone);
+        }
+
         await _secureStorage.SetAsync(UserIdKey, user.UserId);
         await _secureStorage.SetAsync(EmailKey, user.Email);
         await _secureStorage.SetAsync(FirstNameKey, user.FirstName);
@@ -911,6 +921,7 @@ public sealed class AuthService : IAuthService
         ClearFreeUpgradeIntent();
         _secureStorage.Remove(BusinessIdKey);
         _secureStorage.Remove(BusinessNameKey);
+        _secureStorage.Remove(BusinessPhoneKey);
         _secureStorage.Remove(UserIdKey);
         _secureStorage.Remove(EmailKey);
         _secureStorage.Remove(FirstNameKey);
@@ -1023,6 +1034,15 @@ public sealed class AuthService : IAuthService
         await _secureStorage.SetAsync(BusinessIdKey, user.BusinessId);
         SetBusinessIdCache(user.BusinessId);
         await _secureStorage.SetAsync(BusinessNameKey, user.BusinessName);
+        if (string.IsNullOrWhiteSpace(user.BusinessPhone))
+        {
+            _secureStorage.Remove(BusinessPhoneKey);
+        }
+        else
+        {
+            await _secureStorage.SetAsync(BusinessPhoneKey, user.BusinessPhone);
+        }
+
         await _secureStorage.SetAsync(UserIdKey, user.UserId);
         await _secureStorage.SetAsync(EmailKey, user.Email);
         await _secureStorage.SetAsync(FirstNameKey, user.FirstName);
@@ -1112,6 +1132,7 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
+        var phone = await _secureStorage.GetAsync(BusinessPhoneKey);
         return new AuthUserDto(
             userId,
             await _secureStorage.GetAsync(EmailKey) ?? string.Empty,
@@ -1119,7 +1140,8 @@ public sealed class AuthService : IAuthService
             await _secureStorage.GetAsync(SurnameKey) ?? string.Empty,
             businessId,
             await _secureStorage.GetAsync(BusinessNameKey) ?? string.Empty,
-            await _secureStorage.GetAsync(RoleKey) ?? string.Empty);
+            await _secureStorage.GetAsync(RoleKey) ?? string.Empty,
+            string.IsNullOrWhiteSpace(phone) ? null : phone);
     }
 
     private HttpClient CreateAuthClient()
