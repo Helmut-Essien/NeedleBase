@@ -1,4 +1,5 @@
 using MauiIcons.Material;
+using NeedleBase.Application.Contracts.Licensing;
 using NeedleBase.Application.Licensing;
 using NeedleBase.Application.Staff;
 using NeedleBase.Mobile.Data.Services;
@@ -153,14 +154,18 @@ public sealed class MorePage : ContentPage
             var key = isFree ? "free" : (role ?? "none");
             if (key == _modeKey && _dynamicSlot.Content is not null)
             {
-                // Keep meters current when returning to More after creates or a sync that refreshed the plan.
+                // Free: refresh meters only. Online: rebuild so plan/export pick up LocalSubscriptionGate after sync
+                // (a restored pre-enrichment cache must not leave Export permanently hidden).
                 if (isFree && _freeUsageLabel is not null)
                 {
                     await FillFreeUsageAsync(_freeUsageLabel);
+                    return;
                 }
-                else if (!isFree && _planUsageLabel is not null)
+
+                if (!isFree)
                 {
-                    _planUsageLabel.Text = PlanUsageLine();
+                    _dynamicSlot.Content = BuildOnlineSlot(role);
+                    return;
                 }
 
                 return;
@@ -254,9 +259,7 @@ public sealed class MorePage : ContentPage
         {
             root.Add(Ui.Heading("License", 2));
             var licenseChildren = new VerticalStackLayout { Children = { CreatePlanUsageLabel() } };
-            // Hide when the last sync said export is off; null status still offers it (server enforces).
-            var canExport = NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current?.CanExport != false;
-            if (canExport)
+            if (ShouldOfferExport(NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current))
             {
                 licenseChildren.Add(Ui.Divider());
                 licenseChildren.Add(Ui.LinkRow(
@@ -289,15 +292,22 @@ public sealed class MorePage : ContentPage
 
     private Label CreatePlanUsageLabel()
     {
-        _planUsageLabel = Ui.Body(PlanUsageLine());
+        _planUsageLabel = Ui.Body(PlanUsageLine(NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current));
         _planUsageLabel.AutomationId = "MorePlanUsage";
         return _planUsageLabel;
     }
 
-    private static string PlanUsageLine()
+    /// <summary>
+    /// Export unless an enriched status (has <see cref="SubscriptionStatusDto.PlanCode"/>) explicitly denies it.
+    /// Pre-step-5 restored JSON defaults <c>CanExport</c> to false — that must not hide Export.
+    /// </summary>
+    public static bool ShouldOfferExport(SubscriptionStatusDto? status) =>
+        status is null || status.PlanCode is null || status.CanExport;
+
+    /// <summary>Plan/staff line for More. Incomplete restored cache waits for the next sync.</summary>
+    public static string PlanUsageLine(SubscriptionStatusDto? status)
     {
-        var status = NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current;
-        if (status is null)
+        if (status is null || status.PlanCode is null)
         {
             return "Plan and usage appear after the next sync.";
         }

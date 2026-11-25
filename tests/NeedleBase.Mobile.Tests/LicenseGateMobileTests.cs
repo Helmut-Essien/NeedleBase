@@ -11,6 +11,7 @@ using NeedleBase.Mobile.Data.Services;
 using NeedleBase.Mobile.Data.Sync;
 using NeedleBase.Mobile.Services;
 using NeedleBase.Mobile.ViewModels;
+using NeedleBase.Mobile.Views;
 
 namespace NeedleBase.Mobile.Tests;
 
@@ -181,6 +182,51 @@ public sealed class LicenseGateMobileTests : IDisposable
         Assert.Equal(ReadOnly.Message, HomeViewModel.LicenseBannerText(ReadOnly, role));
         Assert.Null(HomeViewModel.LicenseBannerText(SubscriptionStatusDto.Unlocked, role));
         Assert.Null(HomeViewModel.LicenseBannerText(null, role));
+    }
+
+    [Fact]
+    public void Pre_enrichment_restored_status_still_offers_export_and_waits_for_usage()
+    {
+        // Old SecureStorage JSON had no planCode/canExport; bool defaults to false.
+        var stale = new SubscriptionStatusDto
+        {
+            State = SubscriptionStates.Active,
+            IsReadOnly = false,
+            Plan = "Standard",
+            CanExport = false,
+            PlanCode = null
+        };
+        Assert.True(MorePage.ShouldOfferExport(stale));
+        Assert.True(MorePage.ShouldOfferExport(null));
+        Assert.Equal("Plan and usage appear after the next sync.", MorePage.PlanUsageLine(stale));
+
+        var denied = new SubscriptionStatusDto
+        {
+            State = SubscriptionStates.Active,
+            PlanCode = PlanCodes.Starter,
+            PlanDisplayName = "Starter",
+            MaxStaffExcludingOwner = 2,
+            CanExport = false
+        };
+        Assert.False(MorePage.ShouldOfferExport(denied));
+
+        var starter = denied with { CanExport = true, StaffUsedExcludingOwner = 1, PendingInviteCount = 1 };
+        Assert.True(MorePage.ShouldOfferExport(starter));
+        Assert.Equal("Starter: 1/2 staff (Owner not counted). 1 invite waiting.", MorePage.PlanUsageLine(starter));
+    }
+
+    [Fact]
+    public async Task Store_restores_pre_enrichment_json_without_planCode()
+    {
+        var storage = new MemoryStorage();
+        storage.Values[SubscriptionStatusStore.StorageKey] =
+            """{"businessId":"biz-license","status":{"state":"Active","isReadOnly":false,"plan":"Standard","keyHint":"…ABCD"}}""";
+        var store = new SubscriptionStatusStore(storage);
+        await store.RestoreAsync(Biz);
+        Assert.NotNull(LocalSubscriptionGate.Current);
+        Assert.Null(LocalSubscriptionGate.Current!.PlanCode);
+        Assert.False(LocalSubscriptionGate.Current.CanExport); // default
+        Assert.True(MorePage.ShouldOfferExport(LocalSubscriptionGate.Current));
     }
 
     private static async Task WaitForAsync(Func<bool> condition)

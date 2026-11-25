@@ -668,3 +668,47 @@ None — no new verified High/Medium findings.
 - XA0033 OpenJDK on full Android TFM (environment)
 - Do not push until asked
 - On-device QA still recommended for More/Home meters and export share
+
+## Unpushed e96be2a re-review — Iteration 1 — 25 Nov 2026
+
+### Slice
+`origin/PlanNameCatalogue..HEAD` = `e96be2a` (export/usage) plus follow-up fix commit.
+
+### Reviews run
+1. Bugbot 2. Edge 3. Security 4. Senior 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| Medium | Restored pre-step-5 subscription JSON defaults `CanExport=false`, hiding More export; re-appear did not rebuild License card after sync | Bugbot; `SubscriptionStatusStore` + `bool` default; `MorePage` early-return | `ShouldOfferExport` requires enriched `PlanCode` to deny; `PlanUsageLine` waits when `PlanCode` null; rebuild online slot on every More appear; LicenseGate tests |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security medium+ | CLEAN — Owner export, tenancy, SafeFileName, no secrets |
+| Full-shop export memory | Residual v1; Owner-only self-scoped |
+| Web `CanExport` UI | Server always returns enriched DTO (no SecureStorage restore) |
+| Receipt phone SR label | Phone is visible companion to shop name; not a blocker |
+
+### Remaining open
+None — iteration 2 clean recheck.
+
+## Unpushed e96be2a re-review — Iteration 2 — clean
+
+### Reviews run
+Bugbot recheck of CanExport/PlanUsageLine/rebuild; Security residual; Edge tests green; Senior; UI/UX.
+
+### Findings fixed
+None.
+
+### Final verdict
+- Bugbot: CLEAN
+- Edge: LicenseGate 11; LicensingApi 24; ShopExport covered
+- Security: CLEAN
+- Senior: rebuild + PlanCode sentinel for schema drift
+- UI/UX: Export/plan meters honest with stale cache
+
+### Residual notes
+- XA0033 OpenJDK on Android TFM (environment)
+- Do not push until asked
+- On-device: upgrade from pre-export app build, open More before first sync, confirm Export still shown then after sync
