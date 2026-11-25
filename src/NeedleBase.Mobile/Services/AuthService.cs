@@ -39,6 +39,12 @@ public sealed class AuthService : IAuthService
     /// </summary>
     public const string FreeUpgradeIntentKey = "free_upgrade_intent";
 
+    /// <summary>
+    /// Email used on the Go online form. Welcome Sign in only remaps when it matches, so a stale intent
+    /// cannot quietly attach Free rows to a different shop.
+    /// </summary>
+    public const string FreeUpgradeIntentEmailKey = "free_upgrade_intent_email";
+
     /// <summary>Who the local SQLite data belongs to ("userId|businessId"). Not cleared when a session expires.</summary>
     public const string LocalDataOwnerKey = "local_data_owner";
 
@@ -370,9 +376,13 @@ public sealed class AuthService : IAuthService
         }
 
         // Free→online orphan recovery: intent was set before register-business. Prefer remap over
-        // AcceptOwnerChange wipe if the user signs in from Welcome instead of Go online.
+        // AcceptOwnerChange wipe only when the signed-in email matches the Go online attempt.
         var upgradeIntent = await _secureStorage.GetAsync(FreeUpgradeIntentKey);
-        if (!string.IsNullOrWhiteSpace(upgradeIntent) && await IsFreeModeAsync())
+        var upgradeEmail = await _secureStorage.GetAsync(FreeUpgradeIntentEmailKey);
+        if (!string.IsNullOrWhiteSpace(upgradeIntent)
+            && await IsFreeModeAsync()
+            && !string.IsNullOrWhiteSpace(upgradeEmail)
+            && string.Equals(upgradeEmail, payload.User.Email, StringComparison.OrdinalIgnoreCase))
         {
             await WriteFreeUpgradePendingAsync(
                 upgradeIntent, payload.User, payload.AccessToken, payload.RefreshToken);
@@ -651,8 +661,9 @@ public sealed class AuthService : IAuthService
         }
 
         // Intent before the network call: if the shop is created but the pending blob never lands,
-        // a later REGISTER_FAILED can sign in and remap without wiping Free rows.
+        // a later REGISTER_FAILED / Welcome sign-in can finish remap without wiping Free rows.
         await _secureStorage.SetAsync(FreeUpgradeIntentKey, fromBusinessId);
+        await _secureStorage.SetAsync(FreeUpgradeIntentEmailKey, request.Email.Trim());
 
         var client = CreateAuthClient();
         using var response = await client.PostAsJsonAsync(
@@ -667,6 +678,13 @@ public sealed class AuthService : IAuthService
             if (await TryFinishUpgradeViaLoginAsync(request, fromBusinessId, problem, cancellationToken) is { } recovered)
             {
                 return recovered;
+            }
+
+            // Keep intent only for orphan recovery (email already registered). Other failures
+            // (bad licence key, etc.) must not leave a sticky remap trigger for a later Sign in.
+            if (!string.Equals(problem.Code, "REGISTER_FAILED", StringComparison.Ordinal))
+            {
+                ClearFreeUpgradeIntent();
             }
 
             LastErrorMessage = AuthErrorMessages.ForRegister(problem);
@@ -825,7 +843,13 @@ public sealed class AuthService : IAuthService
         await _secureStorage.SetAsync(RoleKey, user.Role);
         InvalidateUserCache();
         _secureStorage.Remove(FreeUpgradePendingKey);
+        ClearFreeUpgradeIntent();
+    }
+
+    private void ClearFreeUpgradeIntent()
+    {
         _secureStorage.Remove(FreeUpgradeIntentKey);
+        _secureStorage.Remove(FreeUpgradeIntentEmailKey);
     }
 
     private async Task WriteFreeUpgradePendingAsync(
@@ -884,7 +908,7 @@ public sealed class AuthService : IAuthService
         _secureStorage.Remove(RefreshTokenKey);
         _secureStorage.Remove(FreeModeKey);
         _secureStorage.Remove(FreeUpgradePendingKey);
-        _secureStorage.Remove(FreeUpgradeIntentKey);
+        ClearFreeUpgradeIntent();
         _secureStorage.Remove(BusinessIdKey);
         _secureStorage.Remove(BusinessNameKey);
         _secureStorage.Remove(UserIdKey);

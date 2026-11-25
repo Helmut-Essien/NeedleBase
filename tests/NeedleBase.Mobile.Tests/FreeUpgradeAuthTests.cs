@@ -231,6 +231,7 @@ public class FreeUpgradeAuthTests
         await storage.SetAsync(AuthService.FreeModeKey, "1");
         await storage.SetAsync(AuthService.BusinessIdKey, "01FREEFROM0000000000000001");
         await storage.SetAsync(AuthService.FreeUpgradeIntentKey, "01FREEFROM0000000000000001");
+        await storage.SetAsync(AuthService.FreeUpgradeIntentEmailKey, "owner@shop.test");
         await storage.SetAsync(AuthService.UserIdKey, "01FREEUSER0000000000000001");
         await storage.SetAsync(AuthService.BusinessNameKey, "Ama Stitches");
         await storage.SetAsync(AuthService.FirstNameKey, "Owner");
@@ -268,6 +269,79 @@ public class FreeUpgradeAuthTests
         Assert.Equal(0, database.Wipes);
         Assert.False(await auth.IsFreeModeAsync());
         Assert.Null(await storage.GetAsync(AuthService.FreeUpgradeIntentKey));
+        Assert.Null(await storage.GetAsync(AuthService.FreeUpgradeIntentEmailKey));
+    }
+
+    [Fact]
+    public async Task Login_WithIntentEmailMismatch_DoesNotRemap()
+    {
+        var storage = new MemoryStorage();
+        await storage.SetAsync(AuthService.FreeModeKey, "1");
+        await storage.SetAsync(AuthService.BusinessIdKey, "01FREEFROM0000000000000001");
+        await storage.SetAsync(AuthService.FreeUpgradeIntentKey, "01FREEFROM0000000000000001");
+        await storage.SetAsync(AuthService.FreeUpgradeIntentEmailKey, "owner@shop.test");
+        await storage.SetAsync(AuthService.UserIdKey, "01FREEUSER0000000000000001");
+        await storage.SetAsync(AuthService.LocalDataOwnerKey, "01FREEUSER0000000000000001|01FREEFROM0000000000000001");
+        await storage.SetAsync(AuthService.BusinessNameKey, "Ama Stitches");
+        await storage.SetAsync(AuthService.FirstNameKey, "Owner");
+        await storage.SetAsync(AuthService.SurnameKey, string.Empty);
+        await storage.SetAsync(AuthService.RoleKey, "Owner");
+        await storage.SetAsync(AuthService.EmailKey, string.Empty);
+
+        var otherUser = OnlineUser() with { Email = "other@shop.test", UserId = "01OTHERUSER00000000000001", BusinessId = "01OTHERBIZ000000000000001" };
+        var loginJson = JsonSerializer.Serialize(
+            new { accessToken = "a", refreshToken = "r", user = otherUser },
+            Camel);
+        // AcceptOwnerChange prompts when unsynced > 0; CountUnsynced returns 0 so wipe proceeds.
+        var handler = new SequenceHandler(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(loginJson, Encoding.UTF8, "application/json")
+            });
+        var upgrade = new RecordingFreeUpgrade();
+        var database = new NoopDatabase();
+        var auth = new AuthService(
+            new StubFactory(handler),
+            storage,
+            database,
+            new NoopFreeModeLocalService(),
+            upgrade,
+            Options.Create(new ApiSettings()));
+
+        var result = await auth.LoginAsync(new LoginRequest("other@shop.test", "Password1!"));
+
+        Assert.NotNull(result);
+        Assert.Equal(0, upgrade.RemapCalls);
+        Assert.Equal(1, database.Wipes);
+    }
+
+    [Fact]
+    public async Task UpgradeFromFree_NonRegisterFailed_ClearsIntent()
+    {
+        var storage = new MemoryStorage();
+        await storage.SetAsync(AuthService.FreeModeKey, "1");
+        await storage.SetAsync(AuthService.BusinessIdKey, "01FREEFROM0000000000000001");
+        await storage.SetAsync(AuthService.BusinessNameKey, "Ama Stitches");
+        await storage.SetAsync(AuthService.UserIdKey, "01FREEUSER0000000000000001");
+        await storage.SetAsync(AuthService.FirstNameKey, "Owner");
+        await storage.SetAsync(AuthService.SurnameKey, string.Empty);
+        await storage.SetAsync(AuthService.RoleKey, "Owner");
+        await storage.SetAsync(AuthService.EmailKey, string.Empty);
+
+        var handler = new SequenceHandler(
+            new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent(
+                    """{"code":"LICENSE_INVALID","title":"Bad key"}""",
+                    Encoding.UTF8,
+                    "application/json")
+            });
+        var auth = NewAuth(storage, handler, new NoopFreeUpgradeLocalService());
+
+        Assert.Null(await auth.UpgradeFromFreeAsync(SampleRequest()));
+        Assert.Null(await storage.GetAsync(AuthService.FreeUpgradeIntentKey));
+        Assert.Null(await storage.GetAsync(AuthService.FreeUpgradeIntentEmailKey));
+        Assert.True(await auth.IsFreeModeAsync());
     }
 
     private static AuthService NewAuth(

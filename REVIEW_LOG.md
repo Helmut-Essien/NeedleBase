@@ -546,3 +546,34 @@ None — no new verified High/Medium findings.
 - Do not push until asked
 - Normal Register (not Go online / not intent login) while Free can still wipe — documented alternate path; More → Go online is the Free upgrade path
 - Commits this slice: `85518ae`, `acb3a9f`, `4cb323b`, `1aceb1e` (+ this log)
+
+---
+
+# Unpushed Free-upgrade range Ralph (`origin/PlanNameCatalogue..HEAD`) — 25 Nov 2026
+
+Scope: 5 local commits ahead of upstream (Free→online upgrade + prior Free-upgrade Ralph hardening/verdict).
+
+## Iteration 1
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| Medium | Stale upgrade intent remaps Free rows into a different signed-in shop | Edge/Senior; Security residual; `LoginAsync` remapped on any Free+intent; bad licence left sticky intent | `FreeUpgradeIntentEmailKey`; Login remap only when email matches; clear intent on non-`REGISTER_FAILED`; tests |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Bugbot High/Medium | CLEAN on AuthService/AppStartup/Remap paths |
+| Security medium+ | CLEAN — same-device SecureStorage; JWT sync tenancy |
+| UI PasswordField / MaxLength / terms | Already present on `FreeUpgradePage` |
+| Normal Register while Free wipe | Documented alternate path |
+
+### Remaining open
+Re-run five passes (iteration 2) after intent-email fix.
+
+### Residual notes
+- Do not push until asked
+- XA0033 OpenJDK parse warning (environment)
