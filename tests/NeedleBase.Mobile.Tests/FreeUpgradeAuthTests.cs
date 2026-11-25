@@ -13,6 +13,11 @@ namespace NeedleBase.Mobile.Tests;
 [Collection("LocalFreeModeGate")]
 public class FreeUpgradeAuthTests
 {
+    private static readonly JsonSerializerOptions Camel = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     [Fact]
     public async Task UpgradeFromFree_WhenPendingAndTokens_CompletesWithoutRegisterCall()
     {
@@ -27,46 +32,75 @@ public class FreeUpgradeAuthTests
         await storage.SetAsync(AuthService.RoleKey, "Owner");
         await storage.SetAsync(AuthService.AccessTokenKey, "access");
         await storage.SetAsync(AuthService.RefreshTokenKey, "refresh");
-
-        var onlineUser = new AuthUserDto(
-            "01ONLINEUSER00000000000001",
-            "owner@shop.test",
-            "Ama",
-            "Mensah",
-            "01ONLINETO0000000000000001",
-            "Ama Stitches",
-            "Owner");
-        var pending = JsonSerializer.Serialize(
-            new { FromBusinessId = "01FREEFROM0000000000000001", User = onlineUser },
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        await storage.SetAsync(AuthService.FreeUpgradePendingKey, pending);
+        await WritePendingAsync(
+            storage,
+            "01FREEFROM0000000000000001",
+            OnlineUser(),
+            "access",
+            "refresh");
 
         var handler = new CountingHandler();
         var upgrade = new RecordingFreeUpgrade();
-        var auth = new AuthService(
-            new StubFactory(handler),
-            storage,
-            new NoopDatabase(),
-            new NoopFreeModeLocalService(),
-            upgrade,
-            Options.Create(new ApiSettings()));
+        var auth = NewAuth(storage, handler, upgrade);
 
-        var result = await auth.UpgradeFromFreeAsync(new RegisterBusinessRequest(
-            "owner@shop.test",
-            "Password1!",
-            "Ama",
-            "Mensah",
-            "Ama Stitches",
-            null,
-            "LICENCE-KEY"));
+        var result = await auth.UpgradeFromFreeAsync(SampleRequest());
 
         Assert.NotNull(result);
-        Assert.Equal(onlineUser.BusinessId, result!.BusinessId);
+        Assert.Equal(OnlineUser().BusinessId, result!.BusinessId);
         Assert.Equal(0, handler.Calls);
         Assert.Equal(1, upgrade.RemapCalls);
         Assert.Null(await storage.GetAsync(AuthService.FreeUpgradePendingKey));
         Assert.False(await auth.IsFreeModeAsync());
-        Assert.Equal(onlineUser.BusinessId, await auth.GetBusinessIdAsync());
+        Assert.Equal(OnlineUser().BusinessId, await auth.GetBusinessIdAsync());
+    }
+
+    [Fact]
+    public async Task UpgradeFromFree_WhenFreeFlagClearedButPending_StillCompletes()
+    {
+        // CompleteFreeUpgrade clears FreeModeKey after remap; a later storage failure must still resume.
+        var storage = new MemoryStorage();
+        await storage.SetAsync(AuthService.BusinessIdKey, "01FREEFROM0000000000000001");
+        await storage.SetAsync(AuthService.AccessTokenKey, "access");
+        await storage.SetAsync(AuthService.RefreshTokenKey, "refresh");
+        await WritePendingAsync(
+            storage,
+            "01FREEFROM0000000000000001",
+            OnlineUser(),
+            "access",
+            "refresh");
+
+        var handler = new CountingHandler();
+        var upgrade = new RecordingFreeUpgrade();
+        var auth = NewAuth(storage, handler, upgrade);
+
+        Assert.False(await auth.IsFreeModeAsync());
+        var result = await auth.UpgradeFromFreeAsync(SampleRequest());
+
+        Assert.NotNull(result);
+        Assert.Equal(0, handler.Calls);
+        Assert.Equal(1, upgrade.RemapCalls);
+        Assert.Null(await storage.GetAsync(AuthService.FreeUpgradePendingKey));
+    }
+
+    [Fact]
+    public async Task TryResume_RestoresTokensFromPending_WhenKeysMissing()
+    {
+        var storage = new MemoryStorage();
+        await WritePendingAsync(
+            storage,
+            "01FREEFROM0000000000000001",
+            OnlineUser(),
+            "pending-access",
+            "pending-refresh");
+
+        var upgrade = new RecordingFreeUpgrade();
+        var auth = NewAuth(storage, new CountingHandler(), upgrade);
+
+        Assert.True(await auth.TryResumeFreeUpgradeAsync());
+        Assert.Equal("pending-access", await storage.GetAsync(AuthService.AccessTokenKey));
+        Assert.Equal("pending-refresh", await storage.GetAsync(AuthService.RefreshTokenKey));
+        Assert.Equal(1, upgrade.RemapCalls);
+        Assert.Null(await storage.GetAsync(AuthService.FreeUpgradePendingKey));
     }
 
     [Fact]
@@ -74,46 +108,76 @@ public class FreeUpgradeAuthTests
     {
         var storage = new MemoryStorage();
         await storage.SetAsync(AuthService.FreeUpgradePendingKey, "{}");
-        var auth = new AuthService(
-            new StubFactory(new CountingHandler()),
-            storage,
-            new NoopDatabase(),
-            new NoopFreeModeLocalService(),
-            new NoopFreeUpgradeLocalService(),
-            Options.Create(new ApiSettings()));
+        var auth = NewAuth(storage, new CountingHandler(), new NoopFreeUpgradeLocalService());
 
-        // Malformed JSON is cleared — treat as not pending.
+        // Incomplete JSON is cleared — treat as not pending.
         Assert.False(await auth.HasPendingFreeUpgradeAsync());
 
-        var user = new AuthUserDto("U", "a@b.c", "A", "B", "B1", "Biz", "Owner");
-        var json = JsonSerializer.Serialize(
-            new { FromBusinessId = "F1", User = user },
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-        await storage.SetAsync(AuthService.FreeUpgradePendingKey, json);
+        await WritePendingAsync(storage, "F1", OnlineUser(), "a", "r");
         Assert.True(await auth.HasPendingFreeUpgradeAsync());
     }
 
     [Fact]
-    public async Task TryResumeFreeUpgrade_WithoutTokens_ClearsPending()
+    public async Task TryResumeFreeUpgrade_WithoutTokensOrPendingSecrets_LeavesPending()
     {
+        // Legacy blob without tokens cannot resume; keep nothing useful (cleared as invalid).
         var storage = new MemoryStorage();
-        var user = new AuthUserDto("U", "a@b.c", "A", "B", "B1", "Biz", "Owner");
-        var json = JsonSerializer.Serialize(
-            new { FromBusinessId = "F1", User = user },
-            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        var user = OnlineUser();
+        var json = JsonSerializer.Serialize(new { FromBusinessId = "F1", User = user }, Camel);
         await storage.SetAsync(AuthService.FreeUpgradePendingKey, json);
 
-        var auth = new AuthService(
-            new StubFactory(new CountingHandler()),
-            storage,
-            new NoopDatabase(),
-            new NoopFreeModeLocalService(),
-            new NoopFreeUpgradeLocalService(),
-            Options.Create(new ApiSettings()));
+        var auth = NewAuth(storage, new CountingHandler(), new NoopFreeUpgradeLocalService());
 
         Assert.False(await auth.TryResumeFreeUpgradeAsync());
         Assert.Null(await storage.GetAsync(AuthService.FreeUpgradePendingKey));
     }
+
+    private static AuthUserDto OnlineUser() => new(
+        "01ONLINEUSER00000000000001",
+        "owner@shop.test",
+        "Ama",
+        "Mensah",
+        "01ONLINETO0000000000000001",
+        "Ama Stitches",
+        "Owner");
+
+    private static RegisterBusinessRequest SampleRequest() => new(
+        "owner@shop.test",
+        "Password1!",
+        "Ama",
+        "Mensah",
+        "Ama Stitches",
+        null,
+        "LICENCE-KEY");
+
+    private static async Task WritePendingAsync(
+        MemoryStorage storage,
+        string fromBusinessId,
+        AuthUserDto user,
+        string access,
+        string refresh)
+    {
+        var json = JsonSerializer.Serialize(
+            new
+            {
+                FromBusinessId = fromBusinessId,
+                User = user,
+                AccessToken = access,
+                RefreshToken = refresh
+            },
+            Camel);
+        await storage.SetAsync(AuthService.FreeUpgradePendingKey, json);
+    }
+
+    private static AuthService NewAuth(
+        MemoryStorage storage, HttpMessageHandler handler, IFreeUpgradeLocalService upgrade) =>
+        new(
+            new StubFactory(handler),
+            storage,
+            new NoopDatabase(),
+            new NoopFreeModeLocalService(),
+            upgrade,
+            Options.Create(new ApiSettings()));
 
     private sealed class RecordingFreeUpgrade : IFreeUpgradeLocalService
     {

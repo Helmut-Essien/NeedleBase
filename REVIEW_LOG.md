@@ -453,7 +453,27 @@ Scope: working-tree Free upgrade slice (`FreeUpgradeLocalService`, `UpgradeFromF
 | Normal Register from Free could wipe | Pre-existing path; More Go online is the Free path (Security) |
 
 ### Remaining open
-Re-run five passes on post-fix tree (iteration 2).
+None from iteration 1 — continued in iteration 2.
+
+## Iteration 2
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| High | Free flag cleared blocks in-app resume | Bugbot; `UpgradeFromFreeAsync` checked `IsFreeMode` before pending short-circuit; `Complete` clears FreeModeKey after remap | Pending completion first via `TryCompletePendingFreeUpgradeAsync`; Free gate only for new register |
+| High | Tokens without pending strands upgrade | Bugbot; StoreTokens then WritePending race; Security residual | Pending blob includes access+refresh; write pending first; restore tokens from blob on resume; tests |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security medium+ | Security CLEAN on post-iter1 paths; tokens in pending are same-device session secrets already in SecureStorage |
+| JWT ↔ pending business_id cross-check | Same-device SecureStorage; sync JWT-scoped (Security residual) |
+
+### Remaining open
+Re-run five passes (iteration 3) after these fixes.
 
 ### Residual notes
 - XA0033 OpenJDK parse warning on Mobile Android build (environment)

@@ -586,6 +586,23 @@ public sealed class AuthService : IAuthService
         RegisterBusinessRequest request, CancellationToken cancellationToken = default)
     {
         LastErrorMessage = null;
+
+        // Pending resume runs before the Free-mode gate: CompleteFreeUpgradeAsync clears FreeModeKey
+        // right after remap, so a later SecureStorage failure must still allow retry without
+        // re-calling register-business (email is already taken).
+        var resumed = await TryCompletePendingFreeUpgradeAsync(cancellationToken);
+        if (resumed is not null)
+        {
+            return resumed;
+        }
+
+        if (await HasPendingFreeUpgradeAsync())
+        {
+            LastErrorMessage =
+                "Your online shop was created, but moving Free records didn't finish. Close and reopen the app to complete it.";
+            return null;
+        }
+
         if (!await IsFreeModeAsync())
         {
             LastErrorMessage = "Go online is only for Free on this phone.";
@@ -597,32 +614,6 @@ public sealed class AuthService : IAuthService
         {
             LastErrorMessage = "Couldn't find this Free shop on the phone.";
             return null;
-        }
-
-        // Register already succeeded earlier — finish remap/session; do not call register-business again
-        // (email is taken and the online shop already exists).
-        var existingPending = await ReadFreeUpgradePendingAsync();
-        if (existingPending is not null && await HasStoredTokensAsync())
-        {
-            if (!string.Equals(existingPending.FromBusinessId, fromBusinessId, StringComparison.Ordinal))
-            {
-                LastErrorMessage =
-                    "A different Free shop is waiting to finish going online. Close and reopen the app.";
-                return null;
-            }
-
-            try
-            {
-                await CompleteFreeUpgradeAsync(existingPending.FromBusinessId, existingPending.User, cancellationToken);
-                return existingPending.User;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Free upgrade resume via Go online failed: {ex.Message}");
-                LastErrorMessage =
-                    "Your online shop was created, but moving Free records didn't finish. Close and reopen the app to complete it.";
-                return null;
-            }
         }
 
         if (string.IsNullOrWhiteSpace(request.LicenseKey))
@@ -651,9 +642,10 @@ public sealed class AuthService : IAuthService
             return null;
         }
 
-        // Tokens first so a kill mid-remap can resume without burning the licence slot again.
+        // One pending write holds user + tokens so a kill between SecureStorage keys still resumes.
+        await WriteFreeUpgradePendingAsync(
+            fromBusinessId, payload.User, payload.AccessToken, payload.RefreshToken);
         await StoreTokensAsync(new TokenResponse(payload.AccessToken, payload.RefreshToken));
-        await WriteFreeUpgradePendingAsync(fromBusinessId, payload.User);
 
         try
         {
@@ -673,30 +665,41 @@ public sealed class AuthService : IAuthService
     public async Task<bool> HasPendingFreeUpgradeAsync() =>
         await ReadFreeUpgradePendingAsync() is not null;
 
-    public async Task<bool> TryResumeFreeUpgradeAsync(CancellationToken cancellationToken = default)
+    public async Task<bool> TryResumeFreeUpgradeAsync(CancellationToken cancellationToken = default) =>
+        await TryCompletePendingFreeUpgradeAsync(cancellationToken) is not null;
+
+    /// <summary>
+    /// Finishes a pending Free→online upgrade when the blob (and tokens) are present.
+    /// Null when nothing to do, or when completion still fails (pending kept for retry).
+    /// </summary>
+    private async Task<AuthUserDto?> TryCompletePendingFreeUpgradeAsync(CancellationToken cancellationToken)
     {
         var pending = await ReadFreeUpgradePendingAsync();
         if (pending is null)
         {
-            return false;
+            return null;
         }
 
         if (!await HasStoredTokensAsync())
         {
-            // Register never finished storing tokens — stay on Free; user can tap Go online again.
-            _secureStorage.Remove(FreeUpgradePendingKey);
-            return false;
+            // Pending blob carries tokens so a kill after WritePending and before StoreTokens still works.
+            if (string.IsNullOrWhiteSpace(pending.AccessToken) || string.IsNullOrWhiteSpace(pending.RefreshToken))
+            {
+                return null;
+            }
+
+            await StoreTokensAsync(new TokenResponse(pending.AccessToken, pending.RefreshToken));
         }
 
         try
         {
             await CompleteFreeUpgradeAsync(pending.FromBusinessId, pending.User, cancellationToken);
-            return true;
+            return pending.User;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Free upgrade resume failed: {ex.Message}");
-            return false;
+            return null;
         }
     }
 
@@ -729,9 +732,11 @@ public sealed class AuthService : IAuthService
         _secureStorage.Remove(FreeUpgradePendingKey);
     }
 
-    private async Task WriteFreeUpgradePendingAsync(string fromBusinessId, AuthUserDto user)
+    private async Task WriteFreeUpgradePendingAsync(
+        string fromBusinessId, AuthUserDto user, string accessToken, string refreshToken)
     {
-        var json = JsonSerializer.Serialize(new FreeUpgradePending(fromBusinessId, user), JsonOptions);
+        var json = JsonSerializer.Serialize(
+            new FreeUpgradePending(fromBusinessId, user, accessToken, refreshToken), JsonOptions);
         await _secureStorage.SetAsync(FreeUpgradePendingKey, json);
     }
 
@@ -750,7 +755,9 @@ public sealed class AuthService : IAuthService
                 || string.IsNullOrWhiteSpace(pending.FromBusinessId)
                 || pending.User is null
                 || string.IsNullOrWhiteSpace(pending.User.BusinessId)
-                || string.IsNullOrWhiteSpace(pending.User.UserId))
+                || string.IsNullOrWhiteSpace(pending.User.UserId)
+                || string.IsNullOrWhiteSpace(pending.AccessToken)
+                || string.IsNullOrWhiteSpace(pending.RefreshToken))
             {
                 _secureStorage.Remove(FreeUpgradePendingKey);
                 return null;
@@ -765,7 +772,12 @@ public sealed class AuthService : IAuthService
         }
     }
 
-    private sealed record FreeUpgradePending(string FromBusinessId, AuthUserDto User);
+    /// <summary>
+    /// Crash-recovery blob. Includes tokens so a single SecureStorage write survives a kill before
+    /// the separate access/refresh keys are written. Cleared when the online session is ready.
+    /// </summary>
+    private sealed record FreeUpgradePending(
+        string FromBusinessId, AuthUserDto User, string AccessToken, string RefreshToken);
 
     public Task ClearTokensAsync()
     {
