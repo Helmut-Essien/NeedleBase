@@ -23,7 +23,18 @@ public sealed class FreeModeLocalService : IFreeModeLocalService
             .ConfigureAwait(false);
     }
 
-    public async Task CreateAsync(string businessId, string shopName, DateTimeOffset now, CancellationToken cancellationToken = default)
+    public Task CreateAsync(string businessId, string shopName, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        EnsureCoreAsync(businessId, shopName, now, seedFromExistingRows: false, cancellationToken);
+
+    public Task EnsureAsync(string businessId, string shopName, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        EnsureCoreAsync(businessId, shopName, now, seedFromExistingRows: true, cancellationToken);
+
+    private async Task EnsureCoreAsync(
+        string businessId,
+        string shopName,
+        DateTimeOffset now,
+        bool seedFromExistingRows,
+        CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(businessId);
         ArgumentException.ThrowIfNullOrWhiteSpace(shopName);
@@ -34,6 +45,22 @@ public sealed class FreeModeLocalService : IFreeModeLocalService
             return;
         }
 
+        var customersEver = 0;
+        var ordersEver = 0;
+        if (seedFromExistingRows)
+        {
+            // Lifetime ≥ rows still on the device. Deleted rows are unknowable; this never undercuts
+            // the remaining budget below what is still present (fail closed for a wiped FreeModeStates).
+            customersEver = await db.Customers.AsNoTracking()
+                .CountAsync(c => c.BusinessId == businessId, cancellationToken)
+                .ConfigureAwait(false);
+            ordersEver = await db.Orders.AsNoTracking()
+                .CountAsync(o => o.BusinessId == businessId, cancellationToken)
+                .ConfigureAwait(false);
+            customersEver = Math.Min(customersEver, FreePlanLimits.MaxCustomersEver);
+            ordersEver = Math.Min(ordersEver, FreePlanLimits.MaxOrdersEver);
+        }
+
         db.SuppressSyncQueue = true;
         try
         {
@@ -41,8 +68,8 @@ public sealed class FreeModeLocalService : IFreeModeLocalService
             {
                 BusinessId = businessId,
                 ShopName = shopName.Trim(),
-                CustomersEverCreated = 0,
-                OrdersEverCreated = 0,
+                CustomersEverCreated = customersEver,
+                OrdersEverCreated = ordersEver,
                 CreatedAtUtc = now
             });
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

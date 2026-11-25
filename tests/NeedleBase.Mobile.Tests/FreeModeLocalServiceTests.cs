@@ -160,6 +160,48 @@ public class FreeModeLocalServiceTests
     }
 
     [Fact]
+    public async Task Ensure_SeedsCountersFromExistingRows_NotZero()
+    {
+        await using var provider = BuildProvider();
+        var free = provider.GetRequiredService<IFreeModeLocalService>();
+        var customers = provider.GetRequiredService<ICustomerLocalService>();
+        const string businessId = "01FREEMODETESTBIZ000000007";
+
+        LocalFreeModeGate.Set(businessId);
+        try
+        {
+            await free.CreateAsync(businessId, "Seed Shop", DateTimeOffset.UtcNow);
+            for (var i = 0; i < 3; i++)
+            {
+                Assert.True((await customers.SaveAsync(
+                    businessId, new CreateCustomerRequest($"C{i}", $"+23324555{i:D4}", null, null))).IsSuccess);
+            }
+
+            await using (var scope = provider.CreateAsyncScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
+                var row = await db.FreeModeStates.SingleAsync(s => s.BusinessId == businessId);
+                db.FreeModeStates.Remove(row);
+                await db.SaveChangesAsync();
+            }
+
+            await free.EnsureAsync(businessId, "Seed Shop", DateTimeOffset.UtcNow);
+            var (used, _) = await free.GetUsageAsync(businessId);
+            Assert.Equal(3, used);
+
+            // Still under cap for remaining slots; not a full reset to 10 free creates.
+            Assert.True((await customers.SaveAsync(
+                businessId, new CreateCustomerRequest("More", "+233245551111", null, null))).IsSuccess);
+            var (after, _) = await free.GetUsageAsync(businessId);
+            Assert.Equal(4, after);
+        }
+        finally
+        {
+            LocalFreeModeGate.Clear();
+        }
+    }
+
+    [Fact]
     public async Task ReserveThenRelease_AllowsRetryAfterFailedCreate()
     {
         await using var provider = BuildProvider();

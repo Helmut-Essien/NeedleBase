@@ -12,6 +12,9 @@ internal sealed class NoopFreeModeLocalService : IFreeModeLocalService
     public Task CreateAsync(string businessId, string shopName, DateTimeOffset now, CancellationToken cancellationToken = default) =>
         Task.CompletedTask;
 
+    public Task EnsureAsync(string businessId, string shopName, DateTimeOffset now, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+
     public Task<(int CustomersUsed, int OrdersUsed)> GetUsageAsync(
         string businessId, CancellationToken cancellationToken = default) =>
         Task.FromResult((0, 0));

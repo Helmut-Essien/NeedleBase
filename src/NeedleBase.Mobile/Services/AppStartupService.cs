@@ -79,7 +79,7 @@ public sealed class AppStartupService
                         return;
                     }
 
-                    // Caps need a FreeModeStates row — recreate from the stored shop name if it was lost.
+                    // Caps need a FreeModeStates row — recreate if lost, seeding counters from rows still on device.
                     if (!await _freeMode.ExistsAsync(freeBusinessId))
                     {
                         var shopName = (await _authService.GetCachedUserAsync())?.BusinessName;
@@ -88,7 +88,7 @@ public sealed class AppStartupService
                             shopName = "Shop";
                         }
 
-                        await _freeMode.CreateAsync(freeBusinessId, shopName, DateTimeOffset.UtcNow);
+                        await _freeMode.EnsureAsync(freeBusinessId, shopName, DateTimeOffset.UtcNow);
                     }
 
                     LocalFreeModeGate.Set(freeBusinessId);

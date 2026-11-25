@@ -338,3 +338,30 @@ Re-run five passes (iteration 2) after these fixes.
 - Pre-existing XA0033 OpenJDK parse warning on full Android Release
 - Occasional flaky Api WhatsApp/email timing tests (unrelated; pass on retry)
 - Do not push until asked
+
+## Iteration 2
+
+### Reviews run
+1. Bugbot 2. Edge cases 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Fix |
+|----------|---------|-----|
+| High | AppStartup `CreateAsync` after missing `FreeModeStates` reset counters to 0 | `EnsureAsync` seeds from current local customer/order counts (lower bound of lifetime) |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| True lifetime after FreeModeStates loss when rows were deleted | Unknowable without the counter row; seed from remaining rows is the tightest recoverable floor; deletes still never free slots afterward |
+| Security medium+ | None (Security Review); wipe gate / TryReserve SQL / Save a copy / session transitions clean |
+| Bugbot validator-removed finding | No surviving medium+ after Ensure seed |
+
+### Tests
+- `Ensure_SeedsCountersFromExistingRows_NotZero`
+- FreeMode filter: 8/8; Mobile.Tests build green
+
+### Remaining open
+None verified. Iteration 3 = confirm clean.
+
+### Residual notes
+- Same XA0033 / unrelated Api flakes as iteration 1

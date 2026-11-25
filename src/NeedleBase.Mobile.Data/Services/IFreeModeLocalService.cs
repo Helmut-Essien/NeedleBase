@@ -9,6 +9,12 @@ public interface IFreeModeLocalService
 
     Task CreateAsync(string businessId, string shopName, DateTimeOffset now, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Ensures a FreeModeStates row exists. If recreating after loss, seeds lifetime counters from
+    /// current local customer/order counts (a lower bound — deletes still never free slots going forward).
+    /// </summary>
+    Task EnsureAsync(string businessId, string shopName, DateTimeOffset now, CancellationToken cancellationToken = default);
+
     Task<(int CustomersUsed, int OrdersUsed)> GetUsageAsync(string businessId, CancellationToken cancellationToken = default);
 
     /// <summary>
