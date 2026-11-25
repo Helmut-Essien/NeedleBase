@@ -712,3 +712,37 @@ None.
 - XA0033 OpenJDK on Android TFM (environment)
 - Do not push until asked
 - On-device: upgrade from pre-export app build, open More before first sync, confirm Export still shown then after sync
+
+## Unpushed e96be2a..0bdebc7 re-review — Iteration 1 — clean — 25 Nov 2026
+
+### Slice
+`origin/PlanNameCatalogue..HEAD`: export/usage (`e96be2a`) + CanExport cache fix (`0bdebc7`). Working tree clean aside from Ralph state.
+
+### Reviews run
+1. Bugbot (branch + focused MorePage/export files) 2. Edge 3. Security 4. Senior 5. UI/UX
+
+### Findings fixed
+None — no new verified High/Medium.
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Bugbot High/Medium | Focused re-read of MorePage/Home/ShopExportApi/BusinessExport/LicenseService/Staff Invalidate: CLEAN; earlier validator-dropped candidate not reproduced |
+| Security medium+ | CLEAN — Owner export, tenancy, SafeFileName, CanExport UI fail-open only with API enforcement |
+| Uri `new Uri(base, "api/export")` | Same pattern as `StaffApi`/`HttpSyncApi`; `ApiSettings.BaseUrl` defaults with trailing `/` |
+| Full-shop export memory | Residual v1 Owner-scoped |
+| Home Free meters `0/10` when businessId missing | Broken Free session; catch path already honest; rare |
+| Online More rebuild every appear | Intentional for gate refresh; cheap UI |
+| Receipt phone without extra SR description | Visible under shop name; not a11y blocker |
+
+### Final verdict
+- Bugbot: CLEAN
+- Edge: LicenseGate+ShopExport+receipt 20; LicensingApi 24; LicensePage 11; Free/PlanCatalog 39
+- Security: CLEAN
+- Senior: Invalidate on seat changes; PlanCode sentinel for schema drift hold
+- UI/UX: ShouldOfferExport + rebuild + Free failure copy adequate
+
+### Residual notes
+- XA0033 OpenJDK on Android TFM (environment)
+- Do not push until asked
+- On-device: pre-export app → upgrade → More before first sync still shows Export
