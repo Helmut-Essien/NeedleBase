@@ -143,6 +143,27 @@ None actionable remaining.
 ### Remaining open
 None verified for iteration 1. Re-run five passes (iteration 2).
 
+## Iteration 2 — 25 Nov 2026 (clean)
+
+### Reviews run
+1. Bugbot (subagent, post-commit) 2. Edge cases 3. Security Review (subagent) 4. Senior developer 5. UI/UX
+
+### Findings fixed
+None — no verified defects.
+
+### Findings dismissed
+| Finding | Evidence |
+|---------|----------|
+| Bugbot / Security notes on `.cursor/file-backups/` and `.cursor/ralph/scratchpad.md` | Untracked local noise; not in commit `4824e72`; ignored by design |
+| Step-2 misuse of `ForCode` alone | Not callable in production today; residual note retained |
+
+### Final verdict
+- Bugbot: no bugs
+- Edge cases: covered (32 PlanCatalog tests pass)
+- Security Review: no medium+ issues
+- Senior developer: clean (pure mapper, immutable catalog rows, fail-closed)
+- UI/UX: N/A (no UI in slice)
+
 ### Residual notes for humans
 - Step 2 must call `PlanCatalog.Resolve` (not `ForCode` alone) and combine with `SubscriptionRules` / read-only / `IsClosed`.
 - Full `NeedleBase.sln` Release still fails Android **XA0033** (OpenJDK `17.0.21.0.3` version parse) — pre-existing, unrelated.
