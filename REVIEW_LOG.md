@@ -514,9 +514,35 @@ Continued in iteration 4.
 | Senior: transactional remap + pending tokens | In place; intent before network is correct crash model |
 
 ### Remaining open
-Re-run five passes (iteration 5) for clean verdict.
+None — continued in iteration 5.
+
+## Iteration 5 — clean
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+None — no new verified High/Medium findings.
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Bugbot new High/Medium | CLEAN — no bugs on upgrade/intent/pending/Login remap/AppStartup/Remap |
+| Security medium+ | CLEAN — Login intent remap same-device; JWT sync tenancy |
+| Edge: double-submit / concurrent Upgrade | `IsBusy` + pending short-circuit; register email uniqueness |
+| Edge: poison pending `{}` | Cleared by validation; tested |
+| Senior: crash recovery model | Intent → pending(+tokens) → Complete; transactional remap |
+| UI/UX: a11y password / MaxLength / terms | `PasswordField`, MaxLength, SemanticProperties, Remask; busy disable |
+
+### Final verdict
+- Bugbot: CLEAN
+- Edge: FreeUpgrade 9 tests + Mobile.Tests 343 green; Application Free 5 green
+- Security: CLEAN
+- Senior: priors hold (intent, pending tokens, transactional remap, no wipe on upgrade)
+- UI/UX: Go online form matches code-only auth patterns
 
 ### Residual notes
 - XA0033 OpenJDK parse warning on Mobile Android build (environment)
 - Do not push until asked
 - Normal Register (not Go online / not intent login) while Free can still wipe — documented alternate path; More → Go online is the Free upgrade path
+- Commits this slice: `85518ae`, `acb3a9f`, `4cb323b`, `1aceb1e` (+ this log)
