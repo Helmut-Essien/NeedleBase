@@ -572,8 +572,35 @@ Scope: 5 local commits ahead of upstream (Free→online upgrade + prior Free-upg
 | Normal Register while Free wipe | Documented alternate path |
 
 ### Remaining open
-Re-run five passes (iteration 2) after intent-email fix.
+None — continued in iteration 2.
+
+## Iteration 2 — clean
+
+### Reviews run
+1. Bugbot 2. Edge cases & boundaries 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+None — no new verified High/Medium findings.
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Bugbot High/Medium | CLEAN after intent-email binding |
+| Security medium+ | CLEAN; email match closes wrong-shop remap |
+| Optional: clear intent on email-mismatch login | Low polish; remap already blocked; cleared on logout/`ClearTokensAsync` (Security residual) |
+| Optional: intent == GetBusinessIdAsync on login | Low same-device consistency; Free BusinessId is the intent source |
+| Edge: FreeUpgrade 11 + Mobile 345 green | Tests pass |
+| UI/UX | Unchanged; prior PasswordField/MaxLength/terms adequate |
+
+### Final verdict
+- Bugbot: CLEAN
+- Edge: FreeUpgrade 11; Mobile.Tests 345; Application Free 5
+- Security: CLEAN
+- Senior: intent+email, pending tokens, transactional remap hold
+- UI/UX: Go online / More paths unchanged and adequate
 
 ### Residual notes
 - Do not push until asked
 - XA0033 OpenJDK parse warning (environment)
+- Normal Register while Free can still wipe — documented alternate path
+- Commits this unpushed Ralph: `e10b5f7` (+ this log); prior Free-upgrade commits unchanged
