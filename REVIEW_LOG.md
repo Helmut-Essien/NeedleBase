@@ -244,3 +244,17 @@ None — no verified defects after accept-invite reload.
 - Optional: timing test for attach-vs-accept interleaving
 - Next plan step: Free mode on the phone
 - Do not commit `.cursor/ralph/` scratch state
+
+## Iteration 3 — 25 Nov 2026 (clean)
+
+### Reviews run
+1. Bugbot 2. Edge cases 3. Security Review 4. Senior developer 5. UI/UX
+
+### Findings fixed
+None.
+
+### Findings dismissed
+Same residual notes as iteration 2; no new verified defects.
+
+### Final verdict
+All five passes clean. Accept-invite post-lock Business reload confirmed (`AuthService.cs` ~657–672). Plan-limit API tests 6/6 and StaffPlanLimits 9/9 pass.
