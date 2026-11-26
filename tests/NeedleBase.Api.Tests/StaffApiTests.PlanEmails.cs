@@ -11,6 +11,7 @@ using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Staff;
 using NeedleBase.Application.Email;
 using NeedleBase.Application.Licensing;
+using NeedleBase.Domain.Entities;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Infrastructure.Email;
 using NeedleBase.Infrastructure.Licensing;
@@ -46,6 +47,91 @@ public sealed partial class StaffApiTests
         await Task.Delay(300);
 
         Assert.DoesNotContain(mail.Sent, m => m.ToAddress == tailor.User!.Email && m.Kind == "order_assigned");
+    }
+
+    [Fact]
+    public async Task ReadOnly_does_not_advance_monthly_watermark()
+    {
+        var mail = UseEmail();
+        var owner = await RegisterAsync("ro1");
+        await SetPlanAsync(owner.BusinessId, PlanCodes.Workshop);
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var business = await db.Businesses.SingleAsync(b => b.Id == owner.BusinessId);
+            var since = DateTimeOffset.UtcNow.AddDays(-30);
+            business.RecordLicenseCheck(new LicenseCheck(false, "expired"), since);
+            await db.SaveChangesAsync();
+            await db.Businesses.Where(b => b.Id == owner.BusinessId)
+                .ExecuteUpdateAsync(u => u.SetProperty(b => b.LicenseInvalidSinceUtc, since)
+                    .SetProperty(b => b.LicenseIsValid, false)
+                    .SetProperty(b => b.LicenseGraceUntilUtc, since));
+        }
+
+        var today = BusinessTime.Today(DateTimeOffset.UtcNow);
+        var noon = new DateTimeOffset(today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc));
+        var month = PlanEmailSchedule.MonthStart(today);
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            foreach (var other in await db.Businesses.Where(b => b.Id != owner.BusinessId).ToListAsync())
+            {
+                other.MarkMonthlySummarySent(month);
+                other.MarkWeeklySummarySent(PlanEmailSchedule.WeekStartMonday(today));
+            }
+
+            await db.SaveChangesAsync();
+
+            var emailOptions = new EmailOptions
+            {
+                Host = "smtp.example.test",
+                Username = "shop@example.test",
+                Password = "x",
+                AppBaseUrl = "https://app.example.test"
+            };
+            var service = new PlanEmailService(
+                db,
+                new DirectCapturingSender(mail, emailOptions),
+                new StaticOptionsMonitor<EmailOptions>(emailOptions),
+                new StaticOptionsMonitor<PlatformOptions>(new PlatformOptions { LockGraceDays = 7 }),
+                new FixedClock(noon),
+                NullLogger<PlanEmailService>.Instance);
+
+            await service.ProcessDueAsync();
+            var still = await db.Businesses.AsNoTracking().SingleAsync(b => b.Id == owner.BusinessId);
+            Assert.Null(still.MonthlySummarySentFor);
+            Assert.DoesNotContain(mail.Sent, m => m.Kind == "monthly_summary" && m.ToAddress == owner.Email);
+        }
+
+        // Renew → same period should send.
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var business = await db.Businesses.SingleAsync(b => b.Id == owner.BusinessId);
+            business.RecordLicenseCheck(
+                new LicenseCheck(true, "ok", "lic-ro", PlanCodes.Workshop), DateTimeOffset.UtcNow);
+            await db.SaveChangesAsync();
+
+            var emailOptions = new EmailOptions
+            {
+                Host = "smtp.example.test",
+                Username = "shop@example.test",
+                Password = "x",
+                AppBaseUrl = "https://app.example.test"
+            };
+            var service = new PlanEmailService(
+                db,
+                new DirectCapturingSender(mail, emailOptions),
+                new StaticOptionsMonitor<EmailOptions>(emailOptions),
+                new StaticOptionsMonitor<PlatformOptions>(new PlatformOptions { LockGraceDays = 7 }),
+                new FixedClock(noon),
+                NullLogger<PlanEmailService>.Instance);
+            await service.ProcessDueAsync();
+        }
+
+        var monthly = await mail.WaitForAsync(owner.Email, "monthly_summary");
+        Assert.Contains("Open orders", monthly.TextBody);
     }
 
     [Fact]

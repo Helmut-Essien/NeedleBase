@@ -876,3 +876,44 @@ None verified High/Medium.
 ### Final verdict
 Five passes CLEAN after buffer fix; committing slice.
 
+
+---
+
+# Unpushed commits Ralph review (origin/PlanNameCatalogue..HEAD)
+
+## Iteration 1 — 26 Nov 2026
+
+### Scope
+Unpushed: `203f866` Ship paid-plan emails with Ralph hardening (+ follow-up fix commit).
+
+### Reviews run
+1. Bugbot (×2, scoped to paid emails) 2. Edge 3. Security 4. Senior 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| Medium | Read-only shops advanced monthly/weekly/due watermarks via `Mark*`, so renewal in the same period never got that summary/due mail | `PlanEmailService` `!MaySendPlanEmails \|\| !Entitlement` → Mark; Bugbot | Skip read-only without marking; only mark when plan lacks entitlement; test `ReadOnly_does_not_advance_monthly_watermark` |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security medium+ on unpushed paid-emails | CLEAN: digest, deferral buffer, tenancy predicates, Owner reassign, template escape |
+| Starter due mark-without-send | Still correct — no entitlement; upgrade same-day miss accepted |
+| UI/UX | No new interactive UI in unpushed commit |
+| Due N+1 assignee lookups | Batch-capped; residual scale only |
+| Read-only re-scan every 15m | Correctness over skip; few read-only shops |
+
+### Remaining open
+None verified High/Medium.
+
+### Residual notes
+- Legal Privacy/Terms under-describe paid emails
+- XA0033 Android JDK env
+- Do not push until asked
+
+### Tests
+PlanEmails Api filter: 6 passed (incl. read-only watermark)
+
+### Final verdict
+Five passes CLEAN after read-only watermark fix. Committing follow-up.
+

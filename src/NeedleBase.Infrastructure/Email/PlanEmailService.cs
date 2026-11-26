@@ -213,10 +213,15 @@ public sealed class PlanEmailService : IPlanEmailNotifier
         var queued = 0;
         foreach (var row in candidates)
         {
-            if (!MaySendPlanEmails(row.Business) ||
-                !PlanCatalog.Resolve(row.Business).Entitlements.AssignmentAndDueEmails)
+            // Read-only: skip without watermark so renewal the same day can still send.
+            if (!MaySendPlanEmails(row.Business))
             {
-                // Mark so we don't re-scan forever on Starter shops.
+                continue;
+            }
+
+            if (!PlanCatalog.Resolve(row.Business).Entitlements.AssignmentAndDueEmails)
+            {
+                // Mark so we don't re-scan forever on Starter (no entitlement) shops.
                 await MarkDueSentAsync(row.OrderId, today.Value, cancellationToken).ConfigureAwait(false);
                 continue;
             }
@@ -302,7 +307,13 @@ public sealed class PlanEmailService : IPlanEmailNotifier
         var queued = 0;
         foreach (var snapshot in shops)
         {
-            if (!MaySendPlanEmails(snapshot) || !PlanCatalog.Resolve(snapshot).Entitlements.MonthlySummaryEmail)
+            // Read-only: leave watermark so a renewal this month still gets the summary.
+            if (!MaySendPlanEmails(snapshot))
+            {
+                continue;
+            }
+
+            if (!PlanCatalog.Resolve(snapshot).Entitlements.MonthlySummaryEmail)
             {
                 await MarkMonthlyAsync(snapshot.Id, period.Value, cancellationToken).ConfigureAwait(false);
                 continue;
@@ -357,7 +368,13 @@ public sealed class PlanEmailService : IPlanEmailNotifier
         var queued = 0;
         foreach (var snapshot in shops)
         {
-            if (!MaySendPlanEmails(snapshot) || !PlanCatalog.Resolve(snapshot).Entitlements.WeeklySummaryEmail)
+            // Read-only: leave watermark so a renewal this week still gets the summary.
+            if (!MaySendPlanEmails(snapshot))
+            {
+                continue;
+            }
+
+            if (!PlanCatalog.Resolve(snapshot).Entitlements.WeeklySummaryEmail)
             {
                 await MarkWeeklyAsync(snapshot.Id, period.Value, cancellationToken).ConfigureAwait(false);
                 continue;
