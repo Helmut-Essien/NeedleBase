@@ -1594,3 +1594,48 @@ Further Ralph loops on this unpushed range will keep seeing P4 unless you choose
 
 ### Status
 **COMPLETE WITH NOTES** — gates PASS; G8 stop on P4; no product commit.
+
+---
+
+## Ralph Balanced — unpushed re-review #3 2026-11-26
+
+### Discovery
+- Slice: `origin/PlanNameCatalogue..HEAD` (was ahead 3: 5de3a78, 4b42d6a, 7d3b800); WT clean at start
+- Auth: balanced series continued
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (empty at start; then Index.cshtml(+max) + Index.cshtml.cs + ReportsPageTests)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD (pre-fix)
+out: 7d3b800 / 4b42d6a / 5de3a78
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | sed VM invalid-month; ReportLocalService | none new | P3 month fix still present |
+| 2 Edge | PASS | Index.cshtml month input | **Fixed** P3 Low: add `max=@Model.LatestMonthKey` | — |
+| 3 Security | PASS | name-only Reports* in unpushed | none | authz unchanged |
+| 4 Senior | PASS | ReportLocalService lines | P4 full-table **G8 carried** (not re-opened for fix) | class B N/A |
+| 5 UI/UX | PASS | aria counts; max on picker | Fixed picker upper bound | — |
+
+### Gate state table
+| gate | state | tail |
+|------|-------|------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 350 / 214 / 366 / 352 |
+| Perf | N/A | class B; bench 0 |
+
+### Findings
+**Fixed:** `Index.cshtml` month `max` + `IndexModel.LatestMonthKey` (Accra this month); render test asserts max.
+**Dismissed:** prior reports authz/math.
+**Open:** P4 phone full-table load (G8 — accept unless operator authorizes optimize).
+**Out-of-scope:** email residuals.
+
+### Teardown
+No `.cursor/ralph/`.
+
+### Status
+**COMPLETE WITH NOTES** — P3 max fixed; P4 residual; gates PASS.

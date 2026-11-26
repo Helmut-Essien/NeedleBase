@@ -41,7 +41,7 @@
         }
         <form method="get" class="d-flex gap-2 ms-md-auto" role="search">
             <label class="visually-hidden" for="month">Month</label>
-            <input class="form-control form-control-sm" type="month" id="month" name="month" value="@r.Month" min="@ReportRules.Key(ReportRules.EarliestMonth)" />
+            <input class="form-control form-control-sm" type="month" id="month" name="month" value="@r.Month" min="@ReportRules.Key(ReportRules.EarliestMonth)" max="@Model.LatestMonthKey" />
             <button class="btn btn-sm nb-btn-outline" type="submit">Show</button>
         </form>
     </nav>

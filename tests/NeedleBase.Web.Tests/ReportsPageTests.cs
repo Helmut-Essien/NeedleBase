@@ -107,6 +107,9 @@ public class ReportsRenderTests : IClassFixture<RenderTests.WebFactory>
         Assert.Contains("nb-report-bar", html);
         Assert.DoesNotContain("style=\"", html);
         Assert.DoesNotContain("Later", html); // current month: nothing after it
+        Assert.Contains(
+            $"max=\"{ReportRules.Key(ReportRules.FirstOfMonth(NeedleBase.Application.Common.BusinessTime.Today(DateTimeOffset.UtcNow)))}\"",
+            html);
     }
 
     [Fact]

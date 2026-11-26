@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Reports;
 using NeedleBase.Application.Reports;
 using NeedleBase.Web.Services;
@@ -24,6 +25,10 @@ public class IndexModel : AppPageModel
 
     /// <summary>The shop's plan doesn't include reports (Starter, trial, unknown plan).</summary>
     public bool NeedsUpgrade { get; private set; }
+
+    /// <summary>Latest Accra month the picker may offer (this month); matches Api <c>REPORT_MONTH_INVALID</c> upper bound.</summary>
+    public string LatestMonthKey { get; } =
+        ReportRules.Key(ReportRules.FirstOfMonth(BusinessTime.Today(DateTimeOffset.UtcNow)));
 
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
