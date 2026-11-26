@@ -79,6 +79,9 @@
             <Label Text="{Binding DueDateText}"
                    FontSize="14"
                    TextColor="{StaticResource Gray600}" />
+            <Label Text="{Binding AssigneeText}"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray600}" />
             <Label Text="{Binding TotalText}"
                    FontSize="18"
                    FontAttributes="Bold"

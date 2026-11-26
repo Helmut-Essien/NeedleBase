@@ -1875,3 +1875,49 @@ No product changes this iteration. Further loops on the same unpushed range with
 
 ### Status
 **COMPLETE** — mandatory gates PASS; no blocking or in-slice open findings; no product commit.
+
+---
+
+## Ralph Balanced — G14 order assignment 2026-11-26
+
+### Discovery
+- Branch: `PlanNameCatalogue` @ `94bb251` (synced with origin); WT = G14 assign (28 paths)
+- Auth: this prompt (`commit: authorized`)
+- Bench: 0 → perf N/A (class B order update)
+
+### Snapshot
+```
+cmd: git status --porcelain | wc -l
+out: 28
+cmd: git diff --stat (tracked)
+out: 23 files changed, 363 insertions(+), 25 deletions(-) (+ untracked assign tests/StaffDirectory)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | read UpdateAssigneeAsync; OrderEditor.Apply | **Fixed P1/P2**: header pre-read outside lock could clobber concurrent notes/due (`OrderService.cs` UpdateAssigneeLockedAsync) | assignee reuses edit rules |
+| 2 Edge | PASS | Api Assign tests; former member option; Free hides CanAssign | none open | unassign null; stale 409 |
+| 3 Security | PASS | RequireStaff + CanEdit; write guard (no AllowWhenReadOnly); staff cache cleared on logout | none | cross-shop 404; inactive ASSIGNEE_INVALID |
+| 4 Senior | PASS | no schema; PATCH /assignee; tests Api/App/Web/Mobile | none | class B N/A |
+| 5 UI/UX | PASS | web assign label/aria; mobile CanAssign picker | none | former-member option |
+
+### Gate state table
+| gate | state | tail |
+|------|-------|------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 356 / 225 / 384 / 357; Assign filter Passed 12 |
+| Perf | N/A | class B; bench 0 |
+
+### Findings
+**Fixed:** `OrderService.UpdateAssigneeAsync` — read due/fitting/notes under row lock (`UpdateAssigneeLockedAsync`) so assign cannot overwrite a concurrent header edit without BaseModifiedUtc.
+**Dismissed:** role/tenancy/stale/email covered by `StaffApiTests.Assign`.
+**Open:** none blocking.
+**Out-of-scope:** G15.
+
+### Teardown
+No `.cursor/ralph/`.
+
+### Status
+**COMPLETE WITH NOTES** — gates PASS; lock fix shipped with G14.

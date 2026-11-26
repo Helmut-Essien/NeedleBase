@@ -97,11 +97,46 @@
                         <button type="submit" class="btn nb-btn-primary w-100" data-pending-text="Saving…">Save status</button>
                     </form>
                 }
-                else
+                else if (NeedleBase.Domain.Enums.OrderStatus.IsTerminal(o.Status))
                 {
                     <p class="mb-0">This order is @NeedleBase.Domain.Enums.OrderStatus.DisplayName(o.Status).ToLowerInvariant(), so its status can't change.</p>
                 }
+                else
+                {
+                    <p class="mb-0">This order is assigned to someone else. Only they, the owner or a manager can change its status.</p>
+                }
             </section>
+
+            @if (Model.CanEdit)
+            {
+                <section class="nb-card" aria-labelledby="assign-heading">
+                    <h2 id="assign-heading" class="nb-section-title">Assigned to</h2>
+                    <form method="post" asp-page-handler="Assign" asp-route-id="@o.Id" novalidate>
+                        <input type="hidden" asp-for="BaseModified" id="AssignBaseModified" />
+                        @if (!string.IsNullOrWhiteSpace(Model.AssignError))
+                        {
+                            <div class="alert alert-danger" role="alert" id="assign-error">@Model.AssignError</div>
+                        }
+                        <label for="NewAssignee" class="form-label">Who is working on this order?</label>
+                        <select id="NewAssignee" name="NewAssignee" class="form-select mb-3" aria-describedby="@(string.IsNullOrWhiteSpace(Model.AssignError) ? null : "assign-error")">
+                            <option value="" selected="@(string.IsNullOrEmpty(o.AssignedToUserId))">Not assigned</option>
+                            @foreach (var s in Model.Staff)
+                            {
+                                <option value="@s.UserId" selected="@(s.UserId == o.AssignedToUserId)">@s.Name (@s.Role)</option>
+                            }
+                            @if (Model.AssigneeIsFormer)
+                            {
+                                <option value="@o.AssignedToUserId" selected>@(Model.AssigneeName ?? "Former team member")</option>
+                            }
+                        </select>
+                        <button type="submit" class="btn nb-btn-primary w-100" data-pending-text="Saving…">Save</button>
+                    </form>
+                </section>
+            }
+            else if (!string.IsNullOrWhiteSpace(Model.AssignError))
+            {
+                <div class="alert alert-danger" role="alert">@Model.AssignError</div>
+            }
 
             <section class="nb-card" aria-labelledby="wa-heading">
                 <h2 id="wa-heading" class="nb-section-title">WhatsApp</h2>

@@ -79,14 +79,16 @@ public partial class EditOrderViewModel : BaseViewModel, IQueryAttributable
     private static readonly CultureInfo Ghana = CultureInfo.GetCultureInfo("en-GH");
     private readonly IOrderLocalService _orders;
     private readonly IAuthService _auth;
+    private readonly NeedleBase.Mobile.Services.IStaffDirectory? _staff;
     private OrderDetailDto? _order;
     private bool _loadedOnce;
     private bool _suspendTotal;
 
-    public EditOrderViewModel(IOrderLocalService orders, IAuthService auth)
+    public EditOrderViewModel(IOrderLocalService orders, IAuthService auth, NeedleBase.Mobile.Services.IStaffDirectory? staff = null)
     {
         _orders = orders;
         _auth = auth;
+        _staff = staff;
         Title = "Edit order";
         foreach (var template in Domain.Enums.GarmentTemplate.All)
         {
@@ -100,6 +102,13 @@ public partial class EditOrderViewModel : BaseViewModel, IQueryAttributable
     public string OrderId { get; private set; } = string.Empty;
     public ObservableCollection<EditOrderLineRow> Lines { get; } = new();
     public ObservableCollection<TemplateChoice> TemplateChoices { get; } = new();
+
+    /// <summary>"Not assigned" plus the shop's active team (code-gaps G14).</summary>
+    public ObservableCollection<AssigneeOption> AssigneeOptions { get; } = new();
+
+    /// <summary>Owner/Manager in a shop with a team (hidden in Free mode, which has no team).</summary>
+    [ObservableProperty] private bool canAssign;
+    [ObservableProperty] private AssigneeOption? selectedAssignee;
 
     [ObservableProperty] private string heading = "Edit order";
     [ObservableProperty] private bool isEditable;
@@ -192,6 +201,7 @@ public partial class EditOrderViewModel : BaseViewModel, IQueryAttributable
             }
 
             Apply(detail);
+            await LoadAssigneesAsync(businessId, detail.AssignedToUserId);
         }
         catch (Exception)
         {
@@ -202,6 +212,54 @@ public partial class EditOrderViewModel : BaseViewModel, IQueryAttributable
         {
             IsBusy = false;
         }
+    }
+
+    /// <summary>Cached team first (works offline), then the latest list when online.</summary>
+    private async Task LoadAssigneesAsync(string businessId, string? current)
+    {
+        if (_staff is null || await _auth.IsFreeModeAsync())
+        {
+            CanAssign = false;
+            return;
+        }
+
+        CanAssign = true;
+        FillAssignees(await _staff.GetCachedAsync(businessId), current);
+        AssigneeRefresh = RefreshAssigneesAsync(businessId, current); // not awaited: a slow network never holds up the form
+    }
+
+    /// <summary>Tests: the background team refresh started by the last load.</summary>
+    public Task AssigneeRefresh { get; private set; } = Task.CompletedTask;
+
+    private async Task RefreshAssigneesAsync(string businessId, string? current)
+    {
+        try
+        {
+            var fresh = await _staff!.RefreshAsync(businessId);
+            FillAssignees(fresh, SelectedAssignee is null ? current : SelectedAssignee.UserId); // keep a choice made meanwhile
+        }
+        catch (Exception)
+        {
+            // keep the cached list
+        }
+    }
+
+    private void FillAssignees(IReadOnlyList<NeedleBase.Application.Contracts.Staff.StaffNameDto> staff, string? selected)
+    {
+        AssigneeOptions.Clear();
+        AssigneeOptions.Add(AssigneeOption.None);
+        foreach (var member in staff)
+        {
+            AssigneeOptions.Add(new AssigneeOption(member.UserId, $"{member.Name} ({member.Role})"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(selected) && AssigneeOptions.All(o => o.UserId != selected))
+        {
+            // Not in the team list (left the shop, or the list isn't on this device yet): keep it, don't silently unassign.
+            AssigneeOptions.Add(new AssigneeOption(selected, staff.Count == 0 ? "Current person" : "Former team member"));
+        }
+
+        SelectedAssignee = AssigneeOptions.FirstOrDefault(o => o.UserId == (string.IsNullOrWhiteSpace(selected) ? null : selected));
     }
 
     private void Apply(OrderDetailDto detail)
@@ -381,7 +439,7 @@ public partial class EditOrderViewModel : BaseViewModel, IQueryAttributable
             BaseModifiedUtc = _order.DateModifiedUtc,
             DueDate = HasDueDate ? DateOnly.FromDateTime(DueDate) : null,
             FittingDate = _order.FittingDate,
-            AssignedToUserId = _order.AssignedToUserId,
+            AssignedToUserId = CanAssign && SelectedAssignee is not null ? SelectedAssignee.UserId : _order.AssignedToUserId,
             Notes = string.IsNullOrWhiteSpace(Notes) ? null : Notes.Trim(),
             Lines = lines
         };
@@ -472,4 +530,10 @@ public partial class EditOrderViewModel : BaseViewModel, IQueryAttributable
     /// <summary>Same cedi input rules as Record payment: "1,250.50", "GH₵ 150", "10,50" (= 10.50); "1.000" and minus refused.</summary>
     public static decimal? ParseMoney(string? text) =>
         RecordPaymentViewModel.TryParseAmount(text, out var value) ? value : null;
+}
+
+/// <summary>One choice in the "Assigned to" picker; <see cref="UserId"/> null means not assigned.</summary>
+public sealed record AssigneeOption(string? UserId, string Label)
+{
+    public static readonly AssigneeOption None = new(null, "Not assigned");
 }

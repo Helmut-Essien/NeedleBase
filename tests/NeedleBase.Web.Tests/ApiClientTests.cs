@@ -97,6 +97,17 @@ public class ApiClientTests
     }
 
     [Fact]
+    public async Task Assignee_patch_hits_assignee_route_and_sends_null_to_unassign()
+    {
+        var (api, handler, _) = Make(_ => Json(HttpStatusCode.OK, "null"));
+        await api.UpdateOrderAssigneeAsync("o1", new UpdateOrderAssigneeRequest { AssignedToUserId = null });
+
+        Assert.Equal(HttpMethod.Patch, handler.Requests.Single().Method);
+        Assert.EndsWith("api/orders/o1/assignee", handler.Requests.Single().RequestUri!.AbsoluteUri);
+        Assert.Contains("\"assignedToUserId\":null", handler.Bodies.Single());
+    }
+
+    [Fact]
     public async Task Validation_problem_uses_first_field_message()
     {
         var (api, _, _) = Make(_ => Json(HttpStatusCode.BadRequest, """{"status":400,"title":"One or more validation errors occurred.","errors":{"Status":["Status is not valid."]}}"""));

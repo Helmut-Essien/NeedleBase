@@ -29,6 +29,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
 {
     private readonly IOrderLocalService _orders;
     private readonly IAuthService _auth;
+    private readonly IStaffDirectory? _staff;
     private readonly IPaymentLocalService? _payments;
     private bool _loadedOnce;
     private LiveListRefresh? _live;
@@ -36,8 +37,10 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     private readonly IWhatsAppOpenedApi? _whatsApp;
     private string _orderRef = string.Empty;
 
-    public OrderDetailViewModel(IOrderLocalService orders, IAuthService auth, IPaymentLocalService? payments = null, IWhatsAppOpenedApi? whatsApp = null)
+    public OrderDetailViewModel(IOrderLocalService orders, IAuthService auth, IPaymentLocalService? payments = null, IWhatsAppOpenedApi? whatsApp = null,
+        IStaffDirectory? staff = null)
     {
+        _staff = staff;
         _whatsApp = whatsApp;
         _orders = orders;
         _auth = auth;
@@ -191,6 +194,12 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     [ObservableProperty] private string totalText = string.Empty;
     [ObservableProperty] private string notes = string.Empty;
     [ObservableProperty] private bool hasNotes;
+
+    /// <summary>"Assigned to Kofi Asante" / "Not assigned" (everyone sees it; Owner/Manager change it in Edit). G14.</summary>
+    [ObservableProperty] private string assigneeText = "Not assigned";
+
+    /// <summary>Tests: the background team refresh started by the last load.</summary>
+    public Task AssigneeRefresh { get; private set; } = Task.CompletedTask;
     [ObservableProperty] private bool isOverdue;
     [ObservableProperty] private bool showStatusPicker;
     [ObservableProperty] private OrderStatusOption? selectedStatusOption;
@@ -263,6 +272,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
 
             ApplyDetail(detail);
             var user = await _auth.GetCachedUserAsync();
+            await ShowAssigneeAsync(businessId, detail.AssignedToUserId, user?.UserId);
             CanEdit = NeedleBase.Application.Orders.OrderEditor.CanEdit(user?.Role) && !OrderStatus.IsTerminal(detail.Status);
             MayChangeStatus = NeedleBase.Application.Orders.OrderEditor.CanChangeStatus(user?.Role, user?.UserId, detail.AssignedToUserId);
             if (!MayChangeStatus)
@@ -281,6 +291,51 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
         {
             IsBusy = false;
         }
+    }
+
+    private async Task ShowAssigneeAsync(string businessId, string? assignee, string? me)
+    {
+        if (string.IsNullOrWhiteSpace(assignee))
+        {
+            AssigneeText = "Not assigned";
+            return;
+        }
+
+        if (assignee == me)
+        {
+            AssigneeText = "Assigned to you";
+            return;
+        }
+
+        AssigneeText = AssigneeLabel(_staff is null ? null : await _staff.GetCachedAsync(businessId), assignee);
+        if (_staff is not null)
+        {
+            AssigneeRefresh = RefreshAssigneeAsync(businessId, assignee); // not awaited: offline never holds up the screen
+        }
+    }
+
+    private async Task RefreshAssigneeAsync(string businessId, string assignee)
+    {
+        try
+        {
+            var fresh = await _staff!.RefreshAsync(businessId);
+            AssigneeText = AssigneeLabel(fresh, assignee);
+        }
+        catch (Exception)
+        {
+            // keep the cached name
+        }
+    }
+
+    private static string AssigneeLabel(IReadOnlyList<NeedleBase.Application.Contracts.Staff.StaffNameDto>? staff, string assignee)
+    {
+        if (staff is null || staff.Count == 0)
+        {
+            return "Assigned to a team member";
+        }
+
+        var name = staff.FirstOrDefault(s => s.UserId == assignee)?.Name;
+        return name is null ? "Assigned to a former team member" : $"Assigned to {name}";
     }
 
     private void ApplyDetail(OrderDetailDto detail)
@@ -406,6 +461,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
         TotalText = string.Empty;
         Notes = string.Empty;
         HasNotes = false;
+        AssigneeText = "Not assigned";
         IsOverdue = false;
         Lines.Clear();
         OnPropertyChanged(nameof(HasLines));

@@ -123,10 +123,13 @@ public static class MauiProgram
         builder.Services.AddTransient<CreateOrderViewModel>();
         builder.Services.AddTransient<OrderDetailViewModel>(sp => new OrderDetailViewModel(
             sp.GetRequiredService<NeedleBase.Mobile.Data.Services.IOrderLocalService>(), sp.GetRequiredService<IAuthService>(),
-            sp.GetService<NeedleBase.Mobile.Data.Services.IPaymentLocalService>(), sp.GetService<IWhatsAppOpenedApi>()));
+            sp.GetService<NeedleBase.Mobile.Data.Services.IPaymentLocalService>(), sp.GetService<IWhatsAppOpenedApi>(),
+            sp.GetService<IStaffDirectory>()));
         builder.Services.AddSingleton<PaymentsViewModel>();
         builder.Services.AddTransient<RecordPaymentViewModel>();
-        builder.Services.AddTransient<EditOrderViewModel>();
+        builder.Services.AddTransient<EditOrderViewModel>(sp => new EditOrderViewModel(
+            sp.GetRequiredService<NeedleBase.Mobile.Data.Services.IOrderLocalService>(), sp.GetRequiredService<IAuthService>(),
+            sp.GetService<IStaffDirectory>()));
         builder.Services.AddTransient<PaymentReceiptViewModel>();
 
         builder.Services.AddTransient<LoginPage>();
@@ -150,6 +153,8 @@ public static class MauiProgram
         builder.Services.AddSingleton<MorePage>();
         builder.Services.AddSingleton<StaffApi>();
         builder.Services.AddSingleton<IStaffApi>(sp => sp.GetRequiredService<StaffApi>());
+        builder.Services.AddSingleton<IStaffNamesApi>(sp => sp.GetRequiredService<StaffApi>());
+        builder.Services.AddSingleton<IStaffDirectory, StaffDirectory>();
         builder.Services.AddSingleton<IWhatsAppOpenedApi>(sp => sp.GetRequiredService<StaffApi>());
         builder.Services.AddSingleton<IWhatsAppAdminApi>(sp => sp.GetRequiredService<StaffApi>());
         builder.Services.AddSingleton<NeedleBase.Mobile.Data.Services.IWhatsAppConsentApi>(sp => sp.GetRequiredService<StaffApi>());

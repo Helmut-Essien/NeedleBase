@@ -236,6 +236,16 @@ public static class OrderListSort
     public const string OpenFilter = "open";
 }
 
+/// <summary>Owner/Manager: assign an order to an active team member, or unassign it (null/blank). Code-gaps G14.</summary>
+public sealed class UpdateOrderAssigneeRequest
+{
+    /// <summary>Optional optimistic concurrency: the DateModifiedUtc the client last saw. Stale → 409 STALE_UPDATE.</summary>
+    public DateTimeOffset? BaseModifiedUtc { get; set; }
+
+    [MaxLength(FieldLimits.AssignedToUserId)]
+    public string? AssignedToUserId { get; set; }
+}
+
 public sealed class UpdateOrderStatusRequest
 {
     /// <summary>Optional optimistic concurrency: the DateModifiedUtc the client last saw. Stale → 409 STALE_UPDATE.</summary>

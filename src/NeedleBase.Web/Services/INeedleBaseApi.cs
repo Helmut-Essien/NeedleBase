@@ -22,6 +22,7 @@ public interface INeedleBaseApi
 
     Task<ApiResult<OrderDetailDto>> UpdateOrderAsync(string id, UpdateOrderRequest request, CancellationToken cancellationToken = default);
 
+    Task<ApiResult<OrderDetailDto>> UpdateOrderAssigneeAsync(string id, UpdateOrderAssigneeRequest request, CancellationToken cancellationToken = default);
     Task<ApiResult<OrderDetailDto>> UpdateOrderStatusAsync(string id, UpdateOrderStatusRequest request, CancellationToken cancellationToken = default);
 
     Task<ApiResult<OrderPaymentsDto>> GetOrderPaymentsAsync(string orderId, CancellationToken cancellationToken = default);

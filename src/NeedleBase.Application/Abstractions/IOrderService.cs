@@ -37,6 +37,12 @@ public interface IOrderService
         UpdateOrderRequest request,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Owner/Manager: change only the assignee (same rules, audit and email as <see cref="UpdateAsync"/>).</summary>
+    Task<OrderResult> UpdateAssigneeAsync(
+        string id,
+        UpdateOrderAssigneeRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<OrderResult> UpdateStatusAsync(
         string id,
         UpdateOrderStatusRequest request,

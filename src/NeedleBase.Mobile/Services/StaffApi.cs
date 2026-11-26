@@ -41,8 +41,11 @@ public interface IWhatsAppAdminApi
     Task<StaffCallResult<WhatsAppMessagePageDto>> GetMessagesAsync(int page, CancellationToken cancellationToken = default);
 }
 
-public sealed class StaffApi : IStaffApi, IWhatsAppOpenedApi, IWhatsAppAdminApi, IWhatsAppConsentApi, ICustomerEmailConsentApi
+public sealed class StaffApi : IStaffApi, IStaffNamesApi, IWhatsAppOpenedApi, IWhatsAppAdminApi, IWhatsAppConsentApi, ICustomerEmailConsentApi
 {
+    public Task<StaffCallResult<IReadOnlyList<StaffNameDto>>> GetNamesAsync(CancellationToken cancellationToken = default) =>
+        SendAsync<IReadOnlyList<StaffNameDto>>(HttpMethod.Get, "api/staff/names", null, cancellationToken);
+
     public Task<StaffCallResult<WhatsAppSettingsDto>> GetSettingsAsync(CancellationToken cancellationToken = default) =>
         SendAsync<WhatsAppSettingsDto>(HttpMethod.Get, "api/whatsapp/settings", null, cancellationToken);
 

@@ -50,6 +50,18 @@
                             HeightRequest="48"
                             SemanticProperties.Description="Due date" />
 
+                <VerticalStackLayout Spacing="6" IsVisible="{Binding CanAssign}">
+                    <Label Text="Assigned to" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
+                    <Picker ItemsSource="{Binding AssigneeOptions}"
+                            ItemDisplayBinding="{Binding Label, x:DataType=vm:AssigneeOption}"
+                            SelectedItem="{Binding SelectedAssignee}"
+                            Title="Who is working on this order?"
+                            TextColor="{StaticResource Charcoal}"
+                            BackgroundColor="White"
+                            HeightRequest="48"
+                            SemanticProperties.Description="Who is working on this order" />
+                </VerticalStackLayout>
+
                 <Label Text="Order notes (optional)" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource Charcoal}" />
                 <Editor Text="{Binding Notes}"
                         Placeholder="e.g. Add lining, customer prefers loose fit"

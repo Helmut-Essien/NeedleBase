@@ -924,6 +924,7 @@ public sealed class AuthService : IAuthService
         _secureStorage.Remove(BusinessPhoneKey);
         _secureStorage.Remove(UserIdKey);
         _secureStorage.Remove(EmailKey);
+        _secureStorage.Remove(StaffDirectory.StorageKey); // team names belong to the signed-out shop
         _secureStorage.Remove(FirstNameKey);
         _secureStorage.Remove(SurnameKey);
         _secureStorage.Remove(RoleKey);

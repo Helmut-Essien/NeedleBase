@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using NeedleBase.Application.Contracts.Errors;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
+using NeedleBase.Application.Contracts.Staff;
 using NeedleBase.Application.Contracts.WhatsApp;
 using NeedleBase.Application.WhatsApp;
 using NeedleBase.Domain.Enums;
@@ -43,6 +44,17 @@ public class DetailsModel : AppPageModel
     public string? StatusError { get; private set; }
 
     [TempData] public string? Flash { get; set; }
+
+    /// <summary>Owner/Manager: the team member to assign ("" = not assigned). Code-gaps G14.</summary>
+    [BindProperty, MaxLength(450)] public string? NewAssignee { get; set; }
+
+    public string? AssignError { get; private set; }
+
+    /// <summary>Active team members for the assign picker (empty when the staff list didn't load).</summary>
+    public IReadOnlyList<StaffNameDto> Staff { get; private set; } = Array.Empty<StaffNameDto>();
+
+    /// <summary>The current assignee is no longer an active member: keep them as an option so the picker isn't wrong.</summary>
+    public bool AssigneeIsFormer => Order?.AssignedToUserId is { Length: > 0 } id && Staff.All(s => s.UserId != id);
 
     public IEnumerable<string> StatusChoices => OrderStatus.All.Where(s => s != Order?.Status);
 
@@ -85,6 +97,58 @@ public class DetailsModel : AppPageModel
         }
 
         StatusError = StatusErrorFor(result);
+        return reload ?? Page();
+    }
+
+    /// <summary>Owner/Manager: assign or unassign (the Api checks role, team membership and the read-only guard).</summary>
+    public async Task<IActionResult> OnPostAssignAsync(CancellationToken cancellationToken)
+    {
+        // NewStatus is [Required] for the status form; only this form's field matters here.
+        if (!User.CanEditOrders() || NewAssignee is { Length: > 450 })
+        {
+            ModelState.Clear();
+            var denied = await LoadAsync(cancellationToken);
+            AssignError = User.CanEditOrders() ? "Pick someone from the list." : "Only the owner or a manager can assign orders.";
+            return denied ?? Page();
+        }
+
+        DateTimeOffset? baseModified = DateTimeOffset.TryParse(BaseModified, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed)
+            ? parsed
+            : null;
+        var assignee = string.IsNullOrWhiteSpace(NewAssignee) ? null : NewAssignee.Trim();
+        var result = await _api.UpdateOrderAssigneeAsync(Id, new UpdateOrderAssigneeRequest { AssignedToUserId = assignee, BaseModifiedUtc = baseModified }, cancellationToken);
+        if (result.IsSuccess)
+        {
+            if (assignee is null)
+            {
+                Flash = "This order is not assigned to anyone now.";
+            }
+            else
+            {
+                var names = await _api.GetStaffNamesAsync(cancellationToken);
+                var name = names.IsSuccess ? names.Value!.FirstOrDefault(s => s.UserId == assignee)?.Name : null;
+                Flash = name is null ? "Order assigned." : $"Order assigned to {name}.";
+            }
+
+            return RedirectToPage(new { id = Id }); // PRG
+        }
+
+        if (result.Status == System.Net.HttpStatusCode.Unauthorized)
+        {
+            return Fail(result)!;
+        }
+
+        ModelState.Clear();
+        var reload = await LoadAsync(cancellationToken);
+        if (result.Code == StaleUpdate.Code && Order?.AssignedToUserId == assignee)
+        {
+            StatusMessage = "Assignment saved."; // double submit: already assigned as asked
+            return reload ?? Page();
+        }
+
+        AssignError = result.Code == StaleUpdate.Code
+            ? "Someone changed this order while you were looking at it. The latest version is shown below. Pick the person again if you still need to."
+            : StatusErrorFor(result);
         return reload ?? Page();
     }
 
@@ -258,6 +322,12 @@ public class DetailsModel : AppPageModel
         }
 
         var staff = await staffTask;
+        if (staff.IsSuccess)
+        {
+            Staff = staff.Value!;
+        }
+
+        NewAssignee = Order.AssignedToUserId ?? string.Empty;
         if (Order.AssignedToUserId is { Length: > 0 } assignee)
         {
             AssigneeName = staff.IsSuccess

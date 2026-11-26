@@ -258,8 +258,9 @@ public partial class OrderEditMobileTests
         public Task<SyncPullResponse> PullAsync(SyncPullRequest request, CancellationToken cancellationToken) => Task.FromResult(page);
     }
 
-    private sealed class Auth(string role) : IAuthService
+    private sealed class Auth(string role, bool free = false, string userId = "u1") : IAuthService
     {
+        public Task<bool> IsFreeModeAsync() => Task.FromResult(free);
         public Task<AuthUserDto?> RegisterBusinessAsync(RegisterBusinessRequest request, CancellationToken cancellationToken = default) => Task.FromResult<AuthUserDto?>(null);
         public Task<AuthUserDto?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default) => Task.FromResult<AuthUserDto?>(null);
         public Task<TokenRefreshResult> RefreshAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -270,6 +271,6 @@ public partial class OrderEditMobileTests
         public Task StoreTokensAsync(TokenResponse tokens) => Task.CompletedTask;
         public Task StoreSessionAsync(AuthUserDto user) => Task.CompletedTask;
         public Task<string?> GetBusinessIdAsync() => Task.FromResult<string?>(Biz);
-        public Task<AuthUserDto?> GetCachedUserAsync() => Task.FromResult<AuthUserDto?>(new("u1", "owner@ama-stitches.test", "Ama", "Owusu", Biz, "Ama Stitches", role));
+        public Task<AuthUserDto?> GetCachedUserAsync() => Task.FromResult<AuthUserDto?>(new(userId, "owner@ama-stitches.test", "Ama", "Owusu", Biz, "Ama Stitches", role));
     }
 }

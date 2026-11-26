@@ -74,6 +74,22 @@ public sealed class OrdersController : ControllerBase
         return result.IsSuccess ? Ok(result.Order) : ApiProblems.ForOrder(HttpContext, result.Error);
     }
 
+    /// <summary>Owner/Manager: assign to an active team member, or unassign with a null/blank id (code-gaps G14).</summary>
+    [HttpPatch("{id}/assignee")]
+    [ProducesResponseType(typeof(OrderDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<OrderDetailDto>> UpdateAssignee(
+        string id,
+        [FromBody] UpdateOrderAssigneeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _orders.UpdateAssigneeAsync(id, request, cancellationToken);
+        return result.IsSuccess ? Ok(result.Order) : ApiProblems.ForOrder(HttpContext, result.Error);
+    }
+
     [HttpPatch("{id}/status")]
     [ProducesResponseType(typeof(OrderDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

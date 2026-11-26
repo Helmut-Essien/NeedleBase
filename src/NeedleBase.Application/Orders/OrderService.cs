@@ -308,6 +308,72 @@ public sealed class OrderService : IOrderService
         return updated;
     }
 
+    /// <summary>
+    /// Assign/unassign only (code-gaps G14). Same role, terminal, stale, active-member, audit and assignment-email
+    /// rules as <see cref="UpdateAsync"/>. Header fields are read under the order row lock so a concurrent notes/due
+    /// edit is not overwritten by a stale pre-read.
+    /// </summary>
+    public async Task<OrderResult> UpdateAssigneeAsync(
+        string id,
+        UpdateOrderAssigneeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureBusiness();
+        if (!OrderEditor.CanEdit(_currentUser.Role))
+        {
+            return OrderResult.Fail(OrderError.Forbidden);
+        }
+
+        if (_db.HasActiveTransaction)
+        {
+            return await UpdateAssigneeLockedAsync(id, request, cancellationToken).ConfigureAwait(false);
+        }
+
+        var updated = await _db.InTransactionAsync(async ct =>
+        {
+            var r = await UpdateAssigneeLockedAsync(id, request, ct).ConfigureAwait(false);
+            return (r, r.Error == OrderError.None);
+        }, cancellationToken).ConfigureAwait(false);
+        if (updated.Error == OrderError.None)
+        {
+            await _assignmentEmails.FlushAsync(_planEmails, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            _assignmentEmails.Clear();
+        }
+
+        return updated;
+    }
+
+    /// <summary>Lock the row, then apply assignee with the locked header (due/fitting/notes).</summary>
+    private async Task<OrderResult> UpdateAssigneeLockedAsync(
+        string id,
+        UpdateOrderAssigneeRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _db.LockOrderAsync(id, cancellationToken).ConfigureAwait(false);
+        var current = await _db.Orders.AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => new { o.DueDate, o.FittingDate, o.Notes })
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+        if (current is null)
+        {
+            return OrderResult.Fail(OrderError.NotFound);
+        }
+
+        // UpdateLockedAsync locks again in this same transaction (safe) and reloads the tracked entity.
+        return await UpdateLockedAsync(id, new UpdateOrderRequest
+        {
+            BaseModifiedUtc = request.BaseModifiedUtc,
+            DueDate = current.DueDate,
+            FittingDate = current.FittingDate,
+            Notes = current.Notes,
+            AssignedToUserId = string.IsNullOrWhiteSpace(request.AssignedToUserId) ? null : request.AssignedToUserId.Trim(),
+            Lines = null
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
     private async Task<OrderResult> UpdateLockedAsync(string id, UpdateOrderRequest request, CancellationToken cancellationToken)
     {
         await _db.LockOrderAsync(id, cancellationToken).ConfigureAwait(false);
