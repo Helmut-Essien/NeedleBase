@@ -31,8 +31,8 @@ Status and acceptance live in [phases.md](phases.md). The backlog of skill-vs-co
 
 ## Where things are
 
-- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete; device/browser journeys 2–5 still need verification. PlanCatalog, server staff caps, Free, upgrade from Free, export/usage and paid emails (plans steps 1–6) are built. Step 7 Workshop features in progress (PDF receipts, customer email with PDF attachment, and profit/monthly reports done; step 7c photos via Cloudflare R2 next).
-- Code that doesn't meet the skills yet, ranked: [code-gaps.md](code-gaps.md). G1, G2, G4, G5, G6, G10 are done; G3, G7, G8, G9, G11 are deferred ops/scale items.
+- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete. Device/browser run 26 Nov 2026: J2 pass (one device), J3 partial (G14), J4 pass, J5 fail (G13). PlanCatalog, server staff caps, Free, upgrade from Free, export/usage and paid emails (plans steps 1–6) are built. Step 7 Workshop features in progress (PDF receipts, customer email with PDF attachment, and profit/monthly reports done; step 7c photos via Cloudflare R2 next).
+- Code that doesn't meet the skills yet, ranked: [code-gaps.md](code-gaps.md). G1, G2, G4, G5, G6, G10 are done. Open from the 26 Nov journey run: G13 (P1 Tailor crash), G14 (order assign UI), G15 (small fixes). Deferred ops/scale: G3 (code done; GitHub `production` environment + secrets open), G7 done, G8 open, G9 (code done), G11 partly done (real proxy addresses + multi-instance throttle open), G12.
 - Add-entity checklist: [needlebase-domain](../needlebase-domain/SKILL.md#add-entity-checklist-single-source).
 
 ## How to work a slice

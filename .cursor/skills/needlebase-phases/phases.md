@@ -8,10 +8,10 @@ Status and acceptance for each implementation slice. Most slices are built. Conf
 | 1 | Auth + Business tenancy (JWT, refresh, register shop) | Built |
 | 2 | Customers + measurements | Built (code gaps G1, G4, G5 closed 20 Oct 2026: [code-gaps.md](code-gaps.md)) |
 | 3 | Orders + production status (mobile primary) | Built (mobile data syncs via Slice 4) |
-| 4 | Offline sync push/pull + DeletedItem + SyncChip | Code done 20 Oct 2026; Journey 2 not yet verified on devices (two-device sync, airplane mode) |
-| 5 | Payments + balances + receipts (conflict-safe) | Code done 22 Oct 2026; Journey 1 steps 6–7 and Journey 4 not yet verified on a device |
-| 6 | Web dashboard + production board | Code done 22 Oct 2026; Journey 3 (phone change → web) not yet verified with a signed-in phone and browser |
-| 7 | Staff invites + role-limited UI | Code done 26 Oct 2026; Journey 5 not yet verified on a device or in a browser |
+| 4 | Offline sync push/pull + DeletedItem + SyncChip | Code done 20 Oct 2026; Journey 2 **passes on one device** (26 Nov 2026); two-device run open ([G15h](code-gaps.md#g15-smaller-issues-from-the-26-nov-run-p3-batch)) |
+| 5 | Payments + balances + receipts (conflict-safe) | Code done 22 Oct 2026; Journey 4 **passes** on the emulator (26 Nov 2026); Journey 1 steps 6–7 device run and second-device checks open |
+| 6 | Web dashboard + production board | Code done 22 Oct 2026; Journey 3 **partial** (26 Nov 2026): no assign UI, see [G14](code-gaps.md#g14-no-way-to-assign-an-order-to-staff-p2-blocks-journey-3) |
+| 7 | Staff invites + role-limited UI | Code done 26 Oct 2026; Journey 5 **fails** (26 Nov 2026): Tailor crash, see [G13](code-gaps.md#g13-tailor-crash-on-home-payment-quick-action-p1-blocks-journey-5) |
 | 8 | Licensing, WhatsApp and polish | Platform licensing, the read-only lock, WhatsApp (tap-to-send + automatic sending) and pending-sync badges are built and committed. **Plans steps 1–6 built (26 Nov 2026):** PlanCatalog, server staff caps, Free, upgrade from Free, export and usage display, paid emails. **Step 7 in progress:** PDF receipts, customer email and profit/monthly reports done (26 Nov 2026: `/api/reports/monthly`, web `/Reports`, phone More → Monthly reports); photos (step 7c) next via Cloudflare R2 (see [needlebase-plans](../needlebase-plans/SKILL.md)). |
 
 ---
@@ -64,6 +64,7 @@ Status and acceptance for each implementation slice. Most slices are built. Conf
 - Journey 2 fully passes
 
 **Slice 4 status (20 Oct 2026):** all items above built [code] except the device run of Journey 2.
+**Device run 26 Nov 2026 (one Pixel 7 API 35 emulator, local Api):** Journey 2 passes on one device: airplane mode → New order shows "Saved on this device" toast + "Not synced yet" badge; force-stop + reopen keeps the badge and "Offline · 1 to sync"; back online → Synced, server has exactly one copy (also after a second Sync now), Sync details "Everything on this device is synced." Two-device run still open (only one emulator).
 Server: `Api/Controllers/SyncController.cs`, `Application/Sync/*`, `Domain/Entities/DeletedItem.cs`, migration `20261020131925_Sync`.
 Mobile: `Mobile.Data/Data/SyncQueueItem.cs`, `SyncQueueWriter.cs`, `Mobile.Data/Sync/SyncEngine.cs`, migrator v4, `Mobile/Services/SyncService.cs`, `TokenRefreshHandler.cs`, `HttpSyncApi.cs`, Home SyncChip + `SyncDetailsPage`.
 Tests: `Api.Tests/SyncEndpointTests`, `Mobile.Tests/SyncEngineTests`, `LocalSchemaMigratorTests`.
@@ -84,6 +85,7 @@ Deviations (conservative): pull is by opaque cursor (not a raw `LastSync` time);
 - Journey 1 step 6–7 and Journey 4 pass
 
 **Slice 5 status (22 Oct 2026):** built [code] except the device run of the journeys (the phone was signed out).
+**Device run 26 Nov 2026:** Journey 4 passes on the emulator: GH₵200 Cash then GH₵300 MoMo offline on a GH₵800 order → "GH₵ 300.00 left", receipt shows business header, method, totals and "Recorded on this device"; Share PDF receipt opens the Android share sheet with `NeedleBase-receipt-<ref>.pdf`; after sync the Api returns both payments (paid 500) and web order detail shows GH₵ 300.00 left. Second-device and void-race checks still open.
 Server: `Domain/Entities/Payment.cs`, `Domain/Enums/PaymentMethod.cs`, `Application/Payments/*` (`PaymentRules`, `PaymentService`), `Contracts/Payments/PaymentDtos.cs`, `Api/Controllers/PaymentsController.cs`, sync pull phase 4 (`SyncCursor.PhasePayments`, cursor stays v2), migration `20261022084825_Payments` (+ `trg_payments_sync_tx`).
 Mobile: migrator v8 (`Payments`, FK cascade to Orders), `PaymentLocalService`, `PaymentsPage` (tab), `RecordPaymentPage`, `PaymentReceiptPage` (text share), Order detail payments section; SyncEngine payment push/pull/defer/prune/conflicts.
 Tests: `Api.Tests/PaymentApiTests`, `Mobile.Tests/PaymentSyncTests`, `Domain.Tests/PaymentTests`, `Application.Tests/PaymentRulesTests`.
@@ -102,6 +104,7 @@ Device checks still open: record deposit offline → sync → second device sees
 - Journey 3 passes (mobile status/assign → visible on web)
 
 **Slice 6 status (22 Oct 2026):** built [code]; Journey 3 not yet run end to end in a browser with a signed-in phone.
+**Device + browser run 26 Nov 2026:** status → Sewing on the phone shows on the web Dashboard and Production board. Assignment could not be done in the product: no phone or web screen sets an order's assignee (only sync DTO + Staff reassign-orders); it was set in the dev database to continue. Then web shows "Assigned to Kofi Asante"; Tailor board defaults to Assigned to me; Tailor gets 403 `ORDER_NOT_ASSIGNED` and no status control on an order assigned to someone else (web + phone). Journey 3 is partial until an assign control exists (plan: code-gaps G14).
 Api: `GET api/dashboard/summary` (`Application/Dashboard/DashboardService.cs`, `Contracts/Dashboard`), `GET api/staff/names` (active members of the business: user id, name, role; no email/phone; max 500), `GET api/orders` gains `sort=due` (due date, no-date last), `status=open` (not Collected/Cancelled) and `assignedTo=me|<userId>`; `OrderListItemDto.AssignedToUserId`. No migration.
 Web: sidebar shell (`_Layout`, `_NavLinks`; collapses to a top menu below 768px), Dashboard (`Pages/Index`), Production board (`Pages/Production`), Orders list + detail with status change (`Pages/Orders`), Customers list, Payments list (Owner/Manager). Typed client `Services/NeedleBaseApi` + `ApiResult` (ok / ProblemDetails / offline); `AppPageModel` maps 401 → login, 403/other → page message.
 Tests: `Web.Tests` (client, page models, role gating, error mapping, 401 handler, rendered pages against a fake Api), `Api.Tests/DashboardApiTests`.
@@ -120,6 +123,7 @@ Deferred: web create/edit forms (amount/phone/measurement validation will reuse 
 - Journey 5 passes
 
 **Slice 7 status (26 Oct 2026):** built [code]; Journey 5 not yet run on a device (none connected) or in a browser.
+**Device + browser run 26 Nov 2026:** invite on phone (plain role summary) → accept on web → web Staff shows "Accepted · 26 Nov 2026"; second invite accepted on the phone. Tailor nav (web + phone): no Staff, License, Reports, WhatsApp, Export, Payments tab; /Payments, /Staff, /Settings/License, /Reports show owner-only messages. **Bug:** Tailor taps the Home "Payment" quick action → app crashes (`HomeViewModel.RecordPaymentAsync` → `//main/PaymentsPage`, route missing for Tailors). Journey 5 fails until fixed (plan: code-gaps G13).
 Server: `Domain/Entities/Invitation.cs` (7-day code, Pending/Accepted/Revoked/Expired), `StaffMembership.ChangeRole/Deactivate/Reactivate` (never the Owner), `Infrastructure/Staff/StaffService.cs`, `AuthService` accept-invite (row lock, one use) + change-password, `Api/Controllers/StaffController.cs` (`GET api/staff` Manager/Owner; invite, revoke, role, deactivate, reactivate Owner only), `POST api/auth/invite-preview|accept-invite` (anonymous, throttled per IP) and `change-password` (RequireStaff); migration `20261026084543_Invitations`. Codes in `StaffErrorMessages` (`INVITE_*`, `STAFF_*`, `PASSWORD_*`); `ORDER_NOT_ASSIGNED` (403) when a Tailor moves an order assigned to someone else (REST + sync).
 Web: `Pages/Staff` (Owner manages, Manager views), `Pages/Account/AcceptInvite` (+ link on sign-in), `Pages/Profile/Password` (link next to Sign out); Staff nav for Owner/Manager; Tailor status control only on own/unassigned orders.
 Mobile: `MorePage` (Staff for Owner/Manager, Change password, About), `StaffPage` (online only; share code via the share sheet), `AcceptInvitePage` (from sign-in), `ChangePasswordPage`; Payments tab hidden for Tailors; order status picker hidden on others' orders for Tailors.
@@ -178,7 +182,7 @@ Production readiness, code side (3 Nov 2026, status refreshed 15 Nov 2026): SQLi
 (`docs/deployment.md`); settings list + fail-fast start-up check (`docs/production-config.md`); Android Release AAB with
 env-based signing and release guards (`docs/android-release.md`). Slices 4–7, published legal pages, Platform licensing and account deletion are built.
 Still needed before launch: Play Console listing and a signed production build, a lawyer's review of the legal pages,
-an accountant's advice on VAT, and (if required) Data Protection Commission registration. Device/browser journeys 2–5 are not yet verified. PlanCatalog,
+an accountant's advice on VAT, and (if required) Data Protection Commission registration. Device/browser journeys 2–5 ran 26 Nov 2026 (J2 pass on one device, J3 partial — G14, J4 pass, J5 fail — G13; see code-gaps). PlanCatalog,
 server staff caps, Free phone-only mode and upgrading from Free are built; export/usage and later plan steps are not. Details: code-gaps.md "Production readiness".
 
 CI/CD (3 Nov 2026, G3): GitHub Actions builds/tests only the affected parts with one required "CI result" check;

@@ -122,10 +122,10 @@ Most slices are built. Confirm with the user before starting later work. Accepta
 | **1** Auth + Business | **Built** | Register shop + Owner; login; JWT + refresh; `business_id` / `role` claims; mobile secure token store + session; Web cookie/session + HttpClients; BusinessId global query filters |
 | **2** Customers + measurements | **Built** | Domain + Api CRUD (paginated, Business-scoped); mobile Customers tab + measurement capture; local SQLite save. Web customers arrived in slice 6. |
 | **3** Orders + production | **Built** | Orders/lines; status pipeline; mobile New Order wizard + Orders tab; Api list/detail |
-| **4** Offline sync | **Built** (device journeys not yet verified) | Sync queue, push/pull, `DeletedItem`, SyncChip / Sync details, idempotent ULIDs, token honesty under offline |
-| **5** Payments | **Built** (device journeys not yet verified) | Record deposits/payments, balances, receipts; conflict-safe sync + UI resolution |
-| **6** Web oversight | **Built** (browser journey not yet verified) | Sidebar shell; Dashboard; Production board; Orders via Api HTTP |
-| **7** Staff + roles | **Built** (device journey not yet verified) | Invitations, role policies, role-filtered mobile/web nav, password reset when email is configured |
+| **4** Offline sync | **Built** (J2 pass on one device, 26 Nov 2026) | Sync queue, push/pull, `DeletedItem`, SyncChip / Sync details, idempotent ULIDs, token honesty under offline |
+| **5** Payments | **Built** (J4 pass, 26 Nov 2026) | Record deposits/payments, balances, receipts; conflict-safe sync + UI resolution |
+| **6** Web oversight | **Built** (J3 partial: no assign UI, G14) | Sidebar shell; Dashboard; Production board; Orders via Api HTTP |
+| **7** Staff + roles | **Built** (J5 fail: Tailor crash, G13) | Invitations, role policies, role-filtered mobile/web nav, password reset when email is configured |
 | **8** Licensing and access | **Built** for Platform licence keys, daily recheck, a grace period and the read-only lock. WhatsApp tap-to-send and automatic sending are in code. PlanCatalog, server staff caps, Free, upgrade from Free, export/usage and paid emails (plans steps 1–6) are built. **Step 7 in progress:** PDF receipts, customer email and profit/monthly reports done; photos next via Cloudflare R2. | Licence key attach, plan/staff usage, export (incl. read-only), status banners. Free = phone only with meters; Go online keeps phone records. |
 
 ## Solution layout

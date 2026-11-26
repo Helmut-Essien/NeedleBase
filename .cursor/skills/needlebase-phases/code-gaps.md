@@ -6,7 +6,36 @@ Feature work that isn't built yet is **not** listed here. See [phases.md](phases
 
 ## Open
 
-None right now. The only remaining items are ops work, deferred below.
+Found by the device + browser run of journeys 2–5 on 26 Nov 2026 (Pixel 7 API 35 emulator, local Api/Web, headless Chrome). Fix in this order: G13 → G14 → G15. Re-run the named journey after each and update [phases.md](phases.md).
+
+### G13: Tailor crash on Home "Payment" quick action (P1, blocks Journey 5)
+- **Evidence:** as a Tailor, Home → Payment kills the app: `ArgumentException: unable to figure out route for: //main/PaymentsPage`. `ViewModels/HomeViewModel.cs:295` `GoToAsync("//main/PaymentsPage")`; button at `Views/HomePage.xaml:117-119`. `AppShell.xaml.cs:45-54` hides `PaymentsTab` for Tailors, so the route doesn't exist.
+- **Plan:** (1) `HomeViewModel` exposes `CanManagePayments` from `PaymentRules.CanManage(role)` (same source as `AppShell`); bind the button's `IsVisible` and re-flow the quick-action grid to 3 columns when hidden. (2) Guard `RecordPaymentAsync`: return if `!CanManagePayments`, and wrap Shell navigation so a missing route shows a friendly message, not a crash. (3) Check every other `//main/...` jump (Home cards, Reports, notifications) the same way.
+- **Tests:** `Mobile.Tests` HomeViewModel: Tailor → `CanManagePayments == false` and the command doesn't navigate; Owner/Manager → navigates.
+- **Acceptance:** Journey 5 re-run on the emulator: the Tailor's Home has no Payment action and nothing crashes; Owner unchanged.
+
+### G14: No way to assign an order to staff (P2, blocks Journey 3)
+- **Evidence:** the server supports and validates `Order.AssignedToUserId` (domain `Order.cs:23`, "assignee must be an active member", sync DTO, filters `assignedTo=me|<id>`, Staff `reassign-orders`), but no screen sets it. `EditOrderViewModel.cs:384` only copies the existing value; web `Pages/Orders/Details|Edit` have no picker. The 26 Nov run had to set it in the dev database.
+- **Plan:**
+  1. **Api:** confirm the REST order update (and create) carries `assignedToUserId`, or add `PATCH api/orders/{id}/assignee` `{ assignedToUserId: string|null, baseModifiedUtc }` (RequireManagerOrOwner, order row lock, `STALE_UPDATE` 409, `ASSIGNEE_NOT_ACTIVE` 400). Tailors get 403. Write an audit entry ("Assigned to Kofi Asante" / "Unassigned"). Optional later: email the assignee (paid plans only, off by default); don't block on it.
+  2. **Phone:** "Assigned to" row on Order detail (everyone sees it; Tailors read-only). Owner/Manager get a picker in Edit order (and a quick "Assign" on detail) listing active staff from a cached `api/staff/names` (refreshed on sync; offline uses the cache) plus "Not assigned". Save locally → sync queue (existing order update path) → "Saved on this device". Conflicts use existing `STALE_UPDATE` handling.
+  3. **Web:** same picker on Order detail for Owner/Manager (POST handler with antiforgery + `baseModifiedUtc`); board cards already show "Assigned: …".
+  4. **Tests:** Api (assign, unassign, inactive/other-shop assignee 400, Tailor 403, stale 409), Application rules, Mobile VM (picker visibility by role, offline queue), Web page model + rendered picker by role, sync round-trip of an assignment made offline.
+- **Acceptance:** Journey 3 end to end with no database edits: Owner assigns Kofi on the phone → web board shows "Assigned: Kofi Asante" → Kofi (Tailor) can change status only on his and unassigned orders.
+
+### G15: Smaller issues from the 26 Nov run (P3, batch)
+| # | Issue | Evidence | Plan |
+|---|-------|----------|------|
+| a | US "license key" in prose on the Home/web banner | `Application/Licensing/SubscriptionRules.cs:25` "Add your NeedleBase license key on the License page…" | Prose → "licence key"; keep the page name "License" (standing rules). Update any test asserting the string. |
+| b | Phone shown unspaced on receipt and order detail (`+233245550123`) but spaced in lists | Mobile `PaymentReceiptPage.xaml:39` `BusinessPhone`, `OrderDetailPage.xaml:37` `CustomerPhone`; web `Pages/Orders/Details.cshtml:17` | Format display values with `CustomerSearchKeys.FormatPhone` (Application, shared). Keep E.164 for links/search (`asp-route-search`, WhatsApp). Include the PDF receipt. |
+| c | Due-date picker shows device format (`12/3/2026`) | `CreateOrderPage.xaml:292`, `EditOrderPage.xaml:45` `DatePicker` | Set `Format="dd MMM yyyy"` (content-and-states rule) on every `DatePicker`. |
+| d | About shows "version 0.1.0" | `MorePage.cs:58` already uses `AppInfo.Current.VersionString`; `NeedleBase.Mobile.csproj:29` defaults `NeedleBaseVersion` to `0.1.0` for local builds | Not a code bug in Release builds (CI passes the version). Check the installed 0.1.2 release APK shows 0.1.2; if so, only bump the csproj default with each release (or label local builds "dev"). |
+| e | Icon glyphs (e.g. `\ue7ef`) exposed to accessibility tools on More rows | uiautomator dump of `MorePage` rows built by `Ui.LinkRow` (`MorePage.cs:45-47`) | In `Ui.LinkRow` (and other icon+label helpers) set `AutomationProperties.IsInAccessibleTree="False"` (`SemanticProperties`-hidden) on the icon and chevron labels; the row keeps its description. Check with TalkBack. |
+| f | Staff page and an open receipt don't refresh after changes elsewhere | Staff reloads only in `StaffPage.cs:169` `OnAppearing`; receipt kept "Recorded on this device" after its payment synced, cleared on reopen | Staff: add pull-to-refresh (`RefreshView`) and reload after "Done". Receipt/Order detail: reload when a sync pass finishes (subscribe to the sync service's completed signal; add one if missing) while the page is visible. |
+| g | Password text visible in the accessibility tree (`text="Password, DevPass1!"`, `password="true"`) | `LoginPage.xaml:113` `IsPassword="{Binding IsPasswordHidden}"` (same pattern on register/accept-invite/change-password) | [UNVERIFIED with TalkBack] Check TalkBack with "speak passwords" off. If the value is read aloud, stop combining the hint and value in the description (set the placeholder only, no `SemanticProperties.Description` containing `Text`). |
+| h | Journey 2 still needs a two-device run | only one emulator on 26 Nov | Run two emulators (or emulator + real phone) on the same shop: offline create on A, sync, see on B; void-vs-record race (Slice 5 device checks). |
+
+Each item: fix, test where there's logic, then note "Done (date)" here.
 
 ## Done
 
