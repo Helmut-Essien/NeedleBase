@@ -1779,3 +1779,49 @@ No `.cursor/ralph/`.
 
 ### Status
 **COMPLETE WITH NOTES** — gates PASS; ship G13 WT; P3 flash noted.
+
+---
+
+## Ralph Balanced — unpushed G13 re-review 2026-11-26
+
+### Discovery
+- Slice: `origin/PlanNameCatalogue..HEAD` was `45dcc03`+`2df46e0`; WT clean at start
+- Auth: balanced series (“run the loop again on unpushed commits”)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (empty at start)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 2df46e0 Hide Home Payment…
+     45dcc03 Docs: record J2–J5…
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | sed RecordPaymentAsync; AppShell CanRecordPayments | none new | guard+catch present |
+| 2 Edge | PASS | prior P3 flash (2nd appearance) | **Fixed** default `canManagePayments` false until Load | null-role tab rule unchanged |
+| 3 Security | PASS | role gate = PaymentRules | none | — |
+| 4 Senior | PASS | class C; tests +1 | none | — |
+| 5 UI/UX | PASS | IsVisible + columns | Fixed no Tailor Payment flash | — |
+
+### Gate state table
+| gate | state | tail |
+|------|-------|------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 350 / 214 / **378** / 352; HomeViewModel Passed 13 |
+| Perf | N/A | class C |
+
+### Findings
+**Fixed:** `HomeViewModel.cs` — `canManagePayments` defaults false; test `CanManagePayments_StartsHidden_UntilLoad`.
+**Dismissed:** G13 crash path still covered by unpushed tests.
+**Open:** none blocking.
+**Out-of-scope:** G14/G15.
+
+### Teardown
+No `.cursor/ralph/`.
+
+### Status
+**COMPLETE WITH NOTES** — gates PASS; P3 flash closed.

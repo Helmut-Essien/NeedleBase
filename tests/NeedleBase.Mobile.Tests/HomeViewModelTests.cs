@@ -36,6 +36,13 @@ public class HomeViewModelTests
             HomeViewModel.CanRecordPayments(role));
     }
 
+    [Fact]
+    public void CanManagePayments_StartsHidden_UntilLoad()
+    {
+        var vm = NewVm(BusinessRole.Owner);
+        Assert.False(vm.CanManagePayments);
+    }
+
     [Theory]
     [InlineData(BusinessRole.Owner, true)]
     [InlineData(BusinessRole.Manager, true)]

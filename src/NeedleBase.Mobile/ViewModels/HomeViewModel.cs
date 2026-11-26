@@ -107,8 +107,11 @@ public partial class HomeViewModel : BaseViewModel
     public static bool CanRecordPayments(string? role) =>
         role is null || NeedleBase.Application.Payments.PaymentRules.CanManage(role);
 
-    /// <summary>Home "Payment" quick action visibility (code-gaps G13).</summary>
-    [ObservableProperty] private bool canManagePayments = true;
+    /// <summary>
+    /// Home "Payment" quick action visibility (code-gaps G13). Starts false so Tailors never see a flash of Payment
+    /// before <see cref="LoadAsync"/>; Owner/Manager get it once the role is read.
+    /// </summary>
+    [ObservableProperty] private bool canManagePayments;
 
     /// <summary>Shell navigation; replaceable in tests.</summary>
     public Func<string, Task> NavigateTo { get; set; } =
