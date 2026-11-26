@@ -1684,3 +1684,51 @@ No `.cursor/ralph/`.
 
 ### Status
 **COMPLETE WITH NOTES** — gates PASS; audit CT fixed; P4 residual.
+
+---
+
+## Ralph Balanced — unpushed re-review #5 2026-11-26
+
+### Discovery
+- Slice: ahead 5 (`5de3a78`…`b346ee9`); WT clean
+- Auth: balanced series
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (empty)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: b346ee9 / ddae3fd / 7d3b800 / 4b42d6a / 5de3a78
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | PaidToDate server vs phone | none new | semantics aligned |
+| 2 Edge | PASS | month parse InlineData; entitlement keyless | none new | prior fixes present |
+| 3 Security | PASS | Authorize/CanView/CT/Escape | none | — |
+| 4 Senior | PASS | ReportLocalService | P4 G8 carried | class B N/A |
+| 5 UI/UX | PASS | aria/max counts; no Html.Raw/style | none | — |
+
+### Gate state table
+| gate | state | tail |
+|------|-------|------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 350 / 214 / 366 / 352 |
+| Perf | N/A | class B; bench 0 |
+
+### Findings
+**Fixed:** none (no new autonomy-eligible defects).
+**Dismissed:** prior Ralph fixes verified in tree; PaidToDate cross-client aligned.
+**Open:** P4 phone full-table load only (G8 — stopped for fix without operator auth).
+**Out-of-scope:** OnAppearing Debug-only catch (P4 polish).
+
+### Teardown
+No `.cursor/ralph/`.
+
+### Operator note
+Unpushed range is gate-clean. Further Ralph loops without new commits or a decision on P4 will only re-verify green + restate G8.
+
+### Status
+**COMPLETE WITH NOTES** — gates PASS; no product commit; P4 residual.
