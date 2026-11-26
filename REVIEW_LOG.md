@@ -1825,3 +1825,53 @@ No `.cursor/ralph/`.
 
 ### Status
 **COMPLETE WITH NOTES** — gates PASS; P3 flash closed.
+
+---
+
+## Ralph Balanced — unpushed clean-stop 2026-11-26
+
+### Discovery
+- Slice: `45dcc03` / `2df46e0` / `5657544` (ahead 3); WT clean
+- Auth: balanced; operator asked to loop until no changes remain
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (empty)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 5657544 Keep Home Payment hidden until the role is loaded.
+     2df46e0 Hide Home Payment for Tailors…
+     45dcc03 Docs: record J2–J5…
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | read HomeViewModel RecordPayment + default | none | early return; ArgumentException catch; default false |
+| 2 Edge | PASS | StartsHidden test; role theory | none | Tailor/Owner/Manager covered |
+| 3 Security | PASS | git diff secrets hunt | none | role gate only |
+| 4 Senior | PASS | build/test; class C | none | G14/G15 out of slice |
+| 5 UI/UX | PASS | IsVisible + columns + Semantic | none | — |
+
+### Gate state table
+| gate | state | tail |
+|------|-------|------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 350 / 214 / 378 / 352 |
+| Perf | N/A | class C; bench 0 |
+
+### Findings
+**Fixed:** none (no autonomy-eligible defects left on this range).
+**Dismissed:** G13 complete; fail-closed default verified (`canManagePayments` field default false).
+**Open:** none in-slice.
+**Out-of-scope:** G14/G15; historical reports P4.
+
+### Teardown
+No `.cursor/ralph/`.
+
+### Stop condition
+No product changes this iteration. Further loops on the same unpushed range without new commits would only re-verify green.
+
+### Status
+**COMPLETE** — mandatory gates PASS; no blocking or in-slice open findings; no product commit.
