@@ -5,11 +5,15 @@ using CommunityToolkit.Mvvm.Input;
 using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Payments;
 using NeedleBase.Mobile.Data.Services;
+using NeedleBase.Mobile.Data.Sync;
 using NeedleBase.Mobile.Services;
 
 namespace NeedleBase.Mobile.ViewModels;
 
-/// <summary>Receipt preview: business header, customer, order totals and this payment. Share as text; void (Owner/Manager).</summary>
+/// <summary>
+/// Receipt preview: business header, customer, order totals and this payment.
+/// Share as text (all plans) or PDF when <c>CanPdfReceipts</c> (Workshop+).
+/// </summary>
 public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
 {
     private readonly IPaymentLocalService _payments;
@@ -46,6 +50,10 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
     private bool canManage;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShareButtonText))]
+    private bool canSharePdf;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string? errorMessage;
 
@@ -53,6 +61,7 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
     public bool HasBusinessPhone => !string.IsNullOrWhiteSpace(BusinessPhone);
     public bool CanVoid => CanManage && Receipt is { Payment.IsVoided: false };
+    public string ShareButtonText => CanSharePdf ? "Share PDF receipt" : "Share receipt";
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
@@ -92,6 +101,8 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
 
             BusinessName = user?.BusinessName ?? string.Empty;
             BusinessPhone = string.IsNullOrWhiteSpace(user?.BusinessPhone) ? null : user.BusinessPhone.Trim();
+            // Fail closed: only Workshop+ (or unlimited) after a subscription pull. Free / Starter / unknown → text.
+            CanSharePdf = LocalSubscriptionGate.Current?.CanPdfReceipts == true;
             var receipt = await _payments.GetReceiptAsync(businessId, PaymentId);
             if (receipt is null)
             {
@@ -120,11 +131,33 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
             return;
         }
 
-        await Share.Default.RequestAsync(new ShareTextRequest
+        try
         {
-            Title = "Payment receipt",
-            Text = Receipt.ToShareText(BusinessName, BusinessPhone)
-        });
+            if (CanSharePdf)
+            {
+                var bytes = Receipt.ToSharePdf(BusinessName, BusinessPhone);
+                var safeRef = string.Join("_", (Receipt.OrderDisplayRef ?? "order")
+                    .Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries));
+                var path = Path.Combine(FileSystem.CacheDirectory, $"NeedleBase-receipt-{safeRef}.pdf");
+                await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(true);
+                await Share.Default.RequestAsync(new ShareFileRequest
+                {
+                    Title = "Payment receipt",
+                    File = new ShareFile(path)
+                }).ConfigureAwait(true);
+                return;
+            }
+
+            await Share.Default.RequestAsync(new ShareTextRequest
+            {
+                Title = "Payment receipt",
+                Text = Receipt.ToShareText(BusinessName, BusinessPhone)
+            }).ConfigureAwait(true);
+        }
+        catch (Exception)
+        {
+            ErrorMessage = "Couldn't share this receipt. Try again.";
+        }
     }
 
     [RelayCommand]

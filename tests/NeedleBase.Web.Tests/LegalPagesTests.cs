@@ -38,10 +38,13 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = await response.Content.ReadAsStringAsync();
 
-        AssertPublishedLegalCommon(html, lastUpdated: "13 November 2026");
+        AssertPublishedLegalCommon(html, lastUpdated: "26 November 2026");
         Assert.Contains("<h1>NeedleBase Privacy Policy</h1>", html);
         Assert.Equal(1, CountIgnoreCase(html, "<h1"));
         Assert.Contains("do <strong>not</strong> include a way to take or upload a customer photo", html);
+        Assert.Contains("optional email address", html);
+        Assert.Contains("Customer email opt-in", html);
+        Assert.Contains("PDF attachment", html);
         Assert.Contains("NeedleBaseAuth", html);
         Assert.Contains("NeedleBase.AntiForgery", html);
         Assert.Contains("do not sell personal data", html);
@@ -59,7 +62,7 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var html = await response.Content.ReadAsStringAsync();
 
-        AssertPublishedLegalCommon(html, lastUpdated: "18 November 2026");
+        AssertPublishedLegalCommon(html, lastUpdated: "26 November 2026");
         Assert.Contains("<h1>NeedleBase Terms and Conditions</h1>", html);
         Assert.Equal(1, CountIgnoreCase(html, "<h1"));
         Assert.Contains("no in-app billing", html);
@@ -71,6 +74,8 @@ public class LegalPagesTests : IClassFixture<LegalPagesTests.Factory>
         Assert.Contains("Save a copy", html);
         Assert.Contains("view and export its Business Data", html);
         Assert.Contains("complimentary key or a different fee", html);
+        Assert.Contains("Customer email updates are separate from WhatsApp", html);
+        Assert.Contains("PDF attachment", html);
         Assert.DoesNotContain("sample plan prices", html);
         Assert.DoesNotContain("as agreed in writing when the key is issued", html);
         Assert.Contains("licence fees you paid us in the 12 months", html);

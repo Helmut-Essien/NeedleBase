@@ -20,6 +20,7 @@ public class CustomerTests
 
         Assert.Equal("Efua Mensah", customer.Name);
         Assert.Equal("+233245550123", customer.Phone);
+        Assert.Null(customer.Email);
         Assert.Equal("prefers kente", customer.Notes);
         Assert.Equal("01ARZ3NDEKTSV4RRFFQ69G5FAW", customer.BusinessId);
         Assert.Equal(now, customer.CreatedAtUtc);
@@ -32,6 +33,20 @@ public class CustomerTests
             Customer.Create("id1", "biz1", " ", "+233", null, null, DateTimeOffset.UtcNow));
         Assert.Throws<ArgumentException>(() =>
             Customer.Create("id1", "biz1", "Efua", " ", null, null, DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void Customer_OptionalEmail_Normalized_OrRejected()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var withEmail = Customer.Create("id1", "biz1", "Efua", "+233245550123", null, null, now, "  efua@shop.gh ");
+        Assert.Equal("efua@shop.gh", withEmail.Email);
+
+        var blank = Customer.Create("id2", "biz1", "Efua", "+233245550123", null, null, now, "   ");
+        Assert.Null(blank.Email);
+
+        Assert.Throws<ArgumentException>(() =>
+            Customer.Create("id3", "biz1", "Efua", "+233245550123", null, null, now, "not-an-email"));
     }
 
     [Fact]

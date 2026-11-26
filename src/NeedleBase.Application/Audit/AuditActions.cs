@@ -42,6 +42,7 @@ public static class AuditActions
     public const string WhatsAppFailed = "whatsapp.failed";
     public const string WhatsAppSettingsChanged = "whatsapp.settings_changed";
     public const string WhatsAppConsentChanged = "whatsapp.consent_changed";
+    public const string CustomerEmailConsentChanged = "customer.email_consent_changed";
 
     public const string LoginSucceeded = "auth.login";
     public const string LoginFailed = "auth.login_failed";
@@ -104,6 +105,7 @@ public static class AuditActions
         WhatsAppFailed => "WhatsApp message failed",
         WhatsAppSettingsChanged => "WhatsApp settings changed",
         WhatsAppConsentChanged => "WhatsApp consent changed",
+        CustomerEmailConsentChanged => "Email updates consent changed",
         LoginSucceeded => "Signed in",
         LoginFailed => "Sign-in failed",
         LoginThrottled => "Sign-in slowed down",
@@ -137,6 +139,7 @@ public static class AuditActions
         "IsVoided" => "voided",
         "VoidReason" => "void reason",
         "PhotoRef" => "photo",
+        "Email" => "email",
         "DisplayRef" => "order ref",
         "IsActive" => "active",
         "CurrencyCode" => "currency",

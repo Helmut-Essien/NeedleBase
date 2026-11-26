@@ -1001,13 +1001,13 @@ public sealed class SyncEngine
             if (!state.Customers.TryGetValue(customer.Id, out var entity))
             {
                 entity = Customer.Create(customer.Id, businessId, customer.Name, customer.Phone, customer.Notes, customer.PhotoRef,
-                    customer.CreatedAtUtc);
+                    customer.CreatedAtUtc, customer.Email);
                 db.Customers.Add(entity);
                 state.Customers[entity.Id] = entity;
             }
             else
             {
-                entity.Update(customer.Name, customer.Phone, customer.Notes, customer.PhotoRef, customer.DateModifiedUtc);
+                entity.Update(customer.Name, customer.Phone, customer.Notes, customer.PhotoRef, customer.DateModifiedUtc, customer.Email);
             }
 
             var entry = db.Entry(entity);

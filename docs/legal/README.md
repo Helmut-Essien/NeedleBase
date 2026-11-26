@@ -25,19 +25,21 @@ User-facing copies should not contain `[TO CONFIRM]` markers or a "Draft for rev
 3. **One-year purge is not automatic.** Shop data is kept for one year after a shop simply stops using NeedleBase (if no deletion request). Nothing in the product deletes those shops when the year is up, so that promise still depends on doing it by hand until a purge worker is built.
 4. **Company registration number** is omitted because it has not been provided. Add it to the Terms if one is confirmed.
 
-## Terms and landing prices (updated 18 November 2026)
+## Terms and landing prices (plan prices 18 November 2026; customer email 26 November 2026)
 
 The published Terms (`terms-and-conditions.md`, web `/Terms`, and MAUI `TermsPage`) and the public landing-page prices were updated on 18 November 2026 to match the decided plans. Keep the three Terms copies in sync. Do not change those public prices or the published Terms again unless asked.
 
-The Terms now include the published plan prices (excluding VAT), a 30-day notice before a price change, Free-plan rules (one phone, 10 customers and 20 orders ever created, no NeedleBase sync or backup, "Save a copy"), export for paid and lapsed read-only shops, and one-year hosted retention after a paid shop lapses. Complimentary or specially agreed keys can still be agreed in writing. The Privacy Policy was checked and left unchanged: a written-request copy and "no particular format" still sit alongside product export, and one-year retention already matches.
+The Terms include the published plan prices (excluding VAT), a 30-day notice before a price change, Free-plan rules (one phone, 10 customers and 20 orders ever created, no NeedleBase sync or backup, "Save a copy"), export for paid and lapsed read-only shops, and one-year hosted retention after a paid shop lapses. Complimentary or specially agreed keys can still be agreed in writing.
 
-**Still pending:** the Play Store privacy form. Free phone-only mode, "Save a copy", paid export, usage meters, upgrading from Free, and paid-plan emails are built. Workshop/Production features (photos, PDF receipts, reports) are **not built**, even though the Terms and the landing page describe them.
+**Customer email (26 November 2026):** Privacy Policy and Terms (all three copies each) describe optional customer email, a separate email opt-in, transactional order-status and payment-receipt emails (receipt may include a PDF attachment generated on send, not stored in blob), and that this is not marketing. Keep `docs/legal/`, web `/Privacy` `/Terms`, and MAUI Privacy/Terms pages in sync.
+
+**Still pending:** the Play Store privacy form. Free phone-only mode, "Save a copy", paid export, usage meters, upgrading from Free, paid-plan emails, PDF receipts (phone share) and customer email channel are built. Workshop step 7: photos (Cloudflare R2) and profit/monthly reports **not built**.
 
 ## Contacts and facts already confirmed
 
 - Legal operator: HelmutCode Solutions (brand: HelmutCode). Address: YN13 Flask Street, Ghana.
 - Email: helmutessien@gmail.com. WhatsApp: +233 50 078 5153 (also the data-protection contact; no named Data Protection Supervisor is claimed).
 - Hosting: MonsterASP.NET in Europe (needlebase.runasp.net). Email: Gmail SMTP or Resend. WhatsApp notices: Meta.
-- Licence keys are issued off the app after WhatsApp or email contact. The public landing page and the Terms show the published plan prices (excluding VAT). No in-app billing. Effective date of the published documents: 1 January 2027; do not present them as already in force before that date. Terms last updated: 18 November 2026. Privacy Policy last updated: 13 November 2026.
+- Licence keys are issued off the app after WhatsApp or email contact. The public landing page and the Terms show the published plan prices (excluding VAT). No in-app billing. Effective date of the published documents: 1 January 2027; do not present them as already in force before that date. Terms last updated: 26 November 2026. Privacy Policy last updated: 26 November 2026.
 - Shop data on the hosted service is kept one year after a shop stops using NeedleBase (if no deletion request), then deleted. Audit log default: 730 days. Verified deletion or copy requests: normally within 30 days.
 - Minimum age for shop accounts: 18.

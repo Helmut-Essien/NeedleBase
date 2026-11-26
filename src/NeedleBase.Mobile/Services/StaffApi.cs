@@ -41,7 +41,7 @@ public interface IWhatsAppAdminApi
     Task<StaffCallResult<WhatsAppMessagePageDto>> GetMessagesAsync(int page, CancellationToken cancellationToken = default);
 }
 
-public sealed class StaffApi : IStaffApi, IWhatsAppOpenedApi, IWhatsAppAdminApi, IWhatsAppConsentApi
+public sealed class StaffApi : IStaffApi, IWhatsAppOpenedApi, IWhatsAppAdminApi, IWhatsAppConsentApi, ICustomerEmailConsentApi
 {
     public Task<StaffCallResult<WhatsAppSettingsDto>> GetSettingsAsync(CancellationToken cancellationToken = default) =>
         SendAsync<WhatsAppSettingsDto>(HttpMethod.Get, "api/whatsapp/settings", null, cancellationToken);
@@ -58,6 +58,56 @@ public sealed class StaffApi : IStaffApi, IWhatsAppOpenedApi, IWhatsAppAdminApi,
 
     public Task<ConsentPushResult> SetConsentAsync(string customerId, bool optedIn, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) =>
         ConsentCallAsync(HttpMethod.Put, customerId, new SetWhatsAppConsentRequest { OptedIn = optedIn, ChangedAtUtc = changedAtUtc, DeviceNowUtc = DateTimeOffset.UtcNow }, cancellationToken);
+
+    public Task<EmailConsentPushResult> GetEmailConsentAsync(string customerId, CancellationToken cancellationToken = default) =>
+        EmailConsentCallAsync(HttpMethod.Get, customerId, null, cancellationToken);
+
+    public Task<EmailConsentPushResult> SetEmailConsentAsync(string customerId, bool optedIn, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default) =>
+        EmailConsentCallAsync(HttpMethod.Put, customerId,
+            new NeedleBase.Application.Contracts.Customers.SetCustomerEmailConsentRequest
+            {
+                OptedIn = optedIn,
+                ChangedAtUtc = changedAtUtc,
+                DeviceNowUtc = DateTimeOffset.UtcNow
+            }, cancellationToken);
+
+    private async Task<EmailConsentPushResult> EmailConsentCallAsync(
+        HttpMethod method, string customerId, object? body, CancellationToken cancellationToken)
+    {
+        var client = _factory.CreateClient(HttpSyncApi.ClientName);
+        using var request = new HttpRequestMessage(method,
+            new Uri(new Uri(_settings.BaseUrl), $"api/customers/{Uri.EscapeDataString(customerId)}/email-consent"));
+        if (body is not null)
+        {
+            request.Content = JsonContent.Create(body, body.GetType(), options: NeedleBase.Mobile.Data.Sync.SyncJson.Options);
+        }
+
+        try
+        {
+            using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            return response.StatusCode switch
+            {
+                _ when response.IsSuccessStatusCode => new EmailConsentPushResult(ConsentPushOutcome.Saved,
+                    await response.Content.ReadFromJsonAsync<NeedleBase.Application.Contracts.Customers.CustomerEmailConsentDto>(
+                        NeedleBase.Mobile.Data.Sync.SyncJson.Options, cancellationToken).ConfigureAwait(false)),
+                HttpStatusCode.NotFound => new EmailConsentPushResult(ConsentPushOutcome.NotFound),
+                HttpStatusCode.Forbidden => new EmailConsentPushResult(ConsentPushOutcome.Forbidden),
+                _ => new EmailConsentPushResult(ConsentPushOutcome.Failed)
+            };
+        }
+        catch (HttpRequestException)
+        {
+            return new EmailConsentPushResult(ConsentPushOutcome.Offline);
+        }
+        catch (TaskCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return new EmailConsentPushResult(ConsentPushOutcome.Offline);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return new EmailConsentPushResult(ConsentPushOutcome.Failed);
+        }
+    }
 
     private async Task<ConsentPushResult> ConsentCallAsync(HttpMethod method, string customerId, object? body, CancellationToken cancellationToken)
     {

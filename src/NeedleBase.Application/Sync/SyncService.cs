@@ -169,7 +169,7 @@ public sealed class SyncService : ISyncService
             }
 
             var created = await _customers.CreateAsync(
-                new CreateCustomerRequest(dto.Name, dto.Phone, dto.Notes, dto.PhotoRef, dto.Id) { Lenient = true }, ct).ConfigureAwait(false);
+                new CreateCustomerRequest(dto.Name, dto.Phone, dto.Notes, dto.PhotoRef, dto.Id, dto.Email) { Lenient = true }, ct).ConfigureAwait(false);
             return !created.IsSuccess
                 ? created.Error == RecordError.CustomerConflict ? Rejected(op) : Failed(op, SyncErrorCodes.PayloadInvalid, created.Message)
                 : Applied(op, customer: await LoadCustomerAsync(dto.Id, ct).ConfigureAwait(false));
@@ -187,7 +187,7 @@ public sealed class SyncService : ISyncService
         }
 
         var (updated, updateError) = await _customers.UpdateAsync(
-            dto.Id, new UpdateCustomerRequest(dto.Name, dto.Phone, dto.Notes, dto.PhotoRef) { Lenient = true }, ct).ConfigureAwait(false);
+            dto.Id, new UpdateCustomerRequest(dto.Name, dto.Phone, dto.Notes, dto.PhotoRef, dto.Email) { Lenient = true }, ct).ConfigureAwait(false);
         return updated is null
             ? Failed(op, SyncErrorCodes.PayloadInvalid, updateError)
             : Applied(op, customer: await LoadCustomerAsync(dto.Id, ct).ConfigureAwait(false));
@@ -474,7 +474,8 @@ public sealed class SyncService : ISyncService
 
     private static bool SameCustomer(Customer c, SyncCustomerDto d) =>
         c.Name == d.Name.Trim() && NeedleBase.Domain.Common.PhoneNumbers.Same(c.Phone, d.Phone) &&
-        c.Notes == Clean(d.Notes) && c.PhotoRef == Clean(d.PhotoRef);
+        c.Notes == Clean(d.Notes) && c.PhotoRef == Clean(d.PhotoRef) &&
+        c.Email == Clean(d.Email);
 
     private static bool SameMeasurement(MeasurementProfile m, SyncMeasurementDto d) =>
         m.CustomerId == d.CustomerId &&

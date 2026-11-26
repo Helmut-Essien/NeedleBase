@@ -120,6 +120,7 @@ public sealed class LocalDbContext : DbContext
             e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id).IsRequired();
             e.Property(x => x.Name).HasMaxLength(FieldLimits.CustomerName).IsRequired();
             e.Property(x => x.Phone).HasMaxLength(FieldLimits.Phone).IsRequired();
+            e.Property(x => x.Email).HasMaxLength(FieldLimits.Email);
             e.Property(x => x.Notes).HasMaxLength(FieldLimits.Notes);
             e.Property(x => x.PhotoRef).HasMaxLength(FieldLimits.PhotoRef);
             e.HasIndex(x => x.BusinessId);

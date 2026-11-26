@@ -47,7 +47,8 @@ public sealed record CustomerDetailDto(
     string? PhotoRef,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset DateModifiedUtc,
-    int MeasurementCount);
+    int MeasurementCount,
+    string? Email = null);
 
 public sealed class CreateCustomerRequest
 {
@@ -63,13 +64,15 @@ public sealed class CreateCustomerRequest
     {
     }
 
-    public CreateCustomerRequest(string name, string phone, string? notes, string? photoRef, string? id = null)
+    public CreateCustomerRequest(
+        string name, string phone, string? notes, string? photoRef, string? id = null, string? email = null)
     {
         Id = id;
         Name = name;
         Phone = phone;
         Notes = notes;
         PhotoRef = photoRef;
+        Email = email;
     }
 
     /// <summary>Optional client ULID for offline idempotency.</summary>
@@ -81,6 +84,10 @@ public sealed class CreateCustomerRequest
 
     [Required, MaxLength(FieldLimits.Phone)]
     public string Phone { get; set; } = string.Empty;
+
+    /// <summary>Optional. Format checked in Domain. Transactional email also needs a separate opt-in.</summary>
+    [MaxLength(FieldLimits.Email)]
+    public string? Email { get; set; }
 
     [MaxLength(FieldLimits.Notes)]
     public string? Notes { get; set; }
@@ -106,12 +113,13 @@ public sealed class UpdateCustomerRequest
     {
     }
 
-    public UpdateCustomerRequest(string name, string phone, string? notes, string? photoRef)
+    public UpdateCustomerRequest(string name, string phone, string? notes, string? photoRef, string? email = null)
     {
         Name = name;
         Phone = phone;
         Notes = notes;
         PhotoRef = photoRef;
+        Email = email;
     }
 
     [Required, MaxLength(FieldLimits.CustomerName)]
@@ -119,6 +127,10 @@ public sealed class UpdateCustomerRequest
 
     [Required, MaxLength(FieldLimits.Phone)]
     public string Phone { get; set; } = string.Empty;
+
+    /// <summary>Optional. Format checked in Domain. Transactional email also needs a separate opt-in.</summary>
+    [MaxLength(FieldLimits.Email)]
+    public string? Email { get; set; }
 
     [MaxLength(FieldLimits.Notes)]
     public string? Notes { get; set; }

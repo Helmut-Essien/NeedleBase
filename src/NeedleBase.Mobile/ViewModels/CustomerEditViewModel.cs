@@ -35,6 +35,9 @@ public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAt
     private string phone = string.Empty;
 
     [ObservableProperty]
+    private string email = string.Empty;
+
+    [ObservableProperty]
     private string notes = string.Empty;
 
     [ObservableProperty]
@@ -46,6 +49,10 @@ public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAt
     private string? phoneError;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasEmailError))]
+    private string? emailError;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
     private string? errorMessage;
 
@@ -55,11 +62,14 @@ public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAt
 
     public bool HasNameError => !string.IsNullOrWhiteSpace(NameError);
     public bool HasPhoneError => !string.IsNullOrWhiteSpace(PhoneError);
+    public bool HasEmailError => !string.IsNullOrWhiteSpace(EmailError);
     public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
     partial void OnNameChanged(string value) => NameError = null;
 
     partial void OnPhoneChanged(string value) => PhoneError = null;
+
+    partial void OnEmailChanged(string value) => EmailError = null;
     public bool CanGoBack => !IsSaving;
 
     public bool TryHandleBack() => false;
@@ -138,6 +148,7 @@ public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAt
             Name = detail.Name;
             Phone = detail.Phone;
             _loadedPhone = detail.Phone;
+            Email = detail.Email ?? string.Empty;
             Notes = detail.Notes ?? string.Empty;
         }
         finally
@@ -160,7 +171,8 @@ public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAt
 
         NameError = string.IsNullOrWhiteSpace(Name) ? "Name is required." : null;
         PhoneError = string.IsNullOrWhiteSpace(Phone) ? "Phone is required." : null;
-        if (HasNameError || HasPhoneError)
+        EmailError = EmailAddresses.CheckOptional(Email);
+        if (HasNameError || HasPhoneError || HasEmailError)
         {
             return;
         }
@@ -181,7 +193,7 @@ public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAt
             PhoneError = PhoneNumbers.Check(Phone);
         }
 
-        if (HasNameError || HasPhoneError)
+        if (HasNameError || HasPhoneError || HasEmailError)
         {
             return;
         }
@@ -191,6 +203,8 @@ public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAt
             ErrorMessage = $"Notes must be at most {FieldLimits.Notes} characters.";
             return;
         }
+
+        var email = EmailAddresses.NormalizeOptional(Email);
 
         IsBusy = true;
         IsSaving = true;
@@ -223,7 +237,7 @@ public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAt
 
                 var result = await _customers.SaveAsync(
                     businessId,
-                    new CreateCustomerRequest(Name, Phone, Notes, null));
+                    new CreateCustomerRequest(Name, Phone, Notes, null, email: email));
                 if (result.Error == RecordError.PhoneInvalid)
                 {
                     PhoneError = result.Message;
@@ -255,7 +269,7 @@ public partial class CustomerEditViewModel : BaseViewModel, IBackAware, IQueryAt
             var updated = await _customers.UpdateAsync(
                 businessId,
                 CustomerId,
-                new UpdateCustomerRequest(Name, Phone, Notes, null));
+                new UpdateCustomerRequest(Name, Phone, Notes, null, email));
             if (updated.Error == RecordError.PhoneInvalid)
             {
                 PhoneError = updated.Message;

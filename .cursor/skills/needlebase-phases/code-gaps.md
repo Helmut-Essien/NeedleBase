@@ -70,7 +70,7 @@ Device speed (22 Oct 2026): Orders and Customers tabs cache rows and reload only
 ## Slice 5 — Payments (22 Oct 2026)
 
 - Open: deposit step in the order wizard (deferred; record from Order detail).
-- Open: receipt is text share only (no image/PDF/print).
+- Open: web print/PDF still deferred; photos deferred (Cloudflare R2). Mobile Workshop+ shares PDF on device (plans 7a).
 - Open: Payments tab shows the latest 100 rows, no search.
 - Open: payment role check trusts the token role claim (same as other endpoints; Slice 7 revisits).
 - Open: device verification of Journey 1 steps 6–7 and Journey 4 (phone signed out on 22 Oct).

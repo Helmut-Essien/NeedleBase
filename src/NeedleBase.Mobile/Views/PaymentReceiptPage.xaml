@@ -61,7 +61,7 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Button Text="Share receipt"
+            <Button Text="{Binding ShareButtonText}"
                     ImageSource="{mi:Material Icon=Share, IconColor=White}"
                     Command="{Binding ShareCommand}"
                     TextColor="White"

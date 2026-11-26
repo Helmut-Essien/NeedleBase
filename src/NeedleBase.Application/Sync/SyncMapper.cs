@@ -8,7 +8,7 @@ public static class SyncMapper
 {
     public static SyncCustomerDto ToDto(Customer c) =>
         new(c.Id, c.Name, c.Phone, c.Notes, c.PhotoRef,
-            SyncTime.Normalize(c.CreatedAtUtc), SyncTime.Normalize(c.DateModifiedUtc));
+            SyncTime.Normalize(c.CreatedAtUtc), SyncTime.Normalize(c.DateModifiedUtc), c.Email);
 
     public static SyncMeasurementDto ToDto(MeasurementProfile m) =>
         new(m.Id, m.CustomerId, m.GarmentTemplate, m.Unit, m.FieldsJson, m.Notes,

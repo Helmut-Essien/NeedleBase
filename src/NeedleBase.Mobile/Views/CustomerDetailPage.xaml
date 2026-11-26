@@ -31,6 +31,11 @@
                    FontSize="16"
                    TextColor="{StaticResource Gray600}"
                    SemanticProperties.Description="Customer phone" />
+            <Label Text="{Binding Email}"
+                   FontSize="16"
+                   TextColor="{StaticResource Gray600}"
+                   IsVisible="{Binding HasEmail}"
+                   SemanticProperties.Description="Customer email" />
             <Label Text="{Binding Notes}"
                    FontSize="14"
                    TextColor="{StaticResource Gray600}"
@@ -54,6 +59,15 @@
                             </DataTrigger>
                         </Label.Triggers>
                     </Label>
+                </VerticalStackLayout>
+            </Border>
+            <Border BackgroundColor="White" Stroke="{StaticResource Gray300}" StrokeShape="RoundRectangle 12" Padding="12"
+                    IsVisible="{Binding HasEmailConsentUi}">
+                <VerticalStackLayout Spacing="6">
+                    <Label Text="{Binding EmailConsentText}" FontSize="14" TextColor="{StaticResource Charcoal}" LineBreakMode="WordWrap" />
+                    <Button Style="{StaticResource SecondaryButton}" Text="{Binding EmailConsentButtonText}" HeightRequest="48" CornerRadius="10"
+                            Command="{Binding ToggleEmailConsentCommand}" IsVisible="{Binding CanChangeConsent}"
+                            SemanticProperties.Hint="Records whether this customer agreed to order and receipt emails" />
                 </VerticalStackLayout>
             </Border>
             <ActivityIndicator IsRunning="{Binding IsBusy}"

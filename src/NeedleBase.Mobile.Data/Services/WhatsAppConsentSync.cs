@@ -26,6 +26,17 @@ public interface IWhatsAppConsentApi
     Task<ConsentPushResult> SetConsentAsync(string customerId, bool optedIn, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default);
 }
 
+public sealed record EmailConsentPushResult(
+    ConsentPushOutcome Outcome,
+    NeedleBase.Application.Contracts.Customers.CustomerEmailConsentDto? Value = null);
+
+/// <summary>Server email opt-in (order status + payment receipts). Online-only for now.</summary>
+public interface ICustomerEmailConsentApi
+{
+    Task<EmailConsentPushResult> GetEmailConsentAsync(string customerId, CancellationToken cancellationToken = default);
+    Task<EmailConsentPushResult> SetEmailConsentAsync(string customerId, bool optedIn, DateTimeOffset changedAtUtc, CancellationToken cancellationToken = default);
+}
+
 /// <summary>
 /// Customer WhatsApp consent on the phone: works offline (pending choice saved locally), pushed after each sync,
 /// and the server's answer always wins (a newer change on another device or a STOP reply is kept).

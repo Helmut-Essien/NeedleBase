@@ -8,6 +8,8 @@ public static class FieldLimits
     public const int Id = 26;
     public const int CustomerName = 200;
     public const int Phone = 40;
+    /// <summary>Optional customer email (and invite/user emails use the same cap).</summary>
+    public const int Email = 256;
     public const int Notes = 2000;
     public const int PhotoRef = 500;
     public const int GarmentTemplate = 40;

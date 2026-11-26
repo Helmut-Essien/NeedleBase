@@ -8,6 +8,8 @@ public class Customer : Entity, IBusinessScoped
     public string BusinessId { get; private set; } = string.Empty;
     public string Name { get; private set; } = string.Empty;
     public string Phone { get; private set; } = string.Empty;
+    /// <summary>Optional. Used for contact and for transactional emails when the customer has opted in.</summary>
+    public string? Email { get; private set; }
     public string? Notes { get; private set; }
     public string? PhotoRef { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
@@ -24,7 +26,8 @@ public class Customer : Entity, IBusinessScoped
         string phone,
         string? notes,
         string? photoRef,
-        DateTimeOffset utcNow)
+        DateTimeOffset utcNow,
+        string? email = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentException.ThrowIfNullOrWhiteSpace(businessId);
@@ -36,16 +39,16 @@ public class Customer : Entity, IBusinessScoped
             CreatedAtUtc = utcNow,
             DateModifiedUtc = utcNow
         };
-        customer.ApplyDetails(name, phone, notes, photoRef, utcNow);
+        customer.ApplyDetails(name, phone, notes, photoRef, utcNow, email);
         return customer;
     }
 
-    public void Update(string name, string phone, string? notes, string? photoRef, DateTimeOffset utcNow)
+    public void Update(string name, string phone, string? notes, string? photoRef, DateTimeOffset utcNow, string? email = null)
     {
-        ApplyDetails(name, phone, notes, photoRef, utcNow);
+        ApplyDetails(name, phone, notes, photoRef, utcNow, email);
     }
 
-    private void ApplyDetails(string name, string phone, string? notes, string? photoRef, DateTimeOffset utcNow)
+    private void ApplyDetails(string name, string phone, string? notes, string? photoRef, DateTimeOffset utcNow, string? email)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(phone);
@@ -62,6 +65,13 @@ public class Customer : Entity, IBusinessScoped
             throw new ArgumentException($"Phone must be at most {FieldLimits.Phone} characters.", nameof(phone));
         }
 
+        if (EmailAddresses.CheckOptional(email) is { } emailError)
+        {
+            throw new ArgumentException(emailError, nameof(email));
+        }
+
+        email = EmailAddresses.NormalizeOptional(email);
+
         notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
         if (notes is { Length: > FieldLimits.Notes })
         {
@@ -76,6 +86,7 @@ public class Customer : Entity, IBusinessScoped
 
         Name = name;
         Phone = phone;
+        Email = email;
         Notes = notes;
         PhotoRef = photoRef;
         DateModifiedUtc = utcNow;

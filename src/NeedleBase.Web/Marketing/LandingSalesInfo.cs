@@ -93,9 +93,10 @@ public static class LandingSalesInfo
                 new("You plus 8 staff"),
                 new("Everything in Starter"),
                 new("Staff job and due emails"),
-                new("A weekly summary with balances owed")
+                new("A weekly summary with balances owed"),
+                new("PDF payment receipts")
             ],
-            ComingSoonNote: "Coming soon: photos, PDF receipts, reports",
+            ComingSoonNote: "Coming soon: photos, reports",
             Featured: true),
         new LandingPlan(
             Id: "production",

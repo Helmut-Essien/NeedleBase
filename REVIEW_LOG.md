@@ -917,3 +917,474 @@ PlanEmails Api filter: 6 passed (incl. read-only watermark)
 ### Final verdict
 Five passes CLEAN after read-only watermark fix. Committing follow-up.
 
+
+# Ralph Loop v4 — Unpushed commits (origin/PlanNameCatalogue..HEAD)
+
+## Iteration 1 — 2026-11-26T08:05:42Z (run_id=20261126T080542Z-285c23)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out:
+?? .cursor/ralph/
+?? .ralph-20261126T080542Z-285c23/
+
+cmd: git diff --stat origin/PlanNameCatalogue...HEAD
+out: 31 files changed, 3352 insertions(+), 37 deletions(-)
+```
+Dirty outside slice (not owned by this run): `?? .cursor/ralph/` — not stashed/modified (G6). Proceeded with read-only review of committed unpushed range.
+
+### Discovery
+- Root: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead of `origin/PlanNameCatalogue` by 2: `e52d98a`, `203f866`
+- Slice: `origin/PlanNameCatalogue...HEAD` (paid-plan emails)
+- Commit authorization: none (`git config ralph.commit-authorization` unset; `RALPH_COMMIT_AUTHORIZED` unset; prompt does not authorize)
+- Postgres: `needlebase-postgres-1` Up on `0.0.0.0:5435->5432/tcp`
+- Canonical gates (CI): `dotnet build … -c Release -warnaserror`; `dotnet test … -c Release`; no separate lint tool
+- Full solution / Android: XA0033 OpenJDK risk → not used; per-project builds matching CI jobs
+- Perf harness: no BenchmarkDotNet in repo for email worker
+- Browser/a11y/mobile emulator: not used this iteration
+
+### Gate state table
+| gate | state | command | output tail |
+|------|-------|---------|-------------|
+| build | PASS | `dotnet build tests/NeedleBase.{Application,Api,Web}.Tests/*.csproj -c Release -warnaserror --no-incremental` | `Build succeeded. 0 Warning(s) 0 Error(s)` (each) |
+| lint | PASS | same builds with `-warnaserror` (CI has no separate lint) | `0 Warning(s) 0 Error(s)` |
+| test | PASS | `dotnet test … --filter PlanEmail\|AssignmentEmail_\|…` + Landing | App 8 passed; Api PlanEmails 6 passed; Web Landing 2 passed; Skipped 0 |
+| performance | N/A | classification **B** (background PlanEmailWorker/queries); no email bench harness | `grep BenchmarkDotNet` → no harness; evidence recorded |
+
+Optional:
+| gate | state | evidence |
+|------|-------|----------|
+| a11y (axe/pa11y) | N/A | slice UI change is marketing copy strings only; no axe/pa11y harness in repo |
+| security scanner | N/A | Security Review subagent CLEAN medium+; no npm/pip surface in slice |
+
+### Pass ledger
+| pass | gate state | tools invoked | findings cited | dismissed with evidence |
+|------|------------|---------------|----------------|-------------------------|
+| 1 Bugs/control flow | PASS | Bugbot Task; `grep`/`sed` PlanEmailService, Order.ApplyHeader, Sync/OrderService flush | none new | claim-first + restore, buffer flush/clear, due clear on reassign present in e52d98a/203f866 |
+| 2 Edge/boundaries | PASS | `sed` PlanEmailService read-only + entitlement paths; buffer source | none | read-only skip-without-mark intentional; Starter mark-without-send accepted product tradeoff |
+| 3 Security | PASS | Security Review Task | none medium+ | tenancy, Owner bulk, template escape, MaySendPlanEmails, buffer honesty |
+| 4 Senior | PASS | migration Up sed; consumer grep; CI workflow grep; LocalDb Ignore | none blocking | additive nullable columns + indexes; Down present; mobile ignores server-only watermark |
+| 5 UI/UX | PASS | LandingSalesInfo sed; LandingPageTests grep | none | copy-only highlights; Landing asserts present; no interactive UI |
+
+### Findings
+#### Fixed
+None this iteration (no autonomous-fix candidates; Bugbot/Security clean after prior e52d98a).
+
+#### Dismissed
+| id | severity | confidence | citation | evidence |
+|----|----------|------------|----------|----------|
+| D1 read-only watermark abuse | P1 candidate triaged | High | PlanEmailService:216-220,310-314 | Security Review: not abusable; Api test `ReadOnly_does_not_advance_monthly_watermark` |
+| D2 Starter mark-without-send same-day upgrade miss | P3 | High | PlanEmailService:223-227 | intentional; endless re-scan avoidance |
+| D3 read-only rescans every poll | P4 | Medium | PlanEmailService continue without mark | correctness; batch-capped; not SMTP flood |
+
+#### Open items
+None [UNVERIFIED] blocking.
+
+#### Out-of-scope (noted)
+- Legal Privacy/Terms under-describe paid emails (docs residual)
+- Android full build XA0033 in this environment
+- Pre-existing untracked `.cursor/ralph/` (unknown ownership; not touched)
+
+### Commit
+Not performed — no commit authorization; no code changes in this iteration.
+
+### Self-audit
+- All Fixed/Dismissed have citations
+- Pass ledger 5/5 with tools
+- Gate states recorded
+- Perf N/A with classification B + no harness evidence
+- No "Fixed" without citation
+
+
+### Teardown
+```
+cmd: hash-verify + unlink owned files under .ralph-20261126T080542Z-285c23/; rmdir namespace
+out: (see below)
+```
+.ralph-20261126T080542Z-285c23/snapshot.txt: deleted
+.ralph-20261126T080542Z-285c23/gate_build_app.txt: deleted
+.ralph-20261126T080542Z-285c23/gate_build_api.txt: deleted
+.ralph-20261126T080542Z-285c23/gate_build_web.txt: deleted
+.ralph-20261126T080542Z-285c23/gate_test_app.txt: deleted
+.ralph-20261126T080542Z-285c23/gate_test_api_plan.txt: deleted
+.ralph-20261126T080542Z-285c23/gate_test_web.txt: deleted
+.ralph-20261126T080542Z-285c23/manifest.json: deleted-ns-content
+.ralph-20261126T080542Z-285c23/.ralph-owned-20261126T080542Z-285c23: deleted-ns-content
+.ralph-20261126T080542Z-285c23: deleted
+
+```
+cmd: git status --porcelain (post-teardown)
+out:
+ M REVIEW_LOG.md
+?? .cursor/ralph/
+```
+- Owned namespace deleted (hash-matched files).
+- `.cursor/ralph/` unknown ownership — not deleted (G6).
+- `REVIEW_LOG.md` modified by this loop for operator review; commit not authorized.
+
+### Status
+**COMPLETE WITH NOTES** — mandatory gates PASS; no blocking findings; optional a11y N/A; residual notes documented; no commit authorization (no code changes).
+
+
+
+---
+
+## Ralph v4 — iteration 1 — Workshop step 7a (PDF + customer email + PDF attachment + legal)
+
+**run_id:** `20261126T094025Z-f3852a`  
+**slice:** working-tree diff on `PlanNameCatalogue` @ `e52d98a` (PDF receipts, optional Customer.Email, customer email channel, receipt PDF attachment, Privacy/Terms)  
+**commit authorization:** none (`ralph.commit-authorization` unset; `RALPH_COMMIT_AUTHORIZED` unset; prompt did not authorize)
+
+### Snapshot
+```
+cmd: git status --porcelain | head
+out: (56 modified tracked + untracked customer-email/receipt/legal files; see discovery)
+cmd: git diff --stat HEAD | tail
+out: 56 files changed, ~933 insertions(+), 136 deletions(-) (tracked only; untracked extra)
+```
+
+### Discovery
+- Root: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue`
+- Solution: `NeedleBase.sln`; projects Api/Application/Domain/Infrastructure/Web/Mobile/Mobile.Data + 5 test projects
+- Canonical verify: CI builds per test project `-c Release --no-incremental -warnaserror`; full `dotnet test NeedleBase.sln -c Release`; Android `net9.0-android` in CI (local JDK parse BLOCKED)
+- Runtime: TestDatabase PostgreSQL available for Api.Tests; no mobile emulator; no browser a11y harness; no SMTP real send (CapturingTransport)
+- Dependency graph (touched): `EmailMessage` → EmailQueue/SmtpTransport/all templates; `CustomerEmailOutbox` ← SaveChanges interceptor (REST+sync); consent API ← Mobile StaffApi; legal pages ×3 copies
+
+### Pass ledger
+
+| pass | gate state | tools invoked | findings cited | dismissed |
+|------|------------|---------------|----------------|-----------|
+| 1 Bugs | PASS | Read CustomerEmailOutbox/Interceptor; `dotnet test …CustomerEmailChannelTests` | F1 SMTP-off marks Sent; F2 multi-pay paid sum | — |
+| 2 Edge | PASS | Read Outbox paid maps; channel tests TwoPayments/SmtpOff | (same F1/F2) | Queue-full after Sent recorded — P3 residual |
+| 3 Security | PASS | Read SmtpTransport/EmailAddresses/Controller auth; diff attachments | F3 MIME name/content-type hardening | Tenancy via query filters — OK |
+| 4 Senior | PASS | Read migrations/DI; build/test gates; classify perf B | F1/F2; paid-sum query batch | No EF rollback of Sent without SMTP — fixed by skip Collect |
+| 5 UI/UX | PASS | Read CustomerDetailPage/VM; Privacy/Terms pages | — | Emulator screenshots N/A; SemanticProperties present |
+
+### Findings — Fixed
+
+**F1 — P1 High — SMTP off still wrote `CustomerEmailSent` (never queued)**  
+`CustomerEmailSaveInterceptor.cs:24-46` — Collect ran whenever SaveChanges ran; Flush skipped when `!IsConfigured`, leaving permanent “sent” rows.  
+cmd: `dotnet test …CustomerEmailChannelTests.SmtpOff_DoesNotMarkSent_WhenPaymentRecorded`  
+out: `Passed! … Total: 3`  
+Fix: skip Collect unless `_email.IsConfigured`.
+
+**F2 — P1 High — multi-payment SaveChanges under-counted paid-so-far**  
+`CustomerEmailOutbox.cs` (pre-fix) added only the current Added payment to the DB sum; sync batch of 2 payments → each receipt missed the sibling.  
+cmd: `…TwoPaymentsSameSave_PaidSoFarIncludesBoth`  
+out: Passed; asserts `Paid so far: GH₵ 500.00` on both.  
+Fix: one GroupBy DB sum + sum of all new payments per order.
+
+**F3 — P3 Low — attachment MIME name/type hardening**  
+`SmtpTransport.cs` — basename-only filename; reject odd ContentType before `ContentType.Parse`.
+
+### Findings — Dismissed
+- Cross-tenant consent: global query filters + RequireManagerOrOwner — OK (code review).
+- PDF bytes in EmailQueue: small on-demand PDFs; Capacity 200 — acceptable (P4 note).
+
+### Open / residual
+- [UNVERIFIED] TryQueue false (queue full) after Sent committed — rare; no re-send.
+- Android `net9.0-android` local build BLOCKED (XA0033 OpenJDK version string) — CI has separate job; Mobile.Tests net9.0 PASS.
+- No device/emulator UI proof for consent toggle (code+semantics reviewed).
+- No commit (authorization absent).
+
+### Gate state table
+
+| gate | state | command | output tail |
+|------|-------|---------|-------------|
+| Build (Api.Tests) | PASS | `dotnet build tests/NeedleBase.Api.Tests/… -c Release --no-incremental -warnaserror` | `Build succeeded. 0 Warning(s) 0 Error(s)` |
+| Build (Web.Tests) | PASS | same pattern Web.Tests | succeeded 0/0 |
+| Build (Application.Tests) | PASS | same | succeeded 0/0 |
+| Build (Mobile.Tests) | PASS | same | succeeded 0/0 |
+| Build (sln + android) | BLOCKED | `dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` | `XA0033: Failed to get the Java SDK version… openjdk version "17.0.21.0.3"` |
+| Lint | PASS | `-warnaserror` on project builds (no separate linter) | 0 warnings |
+| Test | PASS | `dotnet test NeedleBase.sln -c Release --no-build` | all Passed; Api 335, Mobile 355, Web 205, App 311, Domain 86; Failed!: 0 |
+| Performance | N/A | class **B** (SaveChanges interceptor / sync); no bench harness | reduced N+1 SumAsync → single GroupBy (correctness-driven) |
+
+### Commit
+Not performed — no commit authorization.
+
+### Self-audit
+- Fixed entries have citations + tests
+- Pass ledger 5/5 with tools
+- Gate states recorded
+- Perf N/A with class B evidence
+- Unauthorized scope expansions: none
+
+### Teardown
+(see following block after ownership-safe cleanup)
+
+### Status
+**COMPLETE WITH NOTES** — runnable mandatory gates PASS; android TFM BLOCKED (env); residual notes; working tree dirty for operator; no commit.
+
+
+#### Teardown outcomes (iteration 1)
+```
+cmd: ownership-safe delete of .ralph-20261126T094025Z-f3852a/ (marker match)
+out: .ralph-20261126T094025Z-f3852a: deleted
+cmd: ls -d .ralph-* 
+out: no .ralph-* namespaces
+cmd: git status --porcelain (post-teardown)
+out: dirty slice remains (PDF/email/legal + REVIEW_LOG); ?? .cursor/ralph/ unknown ownership — not touched (G6)
+```
+
+
+---
+
+## Ralph v4 — iteration 2 — Workshop step 7a (post-fix re-review)
+
+**run_id:** `20261126T105342Z-1ca7be`  
+**slice:** same working-tree as iteration 1 (PDF receipts + customer email channel + PDF attachment + legal) on `PlanNameCatalogue` @ `e52d98a`  
+**commit authorization:** none
+
+### Snapshot
+```
+cmd: git status --porcelain | wc -l
+out: 74
+cmd: git diff --stat HEAD | tail -1
+out: 56 files changed, 1035 insertions(+), 136 deletions(-)
+```
+Extra paths outside product slice: `.cursor/ralph/` (unknown ownership — not touched).
+
+### Discovery
+Carried-forward from iteration 1 (no build/lint/CI/dependency config changes; auth still unset). Refreshed snapshot above. Canonical builds remain CI per-test-project `-c Release --no-incremental -warnaserror`; `net9.0-android` still BLOCKED locally (XA0033). No benchmark harness (`find *Bench*` empty).
+
+### Pass ledger
+
+| pass | gate state | tools invoked | findings cited | dismissed |
+|------|------------|---------------|----------------|-----------|
+| 1 Bugs | PASS | Read Outbox/Interceptor post-F1/F2; `dotnet test …CustomerEmailChannelTests` (4 passed) | — | F1/F2 remain fixed |
+| 2 Edge | PASS | Read SyncService SameCustomer/IsStale; Outbox paid maps | — | Old-app Email null wipe — P2 Medium residual (stale-guarded) |
+| 3 Security | PASS | Read SmtpTransport hardening; AuditCapture Email mask; Controller policies | — | Tenancy/consent OK |
+| 4 Senior | PASS | Migrations list; CI build cmds; class B perf; test integrity | F4 stale XML docs | Queue-full after Sent — residual P3 |
+| 5 UI/UX | PASS | Read CustomerEditPage.xaml Email Keyboard+semantics; legal Last updated grep | — | Emulator N/A |
+
+### Findings — Fixed
+
+**F4 — P3 Low High — stale “does not email customers yet” comments**  
+`Customer.cs:11`, `CustomerDtos.cs:88/131`, `LocalSchemaMigrator.cs:237` still claimed email was contact-only after the channel shipped.  
+cmd: `grep -n "does not email\|Not used to email\|not used for sending" …`  
+out: matched those four sites before edit; comments updated to mention opt-in transactional email.
+
+### Findings — Dismissed
+- Iter1 F1/F2/F3: re-verified by CustomerEmailChannelTests + template PDF tests (Passed).
+- Cross-tenant consent: query filters + RequireManagerOrOwner (code).
+- Email Entry a11y: `Keyboard="Email"`, SemanticProperties present (`CustomerEditPage.xaml:75-93`).
+
+### Open / residual
+- [UNVERIFIED product] Mixed old/new mobile: Lenient sync with `Email: null` can clear server email if BaseModified allows (SameCustomer + IsStale normally conflict). P2 Medium — no autonomous fix without product rule for “omit vs clear”.
+- TryQueue false after Sent committed — rare P3.
+- Out-of-scope flakes under parallel Api suite: `EmailQueueTests.FailingMessage…` (695ms > 250ms) and `TailorOfflineCreate_PastNew…` (“order not in pull”); each passes alone; full Api suite green on re-run (335/335).
+- Android TFM BLOCKED (XA0033).
+- No commit.
+
+### Gate state table
+
+| gate | state | command | output tail |
+|------|-------|---------|-------------|
+| Build Api/Web/App/Mobile/Domain.Tests | PASS | `dotnet build tests/… -c Release --no-incremental -warnaserror` | `0 Error(s)` each; exits 0 |
+| Build net9.0-android | BLOCKED | `dotnet build src/NeedleBase.Mobile/… -f net9.0-android -c Debug -warnaserror` | `XA0033: … openjdk version "17.0.21.0.3"` |
+| Lint | PASS | `-warnaserror` on above | 0 warnings |
+| Test | PASS | Domain/App/Web/Mobile all green; Api `Passed! … 335` after flake re-run (`/tmp/r2-api-full2.txt`) | Failed!: 0 on final Api run |
+| Performance | N/A | class **B**; no harness | evidence: no Bench projects |
+
+### Commit
+Not performed — no commit authorization.
+
+### Self-audit
+- Fixed/Dismissed cited
+- Pass ledger 5/5 with tools
+- Gate states recorded
+- Perf N/A evidenced
+- No unauthorized scope expansion (flake tests not edited)
+
+### Teardown
+(see next)
+
+### Status
+**COMPLETE WITH NOTES** — mandatory runnable gates PASS; android BLOCKED; residuals documented; no commit.
+
+
+#### Teardown outcomes (iteration 2)
+```
+cmd: ownership-safe delete .ralph-20261126T105342Z-1ca7be/
+out: .ralph-20261126T105342Z-1ca7be: deleted
+cmd: ls -d .ralph-*
+out: no .ralph-*
+cmd: git status --porcelain | wc -l
+out: dirty slice remains; ?? .cursor/ralph/ not touched (G6)
+```
+
+
+---
+
+## Ralph v4 — iteration 3 — full command run (no skipped gates)
+
+**run_id:** `20261126T110239Z-d339f3`  
+**slice:** working-tree Workshop 7a (PDF + customer email + attachment + legal)  
+**commit authorization:** none (`git config ralph.commit-authorization` exit 1; `RALPH_COMMIT_AUTHORIZED=unset`; prompt does not authorize)
+
+### Snapshot (verbatim commands)
+```
+cmd: git status --porcelain
+out: (74 paths) includes M skills/legal/src/tests + ?? customer-email/receipt files + ?? .cursor/ralph/
+cmd: git diff --stat HEAD
+out: 56 files changed, 1122 insertions(+), 136 deletions(-)
+```
+Outside-slice path (not modified by loop): `?? .cursor/ralph/` — unknown ownership; left alone (G6).
+
+### Discovery (full re-run this iteration)
+```
+cmd: pwd; git rev-parse --show-toplevel; git branch --show-current; git rev-parse HEAD
+out: /home/helmut/Documents/My Projects/NeedleBase
+     PlanNameCatalogue
+     e52d98a498a5d60678dba5fb0b6ec8afb8880b7c
+cmd: ls -1 NeedleBase.sln src tests
+out: NeedleBase.sln; Api Application Domain Infrastructure Mobile Mobile.Data Web; 5 test projects
+cmd: grep standing-rules / CI build lines
+out: standing-rules: `dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror`
+     CI: per-test-project build+test; also `dotnet build …Mobile.csproj -f net9.0-android -c Debug -warnaserror`
+cmd: find …*bench*
+out: bench_count=0
+cmd: java -version
+out: openjdk version "17.0.21.0.3" 2026-10-24 …
+cmd: env ConnectionStrings__DefaultConnection
+out: unset (Api.Tests uses TestDatabase from factory)
+Runtime: TestDatabase available via Api.Tests; no emulator; no browser a11y; no real SMTP.
+Dep graph: EmailAttachment/EmailMessage → SmtpTransport/EmailQueue/templates; CustomerEmailOutbox ← SaveChanges interceptor (REST+sync); consent API ← StaffApi; 52 code refs counted.
+```
+
+### Pass ledger
+
+| pass | gate state | tools invoked | findings | dismissed |
+|------|------------|---------------|----------|-----------|
+| 1 Bugs | PASS | `sed` interceptor/outbox; `dotnet test …CustomerEmailChannelTests` | none new | F1/F2 still present in code; tests Passed 3 |
+| 2 Edge | PASS | `sed` SameCustomer + Flush; Application template/PDF tests | none new | TryQueue ignore return — residual; sync Email null — residual |
+| 3 Security | PASS | `sed` Controller/SmtpTransport/AuditCapture; Domain EmailAddresses tests | none new | RequireStaff/ManagerOrOwner; basename ContentType; Email masked |
+| 4 Senior | PASS | `ls` migrations; `find` bench=0; `sed` DI; `grep Skip` on new tests | none new | class B → perf N/A; migrations present; no Skip in new tests |
+| 5 UI/UX | PASS | `sed` CustomerDetail/Edit XAML; `grep` legal sync; LegalPagesTests | none new | Keyboard=Email; semantics; legal Last updated 26 Nov; Legal 4 passed |
+
+### Findings — Fixed
+None this iteration (no new P0–P2 High).
+
+### Findings — Dismissed (with evidence)
+- SMTP-off Collect skip still in place: `CustomerEmailSaveInterceptor.cs:26-44` + channel tests Passed 3.
+- Multi-pay paid map still in place: `CustomerEmailOutbox.cs:142-171` + `TwoPaymentsSameSave` covered in channel suite.
+- Attachment MIME hardening: `SmtpTransport.cs:44-59`.
+
+### Open items
+- Standing-rules / CI android **Build BLOCKED** by XA0033 (OpenJDK version string `17.0.21.0.3` not parsed). Operator must fix JDK tooling or exclude android TFM locally.
+- Residual: Lenient sync `Email:null` clear risk (P2 Medium); TryQueue-full after Sent (P3).
+- No commit authorization.
+
+### Out-of-scope
+- `?? .cursor/ralph/` unknown ownership.
+
+### Gate state table
+
+| gate | state | command | output tail |
+|------|-------|---------|-------------|
+| Build (standing-rules sln) | **BLOCKED** | `dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` | `Build FAILED.` `error XA0033: … openjdk version "17.0.21.0.3"` `SLN_EXIT:1` |
+| Build (CI Api/Web/Mobile/App/Domain.Tests) | PASS | per-project `--no-incremental -warnaserror` | each `0 Warning(s) 0 Error(s)` exit 0 |
+| Build (CI android) | **BLOCKED** | `dotnet build src/NeedleBase.Mobile/… -f net9.0-android -c Debug -warnaserror` | `XA0033` `AND:1` |
+| Lint | PASS | `-warnaserror` on CI project builds that executed | 0 warnings |
+| Test | PASS | `dotnet test NeedleBase.sln -c Release --no-build` | Domain 86, App 311, Web 205, Mobile 355, Api 335; Failed!: 0; TEST_PIPE:0 |
+| Performance | N/A | class **B**; `find *bench*` → 0 | no harness |
+
+**Overall status rule:** mandatory Build from standing-rules is BLOCKED → loop status **BLOCKED** (not COMPLETE).
+
+### Commit
+Not performed — no commit authorization.
+
+### Self-audit
+- 5/5 passes with tool invocations
+- No Fixed claims without citations (none Fixed)
+- Perf N/A evidenced
+- Gate states recorded including BLOCKED build
+- Did not invent substitute build as the sole “PASS”
+
+### Teardown
+(see following)
+
+### Status
+**BLOCKED** — standing-rules solution build and CI android build cannot execute successfully in this environment (XA0033). Tests and non-android CI project builds PASS. No new code fixes this iteration.
+
+
+#### Teardown outcomes (iteration 3)
+```
+cmd: ownership-safe delete .ralph-20261126T110239Z-d339f3/
+out: manifest_ok 20261126T110239Z-d339f3
+     .ralph-20261126T110239Z-d339f3: deleted
+cmd: ls -d .ralph-*
+out: ls: cannot access '.ralph-*': No such file or directory
+cmd: git status --porcelain | wc -l
+out: dirty slice remains (product + REVIEW_LOG); ?? .cursor/ralph/ not touched
+```
+
+---
+
+## Ralph Balanced — iteration 1 (2026-11-26)
+
+### Discovery
+- Root: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` @ `e52d98a`
+- Slice: customer email channel (optional Email, consent, outbox+PDF receipt, legal sync, mobile UI) — 74 dirty paths
+- Canonical build (standing-rules): `dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror`
+- Canonical CI builds: per test project `-warnaserror`; android TFM `dotnet build … -f net9.0-android -c Debug -warnaserror`
+- Bench harnesses: 0 (`find *bench*` empty) → perf N/A for class B
+- Runtime: default OpenJDK `17.0.21.0.3` breaks XA version parse; Android Studio JBR `/opt/android-studio/jbr` (`21.0.10`) unblocks android/sln
+- Commit authorization: **this prompt** (`commit: authorized`)
+
+### Snapshot
+```
+cmd: git status --porcelain | wc -l
+out: 74
+cmd: git diff --stat (tracked)
+out: 56 files changed, 1228 insertions(+), 136 deletions(-)  (+ untracked email channel files)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | grep outbox/interceptor; read CustomerEmailOutbox/SaveInterceptor | none new | SMTP-off Collect skip; multi-pay paid map |
+| 2 Edge | PASS | grep Sync Email; Customer.Update; TryQueue | Open: Email null clear (P2 Med); TryQueue ignore (P3) | multi-pay GroupBy DB+Added |
+| 3 Security | PASS | Authorize policies; AuditMask; Path.GetFileName; ContentType guard | none | consent authz; PII mask; MIME harden |
+| 4 Senior | PASS | migrations Up; perf class B; warnaserror builds; tests | none | migrations additive; legal 26 Nov synced |
+| 5 UI/UX | PASS | CustomerEdit/Detail XAML SemanticProperties | none | email Entry + consent UI present |
+
+### Gate state table
+| gate | state | command | output tail |
+|------|-------|---------|-------------|
+| Build | PASS | `JAVA_HOME=/opt/android-studio/jbr dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` | `Build succeeded. 0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` on sln + CI project builds | 0 Warning(s) |
+| Test | PASS | `dotnet test` Domain/App/Web/Mobile/Api `-c Release --no-build` | Domain 86, App 311, Web 205, Mobile 355, Api 335; Failed 0 |
+| Perf | N/A | class B; `find *bench*` → 0 | no harness |
+
+Note: default system JDK yields XA0033; gate PASS requires `JAVA_HOME=/opt/android-studio/jbr` in this environment.
+
+### Findings
+**Fixed:** none this iteration (prior slice fixes already in tree).
+
+**Dismissed (with evidence):**
+- SMTP-off skips Collect — `CustomerEmailSaveInterceptor.cs:40-44` `"Skip when SMTP is off…"` + `_email.IsConfigured`
+- Multi-pay paid-so-far — `CustomerEmailOutbox.cs:142-171` DB GroupBy + paidNewMap
+- MIME basename/ContentType — `SmtpTransport.cs:46-62`
+- Consent policies — `CustomerEmailController.cs:25,39` RequireStaff / RequireManagerOrOwner
+- Legal sync 26 Nov 2026 — Privacy/Terms docs + Web + MAUI
+
+**Open:**
+- [UNVERIFIED product] Sync/REST `Email: null` clears stored email via `Customer.Update` (`Customer.cs:46-48`, `CustomerService.cs:221-227`). P2 Medium — needs omit-vs-clear product rule.
+- TryQueue return ignored after Sent row (`CustomerEmailOutbox.cs:201`). P3 Low.
+
+**Out-of-scope:** `.cursor/ralph/` unknown ownership — not touched; not committed.
+
+### Teardown
+No loop-owned artifacts created this run (no `.ralph-*` namespace). Left working tree for commit.
+
+### Commit
+Authorized by Ralph Balanced prompt. Performed after gates PASS and no P0/P1 open.
+
+### Status
+**COMPLETE WITH NOTES** — mandatory gates PASS; residual P2/P3 recorded; JDK note for local android builds.

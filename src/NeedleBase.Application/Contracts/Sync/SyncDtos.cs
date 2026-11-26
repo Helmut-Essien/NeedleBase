@@ -30,7 +30,9 @@ public sealed record SyncCustomerDto(
     string? Notes,
     string? PhotoRef,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset DateModifiedUtc);
+    DateTimeOffset DateModifiedUtc,
+    /// <summary>Optional; omitted by older clients (null).</summary>
+    string? Email = null);
 
 public sealed record SyncMeasurementDto(
     string Id,

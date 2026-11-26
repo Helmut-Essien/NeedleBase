@@ -234,6 +234,11 @@ public static class LocalSchemaMigrator
         );
         """;
 
+    /// <summary>Version 12 = optional customer email (contact + transactional email when opted in on the server).</summary>
+    private const string V12CustomerEmail = """
+        ALTER TABLE "Customers" ADD COLUMN "Email" TEXT NULL;
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
@@ -248,6 +253,7 @@ public static class LocalSchemaMigrator
         V9MeasurementTakenAt,
         V10WhatsAppConsent,
         V11FreeMode,
+        V12CustomerEmail,
     ];
 
     public static int LatestVersion => Steps.Length;
@@ -287,10 +293,12 @@ public static class LocalSchemaMigrator
             for (var next = version + 1; next <= Steps.Length; next++)
             {
                 await using var tx = await connection.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
-                // ADD COLUMN has no IF NOT EXISTS in SQLite: skip V9 when the column is already there
-                // (a half-applied or rebuilt database) so the step stays idempotent.
-                var skip = ReferenceEquals(Steps[next - 1], V9MeasurementTakenAt)
-                    && await ColumnExistsAsync(connection, tx, "OrderLines", "MeasurementTakenAtUtc", cancellationToken).ConfigureAwait(false);
+                // ADD COLUMN has no IF NOT EXISTS in SQLite: skip when the column is already there
+                // (EnsureCreated from a newer model, or a half-applied step) so the step stays idempotent.
+                var skip = (ReferenceEquals(Steps[next - 1], V9MeasurementTakenAt)
+                            && await ColumnExistsAsync(connection, tx, "OrderLines", "MeasurementTakenAtUtc", cancellationToken).ConfigureAwait(false))
+                           || (ReferenceEquals(Steps[next - 1], V12CustomerEmail)
+                            && await ColumnExistsAsync(connection, tx, "Customers", "Email", cancellationToken).ConfigureAwait(false));
                 if (!skip)
                 {
                     await ExecuteAsync(connection, tx, Steps[next - 1], cancellationToken).ConfigureAwait(false);

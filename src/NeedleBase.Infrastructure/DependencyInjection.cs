@@ -60,10 +60,12 @@ public static class DependencyInjection
         services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<Email.EmailQueue>());
         services.AddSingleton<Email.IEmailTransport, Email.SmtpTransport>();
         services.AddHostedService<Email.EmailSendingService>();
+        services.AddSingleton<Email.CustomerEmailSaveInterceptor>();
         services.AddScoped<NeedleBase.Application.Email.PlanEmailAssignmentBuffer>();
         services.AddScoped<Email.PlanEmailService>();
         services.AddScoped<IPlanEmailNotifier>(sp => sp.GetRequiredService<Email.PlanEmailService>());
         services.AddHostedService<Email.PlanEmailWorker>();
+        services.AddScoped<Email.CustomerEmailService>();
         // WhatsApp (Meta Cloud API). Off when unset; secrets only from user-secrets/environment.
         services.Configure<WhatsApp.WhatsAppOptions>(configuration.GetSection(WhatsApp.WhatsAppOptions.Section));
         services.AddHttpClient<WhatsApp.IWhatsAppClient, WhatsApp.MetaWhatsAppClient>();
@@ -82,11 +84,14 @@ public static class DependencyInjection
 
         var connectionString = DatabaseConnection.Build(configuration);
 
-        services.AddDbContext<ApplicationDbContext>(options =>
+        services.AddDbContext<ApplicationDbContext>((sp, options) =>
+        {
             options.UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.EnableRetryOnFailure(3, TimeSpan.FromSeconds(5), null);
-            }));
+            });
+            options.AddInterceptors(sp.GetRequiredService<Email.CustomerEmailSaveInterceptor>());
+        });
 
         services.AddIdentity<ApplicationUser, IdentityRole>(options =>
             {

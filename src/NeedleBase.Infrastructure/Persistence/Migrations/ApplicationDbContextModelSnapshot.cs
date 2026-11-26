@@ -371,6 +371,10 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("DateModifiedUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -425,6 +429,86 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.HasIndex("BusinessId", "SyncTxId", "Id");
 
                     b.ToTable("Customers", (string)null);
+                });
+
+            modelBuilder.Entity("NeedleBase.Domain.Entities.CustomerEmailConsent", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<string>("BusinessId")
+                        .IsRequired()
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<DateTimeOffset>("ChangedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ChangedByUserId")
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("CustomerId")
+                        .IsRequired()
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<bool>("OptedIn")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("CustomerId")
+                        .IsUnique();
+
+                    b.ToTable("CustomerEmailConsents", (string)null);
+                });
+
+            modelBuilder.Entity("NeedleBase.Domain.Entities.CustomerEmailSent", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<string>("BusinessId")
+                        .IsRequired()
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("RefId")
+                        .IsRequired()
+                        .HasMaxLength(26)
+                        .HasColumnType("character varying(26)");
+
+                    b.Property<string>("StatusKey")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BusinessId");
+
+                    b.HasIndex("Kind", "RefId", "StatusKey")
+                        .IsUnique();
+
+                    b.ToTable("CustomerEmailSents", (string)null);
                 });
 
             modelBuilder.Entity("NeedleBase.Domain.Entities.DeletedItem", b =>
@@ -1248,6 +1332,30 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("NeedleBase.Domain.Entities.Customer", b =>
+                {
+                    b.HasOne("NeedleBase.Domain.Entities.Business", null)
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NeedleBase.Domain.Entities.CustomerEmailConsent", b =>
+                {
+                    b.HasOne("NeedleBase.Domain.Entities.Business", null)
+                        .WithMany()
+                        .HasForeignKey("BusinessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("NeedleBase.Domain.Entities.Customer", null)
+                        .WithMany()
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("NeedleBase.Domain.Entities.CustomerEmailSent", b =>
                 {
                     b.HasOne("NeedleBase.Domain.Entities.Business", null)
                         .WithMany()

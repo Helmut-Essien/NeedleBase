@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using NeedleBase.Application.Abstractions;
+using NeedleBase.Application.Receipts;
 
 namespace NeedleBase.Application.Email;
 
@@ -227,6 +228,105 @@ public static class EmailTemplates
             "<p>Open NeedleBase to update it" +
             (orders is null ? "" : $" (<a href=\"{H(orders)}\">{H(orders)}</a>)") + ".</p>");
         return new EmailMessage(toEmail, toName, $"{businessName}: order #{displayRef} is due today", text, html, "order_due");
+    }
+
+    /// <summary>Customer order-status notice (Ready to collect, etc.).</summary>
+    public static EmailMessage CustomerOrderStatus(
+        string toEmail,
+        string? toName,
+        string businessName,
+        string? businessPhone,
+        string displayRef,
+        string statusDisplay,
+        string? appBaseUrl)
+    {
+        toName = OneLine(toName);
+        businessName = OneLine(businessName) ?? "";
+        displayRef = OneLine(displayRef) ?? "";
+        statusDisplay = OneLine(statusDisplay) ?? "";
+        var greet = string.IsNullOrWhiteSpace(toName) ? "Hello" : $"Hello {toName.Trim()}";
+        var phone = OneLine(businessPhone);
+        var text =
+            $"{greet},\n\nYour order #{displayRef} at {businessName} is now: {statusDisplay}.\n\n" +
+            (phone is null ? "" : $"Shop phone: {phone}\n\n") +
+            "If you have questions, contact the shop.\n\nNeedleBase";
+        var html = Wrap(
+            $"<p>{H(greet)},</p><p>Your order <strong>#{H(displayRef)}</strong> at <strong>{H(businessName)}</strong> is now: <strong>{H(statusDisplay)}</strong>.</p>" +
+            (phone is null ? "" : $"<p>Shop phone: {H(phone)}</p>") +
+            "<p style=\"color:#555\">If you have questions, contact the shop.</p>");
+        return new EmailMessage(
+            toEmail, toName, $"{businessName}: order #{displayRef} — {statusDisplay}", text, html, "customer_order_status");
+    }
+
+    /// <summary>Customer payment receipt (same fields as phone share; PDF attached, generated on send).</summary>
+    public static EmailMessage CustomerPaymentReceipt(
+        string toEmail,
+        string? toName,
+        string businessName,
+        string? businessPhone,
+        string orderDisplayRef,
+        string dateText,
+        string amountText,
+        string methodText,
+        string orderTotalText,
+        string paidSoFarText,
+        string balanceLine)
+    {
+        toName = OneLine(toName);
+        businessName = OneLine(businessName) ?? "";
+        var orderRef = OneLine(orderDisplayRef) ?? "";
+        var greet = string.IsNullOrWhiteSpace(toName) ? "Hello" : $"Hello {toName.Trim()}";
+        var phone = OneLine(businessPhone);
+        var text =
+            $"{greet},\n\n{businessName}" +
+            (phone is null ? "" : $"\n{phone}") +
+            "\nPayment receipt\n\n" +
+            $"Order #{orderRef}\nDate: {OneLine(dateText)}\nAmount: {OneLine(amountText)}\nMethod: {OneLine(methodText)}\n\n" +
+            $"Order total: {OneLine(orderTotalText)}\nPaid so far: {OneLine(paidSoFarText)}\n{OneLine(balanceLine)}\n\n" +
+            "A PDF copy is attached.\n\nThank you.\n\nNeedleBase";
+        var html = Wrap(
+            $"<p>{H(greet)},</p><p><strong>{H(businessName)}</strong>" +
+            (phone is null ? "" : $"<br/>{H(phone)}") +
+            "</p><p>Payment receipt</p>" +
+            $"<p>Order <strong>#{H(orderRef)}</strong><br/>Date: {H(OneLine(dateText) ?? "")}<br/>" +
+            $"Amount: <strong>{H(OneLine(amountText) ?? "")}</strong><br/>Method: {H(OneLine(methodText) ?? "")}</p>" +
+            $"<p>Order total: {H(OneLine(orderTotalText) ?? "")}<br/>Paid so far: {H(OneLine(paidSoFarText) ?? "")}<br/>" +
+            $"<strong>{H(OneLine(balanceLine) ?? "")}</strong></p>" +
+            "<p>A PDF copy is attached.</p><p>Thank you.</p>");
+
+        var pdfModel = new PaymentReceiptShareModel(
+            businessName,
+            phone,
+            toName ?? "",
+            orderRef,
+            OneLine(dateText) ?? "",
+            OneLine(amountText) ?? "",
+            OneLine(methodText) ?? "",
+            IsVoided: false,
+            OneLine(orderTotalText) ?? "",
+            OneLine(paidSoFarText) ?? "",
+            OneLine(balanceLine) ?? "",
+            IsPending: false);
+        var pdf = PaymentReceiptShare.ToPdf(pdfModel);
+        var fileName = $"receipt-{SafeFileToken(orderRef)}.pdf";
+
+        return new EmailMessage(
+            toEmail, toName, $"{businessName}: payment receipt for order #{orderRef}", text, html,
+            "customer_payment_receipt",
+            [new EmailAttachment(fileName, "application/pdf", pdf)]);
+    }
+
+    /// <summary>ASCII token for a PDF file name (order refs are short alphanumerics).</summary>
+    private static string SafeFileToken(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "payment";
+        }
+
+        var chars = value.Trim().Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-').ToArray();
+        var s = new string(chars).Trim('-');
+        return string.IsNullOrEmpty(s) ? "payment" : s.Length <= 40 ? s : s[..40];
     }
 
     /// <summary>"Mon 2 Nov 2026, 14:05 GMT" (Ghana is GMT all year).</summary>

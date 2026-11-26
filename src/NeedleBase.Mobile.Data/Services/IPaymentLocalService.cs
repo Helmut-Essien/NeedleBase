@@ -1,5 +1,6 @@
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Payments;
+using NeedleBase.Application.Receipts;
 
 namespace NeedleBase.Mobile.Data.Services;
 
@@ -70,39 +71,30 @@ public sealed record LocalPaymentReceipt(
     string CustomerPhone,
     OrderPaymentsDto Totals)
 {
-    /// <summary>Plain-text receipt for the share sheet (WhatsApp/SMS). Business name (and phone when set) are added by the app.</summary>
-    public string ToShareText(string businessName, string? businessPhone = null)
+    /// <summary>Share model (text + PDF). The internal payment note never leaves the phone.</summary>
+    public PaymentReceiptShareModel ToShareModel(string businessName, string? businessPhone = null)
     {
         var p = Payment.Payment;
-        var lines = new List<string> { businessName };
-        if (!string.IsNullOrWhiteSpace(businessPhone))
-        {
-            lines.Add(businessPhone.Trim());
-        }
-
-        lines.Add("Payment receipt");
-        lines.Add(string.Empty);
-        lines.Add($"Customer: {CustomerName}");
-        lines.Add($"Order #{OrderDisplayRef}");
-        lines.Add($"Date: {Money.Date(p.RecordedAtUtc)}");
-        lines.Add($"Amount: {p.AmountDisplay}");
-        lines.Add($"Method: {p.MethodDisplay}");
-        // The note is an internal record (references, staff remarks): it never leaves the phone on a receipt.
-        if (p.IsVoided)
-        {
-            lines.Add("This payment was voided.");
-        }
-
-        lines.Add(string.Empty);
-        lines.Add($"Order total: {Money.Format(Totals.TotalAmount)}");
-        lines.Add($"Paid so far: {Money.Format(Totals.PaidAmount)}");
-        lines.Add(Totals.Balance > 0 ? $"Balance: {Money.Format(Totals.Balance)}" : Totals.BalanceDisplay);
-        if (Payment.IsPending)
-        {
-            lines.Add(string.Empty);
-            lines.Add("Recorded on this device; not yet synced.");
-        }
-
-        return string.Join('\n', lines);
+        return new PaymentReceiptShareModel(
+            BusinessName: businessName,
+            BusinessPhone: businessPhone,
+            CustomerName: CustomerName,
+            OrderDisplayRef: OrderDisplayRef,
+            DateText: Money.Date(p.RecordedAtUtc),
+            AmountText: p.AmountDisplay,
+            MethodText: p.MethodDisplay,
+            IsVoided: p.IsVoided,
+            OrderTotalText: Money.Format(Totals.TotalAmount),
+            PaidSoFarText: Money.Format(Totals.PaidAmount),
+            BalanceLine: Totals.Balance > 0 ? $"Balance: {Money.Format(Totals.Balance)}" : Totals.BalanceDisplay,
+            IsPending: Payment.IsPending);
     }
+
+    /// <summary>Plain-text receipt for the share sheet (WhatsApp/SMS). Business name (and phone when set) are added by the app.</summary>
+    public string ToShareText(string businessName, string? businessPhone = null) =>
+        PaymentReceiptShare.ToShareText(ToShareModel(businessName, businessPhone));
+
+    /// <summary>On-device PDF bytes for Workshop+ share. Same fields as <see cref="ToShareText"/>.</summary>
+    public byte[] ToSharePdf(string businessName, string? businessPhone = null) =>
+        PaymentReceiptShare.ToPdf(ToShareModel(businessName, businessPhone));
 }

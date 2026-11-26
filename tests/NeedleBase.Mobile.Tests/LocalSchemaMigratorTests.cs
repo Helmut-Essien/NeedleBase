@@ -240,11 +240,15 @@ public class LocalSchemaMigratorTests
             using var cmd = connection.CreateCommand();
             cmd.CommandText = $"PRAGMA table_info(\"{name}\");";
             using var reader = cmd.ExecuteReader();
+            var columns = new List<string>();
             while (reader.Read())
             {
-                // name, type, notnull, pk
-                lines.Add($"  {reader.GetString(1)} {reader.GetString(2)} nn={reader.GetInt32(3)} pk={reader.GetInt32(5)}");
+                // name, type, notnull, pk — sort by name so ADD COLUMN steps match EnsureCreated order.
+                columns.Add($"  {reader.GetString(1)} {reader.GetString(2)} nn={reader.GetInt32(3)} pk={reader.GetInt32(5)}");
             }
+
+            columns.Sort(StringComparer.Ordinal);
+            lines.AddRange(columns);
         }
 
         return string.Join('\n', lines);

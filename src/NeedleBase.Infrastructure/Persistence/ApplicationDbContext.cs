@@ -105,6 +105,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     /// <summary>Automatic WhatsApp outbox + delivery log (written by <see cref="WhatsApp.WhatsAppOutbox"/> on status changes).</summary>
     public DbSet<WhatsAppMessage> WhatsAppMessages => Set<WhatsAppMessage>();
 
+    /// <summary>Customer transactional email opt-in (separate from WhatsApp).</summary>
+    public DbSet<CustomerEmailConsent> CustomerEmailConsents => Set<CustomerEmailConsent>();
+
+    /// <summary>Dedupe log for customer status/receipt emails.</summary>
+    public DbSet<CustomerEmailSent> CustomerEmailSents => Set<CustomerEmailSent>();
+
+    /// <summary>Filled by <see cref="Email.CustomerEmailOutbox"/> during SavingChanges; flushed after commit.</summary>
+    public List<Application.Abstractions.EmailMessage>? PendingCustomerEmails { get; set; }
+
     /// <summary>Append-only audit trail (tenant-filtered; never synced; written by <see cref="CaptureAudit"/>).</summary>
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
 
@@ -481,6 +490,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
             e.Property(x => x.Name).HasMaxLength(Domain.Common.FieldLimits.CustomerName).IsRequired();
             e.Property(x => x.Phone).HasMaxLength(Domain.Common.FieldLimits.Phone).IsRequired();
+            e.Property(x => x.Email).HasMaxLength(Domain.Common.FieldLimits.Email);
             e.Property(x => x.Notes).HasMaxLength(Domain.Common.FieldLimits.Notes);
             e.Property(x => x.PhotoRef).HasMaxLength(Domain.Common.FieldLimits.PhotoRef);
             e.HasIndex(x => x.BusinessId);
@@ -708,6 +718,37 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.HasIndex(x => x.BusinessId);
             e.HasOne<Business>().WithMany().HasForeignKey(x => x.BusinessId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
+
+        builder.Entity<CustomerEmailConsent>(e =>
+        {
+            e.ToTable("CustomerEmailConsents");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.CustomerId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.Source).HasMaxLength(CustomerEmailConsent.SourceMax).IsRequired();
+            e.Property(x => x.ChangedByUserId).HasMaxLength(450);
+            e.HasIndex(x => x.CustomerId).IsUnique();
+            e.HasIndex(x => x.BusinessId);
+            e.HasOne<Business>().WithMany().HasForeignKey(x => x.BusinessId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<Customer>().WithMany().HasForeignKey(x => x.CustomerId).OnDelete(DeleteBehavior.Cascade);
+            e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
+        });
+
+        builder.Entity<CustomerEmailSent>(e =>
+        {
+            e.ToTable("CustomerEmailSents");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(Domain.Common.FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.Kind).HasMaxLength(16).IsRequired();
+            e.Property(x => x.RefId).HasMaxLength(Domain.Common.FieldLimits.Id).IsRequired();
+            e.Property(x => x.StatusKey).HasMaxLength(Domain.Common.FieldLimits.OrderStatus).IsRequired();
+            e.HasIndex(x => new { x.Kind, x.RefId, x.StatusKey }).IsUnique();
+            e.HasIndex(x => x.BusinessId);
+            e.HasOne<Business>().WithMany().HasForeignKey(x => x.BusinessId).OnDelete(DeleteBehavior.Cascade);
             e.HasQueryFilter(x => CurrentBusinessId != null && x.BusinessId == CurrentBusinessId);
         });
 

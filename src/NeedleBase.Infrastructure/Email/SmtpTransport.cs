@@ -31,7 +31,39 @@ public sealed class SmtpTransport : IEmailTransport
         mime.From.Add(new MailboxAddress(o.FromName, o.EffectiveFrom!));
         mime.To.Add(new MailboxAddress(message.ToName ?? string.Empty, message.ToAddress));
         mime.Subject = message.Subject;
-        mime.Body = new BodyBuilder { TextBody = message.TextBody, HtmlBody = message.HtmlBody }.ToMessageBody();
+        var builder = new BodyBuilder { TextBody = message.TextBody, HtmlBody = message.HtmlBody };
+        if (message.Attachments is { Count: > 0 })
+        {
+            foreach (var attachment in message.Attachments)
+            {
+                if (attachment.Content is null || attachment.Content.Length == 0)
+                {
+                    continue;
+                }
+
+                // Basename only — never pass a path segment into the MIME part name.
+                var rawName = string.IsNullOrWhiteSpace(attachment.FileName) ? "attachment" : attachment.FileName.Trim();
+                var name = Path.GetFileName(rawName);
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    name = "attachment";
+                }
+
+                var contentType = string.IsNullOrWhiteSpace(attachment.ContentType)
+                    ? "application/octet-stream"
+                    : attachment.ContentType.Trim();
+                // Only allow a simple type/subtype (callers pass application/pdf for receipts).
+                if (contentType.Contains(';') || contentType.Contains('\r') || contentType.Contains('\n') ||
+                    contentType.Count(c => c == '/') != 1)
+                {
+                    contentType = "application/octet-stream";
+                }
+
+                builder.Attachments.Add(name, attachment.Content, ContentType.Parse(contentType));
+            }
+        }
+
+        mime.Body = builder.ToMessageBody();
 
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Clamp(o.TimeoutSeconds, 5, 120)));

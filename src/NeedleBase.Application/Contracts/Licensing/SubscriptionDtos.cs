@@ -54,13 +54,17 @@ public sealed record SubscriptionStatusDto
     /// <summary>Whether receipts should show the shop phone number.</summary>
     public bool ShopPhoneOnReceipts { get; init; }
 
+    /// <summary>Workshop/Production/unlimited: share payment receipts as PDF. Starter stays text-only.</summary>
+    public bool CanPdfReceipts { get; init; }
+
     public static SubscriptionStatusDto Unlocked { get; } = new()
     {
         State = NeedleBase.Application.Licensing.SubscriptionStates.Active,
         PlanCode = NeedleBase.Application.Licensing.PlanCodes.Unlimited,
         PlanDisplayName = "Unlimited",
         CanExport = true,
-        ShopPhoneOnReceipts = true
+        ShopPhoneOnReceipts = true,
+        CanPdfReceipts = true
     };
 }
 

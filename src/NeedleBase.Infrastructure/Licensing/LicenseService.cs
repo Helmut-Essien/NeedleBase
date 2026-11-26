@@ -192,7 +192,8 @@ public sealed class LicenseService
             StaffUsedExcludingOwner = staffUsed,
             PendingInviteCount = pendingInvites,
             CanExport = entitlements.Export,
-            ShopPhoneOnReceipts = entitlements.ShopPhoneOnReceipts
+            ShopPhoneOnReceipts = entitlements.ShopPhoneOnReceipts,
+            CanPdfReceipts = entitlements.PdfReceipts
         };
 
         _cache.Set(CacheKey(businessId), status, StatusTtl);

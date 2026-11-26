@@ -197,7 +197,7 @@ public sealed class CustomerLocalService : ICustomerLocalService
         {
             try
             {
-                existing.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, now);
+                existing.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, now, request.Email);
                 await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 return await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false);
             }
@@ -237,7 +237,8 @@ public sealed class CustomerLocalService : ICustomerLocalService
                 request.Phone,
                 request.Notes,
                 request.PhotoRef,
-                now);
+                now,
+                request.Email);
             db.Customers.Add(entity);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return MapDetail(entity, 0);
@@ -295,7 +296,7 @@ public sealed class CustomerLocalService : ICustomerLocalService
 
         try
         {
-            entity.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, DateTimeOffset.UtcNow);
+            entity.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, DateTimeOffset.UtcNow, request.Email);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return await GetByIdAsync(businessId, id, cancellationToken).ConfigureAwait(false);
         }
@@ -323,7 +324,8 @@ public sealed class CustomerLocalService : ICustomerLocalService
             c.PhotoRef,
             c.CreatedAtUtc,
             c.DateModifiedUtc,
-            measurementCount);
+            measurementCount,
+            c.Email);
 
     public async Task<CustomerDeleteResult> DeleteAsync(
         string businessId,

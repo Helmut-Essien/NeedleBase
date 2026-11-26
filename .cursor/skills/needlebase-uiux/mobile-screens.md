@@ -49,7 +49,7 @@ Strong hierarchy; few cards.
 | Screen | Behaviour |
 |--------|-----------|
 | List | Search; avatar/initials, name, phone; trailing open-order count |
-| Add/Edit | Name (required), phone (required), optional photo, notes |
+| Add/Edit | Name (required), phone (required), optional email, optional photo, notes |
 | Profile | Header + actions (Create order, Record payment) |
 | Tabs | Overview · Measurements · Orders · Images/Notes |
 

@@ -154,6 +154,41 @@ public class CustomerEndpointTests : IClassFixture<NeedleBaseApiFactory>
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Customer_OptionalEmail_And_EmailConsent_RoundTrip()
+    {
+        var (token, _) = await RegisterAsync("em");
+        using var create = Authorized(
+            HttpMethod.Post,
+            "/api/customers",
+            token,
+            new CreateCustomerRequest("Efua Mensah", "+233245550199", null, null, email: "efua@example.com"));
+        using var createResponse = await _client.SendAsync(create);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        var created = await createResponse.Content.ReadFromJsonAsync<CustomerDetailDto>(JsonOptions);
+        Assert.NotNull(created);
+        Assert.Equal("efua@example.com", created.Email);
+
+        using var getConsent = Authorized(HttpMethod.Get, $"/api/customers/{created.Id}/email-consent", token);
+        using var getConsentResponse = await _client.SendAsync(getConsent);
+        Assert.Equal(HttpStatusCode.OK, getConsentResponse.StatusCode);
+        var before = await getConsentResponse.Content.ReadFromJsonAsync<CustomerEmailConsentDto>(JsonOptions);
+        Assert.NotNull(before);
+        Assert.False(before.OptedIn);
+        Assert.True(before.HasEmail);
+
+        using var putConsent = Authorized(
+            HttpMethod.Put,
+            $"/api/customers/{created.Id}/email-consent",
+            token,
+            new SetCustomerEmailConsentRequest { OptedIn = true });
+        using var putConsentResponse = await _client.SendAsync(putConsent);
+        Assert.Equal(HttpStatusCode.OK, putConsentResponse.StatusCode);
+        var after = await putConsentResponse.Content.ReadFromJsonAsync<CustomerEmailConsentDto>(JsonOptions);
+        Assert.NotNull(after);
+        Assert.True(after.OptedIn);
+    }
+
     private async Task<(string AccessToken, string BusinessId)> RegisterAsync(string label)
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];

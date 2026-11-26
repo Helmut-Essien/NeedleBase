@@ -32,7 +32,7 @@ Core workflow: Customer → Measurements → Order → Production → Payment �
 |--------|---------|-------|--------|
 | `Business` | Workspace | Name, phone, `CurrencyCode` "GHS", `MeasurementUnit` "cm" | **Built** |
 | `StaffMembership` | User ↔ Business + Role | UserId, BusinessId, Role (`BusinessRole`), IsActive | **Built** (tenant-filtered) |
-| `Customer` | Client | `Name`, `Phone`, `Notes`, `PhotoRef`, `CreatedAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
+| `Customer` | Client | `Name`, `Phone`, optional `Email`, `Notes`, `PhotoRef`, `CreatedAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered). Email is contact-only; NeedleBase does not email customers yet. |
 | `MeasurementProfile` | Measurements | CustomerId, `GarmentTemplate`, `Unit`, `FieldsJson`, `Notes`, `MeasuredAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
 | `Order` / `OrderLine` | Sewing job / garment lines | ref, status, due/fitting dates, assignee, totals; line template, qty, measurement snapshot | **Built** (S3) |
 | `Payment` | Money in | OrderId, amount, method, note, recordedAt, sync metadata | **Built** (S5) |

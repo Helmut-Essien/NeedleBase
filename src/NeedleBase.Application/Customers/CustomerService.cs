@@ -61,6 +61,7 @@ public sealed class CustomerService : ICustomerService
                 c.BusinessId,
                 c.Name,
                 c.Phone,
+                c.Email,
                 c.Notes,
                 c.PhotoRef,
                 c.CreatedAtUtc,
@@ -84,7 +85,8 @@ public sealed class CustomerService : ICustomerService
             customer.PhotoRef,
             customer.CreatedAtUtc,
             customer.DateModifiedUtc,
-            customer.MeasurementCount);
+            customer.MeasurementCount,
+            customer.Email);
     }
 
     /// <summary>Customers whose number is the same as <paramref name="phone"/> (any formatting), for a duplicate warning.</summary>
@@ -140,6 +142,16 @@ public sealed class CustomerService : ICustomerService
             return RecordResult.Fail(RecordError.PhoneInvalid, phoneError);
         }
 
+        if (!request.Lenient && EmailAddresses.CheckOptional(request.Email) is { } emailError)
+        {
+            return RecordResult.Fail(RecordError.Validation, emailError);
+        }
+
+        // Sync lenient: drop a bad optional email rather than fail the whole customer upsert.
+        var email = request.Lenient && EmailAddresses.CheckOptional(request.Email) is not null
+            ? null
+            : request.Email;
+
         try
         {
             var entity = Customer.Create(
@@ -149,7 +161,8 @@ public sealed class CustomerService : ICustomerService
                 request.Phone,
                 request.Notes,
                 request.PhotoRef,
-                now);
+                now,
+                email);
             _db.Customers.Add(entity);
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var detail = await GetByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false);
@@ -200,9 +213,18 @@ public sealed class CustomerService : ICustomerService
             return RecordResult.Fail(RecordError.PhoneInvalid, phoneError);
         }
 
+        if (!request.Lenient && EmailAddresses.CheckOptional(request.Email) is { } emailError)
+        {
+            return RecordResult.Fail(RecordError.Validation, emailError);
+        }
+
+        var email = request.Lenient && EmailAddresses.CheckOptional(request.Email) is not null
+            ? null
+            : request.Email;
+
         try
         {
-            entity.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, _clock.UtcNow);
+            entity.Update(request.Name, request.Phone, request.Notes, request.PhotoRef, _clock.UtcNow, email);
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var detail = await GetByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false);
             return detail;

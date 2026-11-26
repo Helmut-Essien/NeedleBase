@@ -329,6 +329,10 @@ public class PaymentSyncTests
         Assert.Contains("Balance: GH₵ 500.00", text);
         Assert.Contains("Recorded on this device; not yet synced.", text);
         Assert.DoesNotContain("confirmed", text, StringComparison.OrdinalIgnoreCase); // never looks provider-confirmed
+
+        var pdf = receipt.ToSharePdf("Ama Stitches");
+        Assert.StartsWith("%PDF-1.4", System.Text.Encoding.ASCII.GetString(pdf));
+        Assert.Contains("GHS 300.00", System.Text.Encoding.ASCII.GetString(pdf));
     }
 
     [Theory]
@@ -482,7 +486,7 @@ public class PaymentSyncTests
     }
 
     [Fact]
-    public void Migrator_LatestVersion_IncludesFreeMode() => Assert.Equal(11, LocalSchemaMigrator.LatestVersion);
+    public void Migrator_LatestVersion_IncludesFreeMode() => Assert.Equal(12, LocalSchemaMigrator.LatestVersion);
 
     // ------------------------------------------------------------------ helpers
 

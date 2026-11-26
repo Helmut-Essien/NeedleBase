@@ -51,6 +51,7 @@ public sealed class BusinessExportService
                 c.Id,
                 c.Name,
                 c.Phone,
+                c.Email,
                 c.Notes,
                 c.CreatedAtUtc,
                 c.DateModifiedUtc

@@ -16,6 +16,7 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
 
     private readonly WhatsAppConsentSync? _consent;
     private readonly IWhatsAppConsentApi? _consentApi;
+    private readonly ICustomerEmailConsentApi? _emailConsentApi;
     private int _loadGeneration;
 
     public CustomerDetailViewModel(
@@ -23,13 +24,15 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
         IMeasurementLocalService measurements,
         IAuthService auth,
         WhatsAppConsentSync? consent = null,
-        IWhatsAppConsentApi? consentApi = null)
+        IWhatsAppConsentApi? consentApi = null,
+        ICustomerEmailConsentApi? emailConsentApi = null)
     {
         _customers = customers;
         _measurements = measurements;
         _auth = auth;
         _consent = consent;
         _consentApi = consentApi;
+        _emailConsentApi = emailConsentApi;
         Title = "Customer";
     }
 
@@ -42,6 +45,9 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
 
     [ObservableProperty]
     private string phone = string.Empty;
+
+    [ObservableProperty]
+    private string email = string.Empty;
 
     [ObservableProperty]
     private string notes = string.Empty;
@@ -81,6 +87,26 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
 
     public string ConsentButtonText => Consent?.OptedIn == true ? "Turn off WhatsApp updates" : "Turn on WhatsApp updates";
 
+    // ---- Email consent (online; separate from WhatsApp) ----
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(EmailConsentText), nameof(EmailConsentButtonText), nameof(HasEmailConsentUi))]
+    private NeedleBase.Application.Contracts.Customers.CustomerEmailConsentDto? emailConsent;
+
+    public bool HasEmailConsentUi => _emailConsentApi is not null && !string.IsNullOrWhiteSpace(Email);
+
+    public string EmailConsentText => EmailConsent switch
+    {
+        null => HasEmail
+            ? "Email updates: unknown (connect to check)."
+            : "Add an email on Edit to send order and receipt emails.",
+        { OptedIn: true, HasEmail: false } => "Email updates: on, but this customer has no email yet.",
+        { OptedIn: true } => "Email updates: on. Status and payment receipts go to their email when you're online.",
+        _ => "Email updates: off. Ask before turning them on."
+    };
+
+    public string EmailConsentButtonText => EmailConsent?.OptedIn == true ? "Turn off email updates" : "Turn on email updates";
+
     public static string DescribeConsent(WhatsAppConsentView? c) => c switch
     {
         null => string.Empty,
@@ -90,6 +116,75 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
         { OptedIn: true } => "WhatsApp updates: on. The customer agreed to order updates.",
         _ => "WhatsApp updates: off. Ask the customer before turning them on."
     };
+
+    [RelayCommand]
+    private async Task ToggleEmailConsentAsync()
+    {
+        if (_emailConsentApi is null || !CanChangeConsent || string.IsNullOrWhiteSpace(CustomerId) || _emailConsentBusy)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Email))
+        {
+            ErrorMessage = "Add an email for this customer first.";
+            return;
+        }
+
+        var turnOn = EmailConsent?.OptedIn != true;
+        if (turnOn)
+        {
+            var ok = await Confirm(
+                "Turn on email updates?",
+                "They will get order status and payment receipt emails when this shop is online. Ask them first.");
+            if (!ok)
+            {
+                return;
+            }
+        }
+
+        _emailConsentBusy = true;
+        try
+        {
+            var result = await _emailConsentApi.SetEmailConsentAsync(CustomerId, turnOn, Now());
+            if (result.Outcome == ConsentPushOutcome.Saved && result.Value is not null)
+            {
+                EmailConsent = result.Value;
+                return;
+            }
+
+            ErrorMessage = result.Outcome switch
+            {
+                ConsentPushOutcome.Offline => "You're offline. Email consent needs a connection.",
+                ConsentPushOutcome.Forbidden => "Only the owner or a manager can change email updates.",
+                _ => "Couldn't update email consent. Try again."
+            };
+        }
+        finally
+        {
+            _emailConsentBusy = false;
+        }
+    }
+
+    private bool _emailConsentBusy;
+
+    private async Task LoadEmailConsentAsync(string customerId)
+    {
+        if (_emailConsentApi is null || string.IsNullOrWhiteSpace(Email))
+        {
+            EmailConsent = null;
+            OnPropertyChanged(nameof(HasEmailConsentUi));
+            return;
+        }
+
+        var result = await _emailConsentApi.GetEmailConsentAsync(customerId);
+        if (result.Outcome == ConsentPushOutcome.Saved)
+        {
+            EmailConsent = result.Value;
+        }
+
+        OnPropertyChanged(nameof(HasEmailConsentUi));
+    }
 
     [RelayCommand]
     private async Task ToggleConsentAsync()
@@ -195,6 +290,7 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
         }
     }
     public bool HasNotes => !string.IsNullOrWhiteSpace(Notes);
+    public bool HasEmail => !string.IsNullOrWhiteSpace(Email);
     public bool HasMeasurements => Measurements.Count > 0;
 
     /// <summary>Show empty CTA only when idle (not while loading).</summary>
@@ -258,9 +354,14 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
 
             Name = detail.Name;
             Phone = detail.Phone;
+            Email = detail.Email ?? string.Empty;
             Notes = detail.Notes ?? string.Empty;
             Title = detail.Name;
+            var role = (await _auth.GetCachedUserAsync())?.Role;
+            CanChangeConsent = role is BusinessRole.Owner or BusinessRole.Manager;
             OnPropertyChanged(nameof(HasNotes));
+            OnPropertyChanged(nameof(HasEmail));
+            OnPropertyChanged(nameof(HasEmailConsentUi));
 
             var list = await _measurements.ListForCustomerAsync(businessId, CustomerId);
             Measurements.Clear();
@@ -271,6 +372,7 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
 
             OnPropertyChanged(nameof(HasMeasurements));
             _ = LoadConsentAsync(businessId, CustomerId, generation);
+            _ = LoadEmailConsentAsync(CustomerId);
         }
         catch (Exception)
         {
@@ -288,10 +390,12 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
     {
         Name = string.Empty;
         Phone = string.Empty;
+        Email = string.Empty;
         Notes = string.Empty;
         Title = "Customer";
         Measurements.Clear();
         OnPropertyChanged(nameof(HasNotes));
+        OnPropertyChanged(nameof(HasEmail));
         OnPropertyChanged(nameof(HasMeasurements));
     }
 

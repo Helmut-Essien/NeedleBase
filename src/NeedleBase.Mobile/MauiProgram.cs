@@ -152,6 +152,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IWhatsAppOpenedApi>(sp => sp.GetRequiredService<StaffApi>());
         builder.Services.AddSingleton<IWhatsAppAdminApi>(sp => sp.GetRequiredService<StaffApi>());
         builder.Services.AddSingleton<NeedleBase.Mobile.Data.Services.IWhatsAppConsentApi>(sp => sp.GetRequiredService<StaffApi>());
+        builder.Services.AddSingleton<NeedleBase.Mobile.Data.Services.ICustomerEmailConsentApi>(sp => sp.GetRequiredService<StaffApi>());
         builder.Services.AddTransient<WhatsAppSettingsViewModel>();
         builder.Services.AddTransient<WhatsAppSettingsPage>();
         builder.Services.AddTransient<StaffViewModel>();

@@ -8,7 +8,7 @@
 
 **Effective date:** 1 January 2027
 
-**Last updated:** 18 November 2026
+**Last updated:** 26 November 2026
 
 ## 1. Definitions
 
@@ -102,7 +102,9 @@ You must not: use the Service unlawfully or for another person's business withou
 
 ## 10. Third-party services
 
-The Service works alongside third parties, including: device makers; internet providers; MoMo providers and banks (for money the Business collects itself); app stores; the hosting provider (MonsterASP.NET, in Europe); NeedleBase's licensing service, for licence-key checks; **Gmail SMTP** or **Resend**, which we use to send email (password-reset and optional staff-invite messages); and **Meta** (WhatsApp Cloud API) when a Business turns on WhatsApp order notices and a customer has opted in — in that case the customer's number and the notice can be processed by Meta under Meta's own terms. The public website may also offer a WhatsApp "click to chat" link so you can message us; that is a link you choose to open.
+The Service works alongside third parties, including: device makers; internet providers; MoMo providers and banks (for money the Business collects itself); app stores; the hosting provider (MonsterASP.NET, in Europe); NeedleBase's licensing service, for licence-key checks; **Gmail SMTP** or **Resend**, which we use to send email (password-reset and optional staff-invite messages; paid-plan Owner and staff summary or assignment emails where the plan includes them; and transactional customer order-status and payment-receipt emails when the Business has recorded the customer's email, the customer has opted in to email updates, and email sending is configured — a payment receipt may include a PDF attachment generated when the message is sent); and **Meta** (WhatsApp Cloud API) when a Business turns on WhatsApp order notices and a customer has opted in — in that case the customer's number and the notice can be processed by Meta under Meta's own terms. The public website may also offer a WhatsApp "click to chat" link so you can message us; that is a link you choose to open.
+
+Customer email updates are separate from WhatsApp. The Business must only turn on email updates for a customer who has agreed. NeedleBase does not send marketing email to a workshop's customers. The Business remains responsible for having a lawful basis to contact its customers.
 
 We are not responsible for those third parties' services, charges, outages or terms. Links or references do not imply endorsement.
 

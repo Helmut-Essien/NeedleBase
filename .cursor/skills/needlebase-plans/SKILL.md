@@ -2,18 +2,18 @@
 name: needlebase-plans
 description: >-
   Decided NeedleBase pricing, plan limits, PlanCatalog rules, and the
-  implementation order. Steps 1–6 are built (PlanCatalog, staff caps,
-  Free, upgrade from Free, export and usage display, paid emails).
-  Later steps are not built. The published Terms and the landing-page
-  prices were updated on 18 November 2026. Use when talking about Free,
-  Starter, Workshop or Production, enforcing plan limits, upgrading a
-  shop, or how licence plans from Platform are applied. Do not start
-  the next build step until the user asks.
+  implementation order. Steps 1–6 are built. Step 7 is in progress:
+  PDF receipts and customer email (with PDF receipt attachment) are
+  built; profit/monthly reports next; photos later via Cloudflare R2
+  (not started). Privacy/Terms updated 26 November 2026 for customer
+  email. Use when talking about Free, Starter, Workshop or Production,
+  enforcing plan limits, upgrading a shop, or how licence plans from
+  Platform are applied. Do not start a new plan step until the user asks.
 ---
 
 # NeedleBase plans
 
-**Status: decided.** PlanCatalog (step 1), staff-limit enforcement (step 2), Free phone-only mode (step 3), upgrading from Free (step 4), export/usage display (step 5) and paid emails (step 6) are built. Later steps are **not built** — do not start them until the user asks. The published Terms and the public landing page already show these prices (updated 18 November 2026). Do not change those public prices or the published Terms again unless the user asks.
+**Status: decided.** PlanCatalog (step 1), staff-limit enforcement (step 2), Free phone-only mode (step 3), upgrading from Free (step 4), export/usage display (step 5) and paid emails (step 6) are built. **Step 7 (Workshop features) is in progress:** PDF receipts and **customer email channel** (status + receipt with PDF attachment, opt-in) are built; profit/monthly reports next; **customer photos are deferred** and will use **Cloudflare R2** when built. Privacy/Terms describe customer email (updated 26 November 2026). Do not start photos or a later plan step until the user asks. The public landing page shows the decided prices (updated 18 November 2026). Do not change those public prices or the published Terms again unless the user asks.
 
 Purpose: the decided prices, limits, and how NeedleBase will apply a plan name from Platform.
 
@@ -48,6 +48,13 @@ Staff limits exclude the Owner. Complimentary keys are unlimited (the stored pla
 
 WhatsApp stays **tap-to-send** on every plan. Automatic WhatsApp template messages exist in code but are **not** a sold plan feature until Meta verifies the business. Paid-plan notifications are **email** (to the Owner and staff, not to customers).
 
+**Customer email channel (26 Nov 2026):** customers may store an optional email (phone stays required). With a separate **email opt-in** (not the same as WhatsApp consent), NeedleBase may send transactional email when SMTP is configured:
+
+- **Order status** updates (same statuses the shop enables for WhatsApp when that is on; otherwise at least Ready / Collected), after the change is on the server (API or sync push — so offline phones send as soon as sync succeeds).
+- **Payment receipt** copy (email body matching the share receipt, plus a **PDF attachment** generated on send — not stored in blob; Share text/PDF on the phone remains).
+
+Not bulk marketing. Privacy/Terms describe this (updated 26 November 2026); see `docs/legal/README.md`. WhatsApp tap-to-send and (when Meta-verified) automatic WhatsApp stay available.
+
 ## PlanCatalog
 
 Built in `Application/Licensing/PlanCatalog.cs` (`PlanCodes`, `PlanEntitlements`, `PlanResolution`, `PlanCatalog.Resolve` / `ForCode`). One table maps a lowercase plan code from Platform to NeedleBase limits and features. Codes are stable: `starter`, `workshop`, `production`.
@@ -71,7 +78,7 @@ Built in `Application/Licensing/PlanCatalog.cs` (`PlanCodes`, `PlanEntitlements`
 
 ## Implementation order
 
-Do not start the next build step until the user asks. Steps 1–6 (including paid emails) are enough to launch Free and Starter. Do not sell Workshop or Production until step 7 works. Step 8 is done for the Terms and the landing prices (18 November 2026); the Play Store privacy form is still pending.
+Do not start a new plan step until the user asks. Steps 1–6 are enough to launch Free and Starter. Do not sell Workshop or Production until step 7 (PDF receipts, reports, and photos) works. Step 8 is done for the Terms and the landing prices (18 November 2026); the Play Store privacy form is still pending.
 
 | # | Step | Size | What to build |
 |---|------|------|----------------|
@@ -81,15 +88,15 @@ Do not start the next build step until the user asks. Steps 1–6 (including pai
 | 4 | Upgrading from Free | L | **Done (25 Nov 2026).** More → Go online with a licence key (`FreeUpgradePage`). Registers online shop, remaps local BusinessId (`FreeUpgradeLocalService`), clears Free gate/flags without wiping rows; adoption/first sync uploads them. `free_upgrade_pending` + `TryResumeFreeUpgradeAsync` on startup if killed mid-way. Tests: `FreeUpgradeLocalServiceTests`. |
 | 5 | Export and usage display | M | **Done (25 Nov 2026).** `GET /api/export` (Owner, `AllowWhenReadOnly`) + web License download; mobile More → Export for Owner. `SubscriptionStatusDto` carries PlanCatalog display name, staff used/max, `CanExport`. Free Home/More meters (`7/10 customers · 3/20 orders`). Receipts show shop phone when session has `BusinessPhone`. |
 | 6 | Paid emails | M | **Done (26 Nov 2026).** Starter: monthly Owner summary after 06:00 Accra from the 1st (`PlanEmailWorker` + `PlanEmailService`, watermarks `Business.MonthlySummarySentFor`). Workshop/Production/unlimited: that plus weekly Owner summary with balances owed (`WeeklySummarySentFor`), assignment emails on create/update/reassign (`IPlanEmailNotifier`), and day-of due emails to the assignee (`Order.DueEmailSentForDate`). Skips closed and read-only shops; SMTP off → no send. Templates in `EmailTemplates`. Tests: `PlanEmailTests`, `StaffApiTests.PlanEmails`. Landing "coming soon" notes for these emails removed. |
-| 7 | Workshop features | L | Photos, PDF receipts and profit and monthly reports. Don't sell Workshop or Production until these work. |
-| 8 | Legal, Play Store and landing page | S | **Done (18 November 2026) for the Terms and the landing prices** (published prices excluding VAT, 30-day price-change notice, Free-plan rules, export and lapse wording, and landing prices GH₵0 / 50 / 150 / 300 with quarter and year figures). **Still pending:** the Play Store privacy form. |
+| 7 | Workshop features | L | **In progress (26 Nov 2026).** Build order: (a) **PDF receipts — done** (`CanPdfReceipts`, on-device PDF share). **Customer email channel — done:** optional email + separate opt-in; status emails (Ready/Collected by default, or WhatsApp-enabled statuses when WA is on) and payment-receipt emails with PDF attachment queue on the server after API/sync when SMTP is configured (`CustomerEmailOutbox`). Share text/PDF and WhatsApp remain. Privacy/Terms updated 26 Nov 2026. (b) **Profit and monthly reports** — not started. (c) **Photos later** — Cloudflare R2. Don't sell Workshop or Production until (a)–(c) work. |
+| 8 | Legal, Play Store and landing page | S | **Done (18 November 2026) for the Terms plan prices and the landing prices** (published prices excluding VAT, 30-day price-change notice, Free-plan rules, export and lapse wording, and landing prices GH₵0 / 50 / 150 / 300 with quarter and year figures). **Customer email** described in Privacy/Terms on **26 November 2026**. **Still pending:** the Play Store privacy form. |
 
 ## Risks
 
 - Until the NeedleBase product in Platform has the `starter` / `workshop` / `production` plans, and any old names such as "Pro" are mapped onto them, NeedleBase must fail closed to Starter for a blank or unknown plan, not unlimited. Platform already has the remap tool; the admin still has to add those plans and map old names.
 - Platform's server default for `MaxDevices` is still 3. Set NeedleBase's `DefaultMaxDevices` to **1** (one shop per key) in Platform's admin. Until that is set, new NeedleBase keys get 3.
 - A plan change on a live key is picked up on the next re-check (within a day, or sooner if the Owner re-enters the key). Edit the same key's plan; do not revoke and issue a new one, which would disconnect the shop.
-- The published Terms and the landing page promise Workshop/Production features (photos, PDF receipts, and profit and monthly reports) that are not built yet. Free "Save a copy", paid export and paid emails are built. Do not sell Workshop or Production until step 7 works. Do not change the public landing-page prices or the published Terms again unless the user asks.
+- The published Terms and the landing page promise Workshop/Production features (photos, PDF receipts, and profit and monthly reports). PDF receipts are being built; reports and photos (Cloudflare R2) are not done yet. Free "Save a copy", paid export and paid emails are built. Do not sell Workshop or Production until step 7 (a)–(c) work. Do not change the public landing-page prices or the published Terms again unless the user asks.
 
 ## Related
 
@@ -98,5 +105,5 @@ Do not start the next build step until the user asks. Steps 1–6 (including pai
 | Standing rules | [standing-rules.md](../standing-rules.md) |
 | Slice status and later work | [needlebase-phases](../needlebase-phases/SKILL.md) |
 | How shops are licensed today | [docs/platform-licensing.md](../../../docs/platform-licensing.md) |
-| Legal notes (Terms and landing prices updated 18 November 2026; Play Store privacy form still pending) | [docs/legal/README.md](../../../docs/legal/README.md) |
+| Legal notes (plan prices 18 Nov 2026; customer email Privacy/Terms 26 Nov 2026; Play Store privacy form still pending) | [docs/legal/README.md](../../../docs/legal/README.md) |
 | Platform product plans (other repo) | `/home/helmut/Documents/My Projects/platform/.cursor/skills/platform-license-hub/product-plans.md` |

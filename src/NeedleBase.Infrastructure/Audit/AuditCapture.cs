@@ -31,7 +31,7 @@ internal static class AuditCapture
 
     private static readonly HashSet<string> HiddenText = new(StringComparer.Ordinal)
     {
-        "Notes", "Note", "PhotoRef"
+        "Notes", "Note", "PhotoRef", "Email"
     };
 
     public static List<AuditEvent> Capture(IEnumerable<EntityEntry> entries, AuditContext? ctx, ISet<string> restored, DateTimeOffset now)

@@ -1,7 +1,17 @@
 namespace NeedleBase.Application.Abstractions;
 
+/// <summary>Optional file on an outgoing email (generated on send — not stored in blob storage).</summary>
+public sealed record EmailAttachment(string FileName, string ContentType, byte[] Content);
+
 /// <summary>One outgoing email (plain text + simple HTML). Never logged: bodies can hold one-time codes.</summary>
-public sealed record EmailMessage(string ToAddress, string? ToName, string Subject, string TextBody, string HtmlBody, string Kind);
+public sealed record EmailMessage(
+    string ToAddress,
+    string? ToName,
+    string Subject,
+    string TextBody,
+    string HtmlBody,
+    string Kind,
+    IReadOnlyList<EmailAttachment>? Attachments = null);
 
 /// <summary>
 /// Sends email off the request path. <see cref="IsConfigured"/> is false until SMTP settings (incl. the password) are
