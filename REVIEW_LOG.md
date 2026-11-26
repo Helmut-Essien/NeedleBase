@@ -1388,3 +1388,60 @@ Authorized by Ralph Balanced prompt. Performed after gates PASS and no P0/P1 ope
 
 ### Status
 **COMPLETE WITH NOTES** — mandatory gates PASS; residual P2/P3 recorded; JDK note for local android builds.
+
+---
+
+## Ralph Balanced — iteration 1 (empty working-tree re-verify) 2026-11-26
+
+### Discovery
+- Root: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` @ `46bac03` (ahead of origin by 3)
+- Working-tree product slice: **empty** (`git diff` empty; only `?? .cursor/ralph/` sentinel)
+- Canonical build: `dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` (JBR when needed)
+- Bench: 0 harnesses
+- Commit authorization: this prompt (`commit: authorized`)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: ?? .cursor/ralph/   (pre-teardown)
+cmd: git diff --stat
+out: (empty)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | sed interceptor/outbox @ HEAD | none new | SMTP-off Collect skip still present |
+| 2 Edge | PASS | sed Customer.Update + CustomerService email | Open carried: Email null clear (P2 Med); TryQueue ignore (P3) — same as prior; not re-fixed (G8/product) | — |
+| 3 Security | PASS | CustomerEmailController Authorize; SmtpTransport Path.GetFileName; AuditCapture Email | none | policies + MIME + PII field list |
+| 4 Senior | PASS | ls migrations; find bench=0; HEAD already shipped | none | perf N/A (empty WT class C; HEAD class B no harness) |
+| 5 UI/UX | N/A | `git diff HEAD -- Views/Pages \| wc -l` → 0 | — | no UI in working-tree diff |
+
+### Gate state table
+| gate | state | command | output tail |
+|------|-------|---------|-------------|
+| Build | PASS | `JAVA_HOME=/opt/android-studio/jbr dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` | `Build succeeded. 0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` on sln build | 0 Warning(s) |
+| Test | PASS | Domain/App/Web/Mobile/Api `-c Release --no-build` | 86 / 311 / 205 / 355 / 335; Failed 0 |
+| Perf | N/A | empty WT class C; bench count 0 | — |
+
+### Findings
+**Fixed:** none (no product diff).
+**Dismissed:** prior hardening still at HEAD (SMTP-off Collect; MIME basename).
+**Open (carried, not expanded):** Email null omit-vs-clear (P2 Medium); TryQueue after Sent (P3).
+**Out-of-scope:** none.
+
+### Teardown
+```
+cmd: rm -f .cursor/ralph/done && rmdir .cursor/ralph
+out: ralph dir removed
+cmd: git status --porcelain (post-teardown, pre-REVIEW_LOG append)
+out: (clean except REVIEW_LOG append below)
+```
+
+### Commit
+REVIEW_LOG-only commit if gates PASS (no product changes).
+
+### Status
+**COMPLETE WITH NOTES** — empty product slice; HEAD re-verified green; residuals carried; sentinel cleaned.
