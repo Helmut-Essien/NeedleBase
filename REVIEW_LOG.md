@@ -1498,3 +1498,48 @@ Authorized; ship reports slice after gates PASS.
 
 ### Status
 **COMPLETE WITH NOTES** — mandatory gates PASS; P3/P4 residuals only.
+
+---
+
+## Ralph Balanced — unpushed `5de3a78` re-review 2026-11-26
+
+### Discovery
+- Slice: `origin/PlanNameCatalogue..HEAD` = `5de3a78` (reports 7b); working tree was clean at start
+- Commit authorization: continued Ralph Balanced series (user: “run the loop again on unpushed commits”)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (empty at start)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 5de3a78 Ship profit and monthly reports (plan step 7b).
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | read calculator/service/VM | Fixed P3 soft-fallback (2nd appearance / G8) | voided excluded; BusinessId filter |
+| 2 Edge | PASS | TryResolveMonth; Accra Window; tests | Fixed invalid month | empty/future/earliest covered |
+| 3 Security | PASS | Authorize + role/plan; EscapeDataString | none | FORBIDDEN/NOT_ALLOWED/tenancy tests |
+| 4 Senior | PASS | PlanCatalog reports; no schema; class B | Open P4 phone full-table load (unchanged) | — |
+| 5 UI/UX | PASS | Index.cshtml aria; ReportsPage Semantic | none | upgrade + costs note |
+
+### Gate state table
+| gate | state | output tail |
+|------|-------|-------------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` (JBR) |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 350 / 214 / **366** / 352; Failed 0 |
+| Perf | N/A | class B; bench 0 |
+
+### Findings
+**Fixed:** `ReportsViewModel.cs:81-88` — invalid month → `MonthInvalidMessage`, no silent current-month load; test `Load_invalid_month_shows_message_without_building`.
+**Dismissed:** authz/tenancy/calculator behaviours already covered by unpushed tests.
+**Open:** P4 `ReportLocalService.cs:35-42` full-table load (no harness; not auto-fixed).
+**Out-of-scope:** email-channel residuals.
+
+### Teardown
+No `.cursor/ralph/` present.
+
+### Status
+**COMPLETE WITH NOTES** — P3 closed; P4 residual; gates PASS.

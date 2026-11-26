@@ -89,6 +89,67 @@ public class ReportsMobileTests
         Assert.Null(ReportsViewModel.Gate(false, BusinessRole.Owner, SubscriptionStatusDto.Unlocked));
     }
 
+    [Fact]
+    public async Task Load_invalid_month_shows_message_without_building()
+    {
+        NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Clear();
+        try
+        {
+            NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Set(Biz, SubscriptionStatusDto.Unlocked);
+            var reports = new CountingReports();
+            var vm = new ReportsViewModel(new OwnerAuth(), reports)
+            {
+                UtcNow = () => new DateTimeOffset(2026, 11, 26, 12, 0, 0, TimeSpan.Zero)
+            };
+            await vm.LoadAsync("2099-01");
+            Assert.Null(vm.Report);
+            Assert.Equal(ReportRules.MonthInvalidMessage, vm.Message);
+            Assert.Equal(0, reports.Calls);
+        }
+        finally
+        {
+            NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Clear();
+        }
+    }
+
+    private sealed class CountingReports : IReportLocalService
+    {
+        public int Calls { get; private set; }
+
+        public Task<NeedleBase.Application.Contracts.Reports.MonthlyReportDto> GetAsync(
+            string businessId, DateOnly month, DateOnly today, CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            throw new InvalidOperationException("report must not be built for an invalid month");
+        }
+    }
+
+    private sealed class OwnerAuth : NeedleBase.Mobile.Services.IAuthService
+    {
+        public Task<NeedleBase.Application.Contracts.Auth.AuthUserDto?> RegisterBusinessAsync(
+            NeedleBase.Application.Contracts.Auth.RegisterBusinessRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(null);
+
+        public Task<NeedleBase.Application.Contracts.Auth.AuthUserDto?> LoginAsync(
+            NeedleBase.Application.Contracts.Auth.LoginRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(null);
+
+        public Task<NeedleBase.Mobile.Services.TokenRefreshResult> RefreshAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<bool> HasStoredTokensAsync() => Task.FromResult(true);
+        public Task ClearTokensAsync() => Task.CompletedTask;
+        public Task<bool> LogoutAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
+        public Task<string?> GetAccessTokenAsync() => Task.FromResult<string?>("t");
+        public Task StoreTokensAsync(NeedleBase.Application.Contracts.Auth.TokenResponse tokens) => Task.CompletedTask;
+        public Task StoreSessionAsync(NeedleBase.Application.Contracts.Auth.AuthUserDto user) => Task.CompletedTask;
+        public Task<string?> GetBusinessIdAsync() => Task.FromResult<string?>(Biz);
+
+        public Task<NeedleBase.Application.Contracts.Auth.AuthUserDto?> GetCachedUserAsync() =>
+            Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(
+                new("u1", "owner@ama-stitches.test", "Ama", "Owusu", Biz, "Ama Stitches", BusinessRole.Owner));
+    }
+
     private static async Task BackdateAsync(ServiceProvider device, string orderId, DateTimeOffset createdAtUtc, decimal paid, DateTimeOffset paidAtUtc)
     {
         await using var scope = device.CreateAsyncScope();

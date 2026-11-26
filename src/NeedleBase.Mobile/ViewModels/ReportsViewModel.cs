@@ -81,7 +81,10 @@ public partial class ReportsViewModel : BaseViewModel
             var today = BusinessTime.Today(UtcNow());
             if (!ReportRules.TryResolveMonth(month, today, out var chosen))
             {
-                chosen = ReportRules.FirstOfMonth(today);
+                // Same as the Api/web: bad month → message, not silent fall-back to this month.
+                Report = null;
+                Message = ReportRules.MonthInvalidMessage;
+                return;
             }
 
             Report = await _reports.GetAsync(businessId!, chosen, today);
