@@ -6,6 +6,7 @@ using NeedleBase.Application.Contracts.Errors;
 using NeedleBase.Application.Contracts.Measurements;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Sync;
+using NeedleBase.Application.Email;
 using NeedleBase.Application.Orders;
 using NeedleBase.Application.Payments;
 using NeedleBase.Application.Contracts.Payments;
@@ -29,6 +30,8 @@ public sealed class SyncService : ISyncService
     private readonly IMeasurementService _measurements;
     private readonly IOrderService _orders;
     private readonly IPaymentService _payments;
+    private readonly IPlanEmailNotifier _planEmails;
+    private readonly PlanEmailAssignmentBuffer _assignmentEmails;
 
     public SyncService(
         IApplicationDbContext db,
@@ -37,7 +40,9 @@ public sealed class SyncService : ISyncService
         ICustomerService customers,
         IMeasurementService measurements,
         IOrderService orders,
-        IPaymentService payments)
+        IPaymentService payments,
+        IPlanEmailNotifier planEmails,
+        PlanEmailAssignmentBuffer assignmentEmails)
     {
         _payments = payments;
         _db = db;
@@ -46,6 +51,8 @@ public sealed class SyncService : ISyncService
         _customers = customers;
         _measurements = measurements;
         _orders = orders;
+        _planEmails = planEmails;
+        _assignmentEmails = assignmentEmails;
     }
 
     // ---------------------------------------------------------------- push
@@ -73,11 +80,25 @@ public sealed class SyncService : ISyncService
             }
             catch (ArgumentException ex)
             {
+                _assignmentEmails.Clear();
                 result = Failed(op, SyncErrorCodes.PayloadInvalid, ex.Message);
             }
             catch (DbUpdateException)
             {
+                _assignmentEmails.Clear();
                 result = Rejected(op);
+            }
+
+            // Assignment emails were buffered during the op; only send after a real commit.
+            var committed = result.Status == SyncOpStatus.Applied ||
+                            (_commitConflict && result.Status == SyncOpStatus.Conflict);
+            if (committed)
+            {
+                await _assignmentEmails.FlushAsync(_planEmails, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                _assignmentEmails.Clear();
             }
 
             if (result.Status != SyncOpStatus.Applied)

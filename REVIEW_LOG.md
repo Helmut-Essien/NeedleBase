@@ -746,3 +746,133 @@ None — no new verified High/Medium.
 - XA0033 OpenJDK on Android TFM (environment)
 - Do not push until asked
 - On-device: pre-export app → upgrade → More before first sync still shows Export
+
+---
+
+# Paid emails (plans step 6) — Ralph review log
+
+## Iteration 1 — 26 Nov 2026
+
+### Slice
+Working-tree diff: PlanEmailService/Worker, OrderService + StaffService hooks, EmailTemplates, Domain watermarks, migration `PaidPlanEmails`, landing copy, tests.
+
+### Reviews run
+1. Bugbot (subagent + code re-read) 2. Edge 3. Security (subagent + code re-read) 4. Senior 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| High | Bulk reassign queued up to 2000 `order_assigned` mails; `EmailQueue.Capacity=200` DropWrite → most lost | `StaffService.cs` post-commit loop; `EmailQueue.cs` Capacity=200; Bugbot | `NotifyBulkAssignmentAsync` + `OrdersAssignedBulk` digest (one mail); single-order path unchanged |
+| Medium | Insider SMTP / inbox flood via reassign | Security review; same loop | Same digest (also caps volume to 1 mail per reassign) |
+| Medium | Queue-then-mark: crash after `TryQueue` before watermark → double-send next pass | `PlanEmailService` due/monthly/weekly paths | Claim watermark first; restore/clear if `TryQueue` fails |
+| Low | Assignment queue-full only logged at Debug | `PlanEmailService.NotifyAssignmentAsync` | `LogWarning` when not queued |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| HTML/header injection in paid templates | `H()` / `OneLine` / http(s)-only `Link`; `PlanEmailTests` asserts escaping for monthly/weekly/assigned/due/bulk |
+| Tenant leak via `IgnoreQueryFilters` | Predicates always include `BusinessId`; assignee join requires active membership for that shop |
+| PII/secrets in logs | Debug/Warning log order/business ids only; `EmailSendingService` already masks recipients; bodies never logged |
+| Per-order assignment on create/update | Product: “emails when an order is assigned”; one mail per intentional assign is required; abuse volume is low vs reassign |
+| Customer join on `CustomerId` only (due query) | Order/Customer ids are global ULIDs; corrupt cross-tenant id not reachable via API |
+| Starter due rows marked without send | Prevents hot re-scan; upgrade same day may miss due mail — accepted tradeoff (documented) |
+| Due worker N+1 assignee lookups | Capped by `DueBatchSize=80`; same style as dashboard multi-count; OK for current shop sizes |
+| Multi-instance claim race | Deploy is single Api process (MonsterASP); claim-first is sufficient |
+| UI/UX a11y on app screens | No new MAUI/Razor interactive screens; landing highlight text only; email HTML is transactional plain layout |
+| Landing “coming soon” removal | Covered by `LandingPageTests` |
+
+### Remaining open
+None verified High/Medium left in slice.
+
+### Residual notes (humans)
+- **Legal:** Privacy/Terms still emphasise invite + password-reset email; paid summaries/assignment/due are now live — update copy when ready (do not invent clauses in this loop).
+- Full `NeedleBase.sln` Release can fail XA0033 (OpenJDK version parse) on this machine; non-Android projects build 0 warnings.
+- Standing rules: no git commit until the user says `commit`.
+- On-device: not applicable for email worker; staging SMTP smoke (monthly/weekly after 06:00 Accra) still recommended.
+
+### Tests re-run
+- `PlanEmailTests` (Application): passed
+- `StaffApiTests` Assignment / DueMonthly / Reassign bulk digest: passed
+- Domain/Application/Infrastructure/Api/Web/Mobile.Data Release `-warnaserror`: passed
+
+### Final verdict (iteration 1)
+- Bugbot: CLEAN (after digest + claim-first)
+- Edge: CLEAN for verified axes; Starter-upgrade miss dismissed
+- Security: CLEAN (after digest)
+- Senior: CLEAN for slice scope
+- UI/UX: CLEAN (N/A app UI; landing + email templates OK)
+
+
+## Iteration 2 — 26 Nov 2026
+
+### Reviews run
+1. Bugbot (subagent re-review) 2. Edge 3. Security (subagent re-review: CLEAN medium+) 4. Senior 5. UI/UX
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| High | `DueEmailSentForDate` cleared only when `DueDate` changes, not when assignee changes → new tailor misses day-of due email after reassign/update | `Order.ApplyHeader` lines 217–220; Bugbot; path: mark due sent → `Reassign`/`UpdateHeader` same due → watermark stuck | Clear watermark when assignee changes too; domain + API tests |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security medium+ after digest | Security re-review CLEAN: one digest per reassign, templates escaped, Owner-only reassign, tenant-scoped memberships, masked logs |
+| Owner repeat-reassign digests | Authorized Owner, one mail/call, plan-gated — not cross-tenant escalation |
+| UI/UX | Still no new interactive screens in slice |
+
+### Remaining open
+None verified High/Medium.
+
+### Residual notes
+- Legal Privacy/Terms under-describe paid emails (human)
+- No commit until user says `commit`
+- XA0033 Android JDK env issue
+
+### Tests re-run
+- PlanEmailTests: passed (incl. reassign clears watermark)
+- StaffApiTests PlanEmails (5): passed incl. `Reassign_clears_due_watermark_so_new_assignee_gets_due_email`
+
+### Final verdict (iteration 2)
+- Bugbot: CLEAN
+- Edge: CLEAN (assignee/due watermark axis covered)
+- Security: CLEAN
+- Senior: CLEAN
+- UI/UX: CLEAN
+
+
+## Iteration 3 — 26 Nov 2026
+
+### Reviews run
+1. Bugbot 2. Edge 3. Security (CLEAN medium+) 4. Senior 5. UI/UX  
+Prompt step 4 (commit) executed after clean verdict.
+
+### Findings fixed
+| Severity | Finding | Evidence | Fix |
+|----------|---------|----------|-----|
+| Medium | Assignment email queued inside sync `InTransactionAsync` before status step; Failed → rollback but SMTP queue kept the mail | `SyncService.PushAsync` + `OrderService.CreateAsync` Notify after SaveChanges; Bugbot | `PlanEmailAssignmentBuffer`: defer when `HasActiveTransaction`; flush after commit in SyncService + OrderService.UpdateAsync; clear on rollback |
+
+### Findings dismissed (with evidence)
+| Finding | Evidence |
+|---------|----------|
+| Security medium+ | Re-review CLEAN: digest, watermark clear, tenancy, Owner-only reassign |
+| UI/UX interactive | Landing highlight strings only; email HTML transactional |
+| Edge: empty bulk | `NotifyBulkAssignmentAsync` no-ops on empty; single → NotifyAssignment |
+| Edge: email off | `IsConfigured` gates; worker skips |
+| Senior: additive migration | Nullable columns + indexes; safe |
+
+### Remaining open
+None verified High/Medium.
+
+### Residual notes
+- Legal Privacy/Terms still under-describe paid emails
+- XA0033 Android JDK on full sln build (env)
+- Do not push until asked
+
+### Tests
+- PlanEmail* Application: 8 passed (buffer Clear/Flush)
+- StaffApiTests PlanEmails: 5 passed
+- Commit: local only after this iteration
+
+### Final verdict
+Five passes CLEAN after buffer fix; committing slice.
+

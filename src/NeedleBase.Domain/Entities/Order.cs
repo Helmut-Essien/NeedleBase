@@ -21,6 +21,11 @@ public class Order : Entity, IBusinessScoped
     public DateOnly? DueDate { get; private set; }
     public DateOnly? FittingDate { get; private set; }
     public string? AssignedToUserId { get; private set; }
+
+    /// <summary>
+    /// Calendar day a due-date email was already queued for (server-only). Cleared when <see cref="DueDate"/> changes.
+    /// </summary>
+    public DateOnly? DueEmailSentForDate { get; private set; }
     /// <summary>Always the sum of line totals (qty × unit price). Discounts are planned, not built.</summary>
     public decimal TotalAmount { get; private set; }
     public string? Notes { get; private set; }
@@ -209,12 +214,25 @@ public class Order : Entity, IBusinessScoped
             throw new ArgumentException($"Notes must be at most {FieldLimits.Notes} characters.", nameof(notes));
         }
 
+        // Clear when due day or assignee changes so the new tailor can still get today's due email.
+        if (DueDate != dueDate ||
+            !string.Equals(AssignedToUserId, assignedToUserId, StringComparison.Ordinal))
+        {
+            DueEmailSentForDate = null;
+        }
+
         DueDate = dueDate;
         FittingDate = fittingDate;
         AssignedToUserId = assignedToUserId;
         Notes = notes;
         DateModifiedUtc = utcNow;
     }
+
+    /// <summary>Records that a due-date email for <paramref name="dueDate"/> was queued (idempotent per day).</summary>
+    public void MarkDueEmailSent(DateOnly dueDate) => DueEmailSentForDate = dueDate;
+
+    /// <summary>Clears the due-email watermark when queueing failed after a claim.</summary>
+    public void ClearDueEmailSent() => DueEmailSentForDate = null;
 
     private void ReplaceLines(IEnumerable<OrderLine> lines)
     {

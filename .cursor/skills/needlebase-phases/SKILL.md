@@ -3,8 +3,8 @@ name: needlebase-phases
 description: >-
   NeedleBase slice status, acceptance lists, later work, and the code-gaps
   backlog. Most slices are built. PlanCatalog, staff caps, Free mode,
-  upgrade from Free and export/usage (plans steps 1–5) are built; later
-  plan steps are not.
+  upgrade from Free, export/usage and paid emails (plans steps 1–6) are
+  built; later plan steps are not.
   Use when checking what is built, planning later work, confirming
   acceptance, or picking a code gap to fix. Confirm with the user before
   starting a new slice or later-work item.
@@ -30,7 +30,7 @@ Status and acceptance live in [phases.md](phases.md). The backlog of skill-vs-co
 
 ## Where things are
 
-- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete; device/browser journeys 2–5 still need verification. PlanCatalog, server staff caps, Free, upgrade from Free and export/usage (plans steps 1–5) are built; paid emails and later plan steps are not.
+- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete; device/browser journeys 2–5 still need verification. PlanCatalog, server staff caps, Free, upgrade from Free, export/usage and paid emails (plans steps 1–6) are built; later plan steps (Workshop features) are not.
 - Code that doesn't meet the skills yet, ranked: [code-gaps.md](code-gaps.md). G1, G2, G4, G5, G6, G10 are done; G3, G7, G8, G9, G11 are deferred ops/scale items.
 - Add-entity checklist: [needlebase-domain](../needlebase-domain/SKILL.md#add-entity-checklist-single-source).
 
@@ -58,4 +58,4 @@ See the end of [phases.md](phases.md).
 | Sync | [needlebase-mobile-sync](../needlebase-mobile-sync/SKILL.md) |
 | Web | [needlebase-web](../needlebase-web/SKILL.md) |
 | Journeys / IA | [needlebase-uiux](../needlebase-uiux/SKILL.md) |
-| Plans (steps 1–3 built) | [needlebase-plans](../needlebase-plans/SKILL.md) |
+| Plans (steps 1–6 built) | [needlebase-plans](../needlebase-plans/SKILL.md) |

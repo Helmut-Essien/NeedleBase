@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Orders;
+using NeedleBase.Application.Email;
 using NeedleBase.Application.Payments;
 using NeedleBase.Domain.Entities;
 using NeedleBase.Domain.Enums;
@@ -13,12 +14,21 @@ public sealed class OrderService : IOrderService
     private readonly IApplicationDbContext _db;
     private readonly ICurrentUser _currentUser;
     private readonly IClock _clock;
+    private readonly IPlanEmailNotifier _planEmails;
+    private readonly PlanEmailAssignmentBuffer _assignmentEmails;
 
-    public OrderService(IApplicationDbContext db, ICurrentUser currentUser, IClock clock)
+    public OrderService(
+        IApplicationDbContext db,
+        ICurrentUser currentUser,
+        IClock clock,
+        IPlanEmailNotifier planEmails,
+        PlanEmailAssignmentBuffer assignmentEmails)
     {
         _db = db;
         _currentUser = currentUser;
         _clock = clock;
+        _planEmails = planEmails;
+        _assignmentEmails = assignmentEmails;
     }
 
     public Task<PaginatedResponse<OrderListItemDto>> ListAsync(
@@ -247,7 +257,11 @@ public sealed class OrderService : IOrderService
                 }
             }
 
-            return OrderResult.Ok(await GetByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false));
+            var created = await GetByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false);
+            await NotifyAssignmentAfterSaveAsync(
+                businessId, entity.Id, entity.DisplayRef, created?.CustomerName ?? "a customer", entity.DueDate,
+                previousAssigneeUserId: null, entity.AssignedToUserId, cancellationToken).ConfigureAwait(false);
+            return OrderResult.Ok(created!);
         }
         catch (ArgumentException ex)
         {
@@ -273,14 +287,25 @@ public sealed class OrderService : IOrderService
 
         if (_db.HasActiveTransaction)
         {
+            // Outer transaction (e.g. sync push) owns commit/rollback and buffer flush.
             return await UpdateLockedAsync(id, request, cancellationToken).ConfigureAwait(false);
         }
 
-        return await _db.InTransactionAsync(async ct =>
+        var updated = await _db.InTransactionAsync(async ct =>
         {
             var r = await UpdateLockedAsync(id, request, ct).ConfigureAwait(false);
             return (r, r.Error == OrderError.None);
         }, cancellationToken).ConfigureAwait(false);
+        if (updated.Error == OrderError.None)
+        {
+            await _assignmentEmails.FlushAsync(_planEmails, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            _assignmentEmails.Clear();
+        }
+
+        return updated;
     }
 
     private async Task<OrderResult> UpdateLockedAsync(string id, UpdateOrderRequest request, CancellationToken cancellationToken)
@@ -313,6 +338,7 @@ public sealed class OrderService : IOrderService
 
         try
         {
+            var previousAssignee = entity.AssignedToUserId;
             // Only what the edit needs: profiles for new lines (by named id or garment), paid only when lines change.
             IReadOnlyList<MeasurementProfile> profiles = [];
             decimal paid = 0;
@@ -338,12 +364,42 @@ public sealed class OrderService : IOrderService
             }
 
             await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return OrderResult.Ok(await GetByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false));
+            var updated = await GetByIdAsync(entity.Id, cancellationToken).ConfigureAwait(false);
+            await NotifyAssignmentAfterSaveAsync(
+                entity.BusinessId, entity.Id, entity.DisplayRef, updated?.CustomerName ?? "a customer", entity.DueDate,
+                previousAssignee, entity.AssignedToUserId, cancellationToken).ConfigureAwait(false);
+            return OrderResult.Ok(updated!);
         }
         catch (ArgumentException ex)
         {
             return OrderResult.Fail(OrderLineFactory.FromException(ex), ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Queue immediately when not in a DB transaction; otherwise buffer until commit
+    /// (sync push can roll back after SaveChanges).
+    /// </summary>
+    private async Task NotifyAssignmentAfterSaveAsync(
+        string businessId,
+        string orderId,
+        string displayRef,
+        string customerName,
+        DateOnly? dueDate,
+        string? previousAssigneeUserId,
+        string? assigneeUserId,
+        CancellationToken cancellationToken)
+    {
+        if (_db.HasActiveTransaction)
+        {
+            _assignmentEmails.Enqueue(
+                businessId, orderId, displayRef, customerName, dueDate, previousAssigneeUserId, assigneeUserId);
+            return;
+        }
+
+        await _planEmails.NotifyAssignmentAsync(
+            businessId, orderId, displayRef, customerName, dueDate, previousAssigneeUserId, assigneeUserId,
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<OrderResult> UpdateStatusAsync(

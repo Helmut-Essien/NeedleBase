@@ -2,18 +2,18 @@
 name: needlebase-plans
 description: >-
   Decided NeedleBase pricing, plan limits, PlanCatalog rules, and the
-  implementation order. Steps 1–5 are built (PlanCatalog, staff caps,
-  Free, upgrade from Free, export and usage display). Later steps are
-  not built. The published Terms and the landing-page prices were
-  updated on 18 November 2026. Use when talking about Free, Starter,
-  Workshop or Production, enforcing plan limits, upgrading a shop, or
-  how licence plans from Platform are applied. Do not start the next
-  build step until the user asks.
+  implementation order. Steps 1–6 are built (PlanCatalog, staff caps,
+  Free, upgrade from Free, export and usage display, paid emails).
+  Later steps are not built. The published Terms and the landing-page
+  prices were updated on 18 November 2026. Use when talking about Free,
+  Starter, Workshop or Production, enforcing plan limits, upgrading a
+  shop, or how licence plans from Platform are applied. Do not start
+  the next build step until the user asks.
 ---
 
 # NeedleBase plans
 
-**Status: decided.** PlanCatalog (step 1), staff-limit enforcement (step 2), Free phone-only mode (step 3), upgrading from Free (step 4) and export/usage display (step 5) are built. Later steps are **not built** — do not start them until the user asks. The published Terms and the public landing page already show these prices (updated 18 November 2026). Do not change those public prices or the published Terms again unless the user asks.
+**Status: decided.** PlanCatalog (step 1), staff-limit enforcement (step 2), Free phone-only mode (step 3), upgrading from Free (step 4), export/usage display (step 5) and paid emails (step 6) are built. Later steps are **not built** — do not start them until the user asks. The published Terms and the public landing page already show these prices (updated 18 November 2026). Do not change those public prices or the published Terms again unless the user asks.
 
 Purpose: the decided prices, limits, and how NeedleBase will apply a plan name from Platform.
 
@@ -71,7 +71,7 @@ Built in `Application/Licensing/PlanCatalog.cs` (`PlanCodes`, `PlanEntitlements`
 
 ## Implementation order
 
-Do not start the next build step until the user asks. Steps 1–6 are enough to launch Free and Starter. Do not sell Workshop or Production until step 7 works. Step 8 is done for the Terms and the landing prices (18 November 2026); the Play Store privacy form is still pending.
+Do not start the next build step until the user asks. Steps 1–6 (including paid emails) are enough to launch Free and Starter. Do not sell Workshop or Production until step 7 works. Step 8 is done for the Terms and the landing prices (18 November 2026); the Play Store privacy form is still pending.
 
 | # | Step | Size | What to build |
 |---|------|------|----------------|
@@ -80,7 +80,7 @@ Do not start the next build step until the user asks. Steps 1–6 are enough to 
 | 3 | Free mode on the phone | L | **Done (25 Nov 2026).** Welcome offers "Use free on this phone" separate from Sign in / Register with a licence key / Join a shop with an invite (invite is for online staff only). Local ULID shop, Owner session without tokens, `FreeModeStates` lifetime counters, sync skipped via `LocalFreeModeGate`, caps on customer/order create, More → Save a copy, Free banner on Home. Tests: `FreeModeLocalServiceTests`, `FreePlanLimitsTests`. |
 | 4 | Upgrading from Free | L | **Done (25 Nov 2026).** More → Go online with a licence key (`FreeUpgradePage`). Registers online shop, remaps local BusinessId (`FreeUpgradeLocalService`), clears Free gate/flags without wiping rows; adoption/first sync uploads them. `free_upgrade_pending` + `TryResumeFreeUpgradeAsync` on startup if killed mid-way. Tests: `FreeUpgradeLocalServiceTests`. |
 | 5 | Export and usage display | M | **Done (25 Nov 2026).** `GET /api/export` (Owner, `AllowWhenReadOnly`) + web License download; mobile More → Export for Owner. `SubscriptionStatusDto` carries PlanCatalog display name, staff used/max, `CanExport`. Free Home/More meters (`7/10 customers · 3/20 orders`). Receipts show shop phone when session has `BusinessPhone`. |
-| 6 | Paid emails | M | Starter: a monthly summary email to the Owner. Workshop and Production: that monthly summary, plus a weekly summary to the Owner that includes the balances owed, and emails to staff when an order is assigned or due. |
+| 6 | Paid emails | M | **Done (26 Nov 2026).** Starter: monthly Owner summary after 06:00 Accra from the 1st (`PlanEmailWorker` + `PlanEmailService`, watermarks `Business.MonthlySummarySentFor`). Workshop/Production/unlimited: that plus weekly Owner summary with balances owed (`WeeklySummarySentFor`), assignment emails on create/update/reassign (`IPlanEmailNotifier`), and day-of due emails to the assignee (`Order.DueEmailSentForDate`). Skips closed and read-only shops; SMTP off → no send. Templates in `EmailTemplates`. Tests: `PlanEmailTests`, `StaffApiTests.PlanEmails`. Landing "coming soon" notes for these emails removed. |
 | 7 | Workshop features | L | Photos, PDF receipts and profit and monthly reports. Don't sell Workshop or Production until these work. |
 | 8 | Legal, Play Store and landing page | S | **Done (18 November 2026) for the Terms and the landing prices** (published prices excluding VAT, 30-day price-change notice, Free-plan rules, export and lapse wording, and landing prices GH₵0 / 50 / 150 / 300 with quarter and year figures). **Still pending:** the Play Store privacy form. |
 
@@ -89,7 +89,7 @@ Do not start the next build step until the user asks. Steps 1–6 are enough to 
 - Until the NeedleBase product in Platform has the `starter` / `workshop` / `production` plans, and any old names such as "Pro" are mapped onto them, NeedleBase must fail closed to Starter for a blank or unknown plan, not unlimited. Platform already has the remap tool; the admin still has to add those plans and map old names.
 - Platform's server default for `MaxDevices` is still 3. Set NeedleBase's `DefaultMaxDevices` to **1** (one shop per key) in Platform's admin. Until that is set, new NeedleBase keys get 3.
 - A plan change on a live key is picked up on the next re-check (within a day, or sooner if the Owner re-enters the key). Edit the same key's plan; do not revoke and issue a new one, which would disconnect the shop.
-- The published Terms and the landing page promise paid export and Workshop/Production features (photos, PDF receipts, and profit and monthly reports) that are not built yet. Free "Save a copy" is built. Do not sell Workshop or Production until step 7 works. Do not change the public landing-page prices or the published Terms again unless the user asks.
+- The published Terms and the landing page promise Workshop/Production features (photos, PDF receipts, and profit and monthly reports) that are not built yet. Free "Save a copy", paid export and paid emails are built. Do not sell Workshop or Production until step 7 works. Do not change the public landing-page prices or the published Terms again unless the user asks.
 
 ## Related
 

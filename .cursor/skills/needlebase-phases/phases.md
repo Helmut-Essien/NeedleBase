@@ -12,7 +12,7 @@ Status and acceptance for each implementation slice. Most slices are built. Conf
 | 5 | Payments + balances + receipts (conflict-safe) | Code done 22 Oct 2026; Journey 1 steps 6–7 and Journey 4 not yet verified on a device |
 | 6 | Web dashboard + production board | Code done 22 Oct 2026; Journey 3 (phone change → web) not yet verified with a signed-in phone and browser |
 | 7 | Staff invites + role-limited UI | Code done 26 Oct 2026; Journey 5 not yet verified on a device or in a browser |
-| 8 | Licensing, WhatsApp and polish | Platform licensing, the read-only lock, WhatsApp (tap-to-send + automatic sending) and pending-sync badges are built and committed. **Plans steps 1–5 built (25 Nov 2026):** PlanCatalog, server staff caps, Free, upgrade from Free, export and usage display. **Not built:** paid emails and later plan steps (see [needlebase-plans](../needlebase-plans/SKILL.md)). |
+| 8 | Licensing, WhatsApp and polish | Platform licensing, the read-only lock, WhatsApp (tap-to-send + automatic sending) and pending-sync badges are built and committed. **Plans steps 1–6 built (26 Nov 2026):** PlanCatalog, server staff caps, Free, upgrade from Free, export and usage display, paid emails. **Not built:** Workshop features and later plan steps (see [needlebase-plans](../needlebase-plans/SKILL.md)). |
 
 ---
 

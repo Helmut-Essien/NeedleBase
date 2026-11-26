@@ -423,6 +423,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.Property(x => x.MeasurementUnit).HasMaxLength(20).IsRequired();
             e.HasIndex(x => x.Name);
             e.HasIndex(x => x.ClosedAtUtc);
+            e.HasIndex(x => x.MonthlySummarySentFor);
+            e.HasIndex(x => x.WeeklySummarySentFor);
             // Platform license (key encrypted with Data Protection; never plain text).
             e.Property(x => x.LicenseKeyProtected).HasMaxLength(2000);
             e.Property(x => x.LicenseKeyHint).HasMaxLength(8);
@@ -540,6 +542,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
             e.HasIndex(x => new { x.BusinessId, x.CustomerId });
             e.HasIndex(x => new { x.BusinessId, x.CreatedAtUtc });
             e.HasIndex(x => new { x.BusinessId, x.AssignedToUserId }); // staff open-work counts + reassignment
+            e.HasIndex(x => new { x.DueDate, x.DueEmailSentForDate }); // paid due-email worker
             e.HasOne<Business>()
                 .WithMany()
                 .HasForeignKey(x => x.BusinessId)

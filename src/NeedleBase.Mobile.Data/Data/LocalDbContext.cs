@@ -165,6 +165,7 @@ public sealed class LocalDbContext : DbContext
             e.Property(x => x.DisplayRef).HasMaxLength(FieldLimits.OrderDisplayRef).IsRequired();
             e.Property(x => x.Status).HasMaxLength(FieldLimits.OrderStatus).IsRequired();
             e.Property(x => x.AssignedToUserId).HasMaxLength(FieldLimits.AssignedToUserId);
+            e.Ignore(x => x.DueEmailSentForDate); // server-only paid due-email watermark
             e.Property(x => x.TotalAmount).HasPrecision(18, 2);
             e.Property(x => x.Notes).HasMaxLength(FieldLimits.Notes);
             e.HasIndex(x => x.BusinessId);

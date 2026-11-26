@@ -77,9 +77,9 @@ public static class LandingSalesInfo
                 new("Unlimited customers and orders"),
                 new("Works on all your shop's phones and computers"),
                 new("Your records are kept safe online"),
-                new("Your shop's phone number on receipts")
+                new("Your shop's phone number on receipts"),
+                new("A monthly summary email")
             ],
-            ComingSoonNote: "Coming soon: a monthly summary email",
             Featured: false),
         new LandingPlan(
             Id: "workshop",
@@ -91,9 +91,11 @@ public static class LandingSalesInfo
             Highlights:
             [
                 new("You plus 8 staff"),
-                new("Everything in Starter")
+                new("Everything in Starter"),
+                new("Staff job and due emails"),
+                new("A weekly summary with balances owed")
             ],
-            ComingSoonNote: "Coming soon: staff job and due emails, weekly and monthly summaries, photos, PDF receipts, reports",
+            ComingSoonNote: "Coming soon: photos, PDF receipts, reports",
             Featured: true),
         new LandingPlan(
             Id: "production",

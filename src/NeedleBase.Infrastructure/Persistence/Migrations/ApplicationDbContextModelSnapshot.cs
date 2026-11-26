@@ -323,6 +323,9 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<DateOnly?>("MonthlySummarySentFor")
+                        .HasColumnType("date");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -332,6 +335,9 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<DateOnly?>("WeeklySummarySentFor")
+                        .HasColumnType("date");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClosedAtUtc");
@@ -339,7 +345,11 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.HasIndex("LicenseNextCheckUtc")
                         .HasFilter("\"LicenseKeyProtected\" IS NOT NULL");
 
+                    b.HasIndex("MonthlySummarySentFor");
+
                     b.HasIndex("Name");
+
+                    b.HasIndex("WeeklySummarySentFor");
 
                     b.ToTable("Businesses", (string)null);
                 });
@@ -620,6 +630,9 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.Property<DateOnly?>("DueDate")
                         .HasColumnType("date");
 
+                    b.Property<DateOnly?>("DueEmailSentForDate")
+                        .HasColumnType("date");
+
                     b.Property<DateOnly?>("FittingDate")
                         .HasColumnType("date");
 
@@ -663,6 +676,8 @@ namespace NeedleBase.Infrastructure.Persistence.Migrations
                     b.HasIndex("BusinessId", "DueDate");
 
                     b.HasIndex("BusinessId", "Status");
+
+                    b.HasIndex("DueDate", "DueEmailSentForDate");
 
                     b.HasIndex("BusinessId", "SyncModifiedUtc", "Id");
 

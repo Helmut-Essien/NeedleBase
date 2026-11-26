@@ -60,6 +60,10 @@ public static class DependencyInjection
         services.AddSingleton<IEmailSender>(sp => sp.GetRequiredService<Email.EmailQueue>());
         services.AddSingleton<Email.IEmailTransport, Email.SmtpTransport>();
         services.AddHostedService<Email.EmailSendingService>();
+        services.AddScoped<NeedleBase.Application.Email.PlanEmailAssignmentBuffer>();
+        services.AddScoped<Email.PlanEmailService>();
+        services.AddScoped<IPlanEmailNotifier>(sp => sp.GetRequiredService<Email.PlanEmailService>());
+        services.AddHostedService<Email.PlanEmailWorker>();
         // WhatsApp (Meta Cloud API). Off when unset; secrets only from user-secrets/environment.
         services.Configure<WhatsApp.WhatsAppOptions>(configuration.GetSection(WhatsApp.WhatsAppOptions.Section));
         services.AddHttpClient<WhatsApp.IWhatsAppClient, WhatsApp.MetaWhatsAppClient>();

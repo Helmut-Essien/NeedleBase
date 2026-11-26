@@ -35,17 +35,20 @@ public sealed class StaffService : IStaffService
     private readonly IEmailSender _email;
     private readonly IOptionsMonitor<Email.EmailOptions> _emailOptions;
     private readonly Licensing.LicenseService _licenses;
+    private readonly IPlanEmailNotifier _planEmails;
     private readonly ILogger<StaffService> _logger;
 
     /// <summary>Most orders moved in one reassignment (one transaction); the Owner can repeat for the rest.</summary>
     public const int MaxReassign = 2000;
 
     public StaffService(ApplicationDbContext db, UserManager<ApplicationUser> userManager, ICurrentUser currentUser, IClock clock, IAuditLog audit,
-        IEmailSender email, IOptionsMonitor<Email.EmailOptions> emailOptions, Licensing.LicenseService licenses, ILogger<StaffService> logger)
+        IEmailSender email, IOptionsMonitor<Email.EmailOptions> emailOptions, Licensing.LicenseService licenses,
+        IPlanEmailNotifier planEmails, ILogger<StaffService> logger)
     {
         _email = email;
         _emailOptions = emailOptions;
         _licenses = licenses;
+        _planEmails = planEmails;
         _db = db;
         _userManager = userManager;
         _currentUser = currentUser;
@@ -421,12 +424,14 @@ public sealed class StaffService : IStaffService
         var now = _clock.UtcNow;
         var moved = 0;
         var targetGone = false;
+        var movedSnapshot = new List<(string Id, string DisplayRef, DateOnly? DueDate, string CustomerId)>();
         var strategy = _db.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
             _db.ChangeTracker.Clear();
             moved = 0;
             targetGone = false;
+            movedSnapshot = [];
             await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
             if (toUserId is not null)
             {
@@ -461,6 +466,9 @@ public sealed class StaffService : IStaffService
             }
 
             moved = orders.Count;
+            movedSnapshot = orders
+                .Select(o => (o.Id, o.DisplayRef, o.DueDate, o.CustomerId))
+                .ToList();
             await _db.SaveChangesAsync(cancellationToken);
             await tx.CommitAsync(cancellationToken);
         });
@@ -482,6 +490,22 @@ public sealed class StaffService : IStaffService
                 : $"Moved {moved} open order{(moved == 1 ? "" : "s")} from {who} to {targetName}";
             await _audit.WriteAsync(new AuditEntry(AuditActions.StaffOrdersReassigned, summary,
                 businessId, _currentUser.UserId, _currentUser.Role, "staff", fromUserId), cancellationToken: cancellationToken);
+
+            if (toUserId is not null && movedSnapshot.Count > 0)
+            {
+                var customerIds = movedSnapshot.Select(o => o.CustomerId).Distinct().ToList();
+                var names = await _db.Customers.AsNoTracking()
+                    .Where(c => customerIds.Contains(c.Id))
+                    .ToDictionaryAsync(c => c.Id, c => c.Name, cancellationToken);
+                // One digest (or single) mail — never one queue entry per order (SMTP channel capacity is 200).
+                var assigned = movedSnapshot
+                    .Select(o => new PlanEmailAssignedOrder(
+                        o.Id, o.DisplayRef, o.DueDate,
+                        names.TryGetValue(o.CustomerId, out var n) ? n : "a customer"))
+                    .ToList();
+                await _planEmails.NotifyBulkAssignmentAsync(
+                    businessId, previousAssigneeUserId: fromUserId, assigneeUserId: toUserId, assigned, cancellationToken);
+            }
         }
 
         return StaffResult<ReassignOrdersResultDto>.Ok(new ReassignOrdersResultDto(moved, toUserId, targetName));

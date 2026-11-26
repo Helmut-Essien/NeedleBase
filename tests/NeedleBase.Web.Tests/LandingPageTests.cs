@@ -175,8 +175,10 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("No staff and no computer", html);
         Assert.Contains("Records stay on that phone unless you save a copy", html);
         Assert.Contains("If you move to a paid plan, your records come with you.", html);
-        Assert.Contains("Coming soon: staff job and due emails, weekly and monthly summaries, photos, PDF receipts, reports", html);
-        Assert.Contains("Coming soon: a monthly summary email", html);
+        Assert.Contains("A monthly summary email", html);
+        Assert.Contains("Staff job and due emails", html);
+        Assert.Contains("A weekly summary with balances owed", html);
+        Assert.Contains("Coming soon: photos, PDF receipts, reports", html);
         Assert.Contains("Coming soon: more photo storage", html);
         Assert.DoesNotContain("(coming soon)", html);
         Assert.Contains("12 months for the price of 10", html);

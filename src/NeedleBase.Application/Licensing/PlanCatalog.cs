@@ -52,7 +52,7 @@ public sealed record PlanResolution(PlanEntitlements Entitlements, string? Store
 /// <summary>
 /// Maps a Platform plan code (and licence flags) to NeedleBase limits and features.
 /// Staff caps are enforced via <see cref="Staff.StaffPlanLimits"/> on invite/accept/reactivate.
-/// Free mode is a later step.
+/// Paid emails are gated by the email entitlement flags (see Infrastructure Email/PlanEmailService).
 /// </summary>
 public static class PlanCatalog
 {

@@ -51,6 +51,17 @@ public class Business : Entity
     /// <summary>When the Owner closed the shop (account deletion). Null while the shop is open.</summary>
     public DateTimeOffset? ClosedAtUtc { get; private set; }
 
+    /// <summary>
+    /// First day of the month the Owner last received a monthly summary email (server-only paid emails).
+    /// Null until the first send.
+    /// </summary>
+    public DateOnly? MonthlySummarySentFor { get; private set; }
+
+    /// <summary>
+    /// Monday of the week the Owner last received a weekly summary email (Workshop+). Null until the first send.
+    /// </summary>
+    public DateOnly? WeeklySummarySentFor { get; private set; }
+
     public bool IsClosed => ClosedAtUtc is not null;
 
     private Business()
@@ -163,7 +174,37 @@ public class Business : Entity
         LicenseInvalidSinceUtc = null;
         LicenseNextCheckUtc = null;
         LicenseFailedChecks = 0;
+        MonthlySummarySentFor = null;
+        WeeklySummarySentFor = null;
     }
+
+    /// <summary>Records that the monthly Owner summary for <paramref name="monthStart"/> (1st of month) was queued.</summary>
+    public void MarkMonthlySummarySent(DateOnly monthStart)
+    {
+        if (monthStart.Day != 1)
+        {
+            throw new ArgumentException("Month start must be the 1st of the month.", nameof(monthStart));
+        }
+
+        MonthlySummarySentFor = monthStart;
+    }
+
+    /// <summary>Records that the weekly Owner summary for the week starting <paramref name="weekStart"/> (Monday) was queued.</summary>
+    public void MarkWeeklySummarySent(DateOnly weekStart)
+    {
+        if (weekStart.DayOfWeek != DayOfWeek.Monday)
+        {
+            throw new ArgumentException("Week start must be a Monday.", nameof(weekStart));
+        }
+
+        WeeklySummarySentFor = weekStart;
+    }
+
+    /// <summary>Restores a prior monthly watermark when queueing failed after a claim.</summary>
+    public void RestoreMonthlySummarySent(DateOnly? previous) => MonthlySummarySentFor = previous;
+
+    /// <summary>Restores a prior weekly watermark when queueing failed after a claim.</summary>
+    public void RestoreWeeklySummarySent(DateOnly? previous) => WeeklySummarySentFor = previous;
 }
 
 /// <summary>One definite answer from Platform (token claims when valid; the reason when not).</summary>
