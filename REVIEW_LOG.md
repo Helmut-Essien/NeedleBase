@@ -1543,3 +1543,54 @@ No `.cursor/ralph/` present.
 
 ### Status
 **COMPLETE WITH NOTES** — P3 closed; P4 residual; gates PASS.
+
+---
+
+## Ralph Balanced — unpushed re-review #2 (`5de3a78`+`4b42d6a`) 2026-11-26
+
+### Discovery
+- Slice: `origin/PlanNameCatalogue..HEAD` (ahead 2); working tree clean
+- Auth: continued balanced series (“run the loop again on unpushed commits”)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (empty)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 4b42d6a Reject invalid report months…
+     5de3a78 Ship profit and monthly reports…
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | sed VM + MonthlyReportService | none new | P3 invalid-month fix verified at VM:81-88 |
+| 2 Edge | PASS | month input; StillOwed `left > 0` | Open P3 Low: web `<input type=month>` has min, no max (Index.cshtml:44) — future picks redirect | overpay excluded from StillOwed |
+| 3 Security | PASS | Authorize/BusinessId; EscapeDataString month | none | — |
+| 4 Senior | PASS | ReportLocalService load path | **G8 STOP**: P4 full-table load 3rd appearance (`ReportLocalService.cs:35-42`) — not re-fixed; operator decision needed for optimization | class B perf N/A |
+| 5 UI/UX | PASS | aria/Semantic hit count 20 | none | — |
+
+### Gate state table
+| gate | state | tail |
+|------|-------|------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 350 / 214 / 366 / 352; `Load_invalid_month` Passed 1 |
+| Perf | N/A | class B; bench 0 |
+
+### Findings
+**Fixed:** none this iteration (P3 already in `4b42d6a`).
+**Dismissed:** prior authz/calculator coverage; invalid-month path confirmed.
+**Open:** P4 phone full-table load (G8 stop — same finding unresolved across loops). P3 Low: month input missing `max` (server still rejects).
+**Out-of-scope:** email-channel residuals.
+
+### Teardown
+No `.cursor/ralph/`.
+
+### Operator note (G8)
+Further Ralph loops on this unpushed range will keep seeing P4 unless you choose to:
+1. Accept as-is (SQLite DateTimeOffset limits; documented), or
+2. Authorize a scoped optimization (e.g. fetch window in memory after coarser SQL filter, or accept current).
+
+### Status
+**COMPLETE WITH NOTES** — gates PASS; G8 stop on P4; no product commit.
