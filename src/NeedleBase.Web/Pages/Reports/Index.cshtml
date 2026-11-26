@@ -1,0 +1,118 @@
+@page
+@model NeedleBase.Web.Pages.Reports.IndexModel
+@using System.Globalization
+@using NeedleBase.Application.Reports
+@using NeedleBase.Web.Services
+@{
+    ViewData["Title"] = "Reports";
+}
+<h1 class="nb-page-title">Reports</h1>
+<p class="nb-meta">Money in and orders taken, month by month (Accra time).</p>
+<partial name="_PageState" model="Model" />
+
+@if (Model.NeedsUpgrade)
+{
+    <section class="nb-card" aria-labelledby="upgrade-heading">
+        <h2 id="upgrade-heading" class="nb-section-title">Monthly reports aren't on your plan</h2>
+        <p>@ReportRules.NotAllowedMessage See how much money came in each month, what you took in orders, and what customers still owe.</p>
+        @if (User.IsOwner())
+        {
+            <a class="btn nb-btn-primary" asp-page="/Settings/License">See your plan</a>
+        }
+        else
+        {
+            <p class="nb-meta mb-0">Ask the shop owner about moving to Workshop or Production.</p>
+        }
+    </section>
+}
+
+@if (Model.Report is { } r)
+{
+    var maxMoney = Math.Max(1m, r.Trend.Max(t => t.MoneyReceived));
+    <nav class="d-flex flex-wrap align-items-center gap-2 nb-section" aria-label="Choose a month">
+        @if (r.PreviousMonth is not null)
+        {
+            <a class="btn btn-sm nb-btn-outline" asp-page="/Reports/Index" asp-route-month="@r.PreviousMonth"><span aria-hidden="true">←</span> Earlier</a>
+        }
+        <h2 class="nb-section-title mb-0 mx-2">@r.MonthLabel@(r.IsCurrentMonth ? " (so far)" : "")</h2>
+        @if (r.NextMonth is not null)
+        {
+            <a class="btn btn-sm nb-btn-outline" asp-page="/Reports/Index" asp-route-month="@r.NextMonth">Later <span aria-hidden="true">→</span></a>
+        }
+        <form method="get" class="d-flex gap-2 ms-md-auto" role="search">
+            <label class="visually-hidden" for="month">Month</label>
+            <input class="form-control form-control-sm" type="month" id="month" name="month" value="@r.Month" min="@ReportRules.Key(ReportRules.EarliestMonth)" />
+            <button class="btn btn-sm nb-btn-outline" type="submit">Show</button>
+        </form>
+    </nav>
+
+    <section aria-labelledby="money-heading" class="nb-section">
+        <h2 id="money-heading" class="visually-hidden">Money</h2>
+        <div class="nb-money-grid">
+            <div class="nb-hero">
+                <span class="nb-hero__label">Money in</span>
+                <span class="nb-hero__value nb-money">@r.MoneyReceivedDisplay</span>
+                <span class="nb-hero__foot"><span>@r.PaymentCount @(r.PaymentCount == 1 ? "payment" : "payments") recorded</span><span>@r.ChangeDisplay</span></span>
+            </div>
+            <div class="nb-stat nb-money-card"><span class="nb-stat__label">Orders taken (@r.OrdersTaken)</span><span class="nb-stat__value nb-money">@r.OrdersTakenValueDisplay</span></div>
+            <div class="nb-stat nb-money-card"><span class="nb-stat__label">Still owed on those orders (@r.OrdersStillOwing)</span><span class="nb-stat__value nb-money">@r.StillOwedDisplay</span></div>
+        </div>
+        <p class="nb-meta mt-2">@ReportRules.CostsNote</p>
+    </section>
+
+    @if (r.IsEmpty)
+    {
+        <div class="nb-empty"><strong>Nothing recorded in @r.MonthLabel</strong>Payments and new orders from the app show here.</div>
+    }
+
+    <div class="nb-dash-cols">
+        <section class="nb-card" aria-labelledby="trend-heading">
+            <h2 id="trend-heading" class="nb-section-title">Last @r.Trend.Count months</h2>
+            <table class="table nb-table nb-table--cards" role="table">
+                <caption class="visually-hidden">Money in and orders taken per month, oldest first</caption>
+                <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Month</th><th role="columnheader" scope="col" class="text-end">Money in</th><th role="columnheader" scope="col" class="text-end">Orders taken</th></tr></thead>
+                <tbody role="rowgroup">
+                    @foreach (var t in r.Trend)
+                    {
+                        <tr role="row" aria-current="@(t.Month == r.Month ? "true" : null)">
+                            <td role="cell" data-label="Month"><a asp-page="/Reports/Index" asp-route-month="@t.Month">@t.Label</a></td>
+                            <td role="cell" data-label="Money in" class="text-end">
+                                <span class="nb-money">@t.MoneyReceivedDisplay</span>
+                                @* Bar width as SVG geometry (attributes, not inline styles) so the strict CSP holds. *@
+                                <svg class="nb-report-bar" viewBox="0 0 @maxMoney.ToString(CultureInfo.InvariantCulture) 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect x="0" y="0" width="@t.MoneyReceived.ToString(CultureInfo.InvariantCulture)" height="1" /></svg>
+                            </td>
+                            <td role="cell" data-label="Orders taken" class="text-end">@t.OrdersTaken · <span class="nb-money">@t.OrdersTakenValueDisplay</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </section>
+        <div>
+            <section class="nb-card" aria-labelledby="method-heading">
+                <h2 id="method-heading" class="nb-section-title">How customers paid</h2>
+                @if (r.ByMethod.Count == 0)
+                {
+                    <p class="nb-empty">No payments recorded this month.</p>
+                }
+                else
+                {
+                    <ul class="nb-status-list nb-report-list">
+                        @foreach (var m in r.ByMethod)
+                        {
+                            <li class="is-nonzero"><span>@m.MethodDisplay (@m.Count)</span><span class="nb-num nb-money">@m.AmountDisplay</span></li>
+                        }
+                    </ul>
+                }
+            </section>
+            <section class="nb-card mt-4" aria-labelledby="status-heading">
+                <h2 id="status-heading" class="nb-section-title">Orders taken this month, by status today</h2>
+                <ul class="nb-status-list nb-report-list">
+                    @foreach (var c in r.OrdersByStatus)
+                    {
+                        <li class="@(c.Count > 0 ? "is-nonzero" : "")"><span><span class="nb-dot nb-dot--@c.Status.ToLowerInvariant()" aria-hidden="true"></span>@c.StatusDisplay</span><span class="nb-num">@c.Count</span></li>
+                    }
+                </ul>
+            </section>
+        </div>
+    </div>
+}

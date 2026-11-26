@@ -1445,3 +1445,56 @@ REVIEW_LOG-only commit if gates PASS (no product changes).
 
 ### Status
 **COMPLETE WITH NOTES** — empty product slice; HEAD re-verified green; residuals carried; sentinel cleaned.
+
+---
+
+## Ralph Balanced — Reports slice (plan step 7b) 2026-11-26
+
+### Discovery
+- Root: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` @ `88b9d14` (tracking origin, in sync at start)
+- Slice: profit/monthly reports — 33 dirty paths (Api/App/Infra/Mobile/Web + tests + skills)
+- Canonical build: `dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` (JAVA_HOME JBR)
+- Bench: 0 → perf N/A for class B
+- Commit authorization: this prompt
+
+### Snapshot
+```
+cmd: git status --porcelain | wc -l
+out: 33
+cmd: git diff --stat (tracked)
+out: 21 files changed, 96 insertions(+), 22 deletions(-) (+ untracked Reports*)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | read MonthlyReportService/Calculator/ViewModel/Web Index | none High | shared calculator; voided payments excluded; BusinessId filter |
+| 2 Edge | PASS | ReportRules.TryResolveMonth; Api tests invalid month; mobile Gate | Open P3: mobile invalid month soft-falls to current (`ReportsViewModel.cs:81-85`) | empty report; EarliestMonth; future month rejected |
+| 3 Security | PASS | Authorize RequireStaff + role/plan gates; EscapeDataString month; tenancy test | none | REPORTS_FORBIDDEN/NOT_ALLOWED; no secrets in slice |
+| 4 Senior | PASS | PlanCatalog CanReports; migrations N/A (no schema); tests +39 App etc.; perf class B | Open P4: mobile loads all biz orders/payments then filters (`ReportLocalService.cs:35-42`) | additive entitlement only |
+| 5 UI/UX | PASS | Reports Index.cshtml a11y; ReportsPage SemanticProperties | none | upgrade prompt; month nav; costs note |
+
+### Gate state table
+| gate | state | command | output tail |
+|------|-------|---------|-------------|
+| Build | PASS | `JAVA_HOME=/opt/android-studio/jbr dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` | 0 warnings |
+| Test | PASS | Domain/App/Web/Mobile/Api Release --no-build | 86 / 350 / 214 / 365 / 352; Failed 0 |
+| Perf | N/A | class B (report queries); bench count 0 | — |
+
+### Findings
+**Fixed:** none (no autonomy-eligible defects).
+**Dismissed:** role/plan gating + tenancy isolation evidenced by `ReportsApiTests`; calculator empty/trend/voided behaviour by `MonthlyReportTests`.
+**Open:** mobile invalid-month soft-fallback (P3); phone full-table load (P4).
+**Out-of-scope:** prior email-channel residuals (Email null clear, TryQueue).
+
+### Teardown
+No `.cursor/ralph/` present; nothing created by this run to delete.
+`git status --porcelain` after commit should be clean of loop artifacts.
+
+### Commit
+Authorized; ship reports slice after gates PASS.
+
+### Status
+**COMPLETE WITH NOTES** — mandatory gates PASS; P3/P4 residuals only.

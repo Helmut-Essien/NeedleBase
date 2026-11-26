@@ -1,6 +1,7 @@
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Customers;
 using NeedleBase.Application.Contracts.Dashboard;
+using NeedleBase.Application.Contracts.Reports;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Contracts.Staff;
@@ -73,6 +74,9 @@ public interface INeedleBaseApi
 
     /// <summary>Owner: download a JSON export of the shop's Business Data (works while read-only).</summary>
     Task<ApiResult<(byte[] Bytes, string FileName)>> DownloadExportAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Owner/Manager on Workshop+: one month's money and orders (<c>yyyy-MM</c>, blank = this month).</summary>
+    Task<ApiResult<MonthlyReportDto>> GetMonthlyReportAsync(string? month, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Order list filters (server-side paging/filtering).</summary>

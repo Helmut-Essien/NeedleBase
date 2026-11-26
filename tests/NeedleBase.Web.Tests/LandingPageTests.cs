@@ -179,7 +179,9 @@ public class LandingPageTests : IClassFixture<LandingPageTests.Factory>
         Assert.Contains("Staff job and due emails", html);
         Assert.Contains("A weekly summary with balances owed", html);
         Assert.Contains("PDF payment receipts", html);
-        Assert.Contains("Coming soon: photos, reports", html);
+        Assert.Contains("Monthly reports of money in and owed", html);
+        Assert.Contains("Coming soon: photos", html);
+        Assert.DoesNotContain("Coming soon: photos, reports", html);
         Assert.Contains("Coming soon: more photo storage", html);
         Assert.DoesNotContain("(coming soon)", html);
         Assert.Contains("12 months for the price of 10", html);

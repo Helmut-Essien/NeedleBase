@@ -57,6 +57,9 @@ public sealed record SubscriptionStatusDto
     /// <summary>Workshop/Production/unlimited: share payment receipts as PDF. Starter stays text-only.</summary>
     public bool CanPdfReceipts { get; init; }
 
+    /// <summary>Workshop/Production/unlimited: profit and monthly reports (Owner/Manager). Starter, trial and Free: no.</summary>
+    public bool CanReports { get; init; }
+
     public static SubscriptionStatusDto Unlocked { get; } = new()
     {
         State = NeedleBase.Application.Licensing.SubscriptionStates.Active,
@@ -64,7 +67,8 @@ public sealed record SubscriptionStatusDto
         PlanDisplayName = "Unlimited",
         CanExport = true,
         ShopPhoneOnReceipts = true,
-        CanPdfReceipts = true
+        CanPdfReceipts = true,
+        CanReports = true
     };
 }
 

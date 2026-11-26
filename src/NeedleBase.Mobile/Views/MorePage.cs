@@ -1,6 +1,7 @@
 using MauiIcons.Material;
 using NeedleBase.Application.Contracts.Licensing;
 using NeedleBase.Application.Licensing;
+using NeedleBase.Application.Reports;
 using NeedleBase.Application.Staff;
 using NeedleBase.Mobile.Data.Services;
 using NeedleBase.Mobile.Services;
@@ -253,6 +254,22 @@ public sealed class MorePage : ContentPage
                         "Automatic order updates and message log")
                 }
             }));
+        }
+
+        if (ReportRules.CanView(role))
+        {
+            var canReports = NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current?.CanReports == true;
+            root.Add(Ui.Heading("Money", 2));
+            root.Add(Ui.Card(Ui.LinkRow(
+                "Monthly reports",
+                MaterialIcons.BarChart,
+                canReports
+                    ? () => Shell.Current.GoToAsync(nameof(ReportsPage))
+                    : () => DisplayAlert("Monthly reports", ReportRules.NotAllowedMessage, "OK"),
+                "MoreReports",
+                canReports
+                    ? "Money in, orders taken and what customers still owe"
+                    : "Comes with the Workshop and Production plans")));
         }
 
         if (StaffRoles.CanManage(role))

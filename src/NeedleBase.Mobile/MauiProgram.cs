@@ -84,6 +84,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMeasurementLocalService, MeasurementLocalService>();
         builder.Services.AddSingleton<IOrderLocalService, OrderLocalService>();
         builder.Services.AddSingleton<IPaymentLocalService, PaymentLocalService>();
+        builder.Services.AddSingleton<IReportLocalService, ReportLocalService>();
         builder.Services.AddSingleton<SubscriptionStatusStore>();
         builder.Services.AddSingleton<ShopExportApi>();
         // In-app updates (sideload builds; docs/android-release.md "Updates"). Play builds compile the installer out.
@@ -157,6 +158,8 @@ public static class MauiProgram
         builder.Services.AddTransient<WhatsAppSettingsPage>();
         builder.Services.AddTransient<StaffViewModel>();
         builder.Services.AddTransient<StaffPage>();
+        builder.Services.AddTransient<ReportsViewModel>();
+        builder.Services.AddTransient<ReportsPage>();
         builder.Services.AddTransient<ChangePasswordViewModel>();
         builder.Services.AddTransient<ChangePasswordPage>();
         builder.Services.AddTransient<DeleteAccountViewModel>();

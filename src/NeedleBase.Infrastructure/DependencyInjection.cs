@@ -80,6 +80,7 @@ public static class DependencyInjection
         services.AddHttpClient<Application.Licensing.ILicensePlatform, Licensing.PlatformLicenseClient>();
         services.AddScoped<Licensing.LicenseService>();
         services.AddScoped<Licensing.BusinessExportService>();
+        services.AddScoped<Reports.MonthlyReportService>();
         services.AddHostedService<Licensing.LicenseRecheckWorker>();
 
         var connectionString = DatabaseConnection.Build(configuration);

@@ -126,7 +126,7 @@ Most slices are built. Confirm with the user before starting later work. Accepta
 | **5** Payments | **Built** (device journeys not yet verified) | Record deposits/payments, balances, receipts; conflict-safe sync + UI resolution |
 | **6** Web oversight | **Built** (browser journey not yet verified) | Sidebar shell; Dashboard; Production board; Orders via Api HTTP |
 | **7** Staff + roles | **Built** (device journey not yet verified) | Invitations, role policies, role-filtered mobile/web nav, password reset when email is configured |
-| **8** Licensing and access | **Built** for Platform licence keys, daily recheck, a grace period and the read-only lock. WhatsApp tap-to-send and automatic sending are in code. PlanCatalog, server staff caps, Free, upgrade from Free, export/usage and paid emails (plans steps 1–6) are built. **Step 7 in progress:** PDF receipts; reports next; photos later via Cloudflare R2. | Licence key attach, plan/staff usage, export (incl. read-only), status banners. Free = phone only with meters; Go online keeps phone records. |
+| **8** Licensing and access | **Built** for Platform licence keys, daily recheck, a grace period and the read-only lock. WhatsApp tap-to-send and automatic sending are in code. PlanCatalog, server staff caps, Free, upgrade from Free, export/usage and paid emails (plans steps 1–6) are built. **Step 7 in progress:** PDF receipts, customer email and profit/monthly reports done; photos next via Cloudflare R2. | Licence key attach, plan/staff usage, export (incl. read-only), status banners. Free = phone only with meters; Go online keeps phone records. |
 
 ## Solution layout
 
@@ -283,7 +283,7 @@ Shops are licensed through Platform. See [docs/platform-licensing.md](docs/platf
 
 ## Pricing (decided; Free + upgrade built)
 
-These prices and limits are decided. **PlanCatalog** maps plan codes to entitlements; **staff caps** are enforced on the server (invite/accept/reactivate). **Free**, **upgrade from Free**, **export/usage display** and **paid emails** (steps 1–6) are built. **Step 7** is in progress: PDF receipts first, then reports; **photos later via Cloudflare R2**. The public landing page and the published Terms show these prices (updated 18 November 2026). Prices are in Ghana cedis and **do not include VAT**. The full plan (PlanCatalog rules, implementation order, risks, and how this works with Platform) is in [.cursor/skills/needlebase-plans/SKILL.md](.cursor/skills/needlebase-plans/SKILL.md).
+These prices and limits are decided. **PlanCatalog** maps plan codes to entitlements; **staff caps** are enforced on the server (invite/accept/reactivate). **Free**, **upgrade from Free**, **export/usage display** and **paid emails** (steps 1–6) are built. **Step 7** is in progress: PDF receipts, customer email and profit/monthly reports are built; **photos next via Cloudflare R2**. The public landing page and the published Terms show these prices (updated 18 November 2026). Prices are in Ghana cedis and **do not include VAT**. The full plan (PlanCatalog rules, implementation order, risks, and how this works with Platform) is in [.cursor/skills/needlebase-plans/SKILL.md](.cursor/skills/needlebase-plans/SKILL.md).
 
 | Plan | Price | Who | What it includes |
 |------|-------|-----|------------------|
@@ -296,7 +296,7 @@ A year costs 10 months. There is no free trial and no founding-shop discount. A 
 
 **Built (25 Nov 2026):** PlanCatalog; server staff caps; Free phone-only mode (no account, local counters, Save a copy, welcome-path diction); upgrading from Free (licence key, keep local records, first sync, resume-safe); export and usage display (License plan/staff meters, paid/lapsed export, Free `7/10` meters, shop phone on receipts).
 
-**Not built yet:** upgrade prompts beyond License/usage. Workshop step 7: PDF receipts in progress; profit/monthly reports and photos (Cloudflare R2) not started — still listed on the landing page and in the Terms. Automatic WhatsApp template messages exist in code but are **not** a sold plan feature until Meta verifies the business.
+**Not built yet:** upgrade prompts beyond License/usage. Workshop step 7: PDF receipts and profit/monthly reports are built (reports show money in and owed; NeedleBase records no costs yet); photos (Cloudflare R2) not started — still listed on the landing page and in the Terms. Automatic WhatsApp template messages exist in code but are **not** a sold plan feature until Meta verifies the business.
 
 ## Further documentation
 

@@ -193,7 +193,8 @@ public sealed class LicenseService
             PendingInviteCount = pendingInvites,
             CanExport = entitlements.Export,
             ShopPhoneOnReceipts = entitlements.ShopPhoneOnReceipts,
-            CanPdfReceipts = entitlements.PdfReceipts
+            CanPdfReceipts = entitlements.PdfReceipts,
+            CanReports = entitlements.ProfitAndMonthlyReports
         };
 
         _cache.Set(CacheKey(businessId), status, StatusTtl);

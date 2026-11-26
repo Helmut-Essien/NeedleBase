@@ -84,6 +84,9 @@ public sealed class FakeApi : INeedleBaseApi
         return Task.FromResult(Export?.Invoke()
             ?? ApiResult<(byte[] Bytes, string FileName)>.Ok((System.Text.Encoding.UTF8.GetBytes("{}"), "export.json")));
     }
+    public Func<string?, ApiResult<NeedleBase.Application.Contracts.Reports.MonthlyReportDto>> MonthlyReport { get; set; } =
+        _ => ApiResult<NeedleBase.Application.Contracts.Reports.MonthlyReportDto>.Ok(Data.Report());
+    public Task<ApiResult<NeedleBase.Application.Contracts.Reports.MonthlyReportDto>> GetMonthlyReportAsync(string? month, CancellationToken c = default) { Calls.Enqueue("report:" + month); return Task.FromResult(MonthlyReport(month)); }
     public AuditQuery? LastActivityQuery { get; private set; }
     public Task<ApiResult<PaginatedResponse<AuditEventDto>>> ListActivityAsync(AuditQuery q, CancellationToken c = default) { Calls.Enqueue("activity"); LastActivityQuery = q; return Task.FromResult(Activity(q)); }
 }
@@ -103,6 +106,23 @@ public static class Data
 
     public static OrderDetailDto Detail(string id, string status = "New", string? assignee = null) =>
         new(id, "b1", "ORD-1", "c1", "Ama Mensah", "+233245550123", status, null, null, assignee, 100m, null, Modified, Modified, false, []);
+
+    /// <summary>November 2026 (so far, today 26 Nov): 2 orders taken (one part-paid), 1 cancelled, MoMo + cash payments.</summary>
+    public static NeedleBase.Application.Contracts.Reports.MonthlyReportDto Report() =>
+        NeedleBase.Application.Reports.MonthlyReportCalculator.Build(
+            new DateOnly(2026, 11, 1),
+            new DateOnly(2026, 11, 26),
+            [
+                new("New", 300m, new DateTimeOffset(2026, 11, 3, 9, 0, 0, TimeSpan.Zero), 100m),
+                new("Ready", 200m, new DateTimeOffset(2026, 11, 10, 9, 0, 0, TimeSpan.Zero), 200m),
+                new("Cancelled", 999m, new DateTimeOffset(2026, 11, 11, 9, 0, 0, TimeSpan.Zero), 0m),
+                new("Collected", 150m, new DateTimeOffset(2026, 10, 5, 9, 0, 0, TimeSpan.Zero), 150m)
+            ],
+            [
+                new(100m, "MoMo", new DateTimeOffset(2026, 11, 3, 10, 0, 0, TimeSpan.Zero)),
+                new(200m, "Cash", new DateTimeOffset(2026, 11, 12, 10, 0, 0, TimeSpan.Zero)),
+                new(150m, "Cash", new DateTimeOffset(2026, 10, 5, 10, 0, 0, TimeSpan.Zero))
+            ]);
 
     public static ApiResult<T> Problem<T>(HttpStatusCode status, string? code = null, string? detail = null) =>
         ApiResult<T>.Fail(new ApiProblem((int)status, code, null, detail, new Dictionary<string, string[]>()));

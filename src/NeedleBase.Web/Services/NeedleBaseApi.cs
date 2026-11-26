@@ -4,6 +4,7 @@ using System.Text.Json;
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Customers;
 using NeedleBase.Application.Contracts.Dashboard;
+using NeedleBase.Application.Contracts.Reports;
 using NeedleBase.Application.Contracts.Errors;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
@@ -166,6 +167,17 @@ public sealed class NeedleBaseApi : INeedleBaseApi
             _logger.LogWarning(ex, "Export download failed");
             return ApiResult<(byte[] Bytes, string FileName)>.Offline();
         }
+    }
+
+    public Task<ApiResult<MonthlyReportDto>> GetMonthlyReportAsync(string? month, CancellationToken cancellationToken = default)
+    {
+        var url = new StringBuilder("api/reports/monthly");
+        if (!string.IsNullOrWhiteSpace(month))
+        {
+            url.Append("?month=").Append(Uri.EscapeDataString(month.Trim()));
+        }
+
+        return SendAsync<MonthlyReportDto>(HttpMethod.Get, url.ToString(), null, cancellationToken);
     }
 
     internal static bool IsUnreachable(ApiProblem problem) =>

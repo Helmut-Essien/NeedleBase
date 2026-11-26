@@ -5,7 +5,7 @@ description: >-
   backlog. Most slices are built.   PlanCatalog, staff caps, Free mode,
   upgrade from Free, export/usage and paid emails (plans steps 1–6) are
   built. Step 7 in progress (PDF receipts + customer email with PDF
-  attachment; reports next; photos later via Cloudflare R2).
+  attachment, profit/monthly reports done; photos via Cloudflare R2 next).
   Use when checking what is built, planning later work, confirming
   acceptance, or picking a code gap to fix. Confirm with the user before
   starting a new slice or later-work item.
@@ -31,7 +31,7 @@ Status and acceptance live in [phases.md](phases.md). The backlog of skill-vs-co
 
 ## Where things are
 
-- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete; device/browser journeys 2–5 still need verification. PlanCatalog, server staff caps, Free, upgrade from Free, export/usage and paid emails (plans steps 1–6) are built. Step 7 Workshop features in progress (PDF receipts and customer email with PDF attachment done; reports next; photos deferred to Cloudflare R2).
+- Slice table, status and acceptance criteria (single source): [phases.md](phases.md). S0–S8 are code-complete; device/browser journeys 2–5 still need verification. PlanCatalog, server staff caps, Free, upgrade from Free, export/usage and paid emails (plans steps 1–6) are built. Step 7 Workshop features in progress (PDF receipts, customer email with PDF attachment, and profit/monthly reports done; step 7c photos via Cloudflare R2 next).
 - Code that doesn't meet the skills yet, ranked: [code-gaps.md](code-gaps.md). G1, G2, G4, G5, G6, G10 are done; G3, G7, G8, G9, G11 are deferred ops/scale items.
 - Add-entity checklist: [needlebase-domain](../needlebase-domain/SKILL.md#add-entity-checklist-single-source).
 
