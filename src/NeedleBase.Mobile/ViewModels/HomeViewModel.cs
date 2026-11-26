@@ -100,6 +100,20 @@ public partial class HomeViewModel : BaseViewModel
     private string? _role;
     private SynchronizationContext? _uiContext;
 
+    /// <summary>
+    /// Same rule as the Payments tab in <c>AppShell</c>: unknown role shows it (pre-session), Owner/Manager show it,
+    /// Tailors don't. The tab is hidden for Tailors, so its route doesn't exist and must never be navigated to.
+    /// </summary>
+    public static bool CanRecordPayments(string? role) =>
+        role is null || NeedleBase.Application.Payments.PaymentRules.CanManage(role);
+
+    /// <summary>Home "Payment" quick action visibility (code-gaps G13).</summary>
+    [ObservableProperty] private bool canManagePayments = true;
+
+    /// <summary>Shell navigation; replaceable in tests.</summary>
+    public Func<string, Task> NavigateTo { get; set; } =
+        route => Shell.Current is null ? Task.CompletedTask : Shell.Current.GoToAsync(route);
+
     /// <summary>Banner copy for a status and the signed-in role (pure; unit tested).</summary>
     public static string? LicenseBannerText(NeedleBase.Application.Contracts.Licensing.SubscriptionStatusDto? status, string? role)
     {
@@ -166,6 +180,7 @@ public partial class HomeViewModel : BaseViewModel
                 BusinessName = string.IsNullOrWhiteSpace(user.BusinessName) ? "NeedleBase" : user.BusinessName.Trim();
                 UserInitials = BuildInitials(user.FirstName, user.Surname, user.BusinessName);
                 _role = user.Role;
+                CanManagePayments = CanRecordPayments(user.Role);
                 UpdateLicenseBanner();
             }
 
@@ -292,7 +307,24 @@ public partial class HomeViewModel : BaseViewModel
     private async Task NewOrderAsync() => await Shell.Current.GoToAsync(nameof(Views.CreateOrderPage));
 
     [RelayCommand]
-    private async Task RecordPaymentAsync() => await Shell.Current.GoToAsync("//main/PaymentsPage");
+    private async Task RecordPaymentAsync()
+    {
+        if (!CanManagePayments)
+        {
+            return;
+        }
+
+        try
+        {
+            await NavigateTo("//main/PaymentsPage");
+        }
+        catch (ArgumentException ex)
+        {
+            // The tab can be hidden before Home reloads the role (e.g. role changed on sync): never crash, hide the action.
+            System.Diagnostics.Debug.WriteLine($"Home payment route unavailable: {ex.Message}");
+            CanManagePayments = false;
+        }
+    }
 
     [RelayCommand]
     private async Task MeasureAsync() => await Shell.Current.GoToAsync("//main/CustomersPage");

@@ -1732,3 +1732,50 @@ Unpushed range is gate-clean. Further Ralph loops without new commits or a decis
 
 ### Status
 **COMPLETE WITH NOTES** — gates PASS; no product commit; P4 residual.
+
+---
+
+## Ralph Balanced — G13 Home Payment visibility 2026-11-26
+
+### Discovery
+- Root: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` @ `45dcc03` (ahead 1 docs); WT slice = G13 Home Payment fix (10 paths)
+- Auth: this prompt (`commit: authorized`)
+- Bench: 0 → perf N/A (class C: visibility/nav guard)
+
+### Snapshot
+```
+cmd: git status --porcelain | wc -l
+out: 10
+cmd: git diff --stat
+out: 10 files changed, 151 insertions(+), 21 deletions(-)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | read HomeViewModel/HomePage; git diff | none High | early return + ArgumentException catch; shared CanRecordPayments |
+| 2 Edge | PASS | tests Tailor/Owner/null role; missing route | Open P3: default CanManagePayments=true until Load (brief Tailor flash) | null role ⇒ show (matches tab) |
+| 3 Security | PASS | role gate = PaymentRules.CanManage | none | no secrets; nav guarded |
+| 4 Senior | PASS | Singleton HomePage/VM; tests +11; G13 docs | none | no schema; class C |
+| 5 UI/UX | PASS | IsVisible + ApplyQuickActionColumns 4→3; SemanticProperties kept | none | 3 equal columns for Tailor |
+
+### Gate state table
+| gate | state | tail |
+|------|-------|------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 350 / 214 / **377** / 352; HomeViewModel filter Passed 12 |
+| Perf | N/A | class C |
+
+### Findings
+**Fixed:** none this loop (slice already implements G13).
+**Dismissed:** crash path closed by visibility+guard+tests (`HomeViewModel.cs:310-326`, `HomePage.xaml:114`, `HomePage.xaml.cs:28-41`).
+**Open:** P3 brief Payment flash for Tailor before Load (default true).
+**Out-of-scope:** G14/G15; reports P4.
+
+### Teardown
+No `.cursor/ralph/`.
+
+### Status
+**COMPLETE WITH NOTES** — gates PASS; ship G13 WT; P3 flash noted.

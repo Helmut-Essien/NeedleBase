@@ -48,7 +48,7 @@ public partial class AppShell : Shell
         try
         {
             var role = (await ServiceHelper.GetRequiredService<IAuthService>().GetCachedUserAsync())?.Role;
-            var show = role is null || NeedleBase.Application.Payments.PaymentRules.CanManage(role);
+            var show = ViewModels.HomeViewModel.CanRecordPayments(role);
             if (PaymentsTab.IsVisible != show)
             {
                 PaymentsTab.IsVisible = show;

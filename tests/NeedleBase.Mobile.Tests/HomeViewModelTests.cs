@@ -22,7 +22,77 @@ public class HomeViewModelTests
         Assert.False(string.IsNullOrWhiteSpace(vm.Tagline));
     }
 
-    private sealed class StubAuthService : IAuthService
+    // G13: Tailors have no Payments tab, so Home must not offer or navigate to it.
+    [Theory]
+    [InlineData(BusinessRole.Owner, true)]
+    [InlineData(BusinessRole.Manager, true)]
+    [InlineData(BusinessRole.Tailor, false)]
+    [InlineData(null, true)]
+    public void CanRecordPayments_MatchesPaymentsTabRule(string? role, bool expected)
+    {
+        Assert.Equal(expected, HomeViewModel.CanRecordPayments(role));
+        Assert.Equal(
+            role is null || NeedleBase.Application.Payments.PaymentRules.CanManage(role),
+            HomeViewModel.CanRecordPayments(role));
+    }
+
+    [Theory]
+    [InlineData(BusinessRole.Owner, true)]
+    [InlineData(BusinessRole.Manager, true)]
+    [InlineData(BusinessRole.Tailor, false)]
+    public async Task Load_SetsPaymentActionVisibility_ByRole(string role, bool expected)
+    {
+        var vm = NewVm(role);
+        await vm.LoadCommand.ExecuteAsync(null);
+        Assert.Equal(expected, vm.CanManagePayments);
+    }
+
+    [Fact]
+    public async Task RecordPayment_Tailor_DoesNotNavigate()
+    {
+        var vm = NewVm(BusinessRole.Tailor);
+        var routes = new List<string>();
+        vm.NavigateTo = r => { routes.Add(r); return Task.CompletedTask; };
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        await vm.RecordPaymentCommand.ExecuteAsync(null);
+
+        Assert.Empty(routes);
+    }
+
+    [Theory]
+    [InlineData(BusinessRole.Owner)]
+    [InlineData(BusinessRole.Manager)]
+    public async Task RecordPayment_OwnerOrManager_OpensPaymentsTab(string role)
+    {
+        var vm = NewVm(role);
+        var routes = new List<string>();
+        vm.NavigateTo = r => { routes.Add(r); return Task.CompletedTask; };
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        await vm.RecordPaymentCommand.ExecuteAsync(null);
+
+        Assert.Equal(["//main/PaymentsPage"], routes);
+    }
+
+    [Fact]
+    public async Task RecordPayment_MissingRoute_DoesNotThrow_AndHidesAction()
+    {
+        var vm = NewVm(BusinessRole.Owner);
+        vm.NavigateTo = r => throw new ArgumentException($"unable to figure out route for: {r}", "uri");
+        await vm.LoadCommand.ExecuteAsync(null);
+
+        await vm.RecordPaymentCommand.ExecuteAsync(null);
+
+        Assert.False(vm.CanManagePayments);
+    }
+
+    private static HomeViewModel NewVm(string role) => new(
+        new StubAuthService(new AuthUserDto("u1", "a@b.dev", "Ama", "Owusu", "b1", "Ama Stitches", role)),
+        new StubCustomerLocalService(),
+        new StubOrderLocalService());
+
+    private sealed class StubAuthService(AuthUserDto? user = null) : IAuthService
     {
         public Task<AuthUserDto?> RegisterBusinessAsync(RegisterBusinessRequest request, CancellationToken cancellationToken = default) =>
             Task.FromResult<AuthUserDto?>(null);
@@ -47,7 +117,7 @@ public class HomeViewModelTests
 
         public Task<string?> GetBusinessIdAsync() => Task.FromResult<string?>(null);
 
-        public Task<AuthUserDto?> GetCachedUserAsync() => Task.FromResult<AuthUserDto?>(null);
+        public Task<AuthUserDto?> GetCachedUserAsync() => Task.FromResult(user);
     }
 
     private sealed class StubCustomerLocalService : ICustomerLocalService

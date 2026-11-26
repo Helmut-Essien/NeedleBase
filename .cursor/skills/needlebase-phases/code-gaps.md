@@ -6,13 +6,14 @@ Feature work that isn't built yet is **not** listed here. See [phases.md](phases
 
 ## Open
 
-Found by the device + browser run of journeys 2–5 on 26 Nov 2026 (Pixel 7 API 35 emulator, local Api/Web, headless Chrome). Fix in this order: G13 → G14 → G15. Re-run the named journey after each and update [phases.md](phases.md).
+Found by the device + browser run of journeys 2–5 on 26 Nov 2026 (Pixel 7 API 35 emulator, local Api/Web, headless Chrome). Fix in this order: G13 (done 26 Nov 2026) → G14 → G15. Re-run the named journey after each and update [phases.md](phases.md).
 
-### G13: Tailor crash on Home "Payment" quick action (P1, blocks Journey 5)
-- **Evidence:** as a Tailor, Home → Payment kills the app: `ArgumentException: unable to figure out route for: //main/PaymentsPage`. `ViewModels/HomeViewModel.cs:295` `GoToAsync("//main/PaymentsPage")`; button at `Views/HomePage.xaml:117-119`. `AppShell.xaml.cs:45-54` hides `PaymentsTab` for Tailors, so the route doesn't exist.
-- **Plan:** (1) `HomeViewModel` exposes `CanManagePayments` from `PaymentRules.CanManage(role)` (same source as `AppShell`); bind the button's `IsVisible` and re-flow the quick-action grid to 3 columns when hidden. (2) Guard `RecordPaymentAsync`: return if `!CanManagePayments`, and wrap Shell navigation so a missing route shows a friendly message, not a crash. (3) Check every other `//main/...` jump (Home cards, Reports, notifications) the same way.
-- **Tests:** `Mobile.Tests` HomeViewModel: Tailor → `CanManagePayments == false` and the command doesn't navigate; Owner/Manager → navigates.
-- **Acceptance:** Journey 5 re-run on the emulator: the Tailor's Home has no Payment action and nothing crashes; Owner unchanged.
+### G13: Tailor crash on Home "Payment" quick action — **Done 26 Nov 2026**
+- **Was:** `HomeViewModel.RecordPaymentAsync` → `GoToAsync("//main/PaymentsPage")`; the tab is hidden for Tailors (`AppShell.ApplyRoleTabsAsync`), so the route didn't exist and the app crashed.
+- **Fix:** `HomeViewModel.CanRecordPayments(role)` (role null or `PaymentRules.CanManage`) is now the one rule, used by `AppShell` for the tab and by Home's `CanManagePayments`. `HomePage.xaml` binds the Payment button's `IsVisible`; `HomePage.xaml.cs` `ApplyQuickActionColumns` switches 4 → 3 equal columns. `RecordPaymentAsync` returns early when not allowed and catches `ArgumentException` (missing route) by hiding the action. Navigation goes through `HomeViewModel.NavigateTo` (Shell by default; replaceable in tests).
+- **Audit of other main-tab jumps:** `//main/CustomersPage`, `//main/OrdersPage`, `//main/HomePage` are shown for every role; Staff/Reports are More rows already hidden by role; `NavigationService` stack clear already catches the hidden Payments route (logs "Stack clear skipped"). No other change needed.
+- **Tests:** `Mobile.Tests/HomeViewModelTests` (rule matches the tab rule; Owner/Manager/Tailor visibility after load; Tailor doesn't navigate; Owner/Manager open `//main/PaymentsPage`; missing route doesn't throw and hides the action).
+- **Verified:** emulator 26 Nov 2026: Tailor Home shows Add customer / New order / Measure in 3 equal columns, no crash; Owner sees 4 actions and Payment opens the Payments tab.
 
 ### G14: No way to assign an order to staff (P2, blocks Journey 3)
 - **Evidence:** the server supports and validates `Order.AssignedToUserId` (domain `Order.cs:23`, "assignee must be an active member", sync DTO, filters `assignedTo=me|<id>`, Staff `reassign-orders`), but no screen sets it. `EditOrderViewModel.cs:384` only copies the existing value; web `Pages/Orders/Details|Edit` have no picker. The 26 Nov run had to set it in the dev database.

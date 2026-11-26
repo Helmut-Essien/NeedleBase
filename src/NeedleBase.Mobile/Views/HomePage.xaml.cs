@@ -12,6 +12,33 @@ public partial class HomePage : ContentPage
         InitializeComponent();
         BindingContext = ServiceHelper.GetRequiredService<HomeViewModel>();
         SyncChip.BindingContext = ServiceHelper.GetRequiredService<SyncStatusViewModel>();
+        if (BindingContext is HomeViewModel home)
+        {
+            home.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(HomeViewModel.CanManagePayments))
+                {
+                    ApplyQuickActionColumns(home.CanManagePayments);
+                }
+            };
+            ApplyQuickActionColumns(home.CanManagePayments);
+        }
+    }
+
+    /// <summary>Tailors have no Payment action: 3 equal columns instead of a gap (code-gaps G13).</summary>
+    private void ApplyQuickActionColumns(bool showPayment)
+    {
+        var columns = showPayment ? 4 : 3;
+        if (QuickActionsGrid.ColumnDefinitions.Count != columns)
+        {
+            QuickActionsGrid.ColumnDefinitions.Clear();
+            for (var i = 0; i < columns; i++)
+            {
+                QuickActionsGrid.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
+            }
+        }
+
+        Grid.SetColumn(MeasureButton, columns - 1);
     }
 
     protected override async void OnAppearing()
