@@ -1639,3 +1639,48 @@ No `.cursor/ralph/`.
 
 ### Status
 **COMPLETE WITH NOTES** — P3 max fixed; P4 residual; gates PASS.
+
+---
+
+## Ralph Balanced — unpushed re-review #4 2026-11-26
+
+### Discovery
+- Slice: ahead 4 (`5de3a78`…`ddae3fd`); WT clean at start
+- Auth: balanced series
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (empty → then ReportsController audit CT)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD (pre-fix)
+out: ddae3fd / 7d3b800 / 4b42d6a / 5de3a78
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | OnAppearing/Go; audit WriteAsync | **Fixed** P3: pass `cancellationToken` to audit (match SyncController) | LoadAsync already sets Message |
+| 2 Edge | PASS | max/LatestMonthKey; IsBusy | none new | prior month max present |
+| 3 Security | PASS | Authorize/BusinessId/Escape | none | — |
+| 4 Senior | PASS | ReportLocalService | P4 G8 carried (no optimize) | class B N/A |
+| 5 UI/UX | PASS | aria + max= | none | — |
+
+### Gate state table
+| gate | state | tail |
+|------|-------|------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` (post-fix rebuild) |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 350 / 214 / 366 / 352 |
+| Perf | N/A | class B; bench 0 |
+
+### Findings
+**Fixed:** `ReportsController.cs:50-52` — `cancellationToken` on audit WriteAsync.
+**Dismissed:** prior P3 invalid-month + month max still present.
+**Open:** P4 phone full-table load (G8 — not re-fixed).
+**Out-of-scope:** email residuals; OnAppearing silent Debug catch (P4, matches other pages).
+
+### Teardown
+No `.cursor/ralph/`.
+
+### Status
+**COMPLETE WITH NOTES** — gates PASS; audit CT fixed; P4 residual.

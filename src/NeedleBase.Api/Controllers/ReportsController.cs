@@ -48,7 +48,8 @@ public sealed class ReportsController : ControllerBase
         {
             // Money view: same throttled activity row as the payments list (one per person per hour).
             await _audit.WriteAsync(new AuditEntry(AuditActions.PaymentsViewed, "Viewed the monthly report"),
-                throttleKey: $"{AuditActions.PaymentsViewed}:{_user.BusinessId}:{_user.UserId}", window: TimeSpan.FromHours(1));
+                throttleKey: $"{AuditActions.PaymentsViewed}:{_user.BusinessId}:{_user.UserId}", window: TimeSpan.FromHours(1),
+                cancellationToken: cancellationToken);
             return Ok(report);
         }
 
