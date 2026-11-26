@@ -1921,3 +1921,48 @@ No `.cursor/ralph/`.
 
 ### Status
 **COMPLETE WITH NOTES** — gates PASS; lock fix shipped with G14.
+
+---
+
+## Ralph Balanced — unpushed `8f2c5ab` re-review 2026-11-26
+
+### Discovery
+- Slice: `origin/PlanNameCatalogue..HEAD` = `8f2c5ab` (G14); WT clean
+- Auth: balanced series
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (empty)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 8f2c5ab Ship order assignment (G14) with assignee update under the row lock.
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | sed UpdateAssigneeLockedAsync | none new | lock-then-read header present; double LockOrder same txn OK |
+| 2 Edge | PASS | Assign Api/Mobile/Web tests | none | tailor/inactive/stale/sync/unassign |
+| 3 Security | PASS | Authorize; EscapeDataString assignee PATCH; staff cache clear | none | — |
+| 4 Senior | PASS | class B; gates | none | prior lock fix holds |
+| 5 UI/UX | PASS | assign label/aria; Picker Semantic | none | — |
+
+### Gate state table
+| gate | state | tail |
+|------|-------|------|
+| Build | PASS | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | `-warnaserror` |
+| Test | PASS | 86 / 356 / 225 / 384 / 357 |
+| Perf | N/A | class B; bench 0 |
+
+### Findings
+**Fixed:** none.
+**Dismissed:** lock fix verified; authz/edge coverage intact.
+**Open:** none in-slice.
+**Out-of-scope:** G15.
+
+### Teardown
+No `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — gates PASS; no product changes.
