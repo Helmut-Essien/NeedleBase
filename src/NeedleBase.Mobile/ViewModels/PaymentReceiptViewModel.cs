@@ -6,6 +6,7 @@ using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Payments;
 using NeedleBase.Mobile.Data.Services;
 using NeedleBase.Mobile.Data.Sync;
+using NeedleBase.Mobile.Helpers;
 using NeedleBase.Mobile.Services;
 
 namespace NeedleBase.Mobile.ViewModels;
@@ -19,6 +20,7 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
     private readonly IPaymentLocalService _payments;
     private readonly IAuthService _auth;
     private bool _loadedOnce;
+    private LiveListRefresh? _live;
 
     public PaymentReceiptViewModel(IPaymentLocalService payments, IAuthService auth)
     {
@@ -77,6 +79,28 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
         }
     }
 
+    /// <summary>Tests: set the payment without the Shell navigation load.</summary>
+    public void ApplyQueryAttributesForTest(string paymentId)
+    {
+        PaymentId = paymentId;
+        _loadedOnce = true;
+    }
+
+    /// <summary>
+    /// Receipt on screen: reload after a sync pass changed local rows (its payment synced or was voided elsewhere).
+    /// Detach in <see cref="Disappear"/> so a closed receipt never keeps listening. Code-gaps G15f.
+    /// </summary>
+    public void Appear()
+    {
+        _live ??= new LiveListRefresh(() => string.IsNullOrWhiteSpace(PaymentId) ? Task.CompletedTask : LoadAsync());
+        _live.Attach();
+    }
+
+    public void Disappear() => _live?.Detach();
+
+    /// <summary>Tests: true while the receipt listens for sync changes.</summary>
+    public bool IsListeningForSync => _live?.IsAttached == true;
+
     [RelayCommand]
     public async Task LoadAsync()
     {
@@ -100,7 +124,7 @@ public partial class PaymentReceiptViewModel : BaseViewModel, IQueryAttributable
             }
 
             BusinessName = user?.BusinessName ?? string.Empty;
-            BusinessPhone = string.IsNullOrWhiteSpace(user?.BusinessPhone) ? null : user.BusinessPhone.Trim();
+            BusinessPhone = string.IsNullOrWhiteSpace(user?.BusinessPhone) ? null : NeedleBase.Application.Common.CustomerSearchKeys.FormatPhone(user.BusinessPhone);
             // Fail closed: only Workshop+ (or unlimited) after a subscription pull. Free / Starter / unknown → text.
             CanSharePdf = LocalSubscriptionGate.Current?.CanPdfReceipts == true;
             var receipt = await _payments.GetReceiptAsync(businessId, PaymentId);

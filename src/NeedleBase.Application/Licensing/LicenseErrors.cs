@@ -16,20 +16,20 @@ public static class LicenseErrors
     public const string ReadOnly = "SUBSCRIPTION_READ_ONLY";
 
     public const string ReadOnlyMessage =
-        "Your NeedleBase license needs attention, so new changes are paused. You can still view your records. Ask the shop owner to renew it.";
+        "Your NeedleBase licence needs attention, so new changes are paused. You can still view your records. Ask the shop owner to renew it.";
 
     /// <summary>Copy for a code (null when the code isn't a license code).</summary>
     public static string? MessageFor(string? code) => code switch
     {
-        KeyRequired => "Enter the license key from the email we sent you.",
-        KeyInvalid => "That license key wasn't recognised. Check it against the email we sent you and try again.",
-        KeyInUse => "This license key is already used by another shop. Each key works for one shop — contact us if this is your key.",
-        EmailMismatch => "This email doesn't match the license. Use the email address the license key was sent to.",
-        Expired => "This license has expired. Renew it, then try again.",
-        Suspended => "This license is suspended. Contact us to sort it out.",
-        Revoked => "This license has been cancelled. Contact us for a new key.",
-        NotActive => "This license isn't active yet. Contact us to activate it.",
-        CheckUnavailable => "We couldn't check your license key just now, so nothing was created. Please try again in a few minutes.",
+        KeyRequired => "Enter the licence key from the email we sent you.",
+        KeyInvalid => "That licence key wasn't recognised. Check it against the email we sent you and try again.",
+        KeyInUse => "This licence key is already used by another shop. Each key works for one shop — contact us if this is your key.",
+        EmailMismatch => "This email doesn't match the licence. Use the email address the licence key was sent to.",
+        Expired => "This licence has expired. Renew it, then try again.",
+        Suspended => "This licence is suspended. Contact us to sort it out.",
+        Revoked => "This licence has been cancelled. Contact us for a new key.",
+        NotActive => "This licence isn't active yet. Contact us to activate it.",
+        CheckUnavailable => "We couldn't check your licence key just now, so nothing was created. Please try again in a few minutes.",
         NotConfigured => "Sign-up isn't available right now. Please try again later or contact us.",
         ReadOnly => ReadOnlyMessage,
         _ => null

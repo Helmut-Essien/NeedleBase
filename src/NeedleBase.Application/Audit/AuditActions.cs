@@ -91,7 +91,7 @@ public static class AuditActions
         PaymentDeleted => "Payment removed",
         BusinessCreated => "Business created",
         BusinessUpdated => "Business edited",
-        LicenseAttached => "License key added",
+        LicenseAttached => "Licence key added",
         StaffAdded => "Team member added",
         StaffRoleChanged => "Role changed",
         StaffDeactivated => "Team member deactivated",

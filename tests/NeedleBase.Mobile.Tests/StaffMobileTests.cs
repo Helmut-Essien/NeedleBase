@@ -6,7 +6,7 @@ using NeedleBase.Mobile.ViewModels;
 
 namespace NeedleBase.Mobile.Tests;
 
-public class StaffMobileTests
+public partial class StaffMobileTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 26, 9, 0, 0, TimeSpan.Zero);
 

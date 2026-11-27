@@ -34,7 +34,7 @@
                    FontSize="18"
                    FontAttributes="Bold"
                    TextColor="{StaticResource Charcoal}" />
-            <Label Text="{Binding CustomerPhone}"
+            <Label Text="{Binding CustomerPhoneDisplay}"
                    FontSize="14"
                    TextColor="{StaticResource Gray600}" />
 

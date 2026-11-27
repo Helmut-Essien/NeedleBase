@@ -35,7 +35,8 @@ public class PasswordFieldTests
         Assert.True(field.Input.IsPassword);
         Assert.False(field.IsPasswordVisible);
         Assert.Equal("Show password", SemanticProperties.GetDescription(toggle));
-        Assert.Equal("Choose a password", SemanticProperties.GetDescription(field.Input));
+        // G15g: no description on the password Entry, because Android reads "description, value" and would speak the password.
+        Assert.Null(SemanticProperties.GetDescription(field.Input));
         Assert.Equal("PwToggle", toggle.AutomationId);
         Assert.True(toggle.WidthRequest >= 44 && toggle.HeightRequest >= 44);
 

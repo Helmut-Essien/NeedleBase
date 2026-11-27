@@ -22,7 +22,7 @@ public static class SubscriptionRules
             {
                 State = SubscriptionStates.NotAttached,
                 OwnerOnly = true,
-                Message = "Add your NeedleBase license key on the License page of the NeedleBase website to keep your shop covered."
+                Message = "Add your NeedleBase licence key on the License page of the NeedleBase website to keep your shop covered."
             };
         }
 
@@ -34,7 +34,7 @@ public static class SubscriptionRules
                 OwnerOnly = true,
                 KeyHint = business.LicenseKeyHint,
                 LastCheckedUtc = business.LicenseCheckedAtUtc,
-                Message = "Please enter your NeedleBase license key again on the License page of the NeedleBase website."
+                Message = "Please enter your NeedleBase licence key again on the License page of the NeedleBase website."
             };
         }
 
@@ -49,7 +49,7 @@ public static class SubscriptionRules
             {
                 message = business.LicenseIsTrial
                     ? $"Your NeedleBase trial ends on {Day(ends)}. Renew to keep adding work."
-                    : $"Your NeedleBase license ends on {Day(ends)}. Renew to keep adding work.";
+                    : $"Your NeedleBase licence ends on {Day(ends)}. Renew to keep adding work.";
             }
 
             return Base(business, state, message);
@@ -60,12 +60,12 @@ public static class SubscriptionRules
         if (now >= readOnlyFrom)
         {
             return Base(business, SubscriptionStates.ReadOnly,
-                $"Your NeedleBase license {phrase}. New changes are paused; you can still view your records and changes made earlier will still sync. Renew to carry on.")
+                $"Your NeedleBase licence {phrase}. New changes are paused; you can still view your records and changes made earlier will still sync. Renew to carry on.")
                 with { IsReadOnly = true, ReadOnlyFromUtc = readOnlyFrom };
         }
 
         return Base(business, SubscriptionStates.Problem,
-                $"Your NeedleBase license {phrase}. Renew before {Day(readOnlyFrom)} to keep adding new work.")
+                $"Your NeedleBase licence {phrase}. Renew before {Day(readOnlyFrom)} to keep adding new work.")
             with { ReadOnlyFromUtc = readOnlyFrom };
     }
 

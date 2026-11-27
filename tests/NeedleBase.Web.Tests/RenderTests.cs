@@ -129,12 +129,13 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
             var (_, owner) = await GetAsync("/Dashboard", BusinessRole.Owner);
             Assert.Contains("nb-license-banner", owner);
             Assert.Contains("/Settings/License", owner);
+            Assert.Contains("Open the License page", owner);
             var (_, tailor) = await GetAsync("/Dashboard", BusinessRole.Tailor);
             Assert.DoesNotContain("nb-license-banner", tailor);
             Assert.DoesNotContain("/Settings/License", tailor);
             var (status, page) = await GetAsync("/Settings/License", BusinessRole.Owner);
             Assert.Equal(HttpStatusCode.OK, status);
-            Assert.Contains("Add your license key", page);
+            Assert.Contains("Add your licence key", page);
         }
         finally
         {
@@ -248,6 +249,14 @@ public class RenderTests : IClassFixture<RenderTests.WebFactory>
         var (_, html) = await GetAsync("/Orders", BusinessRole.Owner);
         Assert.DoesNotContain("<script>alert(1)</script>", html);
         Assert.Contains("&lt;script&gt;", html);
+    }
+
+    [Fact]
+    public async Task Details_shows_spaced_phone_but_searches_by_the_stored_number()
+    {
+        var (_, html) = await GetAsync("/Orders/Details/o1", BusinessRole.Owner);
+        Assert.Contains("&#x2B;233 24 555 0123", html); // code-gaps G15b (Razor encodes "+")
+        Assert.Contains("search=%2B233245550123", html);
     }
 
     [Fact]

@@ -245,7 +245,7 @@ public static class EmailTemplates
         displayRef = OneLine(displayRef) ?? "";
         statusDisplay = OneLine(statusDisplay) ?? "";
         var greet = string.IsNullOrWhiteSpace(toName) ? "Hello" : $"Hello {toName.Trim()}";
-        var phone = OneLine(businessPhone);
+        var phone = OneLine(businessPhone) is { Length: > 0 } onePhone ? NeedleBase.Application.Common.CustomerSearchKeys.FormatPhone(onePhone) : null;
         var text =
             $"{greet},\n\nYour order #{displayRef} at {businessName} is now: {statusDisplay}.\n\n" +
             (phone is null ? "" : $"Shop phone: {phone}\n\n") +
@@ -276,7 +276,7 @@ public static class EmailTemplates
         businessName = OneLine(businessName) ?? "";
         var orderRef = OneLine(orderDisplayRef) ?? "";
         var greet = string.IsNullOrWhiteSpace(toName) ? "Hello" : $"Hello {toName.Trim()}";
-        var phone = OneLine(businessPhone);
+        var phone = OneLine(businessPhone) is { Length: > 0 } onePhone ? NeedleBase.Application.Common.CustomerSearchKeys.FormatPhone(onePhone) : null;
         var text =
             $"{greet},\n\n{businessName}" +
             (phone is null ? "" : $"\n{phone}") +

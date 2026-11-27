@@ -59,7 +59,7 @@ public class RegisterModel : PageModel
 
         // The server decides whether a key is required (Platform:RequireLicenseKey) and says so in plain words.
         [MaxLength(200)]
-        [Display(Name = "License key")]
+        [Display(Name = "Licence key")]
         public string? LicenseKey { get; set; }
 
         [MaxLength(40)]

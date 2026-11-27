@@ -31,7 +31,7 @@ public static class PaymentReceiptShare
         var lines = new List<string> { m.BusinessName.Trim() };
         if (!string.IsNullOrWhiteSpace(m.BusinessPhone))
         {
-            lines.Add(m.BusinessPhone.Trim());
+            lines.Add(NeedleBase.Application.Common.CustomerSearchKeys.FormatPhone(m.BusinessPhone)); // "+233 24 555 0123", same as lists
         }
 
         lines.Add("Payment receipt");

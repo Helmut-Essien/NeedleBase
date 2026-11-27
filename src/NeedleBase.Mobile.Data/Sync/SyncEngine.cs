@@ -419,6 +419,12 @@ public sealed class SyncEngine
                 appliedUpserts.Where(s => s.EntityType == SyncEntityType.Payment).Select(s => s.EntityId), cancellationToken).ConfigureAwait(false);
             await ApplyDeferredAsync(db, businessId, cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
+            if (results.Count > 0)
+            {
+                // Acks flip "Recorded on this device" to synced and apply the server's copy: open screens (receipt,
+                // order detail, lists) reload, debounced (code-gaps G15f).
+                LocalDataVersion.NotifyChangedBySync(businessId);
+            }
         }
         finally
         {

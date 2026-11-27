@@ -230,6 +230,31 @@ public partial class StaffViewModel : BaseViewModel
         NewCodeNote = null;
     }
 
+    /// <summary>Pull-to-refresh spinner (RefreshView). Code-gaps G15f.</summary>
+    [ObservableProperty] private bool isRefreshing;
+
+    /// <summary>Pull down: reload the team and invites (someone may have joined on their own phone).</summary>
+    [RelayCommand]
+    public async Task RefreshAsync()
+    {
+        try
+        {
+            await LoadAsync();
+        }
+        finally
+        {
+            IsRefreshing = false;
+        }
+    }
+
+    /// <summary>"Done" under a new invite code: hide the code, then reload so the invite list is current.</summary>
+    [RelayCommand]
+    public async Task DoneAsync()
+    {
+        DismissCode();
+        await LoadAsync();
+    }
+
     [RelayCommand]
     private async Task RevokeAsync(InviteRow? row)
     {

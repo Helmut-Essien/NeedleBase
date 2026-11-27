@@ -63,7 +63,14 @@ internal static class Ui
             IsTextPredictionEnabled = !password
         };
         entry.SetBinding(Microsoft.Maui.Controls.Entry.TextProperty, binding);
-        SemanticProperties.SetDescription(entry, description);
+        if (!password)
+        {
+            SemanticProperties.SetDescription(entry, description);
+        }
+
+        // Password fields: no description. On Android MAUI reports a described Entry's text as "description, value",
+        // which put the typed password in plain text in the accessibility tree; the placeholder (hint) names the
+        // field and Android keeps the value masked. Code-gaps G15g.
         return entry;
     }
 
@@ -147,7 +154,7 @@ internal static class Ui
             MinimumHeightRequest = 48,
             AutomationId = automationId
         };
-        row.Add(new MauiIcon { Icon = icon, IconSize = 22, IconColor = C("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }, 0);
+        row.Add(Decorative(new MauiIcon { Icon = icon, IconSize = 22, IconColor = C("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }), 0);
         var texts = new VerticalStackLayout { VerticalOptions = LayoutOptions.Center };
         texts.Add(new Label { Text = text, FontSize = 16, TextColor = C("Charcoal", Colors.Black) });
         if (subtitle is not null)
@@ -156,12 +163,23 @@ internal static class Ui
         }
 
         row.Add(texts, 1);
-        row.Add(new MauiIcon { Icon = MaterialIcons.ChevronRight, IconSize = 22, IconColor = C("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }, 2);
+        row.Add(Decorative(new MauiIcon { Icon = MaterialIcons.ChevronRight, IconSize = 22, IconColor = C("Gray600", Colors.Gray), VerticalOptions = LayoutOptions.Center }), 2);
         SemanticProperties.SetDescription(row, subtitle is null ? $"Open {text}" : $"Open {text}. {subtitle}");
         var tap = new TapGestureRecognizer();
         tap.Tapped += async (_, _) => await onTap();
         row.GestureRecognizers.Add(tap);
         return row;
+    }
+
+    /// <summary>
+    /// Icon glyphs (private-use characters such as \ue7ef) mean nothing to a screen reader: keep them, and anything
+    /// inside them, out of the accessibility tree. The row around them carries the description. Code-gaps G15e.
+    /// </summary>
+    internal static T Decorative<T>(T view) where T : View
+    {
+        AutomationProperties.SetIsInAccessibleTree(view, false);
+        AutomationProperties.SetExcludedWithChildren(view, true);
+        return view;
     }
 
     internal static BoxView Divider() => new() { HeightRequest = 1, Color = C("Gray200", Colors.LightGray) };

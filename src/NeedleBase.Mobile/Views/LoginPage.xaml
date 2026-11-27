@@ -113,7 +113,6 @@
                            IsPassword="{Binding IsPasswordHidden}"
                            Text="{Binding Password}"
                            IsEnabled="{Binding CanSubmit}"
-                           SemanticProperties.Description="Password"
                            AutomationId="LoginPassword" />
                     <Grid Grid.Column="1" WidthRequest="44" HeightRequest="44" VerticalOptions="Center">
                         <Image WidthRequest="21" HeightRequest="21" HorizontalOptions="Center" VerticalOptions="Center"

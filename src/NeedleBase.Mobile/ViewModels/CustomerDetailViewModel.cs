@@ -353,7 +353,7 @@ public partial class CustomerDetailViewModel : BaseViewModel, IQueryAttributable
             }
 
             Name = detail.Name;
-            Phone = detail.Phone;
+            Phone = NeedleBase.Application.Common.CustomerSearchKeys.FormatPhone(detail.Phone);
             Email = detail.Email ?? string.Empty;
             Notes = detail.Notes ?? string.Empty;
             Title = detail.Name;

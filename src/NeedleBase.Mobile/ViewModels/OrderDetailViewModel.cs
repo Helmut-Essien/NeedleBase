@@ -30,6 +30,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     private readonly IOrderLocalService _orders;
     private readonly IAuthService _auth;
     private readonly IStaffDirectory? _staff;
+    private bool _staffRefreshed;
     private readonly IPaymentLocalService? _payments;
     private bool _loadedOnce;
     private LiveListRefresh? _live;
@@ -138,7 +139,8 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     public Task AppearAsync()
     {
         // A void or payment pulled from another phone while this order is open updates the balance (live refresh).
-        _live ??= new LiveListRefresh(RefreshPaymentsAsync);
+        // Status, assignee or lines changed on another phone or the web reload the whole order (code-gaps G15f).
+        _live ??= new LiveListRefresh(LiveReloadAsync);
         _live.Attach();
         if (_reloadOnAppear)
         {
@@ -150,6 +152,13 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     }
 
     private bool _reloadOnAppear;
+
+    /// <summary>After a sync pass changed rows: reload header + payments, unless the user is mid-change here.</summary>
+    public Task LiveReloadAsync() =>
+        IsBusy || ShowStatusPicker || string.IsNullOrWhiteSpace(OrderId) ? RefreshPaymentsAsync() : LoadAsync();
+
+    /// <summary>Tests: true while the open order listens for sync changes.</summary>
+    public bool IsListeningForSync => _live?.IsAttached == true;
 
     /// <summary>Owner/Manager on an order that isn't collected/cancelled (the server enforces the same).</summary>
     [ObservableProperty] private bool canEdit;
@@ -184,6 +193,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     [ObservableProperty] private string displayRef = string.Empty;
     [ObservableProperty] private string customerName = string.Empty;
     [ObservableProperty] private string customerPhone = string.Empty;
+    [ObservableProperty] private string customerPhoneDisplay = string.Empty;
     [ObservableProperty] private string statusDisplay = string.Empty;
     [ObservableProperty] private string status = string.Empty;
     [ObservableProperty] private Color statusBackground = Colors.LightGray;
@@ -308,8 +318,9 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
         }
 
         AssigneeText = AssigneeLabel(_staff is null ? null : await _staff.GetCachedAsync(businessId), assignee);
-        if (_staff is not null)
+        if (_staff is not null && !_staffRefreshed)
         {
+            _staffRefreshed = true; // once per screen: live reloads after each sync use the cached names
             AssigneeRefresh = RefreshAssigneeAsync(businessId, assignee); // not awaited: offline never holds up the screen
         }
     }
@@ -350,6 +361,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
             CanEdit = false;
         }
         CustomerPhone = detail.CustomerPhone;
+        CustomerPhoneDisplay = NeedleBase.Application.Common.CustomerSearchKeys.FormatPhone(detail.CustomerPhone);
         Status = detail.Status;
         StatusDisplay = detail.StatusDisplay;
         StatusBackground = OrderStatusPresentation.Background(detail.Status);
@@ -451,6 +463,7 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
         CustomerId = string.Empty;
         CanEdit = false;
         CustomerPhone = string.Empty;
+        CustomerPhoneDisplay = string.Empty;
         StatusDisplay = string.Empty;
         Status = string.Empty;
         StatusBackground = Colors.LightGray;

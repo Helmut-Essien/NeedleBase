@@ -47,6 +47,6 @@ public sealed class SubscriptionController : ControllerBase
         }
 
         var (status, code, retry) = await _licenses.AttachAsync(_user.BusinessId, _user.UserId, request.LicenseKey, cancellationToken);
-        return status is not null ? Ok(status) : ApiProblems.ForLicense(HttpContext, code, retry, "Couldn't add the license key");
+        return status is not null ? Ok(status) : ApiProblems.ForLicense(HttpContext, code, retry, "Couldn't add the licence key");
     }
 }

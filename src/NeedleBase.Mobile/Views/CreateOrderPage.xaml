@@ -290,6 +290,7 @@
                     <Label Text="Set due date" VerticalOptions="Center" TextColor="{StaticResource Charcoal}" />
                 </HorizontalStackLayout>
                 <DatePicker Date="{Binding DueDate}"
+                            Format="dd MMM yyyy"
                             IsEnabled="{Binding HasDueDate}"
                             TextColor="{StaticResource Charcoal}"
                             BackgroundColor="White" />

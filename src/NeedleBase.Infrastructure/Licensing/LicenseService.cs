@@ -142,7 +142,7 @@ public sealed class LicenseService
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         Invalidate(business.Id);
         await _audit.WriteAsync(new AuditEntry(AuditActions.LicenseAttached,
-                $"License key {SubscriptionRules.KeyHint(licenseKey)} added", business.Id, userId, BusinessRole.Owner, "business", business.Id),
+                $"Licence key {SubscriptionRules.KeyHint(licenseKey)} added", business.Id, userId, BusinessRole.Owner, "business", business.Id),
             cancellationToken: cancellationToken).ConfigureAwait(false);
         // Fresh enriched status (plan display + staff usage) after invalidate.
         return (await GetStatusAsync(business.Id, cancellationToken).ConfigureAwait(false), null, null);

@@ -61,7 +61,7 @@ public class LicensePageTests
         Assert.IsType<RedirectToPageResult>(await page.OnPostAsync(default));
         Assert.Contains("attach:KEY-1", api.Calls);
         Assert.False(cache.TryGetValue(SubscriptionBannerViewComponent.Key(page.User), out _));
-        Assert.Equal("License key added.", page.Flash);
+        Assert.Equal("Licence key added.", page.Flash);
     }
 
     [Fact]

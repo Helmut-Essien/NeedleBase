@@ -16,7 +16,7 @@
     };
 }
 <h1 class="nb-page-title">License</h1>
-<p class="nb-meta">Your NeedleBase license key came by email when your plan was set up. Only you, the owner, can see or change it here.</p>
+<p class="nb-meta">Your NeedleBase licence key came by email when your plan was set up. Only you, the owner, can see or change it here.</p>
 <partial name="_PageState" model="Model" />
 @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
 {
@@ -84,11 +84,11 @@
     }
 
     <section class="nb-card" aria-labelledby="key-heading">
-        <h2 id="key-heading" class="nb-section-title">@(s.KeyHint is null ? "Add your license key" : "Replace the license key")</h2>
+        <h2 id="key-heading" class="nb-section-title">@(s.KeyHint is null ? "Add your licence key" : "Replace the licence key")</h2>
         <p class="nb-meta">The key must belong to the email address you sign in with.</p>
         <form method="post" autocomplete="off">
             <div class="mb-3">
-                <label for="LicenseKey" class="form-label">License key</label>
+                <label for="LicenseKey" class="form-label">Licence key</label>
                 <input id="LicenseKey" name="LicenseKey" class="form-control" maxlength="200" autocapitalize="characters" spellcheck="false" required />
             </div>
             <button type="submit" class="btn nb-btn-primary" data-pending-text="Checking…">@(s.KeyHint is null ? "Add key" : "Replace key")</button>

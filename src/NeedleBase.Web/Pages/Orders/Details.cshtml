@@ -14,7 +14,7 @@
         <h1 class="nb-page-title mb-0">Order #@o.DisplayRef</h1>
         <partial name="_StatusChip" model="(o.Status, o.IsOverdue)" />
     </div>
-    <p class="nb-meta">@o.CustomerName · @o.CustomerPhone · <a asp-page="/Customers/Index" asp-route-search="@o.CustomerPhone">View customer</a></p>
+    <p class="nb-meta">@o.CustomerName · @NeedleBase.Application.Common.CustomerSearchKeys.FormatPhone(o.CustomerPhone) · <a asp-page="/Customers/Index" asp-route-search="@o.CustomerPhone">View customer</a></p>
     @if (Model.CanEdit)
     {
         <p><a class="btn nb-btn-outline" asp-page="/Orders/Edit" asp-route-id="@o.Id">Edit order</a></p>

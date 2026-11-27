@@ -23,7 +23,7 @@ public class PaymentReceiptShareTests
     public void ToShareText_Matches_Receipt_Fields_And_Omits_Note()
     {
         var text = PaymentReceiptShare.ToShareText(Sample());
-        Assert.StartsWith("Ama Stitches\n+233200000000\nPayment receipt", text);
+        Assert.StartsWith("Ama Stitches\n+233 20 000 0000\nPayment receipt", text);
         Assert.Contains("Customer: Kwame Mensah", text);
         Assert.Contains("Order #ABCD1234", text);
         Assert.Contains("Amount: GH₵ 300.00", text);

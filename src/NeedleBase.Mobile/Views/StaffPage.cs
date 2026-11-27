@@ -57,6 +57,12 @@ public sealed class StaffPage : ContentPage
 
         body.Add(BuildInviteForm());
         Ui.Chrome(this, "Staff", body, backButton: true);
+
+        // Pull down to reload: staff changes happen on other phones (someone accepts an invite) and aren't synced.
+        var refresh = new RefreshView { Content = Content, RefreshColor = Ui.C("Primary", Colors.Green) };
+        refresh.SetBinding(RefreshView.IsRefreshingProperty, nameof(StaffViewModel.IsRefreshing));
+        refresh.SetBinding(RefreshView.CommandProperty, nameof(StaffViewModel.RefreshCommand));
+        Content = refresh;
     }
 
     private View BuildNewCodeCard()
@@ -79,7 +85,7 @@ public sealed class StaffPage : ContentPage
         share.RemoveBinding(Button.CommandProperty);
         stack.Add(share);
         var done = Ui.Secondary("Done");
-        done.SetBinding(Button.CommandProperty, nameof(StaffViewModel.DismissCodeCommand));
+        done.SetBinding(Button.CommandProperty, nameof(StaffViewModel.DoneCommand));
         stack.Add(done);
         var card = Ui.Card(stack);
         card.SetBinding(IsVisibleProperty, nameof(StaffViewModel.HasNewCode));

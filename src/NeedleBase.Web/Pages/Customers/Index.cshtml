@@ -39,7 +39,7 @@
                 {
                     <tr role="row">
                         <td role="cell" data-label="Name"><strong>@c.Name</strong></td>
-                        <td role="cell" data-label="Phone"><a href="tel:@c.Phone">@c.Phone</a></td>
+                        <td role="cell" data-label="Phone"><a href="tel:@c.Phone">@NeedleBase.Application.Common.CustomerSearchKeys.FormatPhone(c.Phone)</a></td>
                         <td role="cell" data-label="Orders" class="text-end"><a asp-page="/Orders/Index" asp-route-search="@c.Phone">View orders</a>@if (User.CanSeeActivity()) {<text> · </text><a asp-page="/Activity/Index" asp-route-customer="@c.Id" aria-label="History for @c.Name">History</a>}</td>
                     </tr>
                 }

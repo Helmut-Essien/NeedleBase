@@ -11,7 +11,7 @@
 @if (Model.Order is { } o)
 {
     <h1 class="nb-page-title">Edit order #@o.DisplayRef</h1>
-    <p class="nb-meta">@o.CustomerName · @o.CustomerPhone</p>
+    <p class="nb-meta">@o.CustomerName · @NeedleBase.Application.Common.CustomerSearchKeys.FormatPhone(o.CustomerPhone)</p>
 
     @if (Model.Locked)
     {

@@ -58,7 +58,7 @@ public class LicenseModel : AppPageModel
         if (result.IsSuccess)
         {
             SubscriptionBannerViewComponent.Forget(_cache, User);
-            Flash = "License key added.";
+            Flash = "Licence key added.";
             return RedirectToPage();
         }
 
@@ -101,7 +101,7 @@ public class LicenseModel : AppPageModel
     {
         if (!User.IsOwner())
         {
-            PageError = "The license is only shown to the shop owner.";
+            PageError = "The licence is only shown to the shop owner.";
             CanRetry = false;
             return Page();
         }

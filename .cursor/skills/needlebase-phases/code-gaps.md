@@ -6,7 +6,7 @@ Feature work that isn't built yet is **not** listed here. See [phases.md](phases
 
 ## Open
 
-Found by the device + browser run of journeys 2–5 on 26 Nov 2026 (Pixel 7 API 35 emulator, local Api/Web, headless Chrome). Fix in this order: G13 (done 26 Nov 2026) → G14 (done 26 Nov 2026) → G15. Re-run the named journey after each and update [phases.md](phases.md).
+Found by the device + browser run of journeys 2–5 on 26 Nov 2026 (Pixel 7 API 35 emulator, local Api/Web, headless Chrome). Fix in this order: G13 (done 26 Nov 2026) → G14 (done 26 Nov 2026) → G15 (code items done 26 Nov 2026; d, g-TalkBack, h manual). Re-run the named journey after each and update [phases.md](phases.md).
 
 ### G13: Tailor crash on Home "Payment" quick action — **Done 26 Nov 2026**
 - **Was:** `HomeViewModel.RecordPaymentAsync` → `GoToAsync("//main/PaymentsPage")`; the tab is hidden for Tailors (`AppShell.ApplyRoleTabsAsync`), so the route didn't exist and the app crashed.
@@ -23,7 +23,7 @@ Found by the device + browser run of journeys 2–5 on 26 Nov 2026 (Pixel 7 API 
 - **Tests:** Api `StaffApiTests.Assign` (Owner + Manager assign/unassign + audit, Tailor 403, cross-shop + inactive 400, other shop 404, stale 409, header kept + email + Tailor can then move it, sync push assign/unassign/Tailor blocked + pull); Application `OrderAssigneeRulesTests`; Web `OrderAssignPageTests` + client route test; Mobile `OrderAssignMobileTests` (cache per shop/offline/corrupt, assign + unassign saved and queued, offline keeps current, hidden for Tailor/Free, detail text).
 - **Verified (J3 PASS, 26 Nov 2026, no DB edits):** emulator as Ama: Edit order → picker (Not assigned, Ama, Esi, Kofi, Yaw) → Yaw → saved and synced (server shows Yaw). Web as Ama shows Yaw, assigns Kofi from the picker; Activity lists the assignment; no CSP errors. Kofi's web Production board lists the order; Kofi sees the name, no picker, status form present; forged assign refused. Phone pulls Kofi; Kofi on the phone sees "Assigned to you", Update status, no Edit order or Record payment.
 
-### G15: Smaller issues from the 26 Nov run (P3, batch)
+### G15: Smaller issues from the 26 Nov run (P3, batch) — **Code items done 26 Nov 2026**
 | # | Issue | Evidence | Plan |
 |---|-------|----------|------|
 | a | US "license key" in prose on the Home/web banner | `Application/Licensing/SubscriptionRules.cs:25` "Add your NeedleBase license key on the License page…" | Prose → "licence key"; keep the page name "License" (standing rules). Update any test asserting the string. |
@@ -36,6 +36,18 @@ Found by the device + browser run of journeys 2–5 on 26 Nov 2026 (Pixel 7 API 
 | h | Journey 2 still needs a two-device run | only one emulator on 26 Nov | Run two emulators (or emulator + real phone) on the same shop: offline create on A, sync, see on B; void-vs-record race (Slice 5 device checks). |
 
 Each item: fix, test where there's logic, then note "Done (date)" here.
+
+**Status (26 Nov 2026):**
+- **a Done.** Prose says "licence key" in `SubscriptionRules`, `LicenseErrors`, web License page labels/flash, Register (web + phone), Api error, audit text, `LicenseService`; banner link reads "Open the License page". Page name, route and code names keep "License".
+- **b Done.** `CustomerSearchKeys.FormatPhone` on the receipt (share text + PDF), receipt/status emails, phone receipt, order detail (`CustomerPhoneDisplay`; raw `CustomerPhone` kept for WhatsApp/call), customer detail, web order detail/edit and customers list (links/search keep E.164). Emulator: order detail shows "+233 24 555 0123".
+- **c Done.** `CreateOrderPage.xaml` DatePicker `Format="dd MMM yyyy"` (Edit already had it).
+- **d Open (manual).** Install the 0.1.2 release APK and check More shows "version 0.1.2".
+- **e Done.** `Ui.Decorative` hides the `LinkRow` icon and chevron (`IsInAccessibleTree=false`, `ExcludedWithChildren`). Emulator `uiautomator dump --compressed` of More: 0 glyph characters. No unit test (MorePage needs `AppInfo`); TalkBack listen-through still manual.
+- **f Done.** Staff: `RefreshView` pull-to-refresh + reload after "Done". `SyncEngine.ApplyPushResultsAsync` now raises `LocalDataVersion.ChangedBySync` when results apply; receipt and order detail subscribe while visible (`LiveListRefresh`, unsubscribe on disappear).
+- **g Fixed (code); TalkBack manual.** Cause found on the emulator: MAUI reports a described Entry as "description, value", so `LoginPassword` exposed `text="Password, DevPass1!"`. Removed `SemanticProperties.Description` from password Entries (Login, Register ×2) and `Ui.Entry` skips it for `password: true` (all `PasswordField`s). Re-check: node text is `•••••••••`, plain password absent from the dump. Visible labels + placeholder still name the field.
+- **h Open (manual).** Only one AVD; two-device J2 (offline create on A → sync → see on B; void-vs-record race) still to run.
+- **Tests:** Application `PolishG15Tests`; Web `RenderTests` (spaced phone, raw search link, banner link text); Mobile `PolishG15MobileTests` (receipt + order detail reload on sync, push raises ChangedBySync, Staff refresh/Done), `PasswordSemanticsG15Tests`, `PasswordFieldTests` updated.
+- **Out of scope, noted:** `CustomerDetailPage.xaml:30` sets `SemanticProperties.Description="Customer phone"` on the phone label, which hides the number itself from screen readers.
 
 ## Done
 

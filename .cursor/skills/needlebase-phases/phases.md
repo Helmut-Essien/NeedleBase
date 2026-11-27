@@ -8,7 +8,7 @@ Status and acceptance for each implementation slice. Most slices are built. Conf
 | 1 | Auth + Business tenancy (JWT, refresh, register shop) | Built |
 | 2 | Customers + measurements | Built (code gaps G1, G4, G5 closed 20 Oct 2026: [code-gaps.md](code-gaps.md)) |
 | 3 | Orders + production status (mobile primary) | Built (mobile data syncs via Slice 4) |
-| 4 | Offline sync push/pull + DeletedItem + SyncChip | Code done 20 Oct 2026; Journey 2 **passes on one device** (26 Nov 2026); two-device run open ([G15h](code-gaps.md#g15-smaller-issues-from-the-26-nov-run-p3-batch)) |
+| 4 | Offline sync push/pull + DeletedItem + SyncChip | Code done 20 Oct 2026; Journey 2 **passes on one device** (26 Nov 2026); two-device run open; G15 polish code done 26 Nov 2026 ([G15h](code-gaps.md#g15-smaller-issues-from-the-26-nov-run-p3-batch)) |
 | 5 | Payments + balances + receipts (conflict-safe) | Code done 22 Oct 2026; Journey 4 **passes** on the emulator (26 Nov 2026); Journey 1 steps 6–7 device run and second-device checks open |
 | 6 | Web dashboard + production board | Code done 22 Oct 2026; Journey 3 **pass** (26 Nov 2026) after the assign UI, see [G14](code-gaps.md#g14-no-way-to-assign-an-order-to-staff--done-26-nov-2026) |
 | 7 | Staff invites + role-limited UI | Code done 26 Oct 2026; Journey 5 **passes** (26 Nov 2026; Tailor crash fixed, [G13](code-gaps.md) done) |

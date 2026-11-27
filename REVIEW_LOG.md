@@ -1966,3 +1966,58 @@ No `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — gates PASS; no product changes.
+
+## Ralph Balanced — G15 polish (PlanNameCatalogue WT) — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` tracking `origin/PlanNameCatalogue`
+- Slice: uncommitted G15 batch (UK licence prose, spaced phones, sync live-reload, Staff refresh, password a11y, docs)
+- Build: `JAVA_HOME=/opt/android-studio/jbr dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror`
+- Lint: no separate `dotnet format` gate (code-gaps); `-warnaserror` on Release build is the lint stand-in
+- Test: `dotnet test tests/NeedleBase.{Domain,Application,Web,Mobile,Api}.Tests -c Release --no-build` (Postgres `docker compose` :5435)
+- Perf harness: none for this slice
+- Commit auth: yes (RALPH BALANCED prompt: `commit: authorized`)
+- Runtime: JBR present; postgres started for Api tests
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: 37 modified + 3 untracked G15 test files (+ .cursor/ralph/ scratch this run)
+cmd: git diff --stat
+out: 37 files changed, 185 insertions(+), 60 deletions(-)
+```
+
+### Pass ledger
+| pass | state | tools used | findings | dismissals |
+|------|-------|------------|----------|------------|
+| 1 Bugs | PASS | Read SyncEngine/OrderDetail/PaymentReceipt/Staff; `dotnet test` G15 filters | none P0–P2 | Push `NotifyChangedBySync` after commit (`SyncEngine.cs:422-427`); OrderDetail keeps raw `CustomerPhone` for WhatsApp (`OrderDetailViewModel.cs:363-364`); CustomerDetail `Phone` is display Label only |
+| 2 Edge | PASS | FormatPhone + PolishG15Tests UK/non-Ghana; LiveReload IsBusy/picker guard | none | FormatPhone idempotent on spaced Ghana; UK phone left as entered (`PolishG15Tests` passed) |
+| 3 Security | PASS | PasswordSemanticsG15Tests; Ui.Entry password branch; tel/search keep raw E.164 | none | Password Entry no longer exposes `description, value` (`LoginPage.xaml` Description removed; `Ui.cs` skips for password) |
+| 4 Senior | PASS | class C; Release build+full tests; G15 tests | P3 doc: `LicenseErrors.cs:70` XML still says "license" | Not user-facing; record only |
+| 5 UI/UX | PASS | RenderTests spaced phone; Staff RefreshView; Decorative icons; date Format | none blocking | TalkBack listen-through / G15d/h remain manual (code-gaps) |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | `JAVA_HOME=…/jbr dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` | `Build succeeded. 0 Warning(s) 0 Error(s)` |
+| Lint | PASS | same build `-warnaserror` (no format gate) | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api `-c Release --no-build` | 86 / 368 / 226 / 391 / 357; Failed 0 |
+| Perf | N/A | class C (display FormatPhone + existing debounced live refresh) | no harness |
+
+### Findings
+**Fixed:** none this run (slice already implemented; review verified).
+**Dismissed:**
+- CustomerDetail formatted `Phone` mutating storage — display-only Label; edit navigates to CustomerEditPage (`CustomerDetailViewModel.cs:356`, `EditAsync` → CustomerEditPage).
+- WhatsApp/call break from spaced phone — OrderDetail keeps raw `CustomerPhone` (`OrderDetailViewModel.cs:363`) and binds display separately (`OrderDetailPage.xaml:37`).
+- Web search/tel corruption — Details uses FormatPhone for text, raw for `asp-route-search` (`Details.cshtml`; `RenderTests.Details_shows_spaced_phone…` passed).
+**Open (non-blocking):**
+- P3: `LicenseErrors.Phrase` XML doc still quotes US "license" (`LicenseErrors.cs:70`) while runtime copy uses "licence".
+- Manual residual (code-gaps G15): d, g-TalkBack listen-through, h.
+**Out-of-scope:** `CustomerDetailPage.xaml` phone Description hiding the number (already noted in code-gaps).
+
+### Teardown
+Removed `.cursor/ralph/` (scratchpad from this run). No other sentinels.
+
+### Status
+**COMPLETE WITH NOTES** — mandatory gates PASS; no P0/P1; manual TalkBack/journey items and one XML-doc P3 remain.

@@ -15,7 +15,7 @@ namespace NeedleBase.Mobile.Tests;
 
 /// <summary>Slice 5 on the phone: local rules, queue, push/pull, deferral, conflicts, prune, receipt copy.</summary>
 [Collection(LocalDataVersionCollection.Name)] // counts ChangedBySync / list re-queries
-public class PaymentSyncTests
+public partial class PaymentSyncTests
 {
     private const string Biz = "biz-pay";
 
@@ -322,7 +322,7 @@ public class PaymentSyncTests
         var text = receipt.ToShareText("Ama Stitches");
         Assert.StartsWith("Ama Stitches\nPayment receipt", text);
         var withPhone = receipt.ToShareText("Ama Stitches", " +233200000000 ");
-        Assert.StartsWith("Ama Stitches\n+233200000000\nPayment receipt", withPhone);
+        Assert.StartsWith("Ama Stitches\n+233 20 000 0000\nPayment receipt", withPhone);
         Assert.Contains("Amount: GH₵ 300.00", text);
         Assert.Contains("Method: Mobile Money", text);
         Assert.Contains("Order total: GH₵ 800.00", text);
@@ -550,6 +550,7 @@ public class PaymentSyncTests
     private sealed class RoleAuth(string role) : NeedleBase.Mobile.Services.IAuthService
     {
         public string Role { get; set; } = role;
+        public string? BusinessPhone { get; set; }
 
         public Task<NeedleBase.Application.Contracts.Auth.AuthUserDto?> RegisterBusinessAsync(NeedleBase.Application.Contracts.Auth.RegisterBusinessRequest request, CancellationToken cancellationToken = default) => Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(null);
         public Task<NeedleBase.Application.Contracts.Auth.AuthUserDto?> LoginAsync(NeedleBase.Application.Contracts.Auth.LoginRequest request, CancellationToken cancellationToken = default) => Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(null);
@@ -562,7 +563,7 @@ public class PaymentSyncTests
         public Task StoreSessionAsync(NeedleBase.Application.Contracts.Auth.AuthUserDto user) => Task.CompletedTask;
         public Task<string?> GetBusinessIdAsync() => Task.FromResult<string?>(Biz);
         public Task<NeedleBase.Application.Contracts.Auth.AuthUserDto?> GetCachedUserAsync() =>
-            Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(new("u1", "owner@ama-stitches.test", "Ama", "Owusu", Biz, "Ama Stitches", Role));
+            Task.FromResult<NeedleBase.Application.Contracts.Auth.AuthUserDto?>(new("u1", "owner@ama-stitches.test", "Ama", "Owusu", Biz, "Ama Stitches", Role, BusinessPhone));
     }
 
     private sealed class Pages(params SyncPullResponse[] pages) : ISyncApi
