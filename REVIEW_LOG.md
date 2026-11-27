@@ -2116,3 +2116,51 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — Domain chunk 1 gates PASS; no P0/P1.
+
+## Ralph Balanced — expenses unpushed re-verify — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead 2 of `origin/PlanNameCatalogue`
+- Slice: `origin/PlanNameCatalogue..HEAD` = `54b0fbd` (Domain chunk 1) + `cc6be27` (expenses plan docs)
+- WT clean except this run's `.cursor/ralph/` (+ skill fix)
+- Gates: Release `-warnaserror`; full test projects; Postgres :5435; JBR
+- Commit auth: yes (user: run the loop again on unpushed commits)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: ?? .cursor/ralph/ (then M domain SKILL after fix)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 54b0fbd Add Expense domain model…
+     cc6be27 Docs: add full Step 7b-2 expenses implementation plan…
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | Read Expense Create/Void/DetachOrder; ExpenseTests×30 | none | DetachOrder / Void / todayAccra unchanged |
+| 2 Edge | PASS | ExpenseTests filter; SyncEntityType has no Expense | none | SyncEntityType deferred to chunk 5 per plan |
+| 3 Security | PASS | Domain-only money rules; no new sinks in unpushed | none | — |
+| 4 Senior | PASS | class C; plan↔code Create/IsValid/MoneyRules | Fixed P2: domain skill still **Planned** after Domain built (`needlebase-domain/SKILL.md:39`) | plan already marks chunk 1 Done |
+| 5 UI/UX | N/A | no UI product files in unpushed range | — | plan UI sections are docs only |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 368 / 226 / 391 / 357; Failed 0 |
+| Perf | N/A | class C | no harness |
+
+### Findings
+**Fixed:** `needlebase-domain/SKILL.md:39` and §Expense heading — status **Planned** → **Domain built** (chunk 1).
+**Dismissed:** plan Create/IsValid/MoneyRules match code; SyncEntityType.Expense correctly absent until chunk 5.
+**Open:** none in-slice.
+**Out-of-scope:** EF/Api/UI chunks 2+.
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — unpushed expenses slice re-verified; skill status aligned; gates PASS.
