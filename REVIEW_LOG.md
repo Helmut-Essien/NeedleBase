@@ -2548,3 +2548,50 @@ Removed `.cursor/ralph/`. Backups `~/.cache/needlebase-ci/backups/ralph-expense-
 
 ### Status
 **COMPLETE** — chunk 5 gates PASS; no open P0/P1; commit authorized.
+
+## Ralph Balanced — Expenses sync chunk 5 unpushed re-verify — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead 1 of `origin/PlanNameCatalogue`
+- Slice: `origin/PlanNameCatalogue..HEAD` = `e1d4cc4` (expense sync push/pull phase 5)
+- WT clean at start
+- Gates: Release `-warnaserror`; Domain/App/Web/Mobile/Api; Postgres :5435; JBR
+- Commit auth: yes (user: run the loop again on unpushed commits)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (clean)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: e1d4cc4 Add expense sync push/pull phase 5 and mark chunk 5 built in skills.
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | ApplyExpenseAsync; PhaseExpenses; ExpenseSync×11; OrderErrorMessages Keep the order | none | prior chunk-5 review holds |
+| 2 Edge | PASS | focused ExpenseSync 11 (old cursor, Starter reset, Tailor, lenient, read-only) | none | — |
+| 3 Security | PASS | plan/role fail codes; Rejected on foreign id; pull expensesAllowed | none | — |
+| 4 Senior | PASS | class B; no harness → perf N/A; skill status re-check | none | plans/api/phases/domain/mobile-sync already say chunks 1–5; web/mobile UI “planned” = chunks 7–8 still open |
+| 5 UI/UX | N/A | no UI in unpushed product files | — | — |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 387 / 226 / 391 / 389; ExpenseSync 11; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** none.
+**Dismissed:** skill status already aligned in `e1d4cc4`; web/mobile “planned step 7b-2” correct for UI.
+**Open:** none. Residual P3: ExpenseMismatch “keep both” copy (`SyncService.cs:732`).
+**Out-of-scope:** Mobile.Data chunk 6, UI 7–8.
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — clean re-verify; gates PASS; no product/skill changes beyond this log.
