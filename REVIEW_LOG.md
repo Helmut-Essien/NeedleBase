@@ -2738,3 +2738,50 @@ Removed `.cursor/ralph/`. Backups `~/.cache/needlebase-ci/backups/ralph-expense-
 
 ### Status
 **COMPLETE** — chunk 7 gates PASS; no open P0/P1; commit authorized.
+
+## Ralph Balanced — Expenses phone UI chunk 7 unpushed re-verify — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead 1 of `origin/PlanNameCatalogue`
+- Slice: `origin/PlanNameCatalogue..HEAD` = `ffe2326` (phone Expenses screens chunk 7)
+- WT clean at start
+- Gates: Release `-warnaserror`; Domain/App/Web/Mobile/Api; Postgres :5435; JBR
+- Commit auth: yes (user: run the loop again on unpushed commits)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (clean)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: ffe2326 Add phone Expenses screens, order section, and reports profit UI (chunk 7).
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | HasMoreExpenses `list.Count >` (OrderDetailViewModel.cs:129); ProfitNote on ReportsPage; ExpensesUi×12 | none | prior chunk-7 fix holds |
+| 2 Edge | PASS | focused ExpensesUi 12 | none | — |
+| 3 Security | PASS | ExpenseAccess.Gate Free/Tailor/Starter | none | — |
+| 4 Senior | PASS | class C; skill status re-check | none | skills already chunks 1–7; web planned = chunk 8 |
+| 5 UI/UX | PASS | ProfitNote vs CostsNote; held Sync text; AutomationIds | none | — |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 387 / 226 / 415 / 389; ExpensesUi 12; Failed 0 |
+| Perf | N/A | class C | — |
+
+### Findings
+**Fixed:** none.
+**Dismissed:** skill status already aligned in `ffe2326`; web UI planned correct.
+**Open:** none.
+**Out-of-scope:** web chunk 8; uiux docs chunk 9.
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — clean re-verify; gates PASS; no product/skill changes beyond this log.
