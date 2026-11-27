@@ -2829,3 +2829,48 @@ Removed `.cursor/ralph/` if present; no loop sentinel files left.
 
 ### Status
 **COMPLETE** — mandatory gates PASS; no open P0/P1; commit authorized.
+
+## Ralph Balanced — unpushed re-verify expenses web chunk 8 (27 Nov 2026)
+
+### Discovery
+- WT clean at start
+- Unpushed: `6c357ad Add web Expenses pages, order card, and reports profit UI (chunk 8).`
+- Gates: Release `-warnaserror`; Domain/App/Web/Mobile/Api; Postgres :5435; JBR
+- Commit auth: yes (user: run the loop again on unpushed commits)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (clean)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 6c357ad Add web Expenses pages, order card, and reports profit UI (chunk 8).
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | CanSeeExpenses→CanManage; order empty Count+TotalCount; void PRG; ClientId conflict regen; CostsNote absent | none | holds from 6c357ad |
+| 2 Edge | PASS | TryResolveMonth; IncludeVoided default; Order removed | none | — |
+| 3 Security | PASS | Tailor_is_refused_without_calls; antiforgery render test; data-nb-once-submit | none | — |
+| 4 Senior | PASS | class C; skills chunks 1–8 / chunk 9 remain; no stale "web UI remain" | none | skills already in 6c357ad |
+| 5 UI/UX | PASS | ProfitNote; SVG spent bars; nav `/Expenses/Index`; See expenses?month= | none | P3 Details "Spent on" residual from prior |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 387 / 247 / 415 / 389; Expenses+Reports 20; Failed 0 |
+| Perf | N/A | class C | — |
+
+### Findings
+**Fixed:** none.
+**Dismissed:** skill status already aligned in `6c357ad`; product findings from chunk-8 review still hold.
+**Open:** none.
+**Out-of-scope:** UI/UX docs chunk 9; P3 Details label copy.
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — clean re-verify; gates PASS; no product/skill changes beyond this log.
