@@ -10,7 +10,7 @@ namespace NeedleBase.Infrastructure.Reports;
 
 /// <summary>
 /// Profit and monthly reports (plan step 7b). Owner/Manager on Workshop, Production, complimentary and keyless shops.
-/// Two slim, BusinessId-indexed, no-tracking queries for the six-month window; the maths is
+/// Three slim, BusinessId-indexed, no-tracking queries (orders, payments, expenses) for the six-month window; the maths is
 /// <see cref="MonthlyReportCalculator"/> (shared with the phone).
 /// </summary>
 public sealed class MonthlyReportService
@@ -77,6 +77,14 @@ public sealed class MonthlyReportService
             .Select(p => new ReportPaymentRow(p.Amount, p.Method, p.RecordedAtUtc))
             .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-        return (MonthlyReportCalculator.Build(chosen, today, orders, payments), null);
+        // Expenses are dated (Accra SpentOn), not timestamped: same six months, by date. Voided rows skipped here.
+        var firstDay = ReportRules.FirstOfMonth(chosen).AddMonths(-(ReportRules.TrendMonths - 1));
+        var afterLastDay = ReportRules.FirstOfMonth(chosen).AddMonths(1);
+        var expenses = await _db.Expenses.AsNoTracking()
+            .Where(e => e.BusinessId == businessId && !e.IsVoided && e.SpentOn >= firstDay && e.SpentOn < afterLastDay)
+            .Select(e => new ReportExpenseRow(e.Amount, e.Category, e.SpentOn, false))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return (MonthlyReportCalculator.Build(chosen, today, orders, payments, expenses), null);
     }
 }

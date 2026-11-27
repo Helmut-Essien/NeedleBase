@@ -68,7 +68,8 @@ public static class EmailTemplates
         decimal outstanding,
         int ordersWithBalance,
         decimal receivedThisMonth,
-        string? appBaseUrl)
+        string? appBaseUrl,
+        MonthProfitSummary? lastMonth = null)
     {
         toName = OneLine(toName);
         businessName = OneLine(businessName) ?? "";
@@ -76,10 +77,12 @@ public static class EmailTemplates
         var monthLabel = monthStart.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("en-GB"));
         var money = MoneyLine(outstanding, ordersWithBalance, receivedThisMonth, "this month");
         var home = Link(appBaseUrl, "/");
+        (string Text, string Html)? profit = lastMonth is null ? null : ProfitLines(lastMonth, appBaseUrl);
         var text =
             $"{greet},\n\nHere's your NeedleBase summary for {monthLabel} for {businessName}.\n\n" +
             $"Open orders: {activeOrders}\nOverdue: {overdue}\nDue in the next 7 days: {dueNext7Days}\n" +
             $"Fittings in the next 7 days: {fittingsNext7Days}\n\n{money}\n\n" +
+            (profit is null ? "" : $"{profit.Value.Text}\n\n") +
             "Open NeedleBase on the web or your phone to see the details" +
             (home is null ? "" : $" ({home})") + ".\n\nNeedleBase";
         var html = Wrap(
@@ -89,9 +92,28 @@ public static class EmailTemplates
             $"<li>Due in the next 7 days: {dueNext7Days}</li><li>Fittings in the next 7 days: {fittingsNext7Days}</li>" +
             "</ul>" +
             $"<p>{HtmlBreaks(money)}</p>" +
+            (profit is null ? "" : profit.Value.Html) +
             "<p>Open NeedleBase on the web or your phone to see the details" +
             (home is null ? "" : $" (<a href=\"{H(home)}\">{H(home)}</a>)") + ".</p>");
         return new EmailMessage(toEmail, toName, $"{businessName}: {monthLabel} summary", text, html, "monthly_summary");
+    }
+
+    /// <summary>Last month's money in, spent and profit/loss (shops with monthly reports). Loss is shown without a minus sign.</summary>
+    private static (string Text, string Html) ProfitLines(MonthProfitSummary m, string? appBaseUrl)
+    {
+        var label = m.Month.ToString("MMMM yyyy", CultureInfo.GetCultureInfo("en-GB"));
+        var profit = m.MoneyIn - m.Spent;
+        var result = profit < 0 ? $"Loss: {FormatMoney(-profit)}" : $"Profit: {FormatMoney(profit)}";
+        var note = m.Spent > 0
+            ? "Profit is money in minus the expenses you recorded. Money still owed isn't counted."
+            : $"No expenses were recorded for {label}, so profit equals money in.";
+        var report = Link(appBaseUrl, "/Reports?month=" + m.Month.ToString("yyyy-MM", CultureInfo.InvariantCulture));
+        var heading = $"Last month ({label})";
+        var lines = $"Money in: {FormatMoney(m.MoneyIn)}\nSpent: {FormatMoney(m.Spent)}\n{result}";
+        var text = $"{heading}\n{lines}\n{note}" + (report is null ? "" : $"\nMonthly report: {report}");
+        var html = $"<p><strong>{H(heading)}</strong><br/>{HtmlBreaks(lines)}<br/><span style=\"color:#555\">{H(note)}</span>" +
+                   (report is null ? "" : $"<br/><a href=\"{H(report)}\">See the monthly report</a>") + "</p>";
+        return (text, html);
     }
 
     public static EmailMessage WeeklySummary(
@@ -362,3 +384,6 @@ public static class EmailTemplates
         "<!doctype html><html><body style=\"font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#222;max-width:520px;margin:0 auto;padding:16px\">" +
         inner + "<p>NeedleBase</p></body></html>";
 }
+
+/// <summary>One month's money in and non-voided expenses for the Owner's monthly summary email.</summary>
+public sealed record MonthProfitSummary(DateOnly Month, decimal MoneyIn, decimal Spent);

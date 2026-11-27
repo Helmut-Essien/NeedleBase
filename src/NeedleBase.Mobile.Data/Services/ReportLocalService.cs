@@ -52,6 +52,8 @@ public sealed class ReportLocalService : IReportLocalService
             .Select(p => new ReportPaymentRow(p.Amount, p.Method, p.RecordedAtUtc))
             .ToList();
 
-        return MonthlyReportCalculator.Build(month, today, orderRows, paymentRows);
+        // Expenses aren't stored on the phone yet (expenses plan chunk 6 adds LocalExpense); until then the phone
+        // report has no expenses, so profit equals money in.
+        return MonthlyReportCalculator.Build(month, today, orderRows, paymentRows, []);
     }
 }

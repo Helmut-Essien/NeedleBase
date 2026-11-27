@@ -1,6 +1,7 @@
 using System.Globalization;
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Dashboard;
+using NeedleBase.Application.Contracts.Expenses;
 using NeedleBase.Application.Contracts.Reports;
 using NeedleBase.Application.Payments;
 using NeedleBase.Domain.Enums;
@@ -21,9 +22,21 @@ public static class ReportRules
     public const string ForbiddenMessage = "Only the owner or a manager can see monthly reports.";
     public const string MonthInvalidMessage = "Pick a month from January 2020 up to this month.";
 
-    /// <summary>Plain-language note shown with every report: there are no cost records yet.</summary>
+    /// <summary>
+    /// Old note from before expenses (step 7b). Still shown by the phone and web report screens until they show
+    /// Spent and Profit (expenses plan chunks 7 and 8), then removed.
+    /// </summary>
     public const string CostsNote =
         "NeedleBase doesn't record your costs (fabric, wages, rent) yet, so this shows money in, not profit after costs.";
+
+    /// <summary>Shown with the profit figure when the month has expenses.</summary>
+    public const string ProfitNote =
+        "Profit is money in minus the expenses you recorded for the month. Money still owed and costs you haven't recorded aren't counted.";
+
+    /// <summary>Shown with the profit figure when the month has no expenses.</summary>
+    public const string NoExpensesNote = "No expenses recorded this month, so profit equals money in.";
+
+    public static string ProfitNoteFor(bool hasExpenses) => hasExpenses ? ProfitNote : NoExpensesNote;
 
     public static readonly DateOnly EarliestMonth = new(2020, 1, 1);
 
@@ -84,6 +97,9 @@ public sealed record ReportOrderRow(string Status, decimal TotalAmount, DateTime
 /// <summary>A non-voided payment recorded in the report window.</summary>
 public sealed record ReportPaymentRow(decimal Amount, string Method, DateTimeOffset RecordedAtUtc);
 
+/// <summary>An expense dated in the report window (Accra date paid). Voided rows are ignored by the calculator.</summary>
+public sealed record ReportExpenseRow(decimal Amount, string Category, DateOnly SpentOn, bool IsVoided);
+
 /// <summary>
 /// Pure month maths shared by the Api (Postgres rows) and the phone (SQLite rows), so both show the same numbers.
 /// Rows outside the window are ignored; callers pass non-voided payments only.
@@ -94,7 +110,8 @@ public static class MonthlyReportCalculator
         DateOnly month,
         DateOnly today,
         IEnumerable<ReportOrderRow> orders,
-        IEnumerable<ReportPaymentRow> payments)
+        IEnumerable<ReportPaymentRow> payments,
+        IEnumerable<ReportExpenseRow>? expenses = null)
     {
         ArgumentNullException.ThrowIfNull(orders);
         ArgumentNullException.ThrowIfNull(payments);
@@ -106,6 +123,10 @@ public static class MonthlyReportCalculator
 
         var orderList = orders.Select(o => (Month: ReportRules.MonthOf(o.CreatedAtUtc), Row: o)).ToList();
         var paymentList = payments.Select(p => (Month: ReportRules.MonthOf(p.RecordedAtUtc), Row: p)).ToList();
+        var expenseList = (expenses ?? [])
+            .Where(e => !e.IsVoided)
+            .Select(e => (Month: ReportRules.FirstOfMonth(e.SpentOn), Row: e))
+            .ToList();
 
         var trend = months.Select(m =>
         {
@@ -115,8 +136,17 @@ public static class MonthlyReportCalculator
                 ReportRules.Label(m),
                 paymentList.Where(p => p.Month == m).Sum(p => p.Row.Amount),
                 takenInMonth.Count,
-                takenInMonth.Sum(o => o.TotalAmount));
+                takenInMonth.Sum(o => o.TotalAmount),
+                expenseList.Where(e => e.Month == m).Sum(e => e.Row.Amount));
         }).ToList();
+
+        var monthExpenses = expenseList.Where(e => e.Month == month).Select(e => e.Row).ToList();
+        var byCategory = monthExpenses
+            .GroupBy(e => ExpenseCategory.IsValid(e.Category) ? e.Category : ExpenseCategory.Other)
+            .Select(g => new CategoryTotalDto(g.Key, g.Sum(e => e.Amount), g.Count()))
+            .OrderByDescending(t => t.Total)
+            .ThenBy(t => CategoryOrder(t.Category))
+            .ToList();
 
         var monthPayments = paymentList.Where(p => p.Month == month).Select(p => p.Row).ToList();
         var monthOrders = orderList.Where(o => o.Month == month).Select(o => o.Row).ToList();
@@ -149,7 +179,17 @@ public static class MonthlyReportCalculator
             OrdersStillOwing: owing.Count,
             OrdersCancelled: monthOrders.Count(o => o.Status == OrderStatus.Cancelled),
             OrdersByStatus: byStatus,
-            Trend: trend);
+            Trend: trend,
+            Spent: trend[^1].Spent,
+            ExpenseCount: monthExpenses.Count,
+            PreviousSpent: trend.Count >= 2 ? trend[^2].Spent : 0m,
+            SpentByCategory: byCategory);
+    }
+
+    private static int CategoryOrder(string category)
+    {
+        var i = ExpenseCategory.All.ToList().IndexOf(category);
+        return i < 0 ? ExpenseCategory.All.Count : i;
     }
 
     private static int MethodOrder(string method)

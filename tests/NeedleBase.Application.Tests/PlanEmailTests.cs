@@ -49,6 +49,32 @@ public class PlanEmailTemplateTests
         Assert.Contains("Ama &amp; Sons", monthly.HtmlBody);
         Assert.DoesNotContain("<b>", monthly.HtmlBody);
 
+        Assert.DoesNotContain("Profit", monthly.TextBody);
+        Assert.DoesNotContain("Spent", monthly.TextBody);
+
+        var withProfit = EmailTemplates.MonthlySummary(
+            "ama@shop.gh", "Ama", "Ama Stitches", new DateOnly(2026, 11, 1),
+            12, 2, 5, 1, 0m, 0, 0m, "https://app.needlebase.test/",
+            new MonthProfitSummary(new DateOnly(2026, 10, 1), 5000m, 3200.5m));
+        Assert.Contains("Last month (October 2026)", withProfit.TextBody);
+        Assert.Contains("Money in: GH₵ 5,000.00\nSpent: GH₵ 3,200.50\nProfit: GH₵ 1,799.50", withProfit.TextBody);
+        Assert.Contains("https://app.needlebase.test/Reports?month=2026-10", withProfit.TextBody);
+        Assert.Contains("See the monthly report", withProfit.HtmlBody);
+
+        var loss = EmailTemplates.MonthlySummary(
+            "ama@shop.gh", null, "Ama Stitches", new DateOnly(2026, 11, 1),
+            0, 0, 0, 0, 0m, 0, 0m, null,
+            new MonthProfitSummary(new DateOnly(2026, 10, 1), 100m, 250m));
+        Assert.Contains("Loss: GH₵ 150.00", loss.TextBody);
+        Assert.DoesNotContain("-GH₵", loss.TextBody);
+        Assert.DoesNotContain("Monthly report:", loss.TextBody); // no app link configured
+
+        var noCosts = EmailTemplates.MonthlySummary(
+            "ama@shop.gh", null, "Ama Stitches", new DateOnly(2026, 11, 1),
+            0, 0, 0, 0, 0m, 0, 0m, null,
+            new MonthProfitSummary(new DateOnly(2026, 10, 1), 100m, 0m));
+        Assert.Contains("No expenses were recorded for October 2026, so profit equals money in.", noCosts.TextBody);
+
         var weekly = EmailTemplates.WeeklySummary(
             "ama@shop.gh", "Ama", "Ama Stitches", new DateOnly(2026, 11, 23),
             10, 1, 3, 500m, 2, 200m, null);

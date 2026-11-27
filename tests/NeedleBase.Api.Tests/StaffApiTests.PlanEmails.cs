@@ -318,6 +318,85 @@ public sealed partial class StaffApiTests
         Assert.Equal(0, await service.ProcessDueAsync());
     }
 
+    [Fact]
+    public async Task MonthlySummary_adds_last_month_profit_for_workshop_not_starter()
+    {
+        var mail = UseEmail();
+        var workshop = await RegisterAsync("prof1");
+        var starter = await RegisterAsync("prof2");
+        var today = BusinessTime.Today(DateTimeOffset.UtcNow);
+        var month = PlanEmailSchedule.MonthStart(today);
+        var lastMonth = month.AddMonths(-1);
+
+        // Record while keyless (expenses allowed), then set the plans.
+        foreach (var (amount, voided) in new[] { (120m, false), (80m, false), (999m, true) })
+        {
+            var id = IdGenerator.NewId();
+            using var created = await SendAsync(HttpMethod.Post, "/api/expenses", workshop.Token,
+                new NeedleBase.Application.Contracts.Expenses.RecordExpenseRequest
+                {
+                    Id = id, Amount = amount, Category = ExpenseCategory.Materials, SpentOn = lastMonth.AddDays(3)
+                });
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            if (voided)
+            {
+                using var v = await SendAsync(HttpMethod.Post, $"/api/expenses/{id}/void", workshop.Token,
+                    new NeedleBase.Application.Contracts.Expenses.VoidExpenseRequest { Reason = "typo" });
+                Assert.Equal(HttpStatusCode.OK, v.StatusCode);
+            }
+        }
+
+        await SetPlanAsync(workshop.BusinessId, PlanCodes.Workshop);
+        await SetPlanAsync(starter.BusinessId, PlanCodes.Starter);
+        while (mail.Sent.TryDequeue(out _))
+        {
+        }
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var ours = new[] { workshop.BusinessId, starter.BusinessId };
+        foreach (var other in await db.Businesses.Where(b => !ours.Contains(b.Id)).ToListAsync())
+        {
+            other.MarkMonthlySummarySent(month);
+            other.MarkWeeklySummarySent(PlanEmailSchedule.WeekStartMonday(today));
+        }
+
+        foreach (var shop in await db.Businesses.Where(b => ours.Contains(b.Id)).ToListAsync())
+        {
+            shop.MarkWeeklySummarySent(PlanEmailSchedule.WeekStartMonday(today));
+        }
+
+        await db.SaveChangesAsync();
+
+        var noon = new DateTimeOffset(today.ToDateTime(new TimeOnly(12, 0), DateTimeKind.Utc));
+        var emailOptions = new EmailOptions
+        {
+            Host = "smtp.example.test",
+            Username = "shop@example.test",
+            Password = "x",
+            AppBaseUrl = "https://app.example.test"
+        };
+        var service = new PlanEmailService(
+            db,
+            new DirectCapturingSender(mail, emailOptions),
+            new StaticOptionsMonitor<EmailOptions>(emailOptions),
+            new StaticOptionsMonitor<PlatformOptions>(new PlatformOptions()),
+            new FixedClock(noon),
+            NullLogger<PlanEmailService>.Instance);
+        await service.ProcessDueAsync();
+
+        var label = lastMonth.ToString("MMMM yyyy", System.Globalization.CultureInfo.GetCultureInfo("en-GB"));
+        var withProfit = (await mail.WaitForAsync(workshop.Email, "monthly_summary")).TextBody;
+        Assert.Contains($"Last month ({label})", withProfit);
+        Assert.Contains("Money in: GH₵ 0.00\nSpent: GH₵ 200.00\nLoss: GH₵ 200.00", withProfit); // voided 999 ignored
+        Assert.Contains($"https://app.example.test/Reports?month={lastMonth:yyyy-MM}", withProfit);
+
+        var plain = (await mail.WaitForAsync(starter.Email, "monthly_summary")).TextBody;
+        Assert.Contains("Open orders", plain);
+        Assert.DoesNotContain("Spent:", plain);
+        Assert.DoesNotContain("Last month", plain);
+    }
+
     private sealed class DirectCapturingSender(CapturingTransport transport, EmailOptions options) : IEmailSender
     {
         public bool IsConfigured => options.IsConfigured;

@@ -1,6 +1,8 @@
+using System.Globalization;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using NeedleBase.Application.Licensing;
+using NeedleBase.Domain.Enums;
 using NeedleBase.Infrastructure.Persistence;
 
 namespace NeedleBase.Infrastructure.Licensing;
@@ -121,6 +123,46 @@ public sealed class BusinessExportService
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
+        // Every expense, voided too (like payments): the export is the shop's full record, so it also works on a
+        // lapsed shop and after a downgrade to Starter (where the expenses screens are off).
+        var expenseRows = await _db.Expenses.AsNoTracking()
+            .Where(e => e.BusinessId == businessId)
+            .OrderByDescending(e => e.SpentOn)
+            .ThenByDescending(e => e.CreatedAtUtc)
+            .Select(e => new
+            {
+                e.Id,
+                e.Amount,
+                e.Category,
+                e.SpentOn,
+                e.Note,
+                e.OrderId,
+                e.RecordedByUserId,
+                e.IsVoided,
+                e.VoidedAtUtc,
+                e.VoidedByUserId,
+                e.VoidReason,
+                e.CreatedAtUtc
+            })
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var expenses = expenseRows.Select(e => new
+        {
+            e.Id,
+            e.Amount,
+            e.Category,
+            CategoryLabel = ExpenseCategory.DisplayName(e.Category),
+            SpentOn = e.SpentOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            e.Note,
+            e.OrderId,
+            e.RecordedByUserId,
+            e.IsVoided,
+            e.VoidedAtUtc,
+            e.VoidedByUserId,
+            e.VoidReason,
+            e.CreatedAtUtc
+        }).ToList();
+
         var staff = await _db.StaffMemberships.AsNoTracking()
             .Where(m => m.BusinessId == businessId && m.IsActive)
             .Select(m => new { m.UserId, m.Role })
@@ -140,6 +182,7 @@ public sealed class BusinessExportService
             measurements,
             orders = orderRows,
             payments,
+            expenses,
             staff = staff.Select(s => new { s.UserId, role = s.Role }).ToList()
         };
 

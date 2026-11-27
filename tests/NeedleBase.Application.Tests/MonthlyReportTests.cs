@@ -30,6 +30,105 @@ public class MonthlyReportTests
     }
 
     [Fact]
+    public void Expenses_give_spent_profit_and_category_breakdown_biggest_first()
+    {
+        ReportPaymentRow[] payments =
+        [
+            new(1000m, PaymentMethod.Cash, At(2026, 11, 5)),
+            new(40m, PaymentMethod.Cash, At(2026, 10, 5))
+        ];
+        ReportExpenseRow[] expenses =
+        [
+            new(300m, ExpenseCategory.Materials, new DateOnly(2026, 11, 2), false),
+            new(500m, ExpenseCategory.StaffPay, new DateOnly(2026, 11, 20), false),
+            new(100m, ExpenseCategory.Materials, new DateOnly(2026, 11, 21), false),
+            new(999m, ExpenseCategory.RentAndBills, new DateOnly(2026, 11, 3), true),  // voided: ignored
+            new(20m, "Snacks", new DateOnly(2026, 11, 4), false),                      // unknown code → Other
+            new(50m, ExpenseCategory.Transport, new DateOnly(2026, 10, 9), false)      // October
+        ];
+
+        var r = MonthlyReportCalculator.Build(Nov, Today, [], payments, expenses);
+
+        Assert.Equal(920m, r.Spent);
+        Assert.Equal(4, r.ExpenseCount);
+        Assert.True(r.HasExpenses);
+        Assert.Equal(80m, r.Profit);
+        Assert.False(r.IsLoss);
+        Assert.Equal(("Profit", "GH₵ 80.00", "GH₵ 920.00"), (r.ProfitLabel, r.ProfitDisplay, r.SpentDisplay));
+        Assert.Equal(50m, r.PreviousSpent);
+        Assert.Equal(-10m, r.PreviousProfit);
+        Assert.Equal("GH₵ 90.00 better than October 2026", r.ProfitChangeDisplay);
+        Assert.Equal(ReportRules.ProfitNote, r.ProfitNote);
+        Assert.False(r.IsEmpty);
+
+        Assert.Equal(
+            [(ExpenseCategory.StaffPay, 500m, 1), (ExpenseCategory.Materials, 400m, 2), (ExpenseCategory.Other, 20m, 1)],
+            r.SpentByCategory.Select(c => (c.Category, c.Total, c.Count)));
+        Assert.Equal("Fabric and materials", r.SpentByCategory[1].Label);
+
+        var oct = r.Trend[^2];
+        Assert.Equal((50m, -10m, true, "Loss", "GH₵ 10.00"), (oct.Spent, oct.Profit, oct.IsLoss, oct.ProfitLabel, oct.ProfitDisplay));
+        Assert.Equal((920m, 80m), (r.Trend[^1].Spent, r.Trend[^1].Profit));
+    }
+
+    [Fact]
+    public void Spending_more_than_money_in_is_a_loss_shown_without_minus()
+    {
+        var r = MonthlyReportCalculator.Build(Nov, Today, [], [new(100m, PaymentMethod.MoMo, At(2026, 11, 3))],
+            [new(250m, ExpenseCategory.RentAndBills, new DateOnly(2026, 11, 1), false)]);
+        Assert.Equal(-150m, r.Profit);
+        Assert.True(r.IsLoss);
+        Assert.Equal(("Loss", "GH₵ 150.00"), (r.ProfitLabel, r.ProfitDisplay));
+        Assert.Equal("GH₵ 150.00 worse than October 2026", r.ProfitChangeDisplay);
+    }
+
+    [Fact]
+    public void Voided_only_expenses_count_as_none_and_month_stays_empty()
+    {
+        var r = MonthlyReportCalculator.Build(Nov, Today, [], [],
+            [new(80m, ExpenseCategory.Transport, new DateOnly(2026, 11, 10), true)]);
+        Assert.Equal((0m, 0, false), (r.Spent, r.ExpenseCount, r.HasExpenses));
+        Assert.Empty(r.SpentByCategory);
+        Assert.Equal(ReportRules.NoExpensesNote, r.ProfitNote);
+        Assert.True(r.IsEmpty);
+    }
+
+    [Fact]
+    public void Expense_only_month_is_not_empty()
+    {
+        var r = MonthlyReportCalculator.Build(Nov, Today, [], [],
+            [new(80m, ExpenseCategory.Transport, new DateOnly(2026, 11, 10), false)]);
+        Assert.False(r.IsEmpty);
+        Assert.Equal(-80m, r.Profit);
+    }
+
+    [Fact]
+    public void Expenses_group_by_accra_date_with_month_edges_and_window()
+    {
+        ReportExpenseRow[] expenses =
+        [
+            new(10m, ExpenseCategory.Other, new DateOnly(2026, 10, 31), false),  // last day of October
+            new(20m, ExpenseCategory.Other, new DateOnly(2026, 11, 1), false),   // first day of November
+            new(30m, ExpenseCategory.Other, new DateOnly(2026, 6, 1), false),    // first trend month
+            new(99m, ExpenseCategory.Other, new DateOnly(2026, 5, 31), false)    // before the window: ignored
+        ];
+
+        var r = MonthlyReportCalculator.Build(Nov, Today, [], [], expenses);
+        Assert.Equal(20m, r.Spent);
+        Assert.Equal(10m, r.PreviousSpent);
+        Assert.Equal([30m, 0m, 0m, 0m, 10m, 20m], r.Trend.Select(t => t.Spent));
+    }
+
+    [Fact]
+    public void No_expenses_means_profit_equals_money_in()
+    {
+        var r = MonthlyReportCalculator.Build(Nov, Today, [], [new(70m, PaymentMethod.Cash, At(2026, 11, 3))]);
+        Assert.Equal((0m, 70m, false), (r.Spent, r.Profit, r.IsLoss));
+        Assert.Equal(ReportRules.NoExpensesNote, r.ProfitNote);
+        Assert.All(r.Trend, t => Assert.Equal(t.MoneyReceived, t.Profit));
+    }
+
+    [Fact]
     public void Money_orders_and_still_owed()
     {
         ReportOrderRow[] orders =

@@ -9,6 +9,7 @@ using NeedleBase.Application.Abstractions;
 using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Auth;
 using NeedleBase.Application.Contracts.Customers;
+using NeedleBase.Application.Contracts.Expenses;
 using NeedleBase.Application.Contracts.Licensing;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
@@ -83,6 +84,47 @@ public class ReportsApiTests : IClassFixture<NeedleBaseApiFactory>
         Assert.Equal(50m, earlier.StillOwed);
         Assert.Equal(ReportRules.Key(ThisMonth), earlier.NextMonth);
         Assert.False(earlier.IsCurrentMonth);
+    }
+
+    [Fact]
+    public async Task Expenses_give_spent_profit_or_loss_by_category_and_trend()
+    {
+        var (token, _, _) = await RegisterAsync("Prof");
+        var order = await CreateOrderAsync(token, 500m);
+        Assert.Equal(HttpStatusCode.Created, await PayAsync(token, order, 300m, PaymentMethod.Cash));
+
+        var lastMonth = ThisMonth.AddMonths(-1);
+        await RecordExpenseAsync(token, 120m, ExpenseCategory.Materials, ThisMonth);
+        await RecordExpenseAsync(token, 500m, ExpenseCategory.StaffPay, ThisMonth);
+        var voided = await RecordExpenseAsync(token, 999m, ExpenseCategory.RentAndBills, ThisMonth);
+        using (var v = await SendAsync(HttpMethod.Post, $"/api/expenses/{voided}/void", token, new VoidExpenseRequest { Reason = "typo" }))
+        {
+            Assert.Equal(HttpStatusCode.OK, v.StatusCode);
+        }
+
+        await RecordExpenseAsync(token, 40m, ExpenseCategory.Transport, lastMonth.AddDays(27));
+
+        using (var raw = await SendAsync(HttpMethod.Get, "/api/reports/monthly", token))
+        {
+            var json = await raw.Content.ReadAsStringAsync();
+            Assert.Contains("\"spent\":", json); // additive fields are on the wire for web and phone
+            Assert.Contains("\"isLoss\":true", json);
+            Assert.Contains("\"spentByCategory\":[", json);
+        }
+
+        var r = await ReportAsync(token, null);
+        Assert.Equal((300m, 620m, 2, -320m), (r.MoneyReceived, r.Spent, r.ExpenseCount, r.Profit));
+        Assert.True(r.IsLoss);
+        Assert.Equal(("Loss", "GH₵ 320.00"), (r.ProfitLabel, r.ProfitDisplay));
+        Assert.Equal(40m, r.PreviousSpent);
+        Assert.Equal(ReportRules.ProfitNote, r.ProfitNote);
+        Assert.Equal([(ExpenseCategory.StaffPay, 500m), (ExpenseCategory.Materials, 120m)],
+            r.SpentByCategory.Select(c => (c.Category, c.Total)));
+        Assert.Equal((40m, -40m), (r.Trend[^2].Spent, r.Trend[^2].Profit));
+
+        var earlier = await ReportAsync(token, ReportRules.Key(lastMonth));
+        Assert.Equal((40m, 1, -40m), (earlier.Spent, earlier.ExpenseCount, earlier.Profit));
+        Assert.Equal([ExpenseCategory.Transport], earlier.SpentByCategory.Select(c => c.Category));
     }
 
     [Fact]
@@ -175,6 +217,15 @@ public class ReportsApiTests : IClassFixture<NeedleBaseApiFactory>
         Assert.Equal(0m, other.StillOwed);
         using var anon = await _client.GetAsync("/api/reports/monthly");
         Assert.Equal(HttpStatusCode.Unauthorized, anon.StatusCode);
+    }
+
+    private async Task<string> RecordExpenseAsync(string token, decimal amount, string category, DateOnly spentOn)
+    {
+        var id = IdGenerator.NewId();
+        using var response = await SendAsync(HttpMethod.Post, "/api/expenses", token,
+            new RecordExpenseRequest { Id = id, Amount = amount, Category = category, SpentOn = spentOn });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        return id;
     }
 
     private async Task<MonthlyReportDto> ReportAsync(string token, string? month)

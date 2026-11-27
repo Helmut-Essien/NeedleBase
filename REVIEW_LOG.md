@@ -2351,3 +2351,57 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — unpushed API chunk re-verified; skill status aligned; gates PASS.
+
+## Ralph Balanced — Expenses reports/export/email (chunk 4) — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` (tracking origin)
+- Slice: working-tree expenses plan chunk 4 (reports calculator/DTO + MonthlyReportService + export expenses + MonthProfitSummary email + tests + expenses-plan Done)
+- Commit auth: yes (this prompt: `commit: authorized`)
+- Gates: `dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror`; lint = warnaserror; Domain/Application/Web/Mobile/Api tests; Postgres :5435; `JAVA_HOME=/opt/android-studio/jbr`
+- Runtime: DB available (Api tests passed)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: M expenses-plan.md, ReportDtos, EmailTemplates, MonthlyReports, PlanEmailService,
+     BusinessExportService, MonthlyReportService, ReportLocalService,
+     ExpensesApiTests, ReportsApiTests, StaffApiTests.PlanEmails, MonthlyReportTests, PlanEmailTests
+     ?? .cursor/ralph/
+cmd: git diff --stat
+out: 13 files changed, 507 insertions(+), 16 deletions(-)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | Read MonthlyReports.cs:107–187, MonthlyReportService.cs:80–88, PlanEmailService.cs:556–570; App MonthlyReport×; Api Expenses_give_spent + MonthlySummary_adds | none | voided filtered server+calculator; trend[^1]==chosen month (Range offset); LoadLastMonthProfit Accra window matches calculator |
+| 2 Edge | PASS | IsEmpty+ExpenseCount (ReportDtos.cs:110); unknown category→Other; optional expenses=[]; ReportLocalService `[]` until chunk 6; MoneyRules amount floor | none | email note uses Spent>0 ≡ HasExpenses for valid amounts |
+| 3 Security | PASS | ExportController RequireOwner + Export entitlement; expenses `BusinessId==`; email IgnoreQueryFilters + BusinessId (same as payments); voided out of profit | none | export includes voided by design (full record / downgrade) |
+| 4 Senior | PASS | class B (extra expense query + export array); no report harness → perf N/A; additive DTO fields; CostsNote retained until UI 7/8 | none | CategoryOrder ToList/call P4 only |
+| 5 UI/UX | N/A | no report UI markup in slice; CostsNote still Index.cshtml:60 / ReportsPage.cs:118 per plan | — | ProfitNote/CostsNote intentional until chunks 7–8 |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api Release `--no-build` | 116 / 387 / 226 / 391 / 378; Failed 0; focused MonthlyReport|PlanEmailTemplate 46; Expenses_give_spent|Export_Includes|MonthlySummary_adds 3 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** none (no P0/P1; no autonomy-eligible P2).
+**Dismissed:**
+- Email profit note shorter than `ReportRules.ProfitNote` (`EmailTemplates.cs:108` vs `MonthlyReports.cs:33–34`) — P3 copy; email omits “costs you haven't recorded” / “for the month”; intentional brevity; tests lock wording.
+- `CostsNote` still on web/phone reports — deferred to chunks 7/8 (`MonthlyReports.cs:25–30`).
+- `ReportLocalService` empty expenses — chunk 6 LocalExpense (`ReportLocalService.cs` comment).
+- Export voided expenses — same as payments; `ExpensesApiTests.Export_IncludesLiveAndVoidedExpenses_EvenAfterDowngradeToStarter`.
+**Open:** none blocking. Residual P3: unify email note with `ReportRules.ProfitNote` later if desired.
+**Out-of-scope:** sync chunk 5, LocalExpense/UI chunks 6–8.
+
+### Teardown
+Removed `.cursor/ralph/` (scratchpad + dir).
+
+### Status
+**COMPLETE** — chunk 4 gates PASS; no open P0/P1; commit authorized.

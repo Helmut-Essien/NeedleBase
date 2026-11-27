@@ -372,6 +372,53 @@ public class ExpensesApiTests : IClassFixture<NeedleBaseApiFactory>
         await SendWithAsync<ExpenseDto>(client, HttpMethod.Get, $"/api/expenses/{expense.Id}", token, null, HttpStatusCode.OK);
     }
 
+    [Fact]
+    public async Task Export_IncludesLiveAndVoidedExpenses_EvenAfterDowngradeToStarter()
+    {
+        var (token, businessId, userId) = await RegisterAsync("Exp");
+        var live = await RecordAsync(token, new RecordExpenseRequest
+        {
+            Id = IdGenerator.NewId(), Amount = 75.5m, Category = ExpenseCategory.Transport, SpentOn = Today, Note = "Trotro to Makola"
+        });
+        var gone = await RecordAsync(token, new RecordExpenseRequest
+        {
+            Id = IdGenerator.NewId(), Amount = 40m, Category = ExpenseCategory.Other, SpentOn = Today
+        });
+        await VoidOkAsync(token, gone.Id, "Wrong shop");
+
+        async Task<List<JsonElement>> ExportedAsync()
+        {
+            using var export = await SendAsync(HttpMethod.Get, "/api/export", token);
+            Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+            using var doc = JsonDocument.Parse(await export.Content.ReadAsStringAsync());
+            return doc.RootElement.GetProperty("expenses").EnumerateArray().Select(e => e.Clone()).ToList();
+        }
+
+        var rows = await ExportedAsync();
+        Assert.Equal(2, rows.Count);
+        var liveRow = rows.Single(r => r.GetProperty("id").GetString() == live.Id);
+        Assert.False(liveRow.GetProperty("isVoided").GetBoolean());
+        Assert.Equal(75.5m, liveRow.GetProperty("amount").GetDecimal());
+        Assert.Equal(ExpenseCategory.Transport, liveRow.GetProperty("category").GetString());
+        Assert.Equal("Transport", liveRow.GetProperty("categoryLabel").GetString());
+        Assert.Equal(Today.ToString("yyyy-MM-dd"), liveRow.GetProperty("spentOn").GetString());
+        Assert.Equal("Trotro to Makola", liveRow.GetProperty("note").GetString());
+        Assert.Equal(userId, liveRow.GetProperty("recordedByUserId").GetString());
+        var voidedRow = rows.Single(r => r.GetProperty("id").GetString() == gone.Id);
+        Assert.True(voidedRow.GetProperty("isVoided").GetBoolean());
+        Assert.Equal("Wrong shop", voidedRow.GetProperty("voidReason").GetString());
+        Assert.Equal(userId, voidedRow.GetProperty("voidedByUserId").GetString());
+
+        // Downgrade: the expenses screens close, but the shop's data still exports.
+        await SetPlanAsync(businessId, PlanCodes.Starter);
+        using (var listed = await SendAsync(HttpMethod.Get, "/api/expenses", token))
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, listed.StatusCode);
+        }
+
+        Assert.Equal(2, (await ExportedAsync()).Count);
+    }
+
     private async Task AssertBadAsync(string token, RecordExpenseRequest request, string? code)
     {
         using var response = await SendAsync(HttpMethod.Post, "/api/expenses", token, request);

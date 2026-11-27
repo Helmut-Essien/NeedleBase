@@ -6,6 +6,7 @@ using NeedleBase.Application.Common;
 using NeedleBase.Application.Contracts.Staff;
 using NeedleBase.Application.Email;
 using NeedleBase.Application.Licensing;
+using NeedleBase.Application.Reports;
 using NeedleBase.Domain.Entities;
 using NeedleBase.Domain.Enums;
 using NeedleBase.Infrastructure.Identity;
@@ -313,7 +314,8 @@ public sealed class PlanEmailService : IPlanEmailNotifier
                 continue;
             }
 
-            if (!PlanCatalog.Resolve(snapshot).Entitlements.MonthlySummaryEmail)
+            var entitlements = PlanCatalog.Resolve(snapshot).Entitlements;
+            if (!entitlements.MonthlySummaryEmail)
             {
                 await MarkMonthlyAsync(snapshot.Id, period.Value, cancellationToken).ConfigureAwait(false);
                 continue;
@@ -328,6 +330,10 @@ public sealed class PlanEmailService : IPlanEmailNotifier
 
             var stats = await LoadSummaryStatsAsync(snapshot.Id, now, period.Value, forWeek: false, cancellationToken)
                 .ConfigureAwait(false);
+            // Workshop / Production / unlimited: add last month's money in, spent and profit (Starter unchanged).
+            var lastMonth = entitlements.ProfitAndMonthlyReports
+                ? await LoadLastMonthProfitAsync(snapshot.Id, period.Value, cancellationToken).ConfigureAwait(false)
+                : null;
             var previous = snapshot.MonthlySummarySentFor;
             if (!await TryMarkMonthlyAsync(snapshot.Id, period.Value, cancellationToken).ConfigureAwait(false))
             {
@@ -338,7 +344,7 @@ public sealed class PlanEmailService : IPlanEmailNotifier
                     owner.Value.Email, owner.Value.Name, snapshot.Name, period.Value,
                     stats.Active, stats.Overdue, stats.DueSoon, stats.Fittings,
                     stats.Outstanding, stats.WithBalance, stats.ReceivedPeriod,
-                    _emailOptions.CurrentValue.AppBaseUrl)))
+                    _emailOptions.CurrentValue.AppBaseUrl, lastMonth)))
             {
                 await RestoreMonthlyAsync(snapshot.Id, previous, cancellationToken).ConfigureAwait(false);
                 break;
@@ -541,6 +547,27 @@ public sealed class PlanEmailService : IPlanEmailNotifier
             .SumAsync(p => (decimal?)p.Amount, cancellationToken).ConfigureAwait(false) ?? 0m;
 
         return new SummaryStats(active, overdue, dueSoon, fittings, agg?.Sum ?? 0m, agg?.Count ?? 0, received);
+    }
+
+    /// <summary>
+    /// The month before <paramref name="periodStart"/>: non-voided payments by Accra recorded date and non-voided
+    /// expenses by Accra date paid. Same rules as <see cref="MonthlyReportCalculator"/> (profit = money in − spent).
+    /// </summary>
+    private async Task<MonthProfitSummary> LoadLastMonthProfitAsync(
+        string businessId,
+        DateOnly periodStart,
+        CancellationToken cancellationToken)
+    {
+        var month = periodStart.AddMonths(-1);
+        var fromUtc = BusinessTime.StartOfDayUtc(month);
+        var toUtc = BusinessTime.StartOfDayUtc(periodStart);
+        var moneyIn = await _db.Payments.IgnoreQueryFilters().AsNoTracking()
+            .Where(p => p.BusinessId == businessId && !p.IsVoided && p.RecordedAtUtc >= fromUtc && p.RecordedAtUtc < toUtc)
+            .SumAsync(p => (decimal?)p.Amount, cancellationToken).ConfigureAwait(false) ?? 0m;
+        var spent = await _db.Expenses.IgnoreQueryFilters().AsNoTracking()
+            .Where(e => e.BusinessId == businessId && !e.IsVoided && e.SpentOn >= month && e.SpentOn < periodStart)
+            .SumAsync(e => (decimal?)e.Amount, cancellationToken).ConfigureAwait(false) ?? 0m;
+        return new MonthProfitSummary(month, moneyIn, spent);
     }
 
     private bool MaySendPlanEmails(Business business)
