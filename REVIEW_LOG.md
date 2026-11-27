@@ -2211,3 +2211,50 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — chunk 2 gates PASS; cross-tenant persistence test strengthened.
+
+## Ralph Balanced — Expenses EF unpushed re-verify — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead 1 of `origin/PlanNameCatalogue`
+- Slice: `origin/PlanNameCatalogue..HEAD` = `63b0afe` (Expenses EF chunk 2)
+- WT clean except this run's `.cursor/ralph/` (+ domain skill status fix)
+- Gates: Release `-warnaserror`; full test projects; Postgres :5435; JBR
+- Commit auth: yes (user: run the loop again on unpushed commits)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: ?? .cursor/ralph/ (then M domain SKILL after fix)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 63b0afe Add Expenses EF table, sync stamps, audit capture, and purge (chunk 2).
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | Read DeleteAccount/migration/DbContext; ExpensePersistence×3 | none new | Expenses before Orders; FK NoAction; trigger present |
+| 2 Edge | PASS | SyncEntityType.Expense ∉ All; FK delete log | none | sync ops still gated until chunk 5 |
+| 3 Security | PASS | cross-tenant CurrentBusinessId=otherBusinessId asserts | none | prior fix at ExpensePersistenceTests.cs:103-110 holds |
+| 4 Senior | PASS | class B; no harness → perf N/A | Fixed P2: domain skill still “EF remain” after chunk 2 (`needlebase-domain/SKILL.md:39`) | plan already marks chunk 2 Done |
+| 5 UI/UX | N/A | no UI in unpushed product files | — | — |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 368 / 226 / 391 / 360; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** `needlebase-domain/SKILL.md:39` (+ §Expense) — **Domain built; EF remain** → **Domain + EF built**; Api/sync/UI remain.
+**Dismissed:** tenancy/FK/sync-stamp coverage from prior review re-checked via tests.
+**Open:** none in-slice.
+**Out-of-scope:** chunks 3+ (API/reports/sync/UI).
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — unpushed EF chunk re-verified; skill status aligned; gates PASS.
