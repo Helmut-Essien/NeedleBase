@@ -283,6 +283,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
         await LockOrderAsync(orderId, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task LockForExpenseAsync(string expenseId, string? orderId, CancellationToken cancellationToken = default)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Expense locks need a transaction.");
+        }
+
+        // Same order as payments (id first, then the order row), so the two never deadlock.
+        await Database.ExecuteSqlInterpolatedAsync(
+            $"SELECT pg_advisory_xact_lock(hashtextextended({"expense:" + expenseId}, 0))", cancellationToken).ConfigureAwait(false);
+        if (!string.IsNullOrEmpty(orderId))
+        {
+            await LockOrderAsync(orderId, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     public async Task LockOrderAsync(string orderId, CancellationToken cancellationToken = default)
     {
         if (Database.CurrentTransaction is null)

@@ -2258,3 +2258,49 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — unpushed EF chunk re-verified; skill status aligned; gates PASS.
+
+## Ralph Balanced — Expenses API chunk 3 — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` (in sync with origin at start)
+- Slice: WT expenses chunk 3 — `ExpenseService`/`ExpenseRules`/`ExpensesController`/`IPlanAccess`/`PlanAccess`, order-delete `ORDER_HAS_EXPENSES`, errors/ApiProblems, tests
+- Build/lint/test: Release `-warnaserror`; full test projects; Postgres :5435; JBR
+- Commit auth: yes (RALPH BALANCED prompt)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: 15 modified + ExpensesController, IPlanAccess, ExpenseDtos, ExpenseRules/Service/IExpenseService, PlanAccess, ExpensesApiTests, ExpenseRulesTests (+ .cursor/ralph/)
+cmd: git diff --stat
+out: 15 files changed, 96 insertions(+), 5 deletions(-) (+ untracked ~1.3k LOC)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | Read ExpenseService/Controller/OrderService; ExpensesApi×18 | Fixed P2: HasExpenses copy said “Void them” but voided still block delete | locks id→order; replay/conflict; plan-before-role |
+| 2 Edge | PASS | ExpenseRulesTests; lenient clamp/map; filter invalid | none | orderId-only list skips month |
+| 3 Security | PASS | OtherShops 404; Tailor 403; plan gating; read-only writes | none | notes not in audit; WriteGuard global |
+| 4 Senior | PASS | class B (list aggregates); no harness → perf N/A | none | IPlanAccess extract; DataAnnotations deviation noted in plan |
+| 5 UI/UX | PASS (mobile copy only) | SyncStatusViewModel DeleteRefused text + PaymentSyncTests | Fixed misleading ORDER_HAS_EXPENSES detail | Sync details “payments or expenses” |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 381 / 226 / 391 / 375; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** `OrderErrorMessages.cs:35` — “Void them or keep the order” → “Keep the order.” (voided expenses still block delete, same as payments; proven by `OrderLink_MustBeThisShopsOrder_AndBlocksOrderDelete`). Plan + OrderService comment aligned.
+**Dismissed:** PlanAccess on unfiltered Businesses; SubscriptionWriteGuard covers writes; SyncEntityType.Expense still out of All.
+**Open:** domain skill still says Api remain (not in this WT).
+**Out-of-scope:** reports/sync/UI chunks 4+.
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — chunk 3 gates PASS; misleading delete copy fixed.

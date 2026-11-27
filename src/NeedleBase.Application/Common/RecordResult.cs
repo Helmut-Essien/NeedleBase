@@ -34,6 +34,20 @@ public enum RecordError
     PaymentOrderLocked,
     /// <summary>Only the owner or a manager can record or void payments.</summary>
     PaymentForbidden,
+    /// <summary>No such expense in this shop.</summary>
+    ExpenseNotFound,
+    /// <summary>Same expense id already saved with different content.</summary>
+    ExpenseConflict,
+    /// <summary>Amount, category, date, note or void reason not acceptable.</summary>
+    ExpenseInvalid,
+    /// <summary>Only the owner or a manager can see or record expenses.</summary>
+    ExpenseForbidden,
+    /// <summary>Expenses aren't on this plan (Starter, trial, unknown plan).</summary>
+    ExpensesNotAllowed,
+    /// <summary>The linked order isn't an order of this shop.</summary>
+    ExpenseOrderInvalid,
+    /// <summary>List filter not acceptable (month, category).</summary>
+    ExpenseFilterInvalid,
     /// <summary>The shop's license has lapsed past its grace period: new changes are paused (viewing still works).</summary>
     SubscriptionReadOnly,
     /// <summary>Free on this phone: lifetime customer cap reached (deletes do not free a slot).</summary>

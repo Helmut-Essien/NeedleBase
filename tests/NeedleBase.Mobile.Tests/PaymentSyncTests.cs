@@ -427,7 +427,7 @@ public partial class PaymentSyncTests
 
     [Theory]
     [InlineData(SyncEntityType.Payment, SyncErrorCodes.ParentDeleted, "Restore order", "its order was deleted")]
-    [InlineData(SyncEntityType.Order, SyncErrorCodes.DeleteRefused, "Restore order", "has payments recorded")]
+    [InlineData(SyncEntityType.Order, SyncErrorCodes.DeleteRefused, "Restore order", "has payments or expenses recorded")]
     [InlineData(SyncEntityType.Customer, SyncErrorCodes.DeleteRefused, "Restore customer", "has orders")]
     [InlineData(SyncEntityType.Payment, SyncErrorCodes.PaymentMismatch, "Keep both", "Use theirs")]
     public void SyncDetails_PaymentConflicts_HaveTheirOwnWords(string entity, string code, string primary, string expected)

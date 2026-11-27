@@ -64,6 +64,12 @@ public interface IApplicationDbContext
 
     Task LockForPaymentAsync(string orderId, string paymentId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Expense writes (needs a transaction): advisory lock on the expense id, then the linked order's row lock when
+    /// there is one, so a concurrent order delete waits and then sees the expense.
+    /// </summary>
+    Task LockForExpenseAsync(string expenseId, string? orderId, CancellationToken cancellationToken = default);
+
     Task<T> InTransactionAsync<T>(Func<CancellationToken, Task<(T Result, bool Commit)>> work, CancellationToken cancellationToken = default);
 }
 

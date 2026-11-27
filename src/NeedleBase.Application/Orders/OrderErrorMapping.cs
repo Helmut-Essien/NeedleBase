@@ -27,6 +27,7 @@ public static class OrderErrorMapping
         error switch
         {
             OrderError.HasPayments => OrderErrorMessages.HasPayments,
+            OrderError.HasExpenses => OrderErrorMessages.HasExpenses,
             OrderError.BelowPaid => OrderErrorMessages.TotalBelowPaid,
             OrderError.Forbidden => OrderErrorMessages.EditForbidden,
             OrderError.NotAssigned => OrderErrorMessages.NotAssigned,

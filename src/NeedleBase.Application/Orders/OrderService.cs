@@ -553,6 +553,11 @@ public sealed class OrderService : IOrderService
             return OrderError.HasPayments; // money records are never deleted with their order
         }
 
+        if (await _db.Expenses.AsNoTracking().AnyAsync(e => e.OrderId == id, cancellationToken).ConfigureAwait(false))
+        {
+            return OrderError.HasExpenses; // nor are expenses (voided ones still keep the link, like payments)
+        }
+
         _db.Orders.Remove(entity);
         await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return OrderError.None;

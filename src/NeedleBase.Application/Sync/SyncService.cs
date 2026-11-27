@@ -299,7 +299,7 @@ public sealed class SyncService : ISyncService
             }
 
             var deleteError = await _orders.DeleteAsync(op.EntityId, ct).ConfigureAwait(false);
-            if (deleteError == OrderError.HasPayments)
+            if (deleteError is OrderError.HasPayments or OrderError.HasExpenses)
             {
                 // Money was recorded against it (maybe on another device): keep the order, send it back.
                 return Conflict(op, order: await LoadOrderAsync(op.EntityId, ct).ConfigureAwait(false), code: SyncErrorCodes.DeleteRefused);
@@ -596,6 +596,7 @@ public sealed class SyncService : ISyncService
         OrderError.AssigneeInvalid => OrderErrorMessages.AssigneeInvalid,
         OrderError.TotalMismatch => OrderErrorMessages.TotalMismatch,
         OrderError.HasPayments => OrderErrorMessages.HasPayments,
+        OrderError.HasExpenses => OrderErrorMessages.HasExpenses,
         OrderError.BelowPaid => OrderErrorMessages.TotalBelowPaid,
         OrderError.Forbidden => OrderErrorMessages.EditForbidden,
         OrderError.NotAssigned => OrderErrorMessages.NotAssigned,

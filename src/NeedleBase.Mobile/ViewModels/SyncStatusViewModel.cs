@@ -246,7 +246,7 @@ public sealed class SyncItemRow
             (SyncQueueState.Conflict, SyncErrorCodes.ParentDeleted) =>
                 ($"{kind} · its customer was deleted on another device.", "Restore customer", "Discard"),
             (SyncQueueState.Conflict, SyncErrorCodes.DeleteRefused) when e.EntityType == SyncEntityType.Order =>
-                ("Order has payments recorded, so it wasn't deleted.", "Restore order", null),
+                ("Order has payments or expenses recorded, so it wasn't deleted.", "Restore order", null),
             (SyncQueueState.Conflict, SyncErrorCodes.DeleteRefused) =>
                 ("Customer has orders on another device, so it wasn't deleted.", "Restore customer", null),
             (SyncQueueState.Conflict, SyncErrorCodes.PaymentMismatch) =>

@@ -13,6 +13,7 @@ public static class OrderErrorMessages
     public const string CustomerNotFound = "CUSTOMER_NOT_FOUND";
     public const string MeasurementNotFound = "MEASUREMENT_NOT_FOUND";
     public const string HasPayments = "ORDER_HAS_PAYMENTS";
+    public const string HasExpenses = "ORDER_HAS_EXPENSES";
     public const string TotalBelowPaid = "ORDER_TOTAL_BELOW_PAID";
     public const string EditForbidden = "ORDER_EDIT_FORBIDDEN";
     public const string NotAssigned = "ORDER_NOT_ASSIGNED";
@@ -31,6 +32,7 @@ public static class OrderErrorMessages
         MeasurementNotFound => "We couldn't find those measurements for this customer.",
         Validation => "Check the order details and try again.",
         HasPayments => "Payments are recorded on this order, so it can't be deleted. Cancel it instead.",
+        HasExpenses => "Expenses are recorded on this order, so it can't be deleted. Keep the order.",
         TotalBelowPaid => "The new total would be less than the customer has already paid. Keep the total at or above the amount paid, or void a payment first.",
         EditForbidden => "Only the owner or a manager can edit an order. You can still change its status.",
         NotAssigned => "This order is assigned to someone else. Ask the owner or a manager to change it.",

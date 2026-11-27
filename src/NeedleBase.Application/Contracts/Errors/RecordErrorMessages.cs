@@ -18,6 +18,13 @@ public static class RecordErrorMessages
     public const string PaymentExceedsBalance = "PAYMENT_EXCEEDS_BALANCE";
     public const string PaymentOrderLocked = "PAYMENT_ORDER_LOCKED";
     public const string PaymentForbidden = "PAYMENT_FORBIDDEN";
+    public const string ExpenseNotFound = "EXPENSE_NOT_FOUND";
+    public const string ExpenseConflict = "EXPENSE_CONFLICT";
+    public const string ExpenseInvalid = "EXPENSE_INVALID";
+    public const string ExpenseForbidden = "EXPENSES_FORBIDDEN";
+    public const string ExpensesNotAllowed = "EXPENSES_NOT_ALLOWED";
+    public const string ExpenseOrderInvalid = "EXPENSE_ORDER_INVALID";
+    public const string ExpenseFilterInvalid = "EXPENSE_FILTER_INVALID";
     public const string FreeCustomerLimit = "FREE_CUSTOMER_LIMIT";
     public const string FreeOrderLimit = "FREE_ORDER_LIMIT";
 
@@ -42,6 +49,13 @@ public static class RecordErrorMessages
         RecordError.PaymentExceedsBalance => PaymentExceedsBalance,
         RecordError.PaymentOrderLocked => PaymentOrderLocked,
         RecordError.PaymentForbidden => PaymentForbidden,
+        RecordError.ExpenseNotFound => ExpenseNotFound,
+        RecordError.ExpenseConflict => ExpenseConflict,
+        RecordError.ExpenseInvalid => ExpenseInvalid,
+        RecordError.ExpenseForbidden => ExpenseForbidden,
+        RecordError.ExpensesNotAllowed => ExpensesNotAllowed,
+        RecordError.ExpenseOrderInvalid => ExpenseOrderInvalid,
+        RecordError.ExpenseFilterInvalid => ExpenseFilterInvalid,
         RecordError.SubscriptionReadOnly => NeedleBase.Application.Licensing.LicenseErrors.ReadOnly,
         RecordError.FreeCustomerLimit => FreeCustomerLimit,
         RecordError.FreeOrderLimit => FreeOrderLimit,
@@ -67,6 +81,13 @@ public static class RecordErrorMessages
         RecordError.PaymentExceedsBalance => "That's more than what's left to pay on this order.",
         RecordError.PaymentOrderLocked => "This order is cancelled, so no payments can be recorded.",
         RecordError.PaymentForbidden => "Only the owner or a manager can record payments.",
+        RecordError.ExpenseNotFound => "We couldn't find that expense.",
+        RecordError.ExpenseConflict => "A different expense was already saved with this id.",
+        RecordError.ExpenseInvalid => "Check the amount, what it was for and the date.",
+        RecordError.ExpenseForbidden => NeedleBase.Application.Expenses.ExpenseRules.ForbiddenMessage,
+        RecordError.ExpensesNotAllowed => NeedleBase.Application.Expenses.ExpenseRules.NotAllowedMessage,
+        RecordError.ExpenseOrderInvalid => "That order isn't in your shop. Pick another order or leave it blank.",
+        RecordError.ExpenseFilterInvalid => "Check the month and category.",
         RecordError.FreeCustomerLimit => NeedleBase.Application.Licensing.FreePlanLimits.CustomerLimitReachedMessage,
         RecordError.FreeOrderLimit => NeedleBase.Application.Licensing.FreePlanLimits.OrderLimitReachedMessage,
         _ => "Check the details and try again."

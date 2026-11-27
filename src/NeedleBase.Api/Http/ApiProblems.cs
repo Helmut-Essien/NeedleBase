@@ -86,6 +86,7 @@ public static class ApiProblems
             OrderError.TotalMismatch => (StatusCodes.Status400BadRequest, OrderErrorMessages.TotalMismatch, "Total doesn't match"),
             OrderError.Stale => (StatusCodes.Status409Conflict, NeedleBase.Application.Common.StaleUpdate.Code, "Changed by someone else"),
             OrderError.HasPayments => (StatusCodes.Status409Conflict, OrderErrorMessages.HasPayments, "Order has payments"),
+            OrderError.HasExpenses => (StatusCodes.Status409Conflict, OrderErrorMessages.HasExpenses, "Order has expenses"),
             OrderError.BelowPaid => (StatusCodes.Status409Conflict, OrderErrorMessages.TotalBelowPaid, "Total below amount paid"),
             OrderError.Forbidden => (StatusCodes.Status403Forbidden, OrderErrorMessages.EditForbidden, "Not allowed to edit orders"),
             OrderError.NotAssigned => (StatusCodes.Status403Forbidden, OrderErrorMessages.NotAssigned, "Assigned to someone else"),
@@ -126,6 +127,23 @@ public static class ApiProblems
         };
         var code = RecordErrorMessages.Code(error);
         return Create(ctx, status, code, "Couldn't save the payment",
+            string.IsNullOrWhiteSpace(detail) ? RecordErrorMessages.For(error) : detail);
+    }
+
+    /// <summary>Expenses (plans step 7b-2): status + stable code + shared friendly copy.</summary>
+    public static ObjectResult ForExpense(HttpContext ctx, NeedleBase.Application.Common.RecordError error, string? detail = null)
+    {
+        var (status, title) = error switch
+        {
+            NeedleBase.Application.Common.RecordError.ExpenseNotFound => (StatusCodes.Status404NotFound, "Expense not found"),
+            NeedleBase.Application.Common.RecordError.ExpenseConflict => (StatusCodes.Status409Conflict, "Expense already saved"),
+            NeedleBase.Application.Common.RecordError.Stale => (StatusCodes.Status409Conflict, "Changed by someone else"),
+            NeedleBase.Application.Common.RecordError.ExpenseForbidden => (StatusCodes.Status403Forbidden, "No access to expenses"),
+            NeedleBase.Application.Common.RecordError.ExpensesNotAllowed => (StatusCodes.Status403Forbidden, "Expenses aren't on this plan"),
+            NeedleBase.Application.Common.RecordError.SubscriptionReadOnly => (StatusCodes.Status403Forbidden, "Changes are paused"),
+            _ => (StatusCodes.Status400BadRequest, "Couldn't save the expense")
+        };
+        return Create(ctx, status, RecordErrorMessages.Code(error), title,
             string.IsNullOrWhiteSpace(detail) ? RecordErrorMessages.For(error) : detail);
     }
 

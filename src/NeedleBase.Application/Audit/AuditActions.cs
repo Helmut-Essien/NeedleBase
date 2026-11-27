@@ -65,6 +65,7 @@ public static class AuditActions
     public const string SyncPull = "sync.pull";
 
     public const string PaymentsViewed = "access.payments_viewed";
+    public const string ExpensesViewed = "access.expenses_viewed";
 
     /// <summary>Security events (sign-in, tokens): Owner only in the activity log.</summary>
     public static bool IsSecurity(string action) => action.StartsWith("auth.", StringComparison.Ordinal);
@@ -72,7 +73,8 @@ public static class AuditActions
     public static bool IsPayment(string action) =>
         action.StartsWith("payment.", StringComparison.Ordinal) || action == PaymentsViewed;
 
-    public static bool IsExpense(string action) => action.StartsWith("expense.", StringComparison.Ordinal);
+    public static bool IsExpense(string action) =>
+        action.StartsWith("expense.", StringComparison.Ordinal) || action == ExpensesViewed;
 
     public static string Display(string action) => action switch
     {
@@ -131,6 +133,7 @@ public static class AuditActions
         SyncPush => "Phone sent changes",
         SyncPull => "Phone synced",
         PaymentsViewed => "Viewed payments",
+        ExpensesViewed => "Viewed expenses",
         _ => action
     };
 
