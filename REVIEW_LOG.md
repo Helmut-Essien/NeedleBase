@@ -2021,3 +2021,50 @@ Removed `.cursor/ralph/` (scratchpad from this run). No other sentinels.
 
 ### Status
 **COMPLETE WITH NOTES** — mandatory gates PASS; no P0/P1; manual TalkBack/journey items and one XML-doc P3 remain.
+
+## Ralph Balanced — G15 unpushed re-verify — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead 1 of `origin/PlanNameCatalogue`
+- Slice: `origin/PlanNameCatalogue..HEAD` = `28f67b7` (G15 polish)
+- WT clean at start (except this run's `.cursor/ralph/`)
+- Build/lint/test: standing-rules Release `-warnaserror`; full test projects; Postgres :5435 up; JBR
+- Commit auth: yes (user: run the loop again on unpushed commits)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (clean product tree)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 28f67b7 Ship G15 polish: UK licence copy, spaced phones, sync live reload, password a11y.
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | `git show` SyncEngine/OrderDetail/PaymentReceipt; G15 mobile filters | none new | `_staffRefreshed` OK: `OrderDetailViewModel` is Transient (`MauiProgram.cs:124`); Disappear detaches live refresh |
+| 2 Edge | PASS | PolishG15 UK/non-Ghana; LiveReload IsBusy/picker | none | FormatPhone + spaced/search split still hold |
+| 3 Security | PASS | Login/Register password Entries; PasswordSemanticsG15 (2); Ui password skip | none | password Entry has no SemanticProperties.Description |
+| 4 Senior | PASS | class C; fresh Release gates | P3 only: `LicenseErrors.cs:70` XML "license" | doc-only; not user-facing |
+| 5 UI/UX | PASS | RenderTests spaced phone; Staff refresh tests | none | manual TalkBack/d/h still open per code-gaps |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | `JAVA_HOME=…/jbr dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api `-c Release --no-build` | 86 / 368 / 226 / 391 / 357; Failed 0 |
+| Perf | N/A | class C | no harness |
+
+### Findings
+**Fixed:** none.
+**Dismissed:** prior G15 dismissals re-checked; Transient VM makes `_staffRefreshed` once-per-screen safe.
+**Open:** P3 XML doc `LicenseErrors.cs:70`; manual G15 d/g-TalkBack/h.
+**Out-of-scope:** CustomerDetail phone Description (code-gaps).
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE WITH NOTES** — unpushed G15 re-verified; gates PASS; no product changes.
