@@ -36,6 +36,7 @@ Core workflow: Customer → Measurements → Order → Production → Payment �
 | `MeasurementProfile` | Measurements | CustomerId, `GarmentTemplate`, `Unit`, `FieldsJson`, `Notes`, `MeasuredAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
 | `Order` / `OrderLine` | Sewing job / garment lines | ref, status, due/fitting dates, assignee, totals; line template, qty, measurement snapshot | **Built** (S3) |
 | `Payment` | Money in | OrderId, amount, method, note, recordedAt, sync metadata | **Built** (S5) |
+| `Expense` | Money out (plan step 7b-2) | amount, category, SpentOn (Accra `DateOnly`), note, optional OrderId, recorded/voided by, void, sync metadata | **Planned** — [expenses-plan.md](../needlebase-plans/expenses-plan.md) |
 | `DeletedItem` | Sync tombstone | EntityType, EntityId, BusinessId, DeletedAt | Built S4 (`Domain/Entities/DeletedItem.cs`; server-only, written in `ApplicationDbContext.SaveChanges`) |
 | `Invitation` | Staff invite | Email/phone, role, business, expiry | **Built** (S7) |
 | Mobile-only `SyncQueueItem`, `DeviceInfo` | Offline queue | Mobile.Data only | **Built** (S4) |
@@ -125,3 +126,6 @@ Business: Ama Stitches, Accra. Customer: Efua Mensah, +233…. Currency: GH₵. 
 ## AuditEvent (22 Oct 2026)
 
 Append-only record: business, actor + role snapshot, action (`entity.verb`, see `AuditActions`), entity type/id, order/customer links, summary (≤300), masked changes JSON, source (api/web/sync/system), device, IP, UA, correlation id, UTC time. No FKs (survives deletes). Never edited; purged after `Audit:RetentionDays` (730).
+
+## Expense (planned, step 7b-2)
+Append-only, voidable money-out record; Owner/Manager; gated by `ProfitAndMonthlyReports`. Fields, categories, date rule and every checklist step: [expenses-plan.md](../needlebase-plans/expenses-plan.md) (single source).

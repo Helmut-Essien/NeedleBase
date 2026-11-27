@@ -108,6 +108,9 @@ dotnet run --project src/NeedleBase.Api --launch-profile https
 
 Second audit: `PAYMENT_EXCEEDS_BALANCE` → 409 with the specific detail; `RecordedAtUtc` more than 5 minutes ahead or before 2020 → 400 `PAYMENT_INVALID` (sync push dates it at server time instead); void runs under the payment lock.
 
+## Expenses (planned, step 7b-2)
+`GET|POST api/expenses`, `GET api/expenses/{id}`, `POST api/expenses/{id}/void` (Payment pattern: idempotent create and void), additive `GET api/reports/monthly` profit fields, `ORDER_HAS_EXPENSES` on order delete. Codes, statuses and order of checks: [expenses-plan.md](../needlebase-plans/expenses-plan.md) §4.
+
 ## Slice 6 endpoints (22 Oct 2026)
 
 - `GET api/dashboard/summary` (RequireStaff): active/overdue/due-7d/fittings-7d, counts per status, `Money` only for Owner/Manager (null for Tailor). Accra calendar days.

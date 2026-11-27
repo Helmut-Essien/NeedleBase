@@ -43,7 +43,7 @@ UX copy/states: [needlebase-uiux offline-sync](../needlebase-uiux/offline-sync.m
 | `SyncQueueItem` | Id, BusinessId, EntityType, EntityId, Operation, Payload/Patch, CreatedAt, RetryCount |
 | `DeviceInfo` | DeviceId, BusinessId, LastSync (UTC) |
 
-Domain entities mirrored locally: Customer, MeasurementProfile, Order, OrderLine, Payment, (reference data as needed).
+Domain entities mirrored locally: Customer, MeasurementProfile, Order, OrderLine, Payment, (reference data as needed). Planned: Expense (local schema v13) — [expenses-plan.md](../needlebase-plans/expenses-plan.md) §5.
 
 ## Sync flow
 
@@ -131,3 +131,6 @@ Second audit: sync push maps an unknown payment method to Other and appends "[la
 ## Device id (audit, 22 Oct 2026)
 
 Push and pull send `DeviceInfo.DeviceId` as `deviceId` so the server's activity log can label which phone made a change (push creates `DeviceInfo` if the first sync starts with a push). Audit rows are server-only and never pulled.
+
+## Expenses (planned, step 7b-2)
+Pull phase 5 after payments (cursor key `x`, still v2), skipped and reset for Tailors and plans without reports; upsert-only push, void merges, `SYNC_EXPENSE_MISMATCH`, unknown order → link dropped and server copy returned; phone holds expense ops while `CanReports` is off. Full rules: [expenses-plan.md](../needlebase-plans/expenses-plan.md) §5.
