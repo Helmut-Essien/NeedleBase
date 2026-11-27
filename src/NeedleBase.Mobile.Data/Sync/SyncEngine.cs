@@ -61,6 +61,7 @@ public sealed class SyncEngine
             return;
         }
 
+        var expensesAllowedBefore = ExpensesSyncAllowed(businessId);
         try
         {
             await PullAsync(businessId, cancellationToken).ConfigureAwait(false);
@@ -69,6 +70,13 @@ public sealed class SyncEngine
         {
             // Expired cursor, or a new server epoch (database restored/moved): start over from scratch, once.
             await ResyncAsync(businessId, recover: ex.ServerReset, cancellationToken).ConfigureAwait(false);
+            await PushAsync(businessId, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (!expensesAllowedBefore && ExpensesSyncAllowed(businessId))
+        {
+            // The pull just said the plan includes expenses (upgrade, or first pull): send the ones held here.
             await PushAsync(businessId, cancellationToken).ConfigureAwait(false);
         }
     }
@@ -90,7 +98,8 @@ public sealed class SyncEngine
         var measurements = await UnadoptedMeasurements(db, businessId).Select(m => m.Id).ToListAsync(ct).ConfigureAwait(false);
         var orders = await UnadoptedOrders(db, businessId).Select(o => o.Id).ToListAsync(ct).ConfigureAwait(false);
         var payments = await UnadoptedPayments(db, businessId).Select(p => p.Id).ToListAsync(ct).ConfigureAwait(false);
-        if (customers.Count + measurements.Count + orders.Count + payments.Count == 0)
+        var expenses = await UnadoptedExpenses(db, businessId).Select(e => e.Id).ToListAsync(ct).ConfigureAwait(false);
+        if (customers.Count + measurements.Count + orders.Count + payments.Count + expenses.Count == 0)
         {
             return;
         }
@@ -101,7 +110,8 @@ public sealed class SyncEngine
         {
             if (info.PullCursor is null && info.LastSyncUtc is null && !info.ResyncPending)
             {
-                await QueueCreatesAsync(db, businessId, customers, measurements, orders, ct, paymentIds: payments).ConfigureAwait(false);
+                await QueueCreatesAsync(db, businessId, customers, measurements, orders, ct, paymentIds: payments, expenseIds: expenses)
+                    .ConfigureAwait(false);
             }
             else
             {
@@ -134,6 +144,14 @@ public sealed class SyncEngine
         db.Payments.Where(p => p.BusinessId == businessId && !EF.Property<bool>(p, LocalDbContext.ServerKnownColumn) &&
             !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Payment && q.EntityId == p.Id));
 
+    private static IQueryable<Expense> UnadoptedExpenses(LocalDbContext db, string businessId) =>
+        db.Expenses.Where(e => e.BusinessId == businessId && !EF.Property<bool>(e, LocalDbContext.ServerKnownColumn) &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Expense && q.EntityId == e.Id));
+
+    private static IQueryable<Expense> UnqueuedExpenses(LocalDbContext db, string businessId) =>
+        db.Expenses.Where(e => e.BusinessId == businessId &&
+            !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Expense && q.EntityId == e.Id));
+
     private static IQueryable<Payment> UnqueuedPayments(LocalDbContext db, string businessId) =>
         db.Payments.Where(p => p.BusinessId == businessId &&
             !db.SyncQueue.Any(q => q.BusinessId == businessId && q.EntityType == SyncEntityType.Payment && q.EntityId == p.Id));
@@ -153,7 +171,7 @@ public sealed class SyncEngine
     /// <summary>Queues creates for the given unqueued rows (skips any that gained a queue item meanwhile).</summary>
     private static async Task QueueCreatesAsync(LocalDbContext db, string businessId, IReadOnlyCollection<string> customerIds,
         IReadOnlyCollection<string> measurementIds, IReadOnlyCollection<string> orderIds, CancellationToken ct, bool includeKnown = false,
-        IReadOnlyCollection<string>? paymentIds = null)
+        IReadOnlyCollection<string>? paymentIds = null, IReadOnlyCollection<string>? expenseIds = null)
     {
         // includeKnown: recover mode, where server-known rows the restored server lacks are re-uploaded too.
         var now = DateTimeOffset.UtcNow;
@@ -178,6 +196,12 @@ public sealed class SyncEngine
         {
             entities.AddRange(await (includeKnown ? UnqueuedPayments(db, businessId) : UnadoptedPayments(db, businessId))
                 .Where(p => paymentIds.Contains(p.Id)).ToListAsync(ct).ConfigureAwait(false));
+        }
+
+        if (expenseIds is { Count: > 0 })
+        {
+            entities.AddRange(await (includeKnown ? UnqueuedExpenses(db, businessId) : UnadoptedExpenses(db, businessId))
+                .Where(e => expenseIds.Contains(e.Id)).ToListAsync(ct).ConfigureAwait(false));
         }
 
         foreach (var entity in entities)
@@ -221,10 +245,29 @@ public sealed class SyncEngine
         }
     }
 
+    private static async Task MarkExpensesKnownAsync(LocalDbContext db, string businessId, IEnumerable<string> expenseIds, CancellationToken ct)
+    {
+        var ids = expenseIds.Distinct().ToList();
+        if (ids.Count > 0)
+        {
+            await db.Expenses.Where(x => x.BusinessId == businessId && ids.Contains(x.Id) && !EF.Property<bool>(x, LocalDbContext.ServerKnownColumn))
+                .ExecuteUpdateAsync(s => s.SetProperty(x => EF.Property<bool>(x, LocalDbContext.ServerKnownColumn), true), ct).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Expenses go up only while the shop's plan (as last pulled) includes profit reports. On Starter, a lapsed
+    /// trial or before the first pull they stay queued here, untouched, and go up after an upgrade.
+    /// </summary>
+    public static bool ExpensesSyncAllowed(string businessId) =>
+        string.Equals(LocalSubscriptionGate.BusinessId, businessId, StringComparison.Ordinal) &&
+        LocalSubscriptionGate.Current?.CanReports == true;
+
     // ------------------------------------------------------------------ push
 
     public async Task PushAsync(string businessId, CancellationToken cancellationToken = default)
     {
+        var expensesRefused = false; // the server said "not on this plan" (gate not pulled yet): hold the rest this run
         while (true)
         {
             List<SyncQueueItem> batch;
@@ -233,10 +276,12 @@ public sealed class SyncEngine
             {
                 var db = scope.ServiceProvider.GetRequiredService<LocalDbContext>();
                 // Parents first (a restored customer must exist before its order), then queue order.
+                var holdExpenses = expensesRefused || !ExpensesSyncAllowed(businessId);
                 batch = await db.SyncQueue.AsNoTracking()
                     .Where(q => q.BusinessId == businessId && q.State == SyncQueueState.Pending)
+                    .Where(q => !holdExpenses || q.EntityType != SyncEntityType.Expense)
                     .OrderBy(q => q.EntityType == SyncEntityType.Customer ? 0 : q.EntityType == SyncEntityType.Measurement ? 1
-                        : q.EntityType == SyncEntityType.Payment ? 3 : 2) // payments after their orders
+                        : q.EntityType == SyncEntityType.Payment ? 3 : q.EntityType == SyncEntityType.Expense ? 4 : 2) // payments after their orders, expenses last
                     .ThenBy(q => q.Id)
                     .Take(BatchSize)
                     .ToListAsync(cancellationToken).ConfigureAwait(false);
@@ -257,7 +302,7 @@ public sealed class SyncEngine
 
             var request = new SyncPushRequest { Operations = batch.Select(ToOperation).ToList(), DeviceId = deviceId };
             var response = await WithRateLimitWaitAsync(ct => _api.PushAsync(request, ct), cancellationToken).ConfigureAwait(false);
-            await ApplyPushResultsAsync(businessId, batch, response, cancellationToken).ConfigureAwait(false);
+            expensesRefused |= await ApplyPushResultsAsync(businessId, batch, response, cancellationToken).ConfigureAwait(false);
 
             if (batch.Count < BatchSize)
             {
@@ -318,13 +363,17 @@ public sealed class SyncEngine
                 case SyncEntityType.Payment:
                     op.Payment = SyncJson.Deserialize<SyncPaymentDto>(item.PayloadJson);
                     break;
+                case SyncEntityType.Expense:
+                    op.Expense = SyncJson.Deserialize<SyncExpenseDto>(item.PayloadJson);
+                    break;
             }
         }
 
         return op;
     }
 
-    private async Task ApplyPushResultsAsync(
+    /// <returns>True when the server refused an expense because the plan doesn't include expenses (it stays queued).</returns>
+    private async Task<bool> ApplyPushResultsAsync(
         string businessId,
         IReadOnlyList<SyncQueueItem> sent,
         SyncPushResponse response,
@@ -347,6 +396,8 @@ public sealed class SyncEngine
                 acked.Select(r => r.Order?.Id),
                 cancellationToken).ConfigureAwait(false);
             var paymentCopies = new List<SyncPaymentDto>();
+            var expenseCopies = new List<SyncExpenseDto>();
+            var expensesRefused = false;
 
             foreach (var sentItem in sent)
             {
@@ -374,6 +425,11 @@ public sealed class SyncEngine
                                 paymentCopies.Add(result.Payment); // e.g. the server's void wins over this device's copy
                             }
 
+                            if (result.Expense is not null)
+                            {
+                                expenseCopies.Add(result.Expense); // e.g. unlinked + "[order removed]" when its order had gone
+                            }
+
                             if (item.Operation == SyncOperation.Delete && item.EntityType == SyncEntityType.Customer)
                             {
                                 // Confirmed gone on the server: children waiting for it never will arrive.
@@ -394,7 +450,14 @@ public sealed class SyncEngine
                             : result.Measurement is not null ? SyncJson.Serialize(result.Measurement)
                             : result.Order is not null ? SyncJson.Serialize(result.Order)
                             : result.Payment is not null ? SyncJson.Serialize(result.Payment)
+                            : result.Expense is not null ? SyncJson.Serialize(result.Expense)
                             : null;
+                        break;
+
+                    case SyncOpStatus.Failed when result.Code == SyncErrorCodes.ExpensesNotAllowed:
+                        // Plan changed before this phone heard: keep it queued, untouched; it goes up after an upgrade.
+                        item.LastError = NeedleBase.Application.Expenses.ExpenseRules.NotAllowedMessage;
+                        expensesRefused = true;
                         break;
 
                     default:
@@ -407,6 +470,7 @@ public sealed class SyncEngine
             }
 
             await ApplyPaymentCopiesAsync(db, businessId, paymentCopies, cancellationToken).ConfigureAwait(false);
+            await ApplyExpenseCopiesAsync(db, businessId, expenseCopies, cancellationToken).ConfigureAwait(false);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             var appliedUpserts = sent.Where(s => s.Operation == SyncOperation.Upsert &&
                 results.TryGetValue(s.Id, out var r) && r.Status == SyncOpStatus.Applied).ToList();
@@ -417,6 +481,8 @@ public sealed class SyncEngine
                 cancellationToken).ConfigureAwait(false);
             await MarkPaymentsKnownAsync(db, businessId,
                 appliedUpserts.Where(s => s.EntityType == SyncEntityType.Payment).Select(s => s.EntityId), cancellationToken).ConfigureAwait(false);
+            await MarkExpensesKnownAsync(db, businessId,
+                appliedUpserts.Where(s => s.EntityType == SyncEntityType.Expense).Select(s => s.EntityId), cancellationToken).ConfigureAwait(false);
             await ApplyDeferredAsync(db, businessId, cancellationToken).ConfigureAwait(false);
             await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
             if (results.Count > 0)
@@ -425,6 +491,8 @@ public sealed class SyncEngine
                 // order detail, lists) reload, debounced (code-gaps G15f).
                 LocalDataVersion.NotifyChangedBySync(businessId);
             }
+
+            return expensesRefused;
         }
         finally
         {
@@ -438,6 +506,7 @@ public sealed class SyncEngine
         SyncErrorCodes.ParentDeleted => "Its customer was deleted on another device.",
         SyncErrorCodes.DeleteRefused => "Still in use on the server, so it wasn't deleted.",
         SyncErrorCodes.PaymentMismatch => "A different payment was saved elsewhere. NeedleBase will not discard a payment without your choice.",
+        SyncErrorCodes.ExpenseMismatch => "A different expense with this id was saved elsewhere. Keep both or keep the saved one.",
         NeedleBase.Application.Contracts.Errors.OrderErrorMessages.NotAssigned =>
             "Saved, but the status wasn't changed: this order is assigned to someone else. Use the shop's copy.",
         not null when code.StartsWith("ORDER_", StringComparison.Ordinal) =>
@@ -446,7 +515,8 @@ public sealed class SyncEngine
     };
 
     private static DateTimeOffset? ServerModified(SyncPushResult result) =>
-        result.Customer?.DateModifiedUtc ?? result.Measurement?.DateModifiedUtc ?? result.Order?.DateModifiedUtc ?? result.Payment?.DateModifiedUtc;
+        result.Customer?.DateModifiedUtc ?? result.Measurement?.DateModifiedUtc ?? result.Order?.DateModifiedUtc ?? result.Payment?.DateModifiedUtc
+           ?? result.Expense?.DateModifiedUtc;
 
     // ------------------------------------------------------------------ pull
 
@@ -617,6 +687,16 @@ public sealed class SyncEngine
                 await MarkPaymentsKnownAsync(db, businessId, ready.Select(p => p.Id), cancellationToken).ConfigureAwait(false);
             }
 
+            // Expenses (phase 5) need no parent: one linked to an order this phone doesn't have shows "Order removed".
+            var incomingExpenses = (page.Expenses ?? []).Where(e => !queued.ContainsKey(SyncEntityType.Expense + ":" + e.Id)).ToList();
+            if (incomingExpenses.Count > 0)
+            {
+                await ApplyExpenseCopiesAsync(db, businessId, incomingExpenses, cancellationToken).ConfigureAwait(false);
+                changedRows |= HasRowChanges(db);
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await MarkExpensesKnownAsync(db, businessId, incomingExpenses.Select(e => e.Id), cancellationToken).ConfigureAwait(false);
+            }
+
             await ApplyDeferredAsync(db, businessId, cancellationToken).ConfigureAwait(false);
             changedRows |= HasRowChanges(db);
 
@@ -655,7 +735,7 @@ public sealed class SyncEngine
     private static bool HasRowChanges(LocalDbContext db) =>
         db.ChangeTracker.Entries().Any(e =>
             e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted &&
-            e.Entity is Customer or MeasurementProfile or Order or OrderLine or Payment);
+            e.Entity is Customer or MeasurementProfile or Order or OrderLine or Payment or Expense);
 
     private static void Defer(LocalDbContext db, Dictionary<string, SyncDeferredItem> existing, string businessId, string type,
         string id, string parentId, string json)
@@ -791,6 +871,53 @@ public sealed class SyncEngine
             entry.Property(p => p.VoidReason).CurrentValue = dto.VoidReason;
             entry.Property(p => p.CreatedAtUtc).CurrentValue = dto.CreatedAtUtc;
             entry.Property(p => p.DateModifiedUtc).CurrentValue = dto.DateModifiedUtc;
+            entry.Property(LocalDbContext.ServerKnownColumn).CurrentValue = true;
+        }
+    }
+
+    /// <summary>Upserts the server's expense copies (immutable except the one-way void and the order detach).</summary>
+    private static async Task ApplyExpenseCopiesAsync(LocalDbContext db, string businessId, IReadOnlyCollection<SyncExpenseDto> expenses, CancellationToken ct)
+    {
+        if (expenses.Count == 0)
+        {
+            return;
+        }
+
+        var ids = expenses.Select(e => e.Id).Distinct().ToList();
+        var local = await db.Expenses.Where(e => e.BusinessId == businessId && ids.Contains(e.Id))
+            .ToDictionaryAsync(e => e.Id, ct).ConfigureAwait(false);
+        foreach (var dto in expenses)
+        {
+            if (!local.TryGetValue(dto.Id, out var entity))
+            {
+                try
+                {
+                    // The server already checked the date; pass its own day as "today" so a phone with a slow clock
+                    // still stores it as sent.
+                    var today = dto.SpentOn > BusinessTime.Today(DateTimeOffset.UtcNow) ? dto.SpentOn : BusinessTime.Today(DateTimeOffset.UtcNow);
+                    entity = Expense.Create(dto.Id, businessId, dto.Amount, dto.Category, dto.SpentOn, dto.Note, dto.OrderId, null,
+                        today, dto.CreatedAtUtc);
+                }
+                catch (Exception ex) when (ex is ArgumentException or NeedleBase.Domain.Exceptions.DomainRuleException)
+                {
+                    continue; // a row this build can't represent (e.g. a newer category): never crash the sync
+                }
+
+                db.Expenses.Add(entity);
+                local[entity.Id] = entity;
+            }
+
+            var entry = db.Entry(entity);
+            entry.Property(e => e.Amount).CurrentValue = dto.Amount;
+            entry.Property(e => e.Category).CurrentValue = dto.Category;
+            entry.Property(e => e.SpentOn).CurrentValue = dto.SpentOn;
+            entry.Property(e => e.Note).CurrentValue = dto.Note;
+            entry.Property(e => e.OrderId).CurrentValue = dto.OrderId;
+            entry.Property(e => e.IsVoided).CurrentValue = dto.IsVoided;
+            entry.Property(e => e.VoidedAtUtc).CurrentValue = dto.VoidedAtUtc;
+            entry.Property(e => e.VoidReason).CurrentValue = dto.VoidReason;
+            entry.Property(e => e.CreatedAtUtc).CurrentValue = dto.CreatedAtUtc;
+            entry.Property(e => e.DateModifiedUtc).CurrentValue = dto.DateModifiedUtc;
             entry.Property(LocalDbContext.ServerKnownColumn).CurrentValue = true;
         }
     }
@@ -962,6 +1089,12 @@ public sealed class SyncEngine
         var payments = (await db.Payments.Where(p => p.BusinessId == businessId)
             .Select(p => new { p.Id, p.OrderId, Known = !recover && EF.Property<bool>(p, LocalDbContext.ServerKnownColumn) })
             .ToListAsync(ct).ConfigureAwait(false)).Where(p => !seen.Payments.Contains(p.Id) && !keep.Contains(p.Id)).ToList();
+        var expenses = (await db.Expenses.Where(e => e.BusinessId == businessId)
+            .Select(e => new { e.Id, Known = !recover && EF.Property<bool>(e, LocalDbContext.ServerKnownColumn) })
+            .ToListAsync(ct).ConfigureAwait(false)).Where(e => !seen.Expenses.Contains(e.Id) && !keep.Contains(e.Id)).ToList();
+        // Server-known expenses the full pull didn't send are gone for this phone (another plan or role): drop them.
+        var deleteExpenses = expenses.Where(e => e.Known).Select(e => e.Id).ToList();
+        var adoptExpenses = expenses.Where(e => !e.Known).Select(e => e.Id).ToList();
         var deletePayments = payments.Where(p => p.Known).Select(p => p.Id).ToList();
         var adoptPayments = payments.Where(p => !p.Known).ToList();
         // An order stays while a payment that isn't being pruned still hangs off it (the local FK cascades).
@@ -984,12 +1117,13 @@ public sealed class SyncEngine
         var adoptCustomers = customers.Where(c => !c.Known).Select(c => c.Id).ToList();
         var deleteCustomers = customers.Where(c => c.Known && !neededCustomers.Contains(c.Id)).Select(c => c.Id).ToList();
 
+        await db.Expenses.Where(e => e.BusinessId == businessId && deleteExpenses.Contains(e.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.Payments.Where(p => p.BusinessId == businessId && deletePayments.Contains(p.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.Orders.Where(o => o.BusinessId == businessId && deleteOrders.Contains(o.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.MeasurementProfiles.Where(m => m.BusinessId == businessId && deleteMeasurements.Contains(m.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await db.Customers.Where(c => c.BusinessId == businessId && deleteCustomers.Contains(c.Id)).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await QueueCreatesAsync(db, businessId, adoptCustomers, adoptMeasurements.Select(m => m.Id).ToList(), adoptOrders, ct, includeKnown: recover,
-            paymentIds: adoptPayments.Select(p => p.Id).ToList()).ConfigureAwait(false);
+            paymentIds: adoptPayments.Select(p => p.Id).ToList(), expenseIds: adoptExpenses).ConfigureAwait(false);
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
 
@@ -1321,6 +1455,46 @@ public sealed class SyncEngine
                     break;
                 }
 
+                case SyncErrorCodes.ExpenseMismatch:
+                {
+                    // Same id, different expense on the server. Keep theirs: take the server copy. Keep mine = "keep both":
+                    // this device's expense is re-recorded under a new id, then the server copy takes the old id.
+                    var serverExpense = SyncJson.Deserialize<SyncExpenseDto>(item.ConflictServerJson);
+                    var mine = await db.Expenses.FirstOrDefaultAsync(e => e.BusinessId == businessId && e.Id == item.EntityId, cancellationToken)
+                        .ConfigureAwait(false);
+                    db.SyncQueue.Remove(item);
+                    if (keepMine && mine is not null)
+                    {
+                        var now = DateTimeOffset.UtcNow;
+                        var today = BusinessTime.Today(now);
+                        var copy = Expense.Create(IdGenerator.NewId(), businessId, mine.Amount, mine.Category,
+                            mine.SpentOn > today ? today : mine.SpentOn, mine.Note, mine.OrderId, mine.RecordedByUserId, today, now);
+                        if (mine.IsVoided)
+                        {
+                            copy.Void(mine.VoidReason, mine.VoidedByUserId, now);
+                        }
+
+                        db.Expenses.Add(copy);
+                        db.SyncQueue.Add(SyncQueueWriter.CreateItemFor(copy, now));
+                    }
+
+                    if (serverExpense is not null)
+                    {
+                        await ApplyExpenseCopiesAsync(db, businessId, [serverExpense], cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        if (mine is not null)
+                        {
+                            db.Expenses.Remove(mine);
+                        }
+
+                        (await GetOrAddDeviceInfoAsync(db, businessId, cancellationToken).ConfigureAwait(false)).ResyncPending = true;
+                    }
+
+                    break;
+                }
+
                 case SyncErrorCodes.ParentDeleted when keepMine && item.EntityType == SyncEntityType.Payment:
                 {
                     // Its order was deleted elsewhere: re-create the order (from this device's copy), then the payment.
@@ -1509,6 +1683,9 @@ public sealed class SyncEngine
             case SyncEntityType.Payment:
                 await db.Payments.Where(p => p.BusinessId == businessId && p.Id == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
                 break;
+            case SyncEntityType.Expense:
+                await db.Expenses.Where(e => e.BusinessId == businessId && e.Id == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+                break;
         }
     }
 
@@ -1525,6 +1702,9 @@ public sealed class SyncEngine
             case SyncEntityType.Payment:
                 var p = SyncJson.Deserialize<SyncPaymentDto>(item.ConflictServerJson);
                 return (p?.DateModifiedUtc, null, null, null);
+            case SyncEntityType.Expense:
+                var x = SyncJson.Deserialize<SyncExpenseDto>(item.ConflictServerJson);
+                return (x?.DateModifiedUtc, null, null, null);
             default:
                 var o = SyncJson.Deserialize<SyncOrderDto>(item.ConflictServerJson);
                 return (o?.DateModifiedUtc, null, null, o);
@@ -1538,9 +1718,11 @@ public sealed class SyncEngine
         public HashSet<string> Measurements { get; } = new(StringComparer.Ordinal);
         public HashSet<string> Orders { get; } = new(StringComparer.Ordinal);
         public HashSet<string> Payments { get; } = new(StringComparer.Ordinal);
+        public HashSet<string> Expenses { get; } = new(StringComparer.Ordinal);
 
         public void Add(SyncPullResponse page)
         {
+            Expenses.UnionWith((page.Expenses ?? []).Select(e => e.Id));
             Payments.UnionWith((page.Payments ?? []).Select(p => p.Id));
             Customers.UnionWith(page.Customers.Select(c => c.Id));
             Measurements.UnionWith(page.Measurements.Select(m => m.Id));

@@ -14,7 +14,7 @@ namespace NeedleBase.Mobile.Data.Data;
 /// <see cref="SyncQueueItem"/>s inside the same SaveChanges. One item per entity; later edits are
 /// coalesced (keeps the first base version, latest payload). A create followed by a delete before
 /// sync cancels out. Order lines travel inside their order's payload. Payments queue as upserts only
-/// (record, then the one-way void); their ParentId is the order.
+/// (record, then the one-way void); their ParentId is the order. Expenses likewise (ParentId = linked order, if any).
 /// </summary>
 internal static class SyncQueueWriter
 {
@@ -28,7 +28,7 @@ internal static class SyncQueueWriter
 
         var entries = db.ChangeTracker.Entries()
             .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted &&
-                        e.Entity is Customer or MeasurementProfile or Order or Payment)
+                        e.Entity is Customer or MeasurementProfile or Order or Payment or Expense)
             .ToList();
         if (entries.Count == 0)
         {
@@ -143,6 +143,11 @@ internal static class SyncQueueWriter
             Payment p => (SyncEntityType.Payment, p.Id, p.BusinessId, p.OrderId,
                 "Payment " + NeedleBase.Application.Contracts.Payments.Money.Format(p.Amount),
                 SyncJson.Serialize(SyncMapper.ToDto(p))),
+            // ParentId = the linked order (keeps it through a resync prune); never waits on it: the server keeps an
+            // expense whose order is gone (unlinked, note marked "[order removed]").
+            Expense x => (SyncEntityType.Expense, x.Id, x.BusinessId, x.OrderId,
+                "Expense " + NeedleBase.Application.Contracts.Payments.Money.Format(x.Amount),
+                SyncJson.Serialize(SyncMapper.ToDto(x))),
             _ => throw new InvalidOperationException("Not a synced entity.")
         };
 

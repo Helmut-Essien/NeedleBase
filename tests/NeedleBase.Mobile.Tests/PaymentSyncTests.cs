@@ -486,7 +486,7 @@ public partial class PaymentSyncTests
     }
 
     [Fact]
-    public void Migrator_LatestVersion_IncludesFreeMode() => Assert.Equal(12, LocalSchemaMigrator.LatestVersion);
+    public void Migrator_LatestVersion_IncludesExpenses() => Assert.Equal(13, LocalSchemaMigrator.LatestVersion);
 
     // ------------------------------------------------------------------ helpers
 

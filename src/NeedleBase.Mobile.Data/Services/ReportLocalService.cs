@@ -8,7 +8,7 @@ namespace NeedleBase.Mobile.Data.Services;
 
 /// <summary>
 /// Profit and monthly reports from this phone's copy of the shop (works offline). Same maths as the server
-/// (<see cref="MonthlyReportCalculator"/>); payments still waiting to sync are included.
+/// (<see cref="MonthlyReportCalculator"/>); payments and expenses still waiting to sync are included.
 /// </summary>
 public interface IReportLocalService
 {
@@ -52,8 +52,14 @@ public sealed class ReportLocalService : IReportLocalService
             .Select(p => new ReportPaymentRow(p.Amount, p.Method, p.RecordedAtUtc))
             .ToList();
 
-        // Expenses aren't stored on the phone yet (expenses plan chunk 6 adds LocalExpense); until then the phone
-        // report has no expenses, so profit equals money in.
-        return MonthlyReportCalculator.Build(month, today, orderRows, paymentRows, []);
+        // Expenses are dated (Accra SpentOn): same six months by date, as the server. Voided skipped; queued ones count.
+        var firstDay = ReportRules.FirstOfMonth(month).AddMonths(-(ReportRules.TrendMonths - 1));
+        var afterLastDay = ReportRules.FirstOfMonth(month).AddMonths(1);
+        var expenseRows = await db.Expenses.AsNoTracking()
+            .Where(e => e.BusinessId == businessId && !e.IsVoided && e.SpentOn >= firstDay && e.SpentOn < afterLastDay)
+            .Select(e => new ReportExpenseRow(e.Amount, e.Category, e.SpentOn, false))
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        return MonthlyReportCalculator.Build(month, today, orderRows, paymentRows, expenseRows);
     }
 }

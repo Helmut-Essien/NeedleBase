@@ -74,7 +74,7 @@ public sealed class LocalDbContext : DbContext
         foreach (var entry in ChangeTracker.Entries())
         {
             if (entry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted &&
-                entry.Entity is Customer or MeasurementProfile or Order or OrderLine or Payment)
+                entry.Entity is Customer or MeasurementProfile or Order or OrderLine or Payment or Expense)
             {
                 throw new Sync.SubscriptionReadOnlyException();
             }
@@ -101,6 +101,7 @@ public sealed class LocalDbContext : DbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Expense> Expenses => Set<Expense>();
     public DbSet<SyncQueueItem> SyncQueue => Set<SyncQueueItem>();
     public DbSet<DeviceInfo> DeviceInfo => Set<DeviceInfo>();
     public DbSet<SyncDeferredItem> SyncDeferred => Set<SyncDeferredItem>();
@@ -225,6 +226,26 @@ public sealed class LocalDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Expenses (plans step 7b-2): no FK to Orders — an expense outlives its order ("Order removed").
+        builder.Entity<Expense>(e =>
+        {
+            e.ToTable("Expenses");
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Id).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.BusinessId).HasMaxLength(FieldLimits.Id).IsRequired();
+            e.Property(x => x.Amount).HasPrecision(18, 2);
+            e.Property(x => x.Category).HasMaxLength(FieldLimits.ExpenseCategory).IsRequired();
+            e.Property(x => x.Note).HasMaxLength(FieldLimits.Notes);
+            e.Property(x => x.OrderId).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.RecordedByUserId).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.VoidedByUserId).HasMaxLength(FieldLimits.Id);
+            e.Property(x => x.VoidReason).HasMaxLength(FieldLimits.Notes);
+            e.HasIndex(x => new { x.BusinessId, x.SpentOn });
+            e.HasIndex(x => new { x.BusinessId, x.OrderId });
+            e.Property<bool>(ServerKnownColumn);
+            e.HasIndex(x => x.BusinessId, "IX_Expenses_Unknown").HasFilter("\"ServerKnown\" = 0");
         });
 
         builder.Entity<SyncQueueItem>(e =>

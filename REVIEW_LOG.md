@@ -2595,3 +2595,51 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — clean re-verify; gates PASS; no product/skill changes beyond this log.
+
+## Ralph Balanced — Expenses Mobile.Data (chunk 6) — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` (synced with origin at start; dirty WT)
+- Slice: working-tree expenses plan chunk 6 (LocalDbContext Expenses v13, SyncQueueWriter, SyncEngine plan-hold/apply/prune/mismatch, ExpenseLocalService, ReportLocalService spent, FreeUpgrade remap, MauiProgram DI+Tailor purge, ExpensesMobileTests×12, expenses-plan Done)
+- Commit auth: yes (this prompt)
+- Gates: Release `-warnaserror`; Domain/App/Web/Mobile/Api; Postgres :5435; JBR
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: M expenses-plan, LocalDbContext, LocalSchemaMigrator, SyncQueueWriter, FreeUpgrade,
+     ReportLocalService, SyncEngine, MauiProgram, PaymentSyncTests
+     ?? ExpenseLocalService.cs, IExpenseLocalService.cs, ExpensesMobileTests.cs
+cmd: git diff --stat (product before skills)
+out: 9 files changed, 274 insertions(+), 20 deletions(-) (+ ~925 LOC new)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | RunAsync push→pull→optional expense push; ApplyExpenseCopies; plan-hold; ExpensesMobile×12 | none | no FK to Orders; void merge; upgrade second push |
+| 2 Edge | PASS | v12→v13 migrate; unknown plan allows record+hold; Starter refuses record; purge keeps queued; Free remap; wipe | none | EXPENSES_FORBIDDEN → Failed (plan: engine role-blind) |
+| 3 Security | PASS | BusinessId filters; PlanSaysNo on record; read-only throws; Tailor purge after sync | none | — |
+| 4 Senior | PASS | class B (extra entity type on push/pull); no harness → perf N/A | Fixed P2: skills still “Mobile.Data remain” | Sync details “Waiting for Workshop” deferred chunk 7 |
+| 5 UI/UX | N/A | no expense screens in slice (MauiProgram DI only) | — | — |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 387 / 226 / **403** / 389; ExpensesMobile 12; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** skill status → chunks 1–6 done; phone/web UI remain (plans/api/phases/domain/mobile-sync/mobile).
+**Dismissed:** product logic; EXPENSES_FORBIDDEN→Failed per plan; ExpenseMismatch copy P3.
+**Open:** none blocking. Residual: Sync details held-item copy (chunk 7).
+**Out-of-scope:** phone/web UI chunks 7–8.
+
+### Teardown
+Removed `.cursor/ralph/`. Backups `~/.cache/needlebase-ci/backups/ralph-expense-m6-*`.
+
+### Status
+**COMPLETE** — chunk 6 gates PASS; no open P0/P1; commit authorized.

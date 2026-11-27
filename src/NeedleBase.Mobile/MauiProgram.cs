@@ -65,7 +65,16 @@ public static class MauiProgram
         {
             var sync = new SyncService(sp.GetRequiredService<SyncEngine>(), sp.GetRequiredService<IAuthService>(), sp.GetRequiredService<IConnectivity>());
             var consent = sp.GetRequiredService<NeedleBase.Mobile.Data.Services.WhatsAppConsentSync>();
-            sync.AfterRun = (businessId, ct) => consent.PushAsync(businessId, sp.GetRequiredService<StaffApi>(), ct);
+            sync.AfterRun = async (businessId, ct) =>
+            {
+                await consent.PushAsync(businessId, sp.GetRequiredService<StaffApi>(), ct).ConfigureAwait(false);
+                // Tailor on this phone (e.g. demoted): drop synced expense copies; queued ones stay (real money).
+                var user = await sp.GetRequiredService<IAuthService>().GetCachedUserAsync().ConfigureAwait(false);
+                if (user is not null && !NeedleBase.Application.Expenses.ExpenseRules.CanManage(user.Role))
+                {
+                    await sp.GetRequiredService<IExpenseLocalService>().PurgeHiddenAsync(businessId, ct).ConfigureAwait(false);
+                }
+            };
             sync.ExtraPending = businessId => consent.PendingCountAsync(businessId);
             consent.Changed += (_, _) => sync.Trigger();
             return sync;
@@ -84,6 +93,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IMeasurementLocalService, MeasurementLocalService>();
         builder.Services.AddSingleton<IOrderLocalService, OrderLocalService>();
         builder.Services.AddSingleton<IPaymentLocalService, PaymentLocalService>();
+        builder.Services.AddSingleton<IExpenseLocalService, ExpenseLocalService>();
         builder.Services.AddSingleton<IReportLocalService, ReportLocalService>();
         builder.Services.AddSingleton<SubscriptionStatusStore>();
         builder.Services.AddSingleton<ShopExportApi>();

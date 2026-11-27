@@ -18,7 +18,8 @@ public sealed class FreeUpgradeLocalService : IFreeUpgradeLocalService
         return await db.Customers.AsNoTracking().AnyAsync(c => c.BusinessId == businessId, cancellationToken).ConfigureAwait(false)
             || await db.Orders.AsNoTracking().AnyAsync(o => o.BusinessId == businessId, cancellationToken).ConfigureAwait(false)
             || await db.MeasurementProfiles.AsNoTracking().AnyAsync(m => m.BusinessId == businessId, cancellationToken).ConfigureAwait(false)
-            || await db.Payments.AsNoTracking().AnyAsync(p => p.BusinessId == businessId, cancellationToken).ConfigureAwait(false);
+            || await db.Payments.AsNoTracking().AnyAsync(p => p.BusinessId == businessId, cancellationToken).ConfigureAwait(false)
+            || await db.Expenses.AsNoTracking().AnyAsync(e => e.BusinessId == businessId, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task RemapBusinessIdAsync(
@@ -47,6 +48,7 @@ public sealed class FreeUpgradeLocalService : IFreeUpgradeLocalService
                     "Orders",
                     "OrderLines",
                     "Payments",
+                    "Expenses",
                     "SyncQueue",
                     "SyncDeferred",
                     "WhatsAppConsents",

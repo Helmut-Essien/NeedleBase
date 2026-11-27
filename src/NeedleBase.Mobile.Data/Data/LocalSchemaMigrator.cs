@@ -239,6 +239,33 @@ public static class LocalSchemaMigrator
         ALTER TABLE "Customers" ADD COLUMN "Email" TEXT NULL;
         """;
 
+    /// <summary>
+    /// Version 13 = expenses (plans step 7b-2): money paid out, dated by Accra day, optionally linked to an order.
+    /// No foreign key to Orders: an expense outlives its order ("Order removed"). Purely additive.
+    /// </summary>
+    private const string V13Expenses = """
+        CREATE TABLE IF NOT EXISTS "Expenses" (
+            "Id" TEXT NOT NULL CONSTRAINT "PK_Expenses" PRIMARY KEY,
+            "BusinessId" TEXT NOT NULL,
+            "Amount" TEXT NOT NULL,
+            "Category" TEXT NOT NULL,
+            "SpentOn" TEXT NOT NULL,
+            "Note" TEXT NULL,
+            "OrderId" TEXT NULL,
+            "RecordedByUserId" TEXT NULL,
+            "IsVoided" INTEGER NOT NULL,
+            "VoidedAtUtc" TEXT NULL,
+            "VoidedByUserId" TEXT NULL,
+            "VoidReason" TEXT NULL,
+            "CreatedAtUtc" TEXT NOT NULL,
+            "DateModifiedUtc" TEXT NOT NULL,
+            "ServerKnown" INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS "IX_Expenses_BusinessId_OrderId" ON "Expenses" ("BusinessId", "OrderId");
+        CREATE INDEX IF NOT EXISTS "IX_Expenses_BusinessId_SpentOn" ON "Expenses" ("BusinessId", "SpentOn");
+        CREATE INDEX IF NOT EXISTS "IX_Expenses_Unknown" ON "Expenses" ("BusinessId") WHERE "ServerKnown" = 0;
+        """;
+
     /// <summary>Ordered steps; index + 1 is the version the step produces.</summary>
     private static readonly string[] Steps =
     [
@@ -254,6 +281,7 @@ public static class LocalSchemaMigrator
         V10WhatsAppConsent,
         V11FreeMode,
         V12CustomerEmail,
+        V13Expenses,
     ];
 
     public static int LatestVersion => Steps.Length;
