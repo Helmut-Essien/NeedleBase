@@ -26,6 +26,10 @@ public static class AuditActions
     public const string PaymentVoided = "payment.voided";
     public const string PaymentUpdated = "payment.updated";
     public const string PaymentDeleted = "payment.deleted";
+    public const string ExpenseRecorded = "expense.recorded";
+    public const string ExpenseVoided = "expense.voided";
+    public const string ExpenseUpdated = "expense.updated";
+    public const string ExpenseDeleted = "expense.deleted";
     public const string BusinessCreated = "business.created";
     public const string BusinessUpdated = "business.updated";
     public const string LicenseAttached = "business.license_attached";
@@ -68,6 +72,8 @@ public static class AuditActions
     public static bool IsPayment(string action) =>
         action.StartsWith("payment.", StringComparison.Ordinal) || action == PaymentsViewed;
 
+    public static bool IsExpense(string action) => action.StartsWith("expense.", StringComparison.Ordinal);
+
     public static string Display(string action) => action switch
     {
         CustomerCreated => "Customer added",
@@ -89,6 +95,10 @@ public static class AuditActions
         PaymentVoided => "Payment voided",
         PaymentUpdated => "Payment changed",
         PaymentDeleted => "Payment removed",
+        ExpenseRecorded => "Expense recorded",
+        ExpenseVoided => "Expense voided",
+        ExpenseUpdated => "Expense changed",
+        ExpenseDeleted => "Expense removed",
         BusinessCreated => "Business created",
         BusinessUpdated => "Business edited",
         LicenseAttached => "Licence key added",
@@ -136,6 +146,7 @@ public static class AuditActions
         "GarmentTemplate" => "garment",
         "MeasuredAtUtc" => "measured on",
         "RecordedAtUtc" => "payment date",
+        "SpentOn" => "date spent",
         "IsVoided" => "voided",
         "VoidReason" => "void reason",
         "PhotoRef" => "photo",
@@ -156,6 +167,7 @@ public static class AuditActions
         ("measurement.", "Measurements"),
         ("order.", "Orders"),
         ("payment.", "Payments"),
+        ("expense.", "Expenses"),
         ("staff.", "Team"),
         ("business.", "Business details"),
         ("auth.", "Sign-in and security"),

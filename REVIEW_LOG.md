@@ -2164,3 +2164,50 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — unpushed expenses slice re-verified; skill status aligned; gates PASS.
+
+## Ralph Balanced — Expenses EF chunk 2 — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` (in sync with origin at start)
+- Slice: WT expenses chunk 2 — EF `Expenses`, migration `20261127084705_Expenses`, audit, epoch restamp, delete-account purge, `ExpensePersistenceTests`
+- Build/lint/test: Release `-warnaserror`; full test projects; Postgres :5435; JBR
+- Commit auth: yes (RALPH BALANCED prompt)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: M plan/IApplicationDbContext/AuditActions/SyncEntityType/AuditCapture/DeleteAccount/ApplicationDbContext/snapshot;
+     ?? Expenses migration (+Designer), ExpensePersistenceTests, .cursor/ralph/
+cmd: git diff --stat
+out: 8 files changed, 186 insertions(+), 4 deletions(-) (+ untracked migration/tests)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | Read migration/DbContext/DeleteAccount; ExpensePersistence×3 | Fixed P2: cross-tenant assert missing | Expenses purged before Orders; Order FK NoAction; trigger `trg_expenses_sync_tx` |
+| 2 Edge | PASS | FK delete test; SyncEntityType.Expense ∉ All | none | sync ops still rejected until chunk 5 |
+| 3 Security | PASS | tenancy filter + audit note mask; purge IgnoreQueryFilters by BusinessId | Fixed isolation test | notes not in ChangesJson (test evidence) |
+| 4 Senior | PASS | class B (new table/indexes/epoch UPDATE); no harness → perf N/A | none | CI `db-migrate.sh script` still generates artifact; not a committed file |
+| 5 UI/UX | N/A | no UI files in slice | — | EF/Infra/tests/plan only |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 368 / 226 / 391 / 360; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** `ExpensePersistenceTests.cs:86` — asserted null-business fail-closed only while named “OtherShopsCantSeeIt”; now sets `CurrentBusinessId` to another shop and asserts hide + `IgnoreQueryFilters` still sees owner row.
+**Dismissed:** SyncEntityType.Expense constant out of `All` until chunk 5 (plan + code comment).
+**Open:** none in-slice.
+**Out-of-scope:** ExpensesViewed / API service (chunk 3); sync push/pull (chunk 5).
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — chunk 2 gates PASS; cross-tenant persistence test strengthened.

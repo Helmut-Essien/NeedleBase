@@ -213,8 +213,8 @@ All new pages: XAML with compiled bindings (`x:DataType`) or code-only `Ui` buil
 
 ## 9. Build order (one PR-sized chunk at a time, stop for the user between chunks if asked)
 
-1. Domain (`Expense`, `ExpenseCategory`, limits, `MoneyRules`) + tests. **Done 27 Nov 2026** (`Domain/Entities/Expense.cs`, `Enums/ExpenseCategory.cs`, `Common/MoneyRules.cs` shared with `Payment`, `FieldLimits.ExpenseCategory`, `DomainErrorCodes.ExpenseInvalid`; `ExpenseTests`). `SyncEntityType.Expense` waits for chunk 5 so sync never accepts an op it can't apply.
-2. Infrastructure EF + migration + audit capture + epoch restamp.
+1. Domain (`Expense`, `ExpenseCategory`, limits, `MoneyRules`) + tests. **Done 27 Nov 2026** (`Domain/Entities/Expense.cs`, `Enums/ExpenseCategory.cs`, `Common/MoneyRules.cs` shared with `Payment`, `FieldLimits.ExpenseCategory`, `DomainErrorCodes.ExpenseInvalid`; `ExpenseTests`). `SyncEntityType.Expense` constant added in chunk 2 (for server stamping) but joins `All` only in chunk 5, so sync never accepts an op it can't apply.
+2. Infrastructure EF + migration + audit capture + epoch restamp. **Done 27 Nov 2026** (`ApplicationDbContext` `Expenses` config + `IApplicationDbContext.Expenses`; migration `20261127084705_Expenses` with `trg_expenses_sync_tx`, verified on a fresh DB, the dev DB and Down/Up; `BumpSyncEpochAsync` restamps Expenses; SaveChanges stamps `SyncModifiedUtc` via `SyncEntityType.Expense`, which stays **out of** `SyncEntityType.All` until chunk 5; `AuditCapture.ExpenseEvents` + `AuditActions` expense.recorded/voided/updated/deleted, "Expenses" activity group, recorder/voider ids skipped in change lists; owner shop delete purges Expenses before Orders; tests `ExpensePersistenceTests`). No check constraints: Payments have none, the Domain enforces the rules.
 3. Application/Infrastructure service, validators, `RecordError`/`ApiProblems`, order-delete guard, controller + API tests.
 4. Reports calculator/DTO + export + plan email + tests.
 5. Sync contracts, server push/pull + tests.

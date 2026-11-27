@@ -22,6 +22,9 @@ public interface IApplicationDbContext
 
     DbSet<Payment> Payments { get; }
 
+    /// <summary>Money paid out (plans step 7b-2). Append-only and voidable like payments.</summary>
+    DbSet<Expense> Expenses { get; }
+
     /// <summary>Sync tombstones (written by the DbContext on delete; read by sync pull).</summary>
     DbSet<DeletedItem> DeletedItems { get; }
 

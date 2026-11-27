@@ -26,7 +26,9 @@ internal static class AuditCapture
     {
         nameof(Entity.Id), "BusinessId", "CreatedAtUtc", "DateModifiedUtc", "VoidedAtUtc", "JoinedAtUtc",
         nameof(OrderLine.MeasurementFieldsJson), nameof(OrderLine.SortOrder),
-        nameof(OrderLine.MeasurementTakenAtUtc)
+        nameof(OrderLine.MeasurementTakenAtUtc),
+        // The actor is already on the audit row itself.
+        nameof(Expense.RecordedByUserId), nameof(Expense.VoidedByUserId)
     };
 
     private static readonly HashSet<string> HiddenText = new(StringComparer.Ordinal)
@@ -61,6 +63,7 @@ internal static class AuditCapture
                     case MeasurementProfile m: Measurement(entry, m); break;
                     case Order o: OrderEvents(entry, o); break;
                     case Payment p: PaymentEvents(entry, p); break;
+                    case Expense x: ExpenseEvents(entry, x); break;
                     case StaffMembership s: Staff(entry, s); break;
                     case Business b: BusinessEvents(entry, b); break;
                 }
@@ -216,6 +219,36 @@ internal static class AuditCapture
                     break;
                 case EntityState.Deleted:
                     Add(p.BusinessId, AuditActions.PaymentDeleted, $"Removed payment {amount}", "payment", p.Id, orderId: p.OrderId, customerId: p.CustomerId);
+                    break;
+            }
+        }
+
+        void ExpenseEvents(EntityEntry e, Expense x)
+        {
+            var amount = $"{Money.Format(x.Amount)} ({ExpenseCategory.DisplayName(x.Category)})";
+            switch (e.State)
+            {
+                case EntityState.Added:
+                    Add(x.BusinessId, AuditActions.ExpenseRecorded, $"Recorded expense {amount}", "expense", x.Id,
+                        orderId: x.OrderId, changes: Snapshot(e));
+                    break;
+                case EntityState.Modified:
+                    var d = Diff(e);
+                    if (d.Any(c => c.Field == nameof(Expense.IsVoided) && c.New == "true"))
+                    {
+                        var reason = string.IsNullOrWhiteSpace(x.VoidReason) ? string.Empty : ": " + AuditMask.Short(x.VoidReason);
+                        Add(x.BusinessId, AuditActions.ExpenseVoided, $"Voided expense {amount}{reason}", "expense", x.Id,
+                            orderId: x.OrderId, changes: d);
+                    }
+                    else if (d.Count > 0)
+                    {
+                        Add(x.BusinessId, AuditActions.ExpenseUpdated, $"Changed expense {amount}: {Fields(d)}", "expense", x.Id,
+                            orderId: x.OrderId, changes: d);
+                    }
+
+                    break;
+                case EntityState.Deleted:
+                    Add(x.BusinessId, AuditActions.ExpenseDeleted, $"Removed expense {amount}", "expense", x.Id, orderId: x.OrderId);
                     break;
             }
         }

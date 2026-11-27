@@ -269,6 +269,7 @@ public sealed partial class AuthService
         // Order respects foreign keys. ExecuteDelete is not intercepted, so no sync tombstones are written
         // for a shop that is already closed.
         await _db.Payments.IgnoreQueryFilters().Where(x => x.BusinessId == businessId).ExecuteDeleteAsync(cancellationToken);
+        await _db.Expenses.IgnoreQueryFilters().Where(x => x.BusinessId == businessId).ExecuteDeleteAsync(cancellationToken);
         await _db.WhatsAppMessages.IgnoreQueryFilters().Where(x => x.BusinessId == businessId).ExecuteDeleteAsync(cancellationToken);
         await _db.OrderLines.IgnoreQueryFilters().Where(x => x.BusinessId == businessId).ExecuteDeleteAsync(cancellationToken);
         await _db.Orders.IgnoreQueryFilters().Where(x => x.BusinessId == businessId).ExecuteDeleteAsync(cancellationToken);
