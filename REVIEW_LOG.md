@@ -2452,3 +2452,51 @@ Removed `.cursor/ralph/`. Backups under `~/.cache/needlebase-ci/backups/ralph-un
 
 ### Status
 **COMPLETE** — unpushed chunk 4 re-verified; skill status aligned; gates PASS.
+
+## Ralph Balanced — Expenses chunk 4 unpushed re-verify (2) — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead 2 of `origin/PlanNameCatalogue`
+- Slice: `origin/PlanNameCatalogue..HEAD` = `0a510c5` + `8e2139f` (chunk 4 product + prior skill re-verify)
+- WT clean at start
+- Gates: Release `-warnaserror`; Domain/App/Web/Mobile/Api; Postgres :5435; JBR
+- Commit auth: yes (user: rerun the loop again)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (clean)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 0a510c5 Record expenses chunk 4 unpushed re-verify; mark Domain–reports built in skills.
+     8e2139f Add expense spend and profit to monthly reports, export, and owner email (chunk 4).
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | MonthlyReports void filter; MonthlyReportService SpentOn window; PlanEmail LoadLastMonthProfit; OrderErrorMessages.cs:35 Keep the order | none | prior fixes hold |
+| 2 Edge | PASS | focused MonthlyReport|PlanEmail 46; Api spent/export/email 3 | none | ReportLocalService `[]` until chunk 6 |
+| 3 Security | PASS | export BusinessId filters; RequireOwner | none | — |
+| 4 Senior | PASS | class B; no harness → perf N/A; skill status re-check | none | web/mobile/sync “planned” = UI/sync surfaces still open (correct); plans/api/phases/domain already say chunks 1–4 done |
+| 5 UI/UX | N/A | CostsNote still Index.cshtml:60 / ReportsPage.cs:118 | — | deferred chunks 7–8 |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 387 / 226 / 391 / 378; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** none.
+**Dismissed:** web/mobile/sync skill “Expenses planned” — scoped to UI/sync chunks still open; not false “not started” for Domain–reports.
+**Open:** none.
+**Out-of-scope:** chunks 5–8; email↔ProfitNote P3 copy.
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — clean re-verify; gates PASS; no product or skill changes required beyond this log.
