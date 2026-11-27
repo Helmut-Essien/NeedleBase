@@ -2405,3 +2405,50 @@ Removed `.cursor/ralph/` (scratchpad + dir).
 
 ### Status
 **COMPLETE** — chunk 4 gates PASS; no open P0/P1; commit authorized.
+
+## Ralph Balanced — Expenses chunk 4 unpushed re-verify — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead 1 of `origin/PlanNameCatalogue`
+- Slice: `origin/PlanNameCatalogue..HEAD` = `8e2139f` (expenses reports/export/email chunk 4)
+- WT clean at start (then skill status fixes + this log)
+- Gates: Release `-warnaserror`; Domain/App/Web/Mobile/Api tests; Postgres :5435; JBR
+- Commit auth: yes (user: run the loop again on unpushed commits)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (clean at discovery)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 8e2139f Add expense spend and profit to monthly reports, export, and owner email (chunk 4).
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | MonthlyReports.cs:126–186; MonthlyReportService.cs:80–88; PlanEmailService.cs:556–570 | none new | voided + Accra windows hold |
+| 2 Edge | PASS | ReportLocalService `[]`; IsEmpty+ExpenseCount; prior focused tests | none | — |
+| 3 Security | PASS | Export RequireOwner + BusinessId; email IgnoreQueryFilters+BusinessId | none | voided in export by design |
+| 4 Senior | PASS | class B; no harness → perf N/A | Fixed P2: skills still said expenses “planned/not started” after chunks 1–4 (`needlebase-plans/SKILL.md`, `needlebase-api/SKILL.md:111`, `needlebase-phases/SKILL.md:34`, `needlebase-domain/SKILL.md:39`) | CostsNote until UI 7/8; email note P3 residual |
+| 5 UI/UX | N/A | no UI in unpushed product files | — | CostsNote still Index.cshtml:60 / ReportsPage.cs:118 |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 387 / 226 / 391 / 378; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** skill status drift — plans/api/phases/domain now say expenses chunks 1–4 built; sync/UI remain.
+**Dismissed:** product findings from prior chunk-4 review (email note P3; CostsNote deferred).
+**Open:** none in-slice.
+**Out-of-scope:** sync/UI chunks 5–8.
+
+### Teardown
+Removed `.cursor/ralph/`. Backups under `~/.cache/needlebase-ci/backups/ralph-unpushed-c4-20261127-102038/`.
+
+### Status
+**COMPLETE** — unpushed chunk 4 re-verified; skill status aligned; gates PASS.
