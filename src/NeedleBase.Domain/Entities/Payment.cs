@@ -12,7 +12,7 @@ namespace NeedleBase.Domain.Entities;
 public class Payment : Entity, IBusinessScoped
 {
     /// <summary>Largest single payment: the largest possible order (50 lines × GH₵1,000,000).</summary>
-    public const decimal AmountMax = 50_000_000m;
+    public const decimal AmountMax = MoneyRules.AmountMax;
 
     public string BusinessId { get; private set; } = string.Empty;
     public string OrderId { get; private set; } = string.Empty;
@@ -79,21 +79,8 @@ public class Payment : Entity, IBusinessScoped
         };
     }
 
-    /// <summary>Null when valid. Amounts are cedi with at most 2 decimals (never rounded silently).</summary>
-    public static string? CheckAmount(decimal amount)
-    {
-        if (amount <= 0)
-        {
-            return "Amount must be more than 0.";
-        }
-
-        if (amount > AmountMax)
-        {
-            return $"Amount can be at most GH₵ {AmountMax:N0}.";
-        }
-
-        return decimal.Round(amount, 2) != amount ? "Amount can have at most 2 decimal places." : null;
-    }
+    /// <summary>Null when valid. Same rules as every money record (<see cref="MoneyRules.CheckAmount"/>).</summary>
+    public static string? CheckAmount(decimal amount) => MoneyRules.CheckAmount(amount);
 
     /// <summary>Marks the payment as recorded by mistake. A second void keeps the first (idempotent).</summary>
     public void Void(string? reason, DateTimeOffset utcNow)

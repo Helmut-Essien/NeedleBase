@@ -25,4 +25,7 @@ public static class DomainErrorCodes
 
     /// <summary>Payment amount/method not acceptable (amount ≤ 0, more than 2 decimals, too large, unknown method).</summary>
     public const string PaymentInvalid = "PAYMENT_INVALID";
+
+    /// <summary>Expense amount/category/date/note/order link not acceptable.</summary>
+    public const string ExpenseInvalid = "EXPENSE_INVALID";
 }

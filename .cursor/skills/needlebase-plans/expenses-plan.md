@@ -50,7 +50,7 @@ Role rule: `ExpenseRules.CanManage(role)` = Owner or Manager (same set as `Payme
 | `Transport` | Transport |
 | `Other` | Other |
 
-`Domain/Enums/ExpenseCategory.cs`: constants, `All`, `DisplayName(code)`, `IsKnown`. Unknown code on REST → 400 `EXPENSE_INVALID`; on sync push → mapped to `Other` with "[original]" appended to the note (same as `PaymentRules.NormalizeSyncMethod`). `FieldLimits.ExpenseCategory = 16`.
+`Domain/Enums/ExpenseCategory.cs`: constants, `All`, `DisplayName(code)`, `IsValid` (same name as `PaymentMethod.IsValid`). Unknown code on REST → 400 `EXPENSE_INVALID`; on sync push → mapped to `Other` with "[original]" appended to the note (same as `PaymentRules.NormalizeSyncMethod`). `FieldLimits.ExpenseCategory = 16`.
 
 ## 2. Domain and database
 
@@ -75,7 +75,7 @@ Role rule: `ExpenseRules.CanManage(role)` = Owner or Manager (same set as `Payme
 
 **Date decision:** `SpentOn` is a `DateOnly` in Accra time, not a UTC instant. The user picks a date ("I paid rent on 1 Nov"), not a moment; a date has no timezone shift, so month grouping is exact. Payments are grouped by the Accra date of `RecordedAtUtc` (`BusinessTime`), so both land in the same Accra month. Rules: `SpentOn` ≥ 2020-01-01 (`ReportRules.EarliestMonth`) and ≤ today in Accra (REST 400 `EXPENSE_INVALID`, "The date can't be in the future"); sync push clamps a future date to today (Accra) and keeps the row.
 
-Methods: `Create(id, businessId, amount, category, spentOn, note, orderId, recordedByUserId, utcNow)`, `Void(reason, voidedByUserId, utcNow)` (idempotent: already voided → no change, first reason wins), `DetachOrder(utcNow)` (only used by sync, see 5). No update method (append-only).
+Methods: `Create(id, businessId, amount, category, spentOn, note, orderId, recordedByUserId, todayAccra, utcNow)` (Domain has no clock zone, so callers pass today's Accra date), `CheckSpentOn(spentOn, todayAccra)`, `Void(reason, voidedByUserId, utcNow)` (idempotent: already voided → no change, first reason wins), `DetachOrder(utcNow)` (only used by sync, see 5). No update method (append-only).
 
 ### EF (`ApplicationDbContext`)
 
@@ -213,7 +213,7 @@ All new pages: XAML with compiled bindings (`x:DataType`) or code-only `Ui` buil
 
 ## 9. Build order (one PR-sized chunk at a time, stop for the user between chunks if asked)
 
-1. Domain (`Expense`, `ExpenseCategory`, limits, `MoneyRules`) + tests.
+1. Domain (`Expense`, `ExpenseCategory`, limits, `MoneyRules`) + tests. **Done 27 Nov 2026** (`Domain/Entities/Expense.cs`, `Enums/ExpenseCategory.cs`, `Common/MoneyRules.cs` shared with `Payment`, `FieldLimits.ExpenseCategory`, `DomainErrorCodes.ExpenseInvalid`; `ExpenseTests`). `SyncEntityType.Expense` waits for chunk 5 so sync never accepts an op it can't apply.
 2. Infrastructure EF + migration + audit capture + epoch restamp.
 3. Application/Infrastructure service, validators, `RecordError`/`ApiProblems`, order-delete guard, controller + API tests.
 4. Reports calculator/DTO + export + plan email + tests.

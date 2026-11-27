@@ -2068,3 +2068,51 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE WITH NOTES** — unpushed G15 re-verified; gates PASS; no product changes.
+
+## Ralph Balanced — Expenses Domain chunk 1 — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` (also ahead 1 docs commit `cc6be27`, out of this product slice)
+- Slice: WT Domain expenses chunk 1 (`Expense`, `ExpenseCategory`, `MoneyRules`, Payment amount extract, `ExpenseTests`, plan mark Done)
+- Build: `JAVA_HOME=…/jbr dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror`
+- Lint: `-warnaserror` (no format gate)
+- Test: Domain/App/Web/Mobile/Api `-c Release --no-build`; Postgres :5435; JBR
+- Commit auth: yes (RALPH BALANCED prompt)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: M expenses-plan, FieldLimits, Payment, DomainRuleException; ?? MoneyRules, Expense, ExpenseCategory, ExpenseTests (+ .cursor/ralph/)
+cmd: git diff --stat
+out: 4 files changed, 9 insertions(+), 18 deletions(-) (+ untracked domain/tests)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | Read Expense/Payment/MoneyRules; Domain Expense+Payment tests | none P0–P1 | DetachOrder cut totals 2000 (`Expense.cs:140-144`); Void idempotent first-reason; Create requires todayAccra |
+| 2 Edge | PASS | ExpenseTests amounts/dates/notes/order/user bounds | none | future SpentOn rejected; note 2001 → EXPENSE_INVALID; category case-sensitive |
+| 3 Security | PASS | control-char strip in CleanText; no secrets | none | Domain-only; no IO/auth in slice |
+| 4 Senior | PASS | class C; MoneyRules shared; SyncEntityType deferred (plan) | Fixed P2 plan `IsKnown`→`IsValid` | Payment.CheckAmount delegates; Domain 116 tests |
+| 5 UI/UX | N/A | no UI files in slice | — | Domain + plan + tests only |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 368 / 226 / 391 / 357; Failed 0 |
+| Perf | N/A | class C | no harness |
+
+### Findings
+**Fixed:** expenses-plan.md:53 `IsKnown` → `IsValid` (matches `ExpenseCategory.IsValid` / `PaymentMethod.IsValid`).
+**Dismissed:** DetachOrder length math exact 2000; blank void reason allowed on Domain (Application min later per plan).
+**Open:** domain skill still lists Expense as Planned (out of WT ownership this run).
+**Out-of-scope:** unpushed docs commit `cc6be27`; EF/Api/UI chunks 2+.
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — Domain chunk 1 gates PASS; no P0/P1.
