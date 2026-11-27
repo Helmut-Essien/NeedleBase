@@ -2643,3 +2643,50 @@ Removed `.cursor/ralph/`. Backups `~/.cache/needlebase-ci/backups/ralph-expense-
 
 ### Status
 **COMPLETE** — chunk 6 gates PASS; no open P0/P1; commit authorized.
+
+## Ralph Balanced — Expenses Mobile.Data chunk 6 unpushed re-verify — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead 1 of `origin/PlanNameCatalogue`
+- Slice: `origin/PlanNameCatalogue..HEAD` = `0da8cbf` (local Expense SQLite sync chunk 6)
+- WT clean at start
+- Gates: Release `-warnaserror`; Domain/App/Web/Mobile/Api; Postgres :5435; JBR
+- Commit auth: yes (user: run the loop again on unpushed commits)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: (clean)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: 0da8cbf Add local Expense SQLite sync (v13) with plan-hold queue and local service (chunk 6).
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | RunAsync.cs:51–82 plan-hold second push; ExpensesMobile×12 | none | prior chunk-6 review holds |
+| 2 Edge | PASS | focused ExpensesMobile 12 (upgrade, migrate, purge, remap) | none | — |
+| 3 Security | PASS | PlanSaysNo; PurgeHidden AfterRun; BusinessId scope | none | — |
+| 4 Senior | PASS | class B; no harness → perf N/A; skill status re-check | none | plans/api/phases/domain/mobile-sync/mobile already say chunks 1–6; web “planned” = UI chunk 8 |
+| 5 UI/UX | N/A | no expense screens in unpushed product files | — | — |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 387 / 226 / 403 / 389; ExpensesMobile 12; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** none.
+**Dismissed:** skill status already aligned in `0da8cbf`; web UI planned correct.
+**Open:** none. Residual: Sync details held-item copy (chunk 7); ExpenseMismatch P3 copy.
+**Out-of-scope:** phone/web UI chunks 7–8.
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — clean re-verify; gates PASS; no product/skill changes beyond this log.
