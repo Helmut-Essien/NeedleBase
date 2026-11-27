@@ -1,5 +1,4 @@
 using NeedleBase.Application.Contracts.Reports;
-using NeedleBase.Application.Reports;
 using NeedleBase.Mobile.ViewModels;
 
 namespace NeedleBase.Mobile.Views;
@@ -20,7 +19,7 @@ public sealed class ReportsPage : ContentPage
         BindingContext = vm;
         var body = new VerticalStackLayout { Spacing = 8 };
         body.Add(Ui.Heading("Reports"));
-        body.Add(Ui.Body("Money in and orders taken, month by month (Accra time). Worked out from the records on this phone."));
+        body.Add(Ui.Body("Money in, money spent and profit, month by month (Accra time). Worked out from the records on this phone."));
         body.Add(_slot);
         vm.PropertyChanged += (_, e) =>
         {
@@ -37,13 +36,19 @@ public sealed class ReportsPage : ContentPage
         base.OnAppearing();
         try
         {
-            await _vm.LoadAsync(_vm.Report?.Month);
+            await _vm.AppearAsync();
             Render();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Reports: appear failed: {ex.Message}");
         }
+    }
+
+    protected override void OnDisappearing()
+    {
+        base.OnDisappearing();
+        _vm.Disappear();
     }
 
     private void Render()
@@ -84,25 +89,24 @@ public sealed class ReportsPage : ContentPage
         nav.Add(later, 2);
         stack.Add(nav);
 
-        var moneyIn = new Label
-        {
-            Text = r.MoneyReceivedDisplay,
-            FontSize = 28,
-            FontAttributes = FontAttributes.Bold,
-            TextColor = Ui.C("Charcoal", Colors.Black),
-            AutomationId = "ReportsMoneyIn"
-        };
-        SemanticProperties.SetDescription(moneyIn, $"Money in: {r.MoneyReceivedDisplay}");
-        stack.Add(Ui.Card(new VerticalStackLayout
-        {
-            Spacing = 4,
-            Children =
-            {
-                Ui.Body("Money in"),
-                moneyIn,
-                Ui.Body($"{r.PaymentCount} {(r.PaymentCount == 1 ? "payment" : "payments")} recorded · {r.ChangeDisplay}")
-            }
-        }));
+        stack.Add(Figure("Money in", r.MoneyReceivedDisplay, "ReportsMoneyIn",
+            $"{r.PaymentCount} {(r.PaymentCount == 1 ? "payment" : "payments")} recorded · {r.ChangeDisplay}"));
+        stack.Add(Figure("Spent", r.SpentDisplay, "ReportsSpent",
+            $"{ExpenseAccess.CountText(r.ExpenseCount)} · {ReportsViewModel.SpentChange(r)}"));
+        stack.Add(Figure(r.ProfitLabel, r.ProfitDisplay, "ReportsProfit", r.ProfitChangeDisplay, r.IsLoss));
+        // ProfitNote replaces CostsNote on the phone (expenses plan 6.6); web keeps CostsNote until Chunk 8.
+        stack.Add(Ui.Body(r.ProfitNote));
+
+        stack.Add(Ui.Heading("Spent by category", 2));
+        var spentCategories = r.SpentByCategory.Where(c => c.Total > 0).ToList();
+        stack.Add(Ui.Card(spentCategories.Count == 0
+            ? Ui.Body("No expenses recorded this month.")
+            : Rows(spentCategories.Select(c => Bar(c.Label, c.TotalDisplay, c.Count, c.Total, spentCategories.Max(x => x.Total))))));
+        var see = Ui.Secondary("See expenses");
+        see.AutomationId = "ReportsSeeExpenses";
+        SemanticProperties.SetDescription(see, $"See expenses for {r.MonthLabel}");
+        see.Clicked += (_, _) => Go(_vm.SeeExpensesCommand);
+        stack.Add(see);
 
         stack.Add(Ui.Card(new VerticalStackLayout
         {
@@ -115,7 +119,6 @@ public sealed class ReportsPage : ContentPage
                 Row("Cancelled this month", r.OrdersCancelled.ToString(System.Globalization.CultureInfo.InvariantCulture))
             }
         }));
-        stack.Add(Ui.Body(ReportRules.CostsNote));
 
         stack.Add(Ui.Heading("How customers paid", 2));
         stack.Add(Ui.Card(r.ByMethod.Count == 0
@@ -124,7 +127,7 @@ public sealed class ReportsPage : ContentPage
 
         stack.Add(Ui.Heading($"Last {r.Trend.Count} months", 2));
         stack.Add(Ui.Card(Rows(r.Trend.Select(t =>
-            Row(t.Label, $"{t.MoneyReceivedDisplay}\n{t.OrdersTaken} {(t.OrdersTaken == 1 ? "order" : "orders")} · {t.OrdersTakenValueDisplay}")))));
+            Row(t.Label, $"In {t.MoneyReceivedDisplay} · Spent {t.SpentDisplay}\n{t.ProfitLabel} {t.ProfitDisplay}\n{t.OrdersTaken} {(t.OrdersTaken == 1 ? "order" : "orders")} · {t.OrdersTakenValueDisplay}")))));
 
         stack.Add(Ui.Heading("Orders taken this month, by status today", 2));
         var statuses = r.OrdersByStatus.Where(s => s.Count > 0).ToList();
@@ -154,6 +157,41 @@ public sealed class ReportsPage : ContentPage
         {
             _navigating = false;
         }
+    }
+
+    private static Border Figure(string caption, string value, string automationId, string detail, bool loss = false)
+    {
+        var amount = new Label
+        {
+            Text = value,
+            FontSize = 28,
+            FontAttributes = FontAttributes.Bold,
+            TextColor = loss ? Ui.C("SemanticOverdue", Colors.DarkRed) : Ui.C("Charcoal", Colors.Black),
+            AutomationId = automationId
+        };
+        var card = Ui.Card(new VerticalStackLayout { Spacing = 4, Children = { Ui.Body(caption), amount, Ui.Body(detail) } });
+        SemanticProperties.SetDescription(card, $"{caption}: {value}. {detail}");
+        return card;
+    }
+
+    /// <summary>Category bar: the text and amount carry the meaning, the bar is decoration.</summary>
+    private static View Bar(string label, string amount, int count, decimal total, decimal max)
+    {
+        var stack = new VerticalStackLayout { Spacing = 4, Padding = new Thickness(0, 8) };
+        stack.Add(Row($"{label} ({count})", amount));
+        var track = new Grid
+        {
+            HeightRequest = 8,
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(new GridLength(max <= 0 ? 0 : (double)(total / max), GridUnitType.Star)),
+                new ColumnDefinition(new GridLength(max <= 0 ? 1 : (double)(1 - total / max), GridUnitType.Star))
+            }
+        };
+        track.Add(new BoxView { Color = Ui.C("PrimaryDark", Colors.DarkGreen), CornerRadius = 4 }, 0);
+        track.Add(new BoxView { Color = Ui.C("Gray100", Colors.LightGray), CornerRadius = 4 }, 1);
+        stack.Add(Ui.Decorative(track));
+        return stack;
     }
 
     private static VerticalStackLayout Rows(IEnumerable<View> rows)

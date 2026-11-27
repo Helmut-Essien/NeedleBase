@@ -2690,3 +2690,51 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — clean re-verify; gates PASS; no product/skill changes beyond this log.
+
+## Ralph Balanced — Expenses phone UI (chunk 7) — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` (synced with origin at start; dirty WT)
+- Slice: working-tree expenses plan chunk 7 (More→Expenses pages/VMs, order section, Reports Spent/Profit, Sync details held text, ExpensesUiTests×12)
+- Commit auth: yes (this prompt)
+- Gates: Release `-warnaserror`; Domain/App/Web/Mobile/Api; Postgres :5435; JBR
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: M expenses-plan, AppShell, MauiProgram, OrderDetail/Reports/SyncStatus VMs, MorePage,
+     OrderDetailPage.xaml, ReportsPage
+     ?? Expense* VMs/pages, ExpenseUi, RecordExpense*, ExpensesUiTests
+cmd: git diff --stat (product before skills)
+out: 9 files changed, 302 insertions(+), 38 deletions(-) (+ ~2.1k LOC new)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | ExpenseAccess.Gate; RecordExpense Validate/Save ULID; Reports AppearAsync | Fixed P2: `HasMoreExpenses` used page size (`OrderDetailViewModel.cs:128`) | IBackAware Cancel; plan-hold SyncItemRow |
+| 2 Edge | PASS | ExpensesUi×12 (gate, month clamp, void, offline double-save, held text) | none | unknown plan = NotAllowed |
+| 3 Security | PASS | Tailor/Free/Starter gated; Owner/Manager Money section; read-only record blocked | none | — |
+| 4 Senior | PASS | class C (UI/VM); skills status update | Fixed P2 skills “phone UI remain” | uiux docs deferred chunk 9 |
+| 5 UI/UX | PASS | Ui.Chrome NavBar hidden; AutomationIds; ProfitNote vs CostsNote; category bars text+amount; SemanticProperties | none | Record page Cancel not chrome Back (IBackAware) |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 387 / 226 / **415** / 389; ExpensesUi 12; Failed 0 |
+| Perf | N/A | class C | — |
+
+### Findings
+**Fixed:** `OrderDetailViewModel.cs:128` HasMoreExpenses → `list.Count > ExpensePreviewCount`. Skills → chunks 1–7 phone UI done; web remain.
+**Dismissed:** See all uses HasExpenseRows (by design); ExpenseMismatch copy P3.
+**Open:** none blocking.
+**Out-of-scope:** web chunk 8; uiux docs chunk 9.
+
+### Teardown
+Removed `.cursor/ralph/`. Backups `~/.cache/needlebase-ci/backups/ralph-expense-ui7-*`.
+
+### Status
+**COMPLETE** — chunk 7 gates PASS; no open P0/P1; commit authorized.

@@ -224,7 +224,10 @@ public partial class SyncStatusViewModel : BaseViewModel
 /// <summary>One waiting/failed/conflicting change, with the actions that make sense for it.</summary>
 public sealed class SyncItemRow
 {
-    public SyncItemRow(SyncQueueEntry e)
+    /// <summary>Shown for expense items the phone holds back until the shop is on a plan with expenses (expenses plan 6.7).</summary>
+    public const string ExpenseHeldText = "Expense · Waiting for the Workshop plan";
+
+    public SyncItemRow(SyncQueueEntry e, bool? expensesHeld = null)
     {
         Id = e.Id;
         Title = e.Label;
@@ -234,6 +237,7 @@ public sealed class SyncItemRow
             SyncEntityType.Measurement => "Measurement",
             SyncEntityType.Order => "Order",
             SyncEntityType.Payment => "Payment",
+            SyncEntityType.Expense => "Expense",
             _ => "Item"
         };
         IsConflict = e.State == SyncQueueState.Conflict;
@@ -252,6 +256,9 @@ public sealed class SyncItemRow
             (SyncQueueState.Conflict, SyncErrorCodes.PaymentMismatch) =>
                 ("Payment · a different payment was saved under the same record. Keep both keeps them as two payments; Use theirs drops this phone's copy.",
                     "Keep both", "Use theirs"),
+            (SyncQueueState.Conflict, SyncErrorCodes.ExpenseMismatch) =>
+                ("Expense · a different expense was saved under the same record. Keep both keeps them as two expenses; Use theirs drops this phone's copy.",
+                    "Keep both", "Use theirs"),
             (SyncQueueState.Conflict, _) when e.ServerCopyDeleted =>
                 (e.EntityType == SyncEntityType.Customer && e.Problem is { Length: > 0 } p && p.Contains("still has", StringComparison.Ordinal)
                     ? "Customer deleted on another device, but it still has orders or changes here."
@@ -259,6 +266,9 @@ public sealed class SyncItemRow
             (SyncQueueState.Conflict, _) =>
                 ($"{kind} changed on another device. Choose which version to keep.", "Keep mine", "Keep theirs"),
             (SyncQueueState.Failed, _) => ($"{kind} · {e.Problem ?? "Couldn't be saved"}", null, "Discard"),
+            (SyncQueueState.Pending, _) when e.EntityType == SyncEntityType.Expense &&
+                                              (expensesHeld ?? NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current?.CanReports != true) =>
+                (ExpenseHeldText, null, null),
             _ when e.EntityType == SyncEntityType.Order && e.Action == "New" =>
                 ("Order · new · waiting to sync. Its order number is confirmed when it syncs.", null, null),
             _ => ($"{kind} · {e.Action} · waiting to sync", null, null)

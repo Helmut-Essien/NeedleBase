@@ -172,6 +172,60 @@
                 </CollectionView>
             </VerticalStackLayout>
 
+            <!-- Expenses for this order (expenses plan 6.5): Owner/Manager on a plan with expenses only. -->
+            <VerticalStackLayout Spacing="8" IsVisible="{Binding ShowExpenses}" Margin="0,8,0,0">
+                <Label Text="Expenses for this order"
+                       FontAttributes="Bold"
+                       FontSize="18"
+                       TextColor="{StaticResource Charcoal}"
+                       SemanticProperties.HeadingLevel="Level2" />
+                <Label Text="{Binding ExpensesTotalText}" FontSize="14" TextColor="{StaticResource Gray600}" />
+                <VerticalStackLayout Spacing="6" BindableLayout.ItemsSource="{Binding ExpenseRows}" IsVisible="{Binding HasExpenseRows}">
+                    <BindableLayout.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ExpenseRow">
+                            <Grid Padding="12,10" RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="2"
+                                  BackgroundColor="White" MinimumHeightRequest="56"
+                                  SemanticProperties.Description="{Binding Description}">
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer CommandParameter="{Binding .}"
+                                                          Command="{Binding Source={RelativeSource AncestorType={x:Type vm:OrderDetailViewModel}}, Path=OpenExpenseCommand, x:DataType=vm:OrderDetailViewModel}" />
+                                </Grid.GestureRecognizers>
+                                <Label Text="{Binding CategoryLabel}" FontAttributes="Bold" FontSize="15" TextColor="{StaticResource Charcoal}" />
+                                <Label Grid.Column="1" Text="{Binding AmountDisplay}" FontAttributes="Bold" FontSize="15" TextColor="{StaticResource Charcoal}" />
+                                <Label Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding DateDisplay}" FontSize="13" TextColor="{StaticResource Gray600}" />
+                                <HorizontalStackLayout Grid.Row="2" Grid.ColumnSpan="2" Spacing="6">
+                                    <Border StrokeThickness="0" BackgroundColor="{StaticResource SemanticWarningLight}" StrokeShape="RoundRectangle 8"
+                                            Padding="8,4" IsVisible="{Binding ShowPending}">
+                                        <Label Text="Not synced yet" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource Charcoal}" />
+                                    </Border>
+                                    <Border StrokeThickness="0" BackgroundColor="{StaticResource Gray100}" StrokeShape="RoundRectangle 8"
+                                            Padding="8,4" IsVisible="{Binding IsVoided}">
+                                        <Label Text="Voided" FontAttributes="Bold" FontSize="12" TextColor="{StaticResource Charcoal}" />
+                                    </Border>
+                                </HorizontalStackLayout>
+                            </Grid>
+                        </DataTemplate>
+                    </BindableLayout.ItemTemplate>
+                </VerticalStackLayout>
+                <Button Text="See all expenses"
+                        Command="{Binding SeeAllExpensesCommand}"
+                        BackgroundColor="White"
+                        TextColor="{StaticResource PrimaryDark}"
+                        BorderColor="{StaticResource PrimaryDark}"
+                        BorderWidth="1"
+                        HeightRequest="48"
+                        IsVisible="{Binding HasExpenseRows}"
+                        SemanticProperties.Description="See all expenses for this order" />
+                <Button Text="Add expense"
+                        ImageSource="{mi:Material Icon=ReceiptLong, IconColor=White}"
+                        Command="{Binding AddExpenseCommand}"
+                        TextColor="White"
+                        BackgroundColor="{StaticResource PrimaryDark}"
+                        HeightRequest="48"
+                        IsVisible="{Binding CanAddExpense}"
+                        SemanticProperties.Description="Add an expense for this order" />
+            </VerticalStackLayout>
+
             <Label Text="Garments"
                    FontAttributes="Bold"
                    FontSize="18"

@@ -134,8 +134,21 @@ public static class MauiProgram
         builder.Services.AddTransient<OrderDetailViewModel>(sp => new OrderDetailViewModel(
             sp.GetRequiredService<NeedleBase.Mobile.Data.Services.IOrderLocalService>(), sp.GetRequiredService<IAuthService>(),
             sp.GetService<NeedleBase.Mobile.Data.Services.IPaymentLocalService>(), sp.GetService<IWhatsAppOpenedApi>(),
-            sp.GetService<IStaffDirectory>()));
+            sp.GetService<IStaffDirectory>(), sp.GetService<IExpenseLocalService>()));
         builder.Services.AddSingleton<PaymentsViewModel>();
+        builder.Services.AddTransient<ExpensesViewModel>(sp => new ExpensesViewModel(
+            sp.GetRequiredService<IAuthService>(), sp.GetRequiredService<IExpenseLocalService>())
+        {
+            SyncForRefresh = () => sp.GetRequiredService<SyncService>().SyncForRefreshAsync()
+        });
+        builder.Services.AddTransient<RecordExpenseViewModel>(sp => new RecordExpenseViewModel(
+            sp.GetRequiredService<IExpenseLocalService>(), sp.GetRequiredService<IAuthService>(),
+            sp.GetService<NeedleBase.Mobile.Data.Services.IOrderLocalService>())
+        {
+            SyncNow = () => sp.GetRequiredService<SyncService>().SyncForRefreshAsync()
+        });
+        builder.Services.AddTransient<ExpenseDetailViewModel>(sp => new ExpenseDetailViewModel(
+            sp.GetRequiredService<IExpenseLocalService>(), sp.GetRequiredService<IAuthService>(), sp.GetService<IStaffDirectory>()));
         builder.Services.AddTransient<RecordPaymentViewModel>();
         builder.Services.AddTransient<EditOrderViewModel>(sp => new EditOrderViewModel(
             sp.GetRequiredService<NeedleBase.Mobile.Data.Services.IOrderLocalService>(), sp.GetRequiredService<IAuthService>(),
@@ -160,6 +173,9 @@ public static class MauiProgram
         builder.Services.AddTransient<RecordPaymentPage>();
         builder.Services.AddTransient<EditOrderPage>();
         builder.Services.AddTransient<PaymentReceiptPage>();
+        builder.Services.AddTransient<ExpensesPage>();
+        builder.Services.AddTransient<RecordExpensePage>();
+        builder.Services.AddTransient<ExpenseDetailPage>();
         builder.Services.AddSingleton<MorePage>();
         builder.Services.AddSingleton<StaffApi>();
         builder.Services.AddSingleton<IStaffApi>(sp => sp.GetRequiredService<StaffApi>());

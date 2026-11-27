@@ -39,8 +39,9 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
     private string _orderRef = string.Empty;
 
     public OrderDetailViewModel(IOrderLocalService orders, IAuthService auth, IPaymentLocalService? payments = null, IWhatsAppOpenedApi? whatsApp = null,
-        IStaffDirectory? staff = null)
+        IStaffDirectory? staff = null, IExpenseLocalService? expenses = null)
     {
+        _expenses = expenses;
         _staff = staff;
         _whatsApp = whatsApp;
         _orders = orders;
@@ -69,9 +70,94 @@ public partial class OrderDetailViewModel : BaseViewModel, IQueryAttributable
 
     public bool HasPayments => Payments.Count > 0;
 
+    // Expenses for this order (expenses plan 6.5): Owner/Manager on a plan with expenses; never Free or Tailor.
+    private readonly IExpenseLocalService? _expenses;
+
+    /// <summary>Rows shown on the order (latest first).</summary>
+    public const int ExpensePreviewCount = 3;
+
+    public ObservableCollection<ExpenseRow> ExpenseRows { get; } = new();
+
+    [ObservableProperty] private bool showExpenses;
+    [ObservableProperty] private bool canAddExpense;
+    [ObservableProperty] private string expensesTotalText = string.Empty;
+    [ObservableProperty] private bool hasMoreExpenses;
+
+    public bool HasExpenseRows => ExpenseRows.Count > 0;
+
+    /// <summary>Reloads the expenses section. Never throws (secondary to the order).</summary>
+    public async Task RefreshExpensesAsync()
+    {
+        if (_expenses is null || string.IsNullOrWhiteSpace(OrderId))
+        {
+            return;
+        }
+
+        try
+        {
+            var businessId = await _auth.GetBusinessIdAsync();
+            var user = await _auth.GetCachedUserAsync();
+            var isFree = await _auth.IsFreeModeAsync();
+            ShowExpenses = !string.IsNullOrWhiteSpace(businessId) &&
+                           ExpenseAccess.Gate(isFree, user?.Role, NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current) is null;
+            if (!ShowExpenses)
+            {
+                ExpenseRows.Clear();
+                CanAddExpense = false;
+                OnPropertyChanged(nameof(HasExpenseRows));
+                return;
+            }
+
+            var result = await _expenses.ListAsync(businessId!, new NeedleBase.Application.Contracts.Expenses.ExpenseListQuery
+            {
+                OrderId = OrderId,
+                IncludeVoided = true,
+                PageSize = ExpensePreviewCount
+            });
+            if (!result.IsSuccess)
+            {
+                ShowExpenses = false;
+                return;
+            }
+
+            var list = result.Value!;
+            ExpensesTotalText = list.Count == 0
+                ? "No expenses for this order yet."
+                : $"Spent on this order: {list.TotalDisplay} · {ExpenseAccess.CountText(list.Count)}";
+            CollectionSync.Apply(ExpenseRows, list.Items.Select(i => new ExpenseRow(i)).ToList(), (a, b) => a == b, r => r);
+            // Total Count, not the page size: exactly three expenses must not look like there are more.
+            HasMoreExpenses = list.Count > ExpensePreviewCount;
+            CanAddExpense = !ExpenseAccess.IsReadOnly;
+            OnPropertyChanged(nameof(HasExpenseRows));
+        }
+        catch (Exception)
+        {
+            // Secondary section: keep the order visible.
+        }
+    }
+
+    [RelayCommand]
+    private Task SeeAllExpensesAsync() =>
+        string.IsNullOrWhiteSpace(OrderId) || Shell.Current is null
+            ? Task.CompletedTask
+            : Shell.Current.GoToAsync($"{nameof(Views.ExpensesPage)}?orderId={Uri.EscapeDataString(OrderId)}");
+
+    [RelayCommand]
+    private Task AddExpenseAsync() =>
+        !CanAddExpense || string.IsNullOrWhiteSpace(OrderId) || Shell.Current is null
+            ? Task.CompletedTask
+            : Shell.Current.GoToAsync($"{nameof(Views.RecordExpensePage)}?orderId={Uri.EscapeDataString(OrderId)}");
+
+    [RelayCommand]
+    private Task OpenExpenseAsync(ExpenseRow? row) =>
+        row is null || Shell.Current is null
+            ? Task.CompletedTask
+            : Shell.Current.GoToAsync($"{nameof(Views.ExpenseDetailPage)}?expenseId={Uri.EscapeDataString(row.Id)}");
+
     /// <summary>Reloads the money section (after Record payment / a void, or a sync). Never throws.</summary>
     public async Task RefreshPaymentsAsync()
     {
+        await RefreshExpensesAsync(); // same reload points (appear, sync, status change)
         if (_payments is null || string.IsNullOrWhiteSpace(OrderId))
         {
             return;

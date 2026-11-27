@@ -6,6 +6,7 @@ using NeedleBase.Application.Staff;
 using NeedleBase.Mobile.Data.Services;
 using NeedleBase.Mobile.Services;
 using NeedleBase.Mobile.Services.Updates;
+using NeedleBase.Mobile.ViewModels;
 
 namespace NeedleBase.Mobile.Views;
 
@@ -260,16 +261,38 @@ public sealed class MorePage : ContentPage
         {
             var canReports = NeedleBase.Mobile.Data.Sync.LocalSubscriptionGate.Current?.CanReports == true;
             root.Add(Ui.Heading("Money", 2));
-            root.Add(Ui.Card(Ui.LinkRow(
-                "Monthly reports",
-                MaterialIcons.BarChart,
-                canReports
-                    ? () => Shell.Current.GoToAsync(nameof(ReportsPage))
-                    : () => DisplayAlert("Monthly reports", ReportRules.NotAllowedMessage, "OK"),
-                "MoreReports",
-                canReports
-                    ? "Money in, orders taken and what customers still owe"
-                    : "Comes with the Workshop and Production plans")));
+            var canExpenses = canReports && NeedleBase.Application.Expenses.ExpenseRules.CanManage(role);
+            var money = new VerticalStackLayout
+            {
+                Children =
+                {
+                    Ui.LinkRow(
+                        "Monthly reports",
+                        MaterialIcons.BarChart,
+                        canReports
+                            ? () => Shell.Current.GoToAsync(nameof(ReportsPage))
+                            : () => DisplayAlert("Monthly reports", ReportRules.NotAllowedMessage, "OK"),
+                        "MoreReports",
+                        canReports
+                            ? "Money in, money spent, profit and what customers still owe"
+                            : "Comes with the Workshop and Production plans")
+                }
+            };
+            if (NeedleBase.Application.Expenses.ExpenseRules.CanManage(role))
+            {
+                // Expenses (expenses plan 6.1): Owner/Manager only; Starter sees why, Free never gets here (online slot).
+                money.Add(Ui.Divider());
+                money.Add(Ui.LinkRow(
+                    "Expenses",
+                    MaterialIcons.ReceiptLong,
+                    canExpenses
+                        ? () => Shell.Current.GoToAsync(nameof(ExpensesPage))
+                        : () => DisplayAlert("Expenses", NeedleBase.Application.Expenses.ExpenseRules.NotAllowedMessage, "OK"),
+                    "MoreExpenses",
+                    canExpenses ? ExpenseAccess.Subtitle : "Comes with the Workshop and Production plans"));
+            }
+
+            root.Add(Ui.Card(money));
         }
 
         if (StaffRoles.CanManage(role))
