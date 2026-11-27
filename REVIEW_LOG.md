@@ -2304,3 +2304,50 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — chunk 3 gates PASS; misleading delete copy fixed.
+
+## Ralph Balanced — Expenses API unpushed re-verify — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` ahead 1 of `origin/PlanNameCatalogue`
+- Slice: `origin/PlanNameCatalogue..HEAD` = `ed5e512` (Expenses API chunk 3)
+- WT clean except this run's `.cursor/ralph/` (+ domain skill status fix)
+- Gates: Release `-warnaserror`; full test projects; Postgres :5435; JBR
+- Commit auth: yes (user: run the loop again on unpushed commits)
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: ?? .cursor/ralph/ (then M domain SKILL after fix)
+cmd: git log --oneline origin/PlanNameCatalogue..HEAD
+out: ed5e512 Add expenses API service, plan gating, and ORDER_HAS_EXPENSES (chunk 3).
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | Read AccessAsync/OrderErrorMessages; ExpensesApi filter | none new | prior HasExpenses copy fix holds (`OrderErrorMessages.cs:35`) |
+| 2 Edge | PASS | ExpenseRules 13; plan Theory cases | none | — |
+| 3 Security | PASS | plan-before-role; ExpensesApi tenancy/role/plan | none | — |
+| 4 Senior | PASS | class B; no harness → perf N/A | Fixed P2: domain skill still “Api remain” after chunk 3 (`needlebase-domain/SKILL.md:39`) | plan already marks chunk 3 Done; api skill already lists endpoints |
+| 5 UI/UX | N/A | no new UI product files beyond prior SyncStatus copy | — | — |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 381 / 226 / 391 / 375; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** `needlebase-domain/SKILL.md:39` (+ §Expense) — **Domain + EF built; Api remain** → **Domain + EF + Api built**; sync/UI remain.
+**Dismissed:** ORDER_HAS_EXPENSES copy, DI wiring, AccessAsync order re-checked.
+**Open:** none in-slice.
+**Out-of-scope:** chunks 4+ (reports/sync/UI).
+
+### Teardown
+Removed `.cursor/ralph/`.
+
+### Status
+**COMPLETE** — unpushed API chunk re-verified; skill status aligned; gates PASS.

@@ -36,7 +36,7 @@ Core workflow: Customer → Measurements → Order → Production → Payment �
 | `MeasurementProfile` | Measurements | CustomerId, `GarmentTemplate`, `Unit`, `FieldsJson`, `Notes`, `MeasuredAtUtc`, `DateModifiedUtc` | **Built** (tenant-filtered) |
 | `Order` / `OrderLine` | Sewing job / garment lines | ref, status, due/fitting dates, assignee, totals; line template, qty, measurement snapshot | **Built** (S3) |
 | `Payment` | Money in | OrderId, amount, method, note, recordedAt, sync metadata | **Built** (S5) |
-| `Expense` | Money out (plan step 7b-2) | amount, category, SpentOn (Accra `DateOnly`), note, optional OrderId, recorded/voided by, void, sync metadata | **Domain + EF built** (chunks 1–2, 27 Nov 2026); Api/sync/UI remain — [expenses-plan.md](../needlebase-plans/expenses-plan.md) |
+| `Expense` | Money out (plan step 7b-2) | amount, category, SpentOn (Accra `DateOnly`), note, optional OrderId, recorded/voided by, void, sync metadata | **Domain + EF + Api built** (chunks 1–3, 27 Nov 2026); sync/UI remain — [expenses-plan.md](../needlebase-plans/expenses-plan.md) |
 | `DeletedItem` | Sync tombstone | EntityType, EntityId, BusinessId, DeletedAt | Built S4 (`Domain/Entities/DeletedItem.cs`; server-only, written in `ApplicationDbContext.SaveChanges`) |
 | `Invitation` | Staff invite | Email/phone, role, business, expiry | **Built** (S7) |
 | Mobile-only `SyncQueueItem`, `DeviceInfo` | Offline queue | Mobile.Data only | **Built** (S4) |
@@ -127,5 +127,5 @@ Business: Ama Stitches, Accra. Customer: Efua Mensah, +233…. Currency: GH₵. 
 
 Append-only record: business, actor + role snapshot, action (`entity.verb`, see `AuditActions`), entity type/id, order/customer links, summary (≤300), masked changes JSON, source (api/web/sync/system), device, IP, UA, correlation id, UTC time. No FKs (survives deletes). Never edited; purged after `Audit:RetentionDays` (730).
 
-## Expense (step 7b-2 — Domain + EF done)
-Append-only, voidable money-out record (`Expense`, `ExpenseCategory`, `MoneyRules`; table `Expenses` with sync stamps/audit). Owner/Manager; gated by `ProfitAndMonthlyReports` once surfaced. Api/sync/UI still planned. Fields, categories, date rule and every checklist step: [expenses-plan.md](../needlebase-plans/expenses-plan.md) (single source).
+## Expense (step 7b-2 — Domain + EF + Api done)
+Append-only, voidable money-out record (`Expense`, `ExpenseCategory`, `MoneyRules`; table `Expenses`; `/api/expenses` with plan/role gating). Owner/Manager; gated by `ProfitAndMonthlyReports`. Sync/UI still planned. Fields, categories, date rule and every checklist step: [expenses-plan.md](../needlebase-plans/expenses-plan.md) (single source).
