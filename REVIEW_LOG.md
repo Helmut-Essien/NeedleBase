@@ -2500,3 +2500,51 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — clean re-verify; gates PASS; no product or skill changes required beyond this log.
+
+## Ralph Balanced — Expenses server sync (chunk 5) — iteration 1 — 27 Nov 2026
+
+### Discovery
+- Repo: `/home/helmut/Documents/My Projects/NeedleBase`
+- Branch: `PlanNameCatalogue` (synced with origin at start; dirty WT)
+- Slice: working-tree expenses plan chunk 5 (SyncEntityType.Expense in All, SyncExpenseDto/cursor phase 5 `z`, SyncService ApplyExpenseAsync + pull, ExpenseSyncTests×11, expenses-plan Done)
+- Commit auth: yes (this prompt)
+- Gates: Release `-warnaserror`; Domain/App/Web/Mobile/Api; Postgres :5435; JBR
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: M expenses-plan, SyncDtos, SyncCursor, SyncMapper, SyncService, SyncEntityType
+     ?? ExpenseSyncTests.cs
+     (+ skill status updates this run)
+cmd: git diff --stat (product)
+out: 6 files changed, 176 insertions(+), 17 deletions(-) (+ 511-line test file)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | Read ApplyExpenseAsync/ApplyPaymentAsync parity; ExpenseService same/detached; phase advance PhaseLast=5; ExpenseSync×11 | none | void merge first-reason; delete refused; detached order replay |
+| 2 Edge | PASS | lenient Fuel→Other; amount 0 fail; old cursor without `z`; Starter reset; Tailor skip→Manager pull | none | read-only push via SyncController AllowWhenReadOnly |
+| 3 Security | PASS | plan→EXPENSES_NOT_ALLOWED; Tailor→FORBIDDEN; other shop id→REJECTED (no leak); pull gated role+plan | none | recorder ids not in SyncExpenseDto |
+| 4 Senior | PASS | class B (extra pull phase); no harness → perf N/A; additive pull Expenses null-ok | Fixed P2: skills still “sync remain/planned” after chunk 5 | ExpenseMismatch “keep both” copy P3 |
+| 5 UI/UX | N/A | no UI files in slice | — | — |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | Release `--no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api | 116 / 387 / 226 / 391 / 389; ExpenseSync 11; Failed 0 |
+| Perf | N/A | class B, no harness | — |
+
+### Findings
+**Fixed:** skill status → chunks 1–5 (server sync) done; Mobile.Data/UI remain (`plans`/`api`/`phases`/`domain`/`mobile-sync` SKILL.md).
+**Dismissed:** product logic; cursor key `z` vs plan’s `x` (documented deviation in expenses-plan).
+**Open:** none blocking. Residual P3: ExpenseMismatch conflict wording.
+**Out-of-scope:** Mobile.Data chunk 6, UI 7–8.
+
+### Teardown
+Removed `.cursor/ralph/`. Backups `~/.cache/needlebase-ci/backups/ralph-expense-sync-*`.
+
+### Status
+**COMPLETE** — chunk 5 gates PASS; no open P0/P1; commit authorized.

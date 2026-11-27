@@ -28,4 +28,9 @@ public static class SyncMapper
         new(p.Id, p.OrderId, p.CustomerId, p.Amount, p.Method, p.Note, SyncTime.Normalize(p.RecordedAtUtc),
             p.IsVoided, p.VoidedAtUtc is { } voided ? SyncTime.Normalize(voided) : null, p.VoidReason,
             SyncTime.Normalize(p.CreatedAtUtc), SyncTime.Normalize(p.DateModifiedUtc));
+
+    public static SyncExpenseDto ToDto(Expense e) =>
+        new(e.Id, e.Amount, e.Category, e.SpentOn, e.Note, e.OrderId, e.IsVoided,
+            e.VoidedAtUtc is { } voided ? SyncTime.Normalize(voided) : null, e.VoidReason,
+            SyncTime.Normalize(e.CreatedAtUtc), SyncTime.Normalize(e.DateModifiedUtc));
 }

@@ -89,6 +89,24 @@ public sealed record SyncPaymentDto(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset DateModifiedUtc);
 
+/// <summary>
+/// An expense (plans step 7b-2): append-only except the one-way void; never deleted. Pulled in cursor phase 5 by
+/// Owners/Managers on plans with profit reports. <c>SpentOn</c> is the Accra date paid. Recorder/voider user ids
+/// stay on the server.
+/// </summary>
+public sealed record SyncExpenseDto(
+    string Id,
+    decimal Amount,
+    string Category,
+    DateOnly SpentOn,
+    string? Note,
+    string? OrderId,
+    bool IsVoided,
+    DateTimeOffset? VoidedAtUtc,
+    string? VoidReason,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset DateModifiedUtc);
+
 public sealed record SyncDeletedItemDto(string EntityType, string EntityId, DateTimeOffset DeletedAtUtc);
 
 public sealed class SyncPushOperation
@@ -113,6 +131,7 @@ public sealed class SyncPushOperation
     public SyncMeasurementDto? Measurement { get; set; }
     public SyncOrderDto? Order { get; set; }
     public SyncPaymentDto? Payment { get; set; }
+    public SyncExpenseDto? Expense { get; set; }
 }
 
 public sealed class SyncPushRequest
@@ -133,7 +152,8 @@ public sealed record SyncPushResult(
     SyncCustomerDto? Customer = null,
     SyncMeasurementDto? Measurement = null,
     SyncOrderDto? Order = null,
-    SyncPaymentDto? Payment = null);
+    SyncPaymentDto? Payment = null,
+    SyncExpenseDto? Expense = null);
 
 public sealed record SyncPushResponse(IReadOnlyList<SyncPushResult> Results);
 
@@ -168,6 +188,9 @@ public sealed record SyncPullResponse(
     /// <summary>Payments (phase 4). Older servers omit it: treat null as none.</summary>
     public IReadOnlyList<SyncPaymentDto>? Payments { get; init; }
 
+    /// <summary>Expenses (phase 5). Older servers omit it: treat null as none.</summary>
+    public IReadOnlyList<SyncExpenseDto>? Expenses { get; init; }
+
     /// <summary>The shop's license status (banner + read-only on phones). Older servers omit it: null = no change.</summary>
     public NeedleBase.Application.Contracts.Licensing.SubscriptionStatusDto? Subscription { get; init; }
 }
@@ -200,6 +223,15 @@ public static class SyncErrorCodes
     /// overwritten or dropped silently: the device keeps both or takes the server copy (user's choice).
     /// </summary>
     public const string PaymentMismatch = "SYNC_PAYMENT_MISMATCH";
+
+    /// <summary>The server already has this expense id with different amount/category/date/order/note. Never overwritten.</summary>
+    public const string ExpenseMismatch = "SYNC_EXPENSE_MISMATCH";
+
+    /// <summary>The shop's plan has no expenses (same switch as monthly reports). Phones hold these ops instead.</summary>
+    public const string ExpensesNotAllowed = "EXPENSES_NOT_ALLOWED";
+
+    /// <summary>Only the owner or a manager can record expenses (Tailors).</summary>
+    public const string ExpensesForbidden = "EXPENSES_FORBIDDEN";
 
     /// <summary>
     /// The server could not store the record (e.g. its id is taken). Deliberately generic: a foreign

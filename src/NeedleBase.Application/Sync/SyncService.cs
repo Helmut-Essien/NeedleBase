@@ -6,7 +6,9 @@ using NeedleBase.Application.Contracts.Errors;
 using NeedleBase.Application.Contracts.Measurements;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Sync;
+using NeedleBase.Application.Contracts.Expenses;
 using NeedleBase.Application.Email;
+using NeedleBase.Application.Expenses;
 using NeedleBase.Application.Orders;
 using NeedleBase.Application.Payments;
 using NeedleBase.Application.Contracts.Payments;
@@ -32,6 +34,8 @@ public sealed class SyncService : ISyncService
     private readonly IPaymentService _payments;
     private readonly IPlanEmailNotifier _planEmails;
     private readonly PlanEmailAssignmentBuffer _assignmentEmails;
+    private readonly IExpenseService _expenses;
+    private readonly IPlanAccess _plans;
 
     public SyncService(
         IApplicationDbContext db,
@@ -42,8 +46,12 @@ public sealed class SyncService : ISyncService
         IOrderService orders,
         IPaymentService payments,
         IPlanEmailNotifier planEmails,
-        PlanEmailAssignmentBuffer assignmentEmails)
+        PlanEmailAssignmentBuffer assignmentEmails,
+        IExpenseService expenses,
+        IPlanAccess plans)
     {
+        _expenses = expenses;
+        _plans = plans;
         _payments = payments;
         _db = db;
         _currentUser = currentUser;
@@ -126,6 +134,7 @@ public sealed class SyncService : ISyncService
             SyncEntityType.Measurement => ApplyMeasurementAsync(op, ct),
             SyncEntityType.Order => ApplyOrderAsync(op, ct),
             SyncEntityType.Payment => ApplyPaymentAsync(op, ct),
+            SyncEntityType.Expense => ApplyExpenseAsync(op, ct),
             _ => Task.FromResult(Failed(op, SyncErrorCodes.PayloadInvalid, "Unknown entity type."))
         };
     }
@@ -585,6 +594,78 @@ public sealed class SyncService : ISyncService
         return entity is null ? null : SyncMapper.ToDto(entity);
     }
 
+    /// <summary>
+    /// Expenses (plans step 7b-2): upsert only, through <see cref="IExpenseService"/> in lenient mode (unknown
+    /// category → Other with the label kept in the note, future date → today in Accra, long note cut). Plan and role
+    /// are checked first (plan off → <c>EXPENSES_NOT_ALLOWED</c>, Tailor → <c>EXPENSES_FORBIDDEN</c>). Same id and
+    /// content → Applied (replay), merging a void from either side; different content → Conflict
+    /// <c>SYNC_EXPENSE_MISMATCH</c> with the server copy. A linked order the server no longer has is dropped from the
+    /// expense ("[order removed]" in the note) and the server copy returned, so the money record is never lost.
+    /// Applies on read-only shops too (offline work must land), like payments.
+    /// </summary>
+    private async Task<SyncPushResult> ApplyExpenseAsync(SyncPushOperation op, CancellationToken ct)
+    {
+        if (op.Operation == SyncOperation.Delete)
+        {
+            return Failed(op, SyncErrorCodes.PayloadInvalid, "Expenses can't be deleted. Void it instead.");
+        }
+
+        var dto = op.Expense;
+        if (dto is null || dto.Id != op.EntityId)
+        {
+            return Failed(op, SyncErrorCodes.PayloadInvalid, "Missing expense.");
+        }
+
+        var recorded = await _expenses.RecordAsync(new RecordExpenseRequest
+        {
+            Id = dto.Id,
+            Amount = dto.Amount,
+            Category = dto.Category,
+            SpentOn = dto.SpentOn,
+            Note = dto.Note,
+            OrderId = dto.OrderId,
+            Lenient = true
+        }, ct).ConfigureAwait(false);
+
+        if (!recorded.IsSuccess)
+        {
+            switch (recorded.Error)
+            {
+                case RecordError.ExpensesNotAllowed:
+                    return Failed(op, SyncErrorCodes.ExpensesNotAllowed, recorded.Message);
+                case RecordError.ExpenseForbidden:
+                    return Failed(op, SyncErrorCodes.ExpensesForbidden, recorded.Message);
+                case RecordError.ExpenseConflict:
+                    // Same shop: show the saved copy. Another shop's id (invisible here): generic answer.
+                    var saved = await _db.Expenses.AsNoTracking().FirstOrDefaultAsync(e => e.Id == dto.Id, ct).ConfigureAwait(false);
+                    return saved is null
+                        ? Rejected(op)
+                        : Conflict(op, code: SyncErrorCodes.ExpenseMismatch, expense: SyncMapper.ToDto(saved));
+                default:
+                    return Failed(op, SyncErrorCodes.PayloadInvalid, recorded.Message);
+            }
+        }
+
+        if (dto.IsVoided && !recorded.Value!.Expense.IsVoided)
+        {
+            var voided = await _expenses.VoidAsync(dto.Id, new VoidExpenseRequest { Reason = dto.VoidReason, Lenient = true }, ct)
+                .ConfigureAwait(false);
+            if (!voided.IsSuccess)
+            {
+                return Failed(op, SyncErrorCodes.PayloadInvalid, voided.Message);
+            }
+        }
+
+        // New, replay, or the server already voided it (the void wins: it only ever goes one way).
+        return Applied(op, expense: await LoadExpenseAsync(dto.Id, ct).ConfigureAwait(false));
+    }
+
+    private async Task<SyncExpenseDto?> LoadExpenseAsync(string id, CancellationToken ct)
+    {
+        var entity = await _db.Expenses.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct).ConfigureAwait(false);
+        return entity is null ? null : SyncMapper.ToDto(entity);
+    }
+
     private static string OrderCode(OrderError error) => error switch
     {
         OrderError.NotFound => OrderErrorMessages.OrderNotFound,
@@ -627,8 +708,9 @@ public sealed class SyncService : ISyncService
         SyncCustomerDto? customer = null,
         SyncMeasurementDto? measurement = null,
         SyncOrderDto? order = null,
-        SyncPaymentDto? payment = null) =>
-        new(op.OpId, SyncOpStatus.Applied, null, null, customer, measurement, order, payment);
+        SyncPaymentDto? payment = null,
+        SyncExpenseDto? expense = null) =>
+        new(op.OpId, SyncOpStatus.Applied, null, null, customer, measurement, order, payment, expense);
 
     private static SyncPushResult Conflict(
         SyncPushOperation op,
@@ -636,7 +718,8 @@ public sealed class SyncService : ISyncService
         SyncMeasurementDto? measurement = null,
         SyncOrderDto? order = null,
         string code = SyncErrorCodes.StaleBase,
-        SyncPaymentDto? payment = null) =>
+        SyncPaymentDto? payment = null,
+        SyncExpenseDto? expense = null) =>
         new(op.OpId, SyncOpStatus.Conflict, code,
             code switch
             {
@@ -646,9 +729,10 @@ public sealed class SyncService : ISyncService
                     ? "Payments are recorded on this order, so it wasn't deleted."
                     : "This customer has orders, so they weren't deleted.",
                 SyncErrorCodes.PaymentMismatch => "Another device saved a different payment with the same id. NeedleBase will not discard a payment without your choice.",
+                SyncErrorCodes.ExpenseMismatch => "A different expense with this id was saved elsewhere. Keep both or keep the saved one.",
                 _ => "This record was changed on another device."
             },
-            customer, measurement, order, payment);
+            customer, measurement, order, payment, expense);
 
     private static SyncPushResult Rejected(SyncPushOperation op) =>
         new(op.OpId, SyncOpStatus.Failed, SyncErrorCodes.Rejected, "This record could not be saved.");
@@ -660,7 +744,7 @@ public sealed class SyncService : ISyncService
 
     public async Task<(SyncPullResponse? Page, string? ErrorCode)> PullAsync(SyncPullRequest request, CancellationToken cancellationToken = default)
     {
-        EnsureBusiness();
+        var businessId = EnsureBusiness();
         var now = SyncTime.Normalize(_clock.UtcNow);
         if (!SyncCursor.TryDecode(request.Cursor, out var cursor) ||
             (!cursor.IsFresh && now.UtcTicks - cursor.IssuedTicks > SyncTime.TombstoneRetention.Ticks))
@@ -710,7 +794,13 @@ public sealed class SyncService : ISyncService
         var orders = new List<SyncOrderDto>();
         var deleted = new List<SyncDeletedItemDto>();
         var payments = new List<SyncPaymentDto>();
+        var expenses = new List<SyncExpenseDto>();
         var hasMore = false;
+
+        // Expenses (phase 5) only for Owners/Managers on plans with profit reports (one small lookup per page).
+        var expensesAllowed = ExpenseRules.CanManage(_currentUser.Role) &&
+                              (await _plans.GetEntitlementsAsync(businessId, cancellationToken).ConfigureAwait(false))
+                              ?.ProfitAndMonthlyReports == true;
 
         while (cursor.Phase <= SyncCursor.PhaseLast)
         {
@@ -794,6 +884,30 @@ public sealed class SyncService : ISyncService
                     break;
                 }
 
+                case SyncCursor.PhaseExpenses when !expensesAllowed:
+                {
+                    // Tailor, or a plan without expenses: forget the position, so a promotion/upgrade pulls them all.
+                    cursor.Expenses = null;
+                    fetched = 0;
+                    break;
+                }
+
+                case SyncCursor.PhaseExpenses:
+                {
+                    var rows = await After(_db.Expenses.AsNoTracking(), cursor.Expenses, cap)
+                        .Take(remaining)
+                        .Select(e => new { Entity = e, Tx = EF.Property<long>(e, SyncTime.TxColumn) })
+                        .ToListAsync(cancellationToken).ConfigureAwait(false);
+                    expenses.AddRange(rows.Select(r => SyncMapper.ToDto(r.Entity)));
+                    if (rows.Count > 0)
+                    {
+                        cursor.Expenses = new SyncPosition(rows[^1].Tx, rows[^1].Entity.Id);
+                    }
+
+                    fetched = rows.Count;
+                    break;
+                }
+
                 default:
                 {
                     var rows = await After(_db.DeletedItems.AsNoTracking(), cursor.Deletes, cap)
@@ -833,6 +947,7 @@ public sealed class SyncService : ISyncService
                 Orders = cursor.Orders,
                 Deletes = cursor.Deletes,
                 Payments = cursor.Payments,
+                Expenses = cursor.Expenses,
                 Epoch = cursor.Epoch
             };
         next.IssuedTicks = now.UtcTicks;
@@ -841,7 +956,7 @@ public sealed class SyncService : ISyncService
             next.Cap = 0; // next sync takes a new watermark
         }
 
-        return (new SyncPullResponse(customers, measurements, orders, deleted, next.Encode(), hasMore, now) { Payments = payments }, null);
+        return (new SyncPullResponse(customers, measurements, orders, deleted, next.Encode(), hasMore, now) { Payments = payments, Expenses = expenses }, null);
     }
 
     /// <summary>Rows after <paramref name="position"/> and strictly below the watermark, in (tx, id) order.</summary>
