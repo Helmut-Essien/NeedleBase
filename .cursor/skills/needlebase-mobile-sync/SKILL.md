@@ -43,7 +43,7 @@ UX copy/states: [needlebase-uiux offline-sync](../needlebase-uiux/offline-sync.m
 | `SyncQueueItem` | Id, BusinessId, EntityType, EntityId, Operation, Payload/Patch, CreatedAt, RetryCount |
 | `DeviceInfo` | DeviceId, BusinessId, LastSync (UTC) |
 
-Domain entities mirrored locally: Customer, MeasurementProfile, Order, OrderLine, Payment, Expense (local schema v13, chunk 6 — plan-hold until `CanReports`), (reference data as needed). Phone expense UI built (chunk 7); web UI remain (chunk 8); [expenses-plan.md](../needlebase-plans/expenses-plan.md) §5–7.
+Domain entities mirrored locally: Customer, MeasurementProfile, Order, OrderLine, Payment, Expense (local schema v13, chunk 6 — plan-hold until `CanReports`), (reference data as needed). Phone + web expense UI built (chunks 7–8); UI/UX docs (chunk 9) remain; [expenses-plan.md](../needlebase-plans/expenses-plan.md) §5–8.
 
 ## Sync flow
 
@@ -133,5 +133,5 @@ Second audit: sync push maps an unknown payment method to Other and appends "[la
 
 Push and pull send `DeviceInfo.DeviceId` as `deviceId` so the server's activity log can label which phone made a change (push creates `DeviceInfo` if the first sync starts with a push). Audit rows are server-only and never pulled.
 
-## Expenses (server + Mobile.Data + phone UI built; web remain — step 7b-2)
-**Server (chunk 5, 27 Nov 2026):** `SyncEntityType.Expense` in `All`; pull phase 5 after payments (cursor key `z`, still v2 — `x` is the cap), skipped and reset for Tailors and plans without reports; upsert-only push through `IExpenseService` lenient, void merges, `SYNC_EXPENSE_MISMATCH`, unknown order → link dropped and server copy returned; applies on read-only shops. **Phone data (chunk 6):** schema v13, plan-hold queue, `ExpenseLocalService`, Tailor purge, local report spent. **Phone UI (chunk 7):** More→Expenses pages, Sync details “Waiting for the Workshop plan”, `SYNC_EXPENSE_MISMATCH` Keep both / Use theirs. Web UI remain (chunk 8). Full rules: [expenses-plan.md](../needlebase-plans/expenses-plan.md) §5–7.
+## Expenses (server + Mobile.Data + phone + web UI built — step 7b-2)
+**Server (chunk 5, 27 Nov 2026):** `SyncEntityType.Expense` in `All`; pull phase 5 after payments (cursor key `z`, still v2 — `x` is the cap), skipped and reset for Tailors and plans without reports; upsert-only push through `IExpenseService` lenient, void merges, `SYNC_EXPENSE_MISMATCH`, unknown order → link dropped and server copy returned; applies on read-only shops. **Phone data (chunk 6):** schema v13, plan-hold queue, `ExpenseLocalService`, Tailor purge, local report spent. **Phone UI (chunk 7):** More→Expenses pages, Sync details “Waiting for the Workshop plan”, `SYNC_EXPENSE_MISMATCH` Keep both / Use theirs. **Web UI (chunk 8):** `/Expenses` pages, order card, `/Reports` Spent/Profit/`ProfitNote`. UI/UX docs (chunk 9) remain. Full rules: [expenses-plan.md](../needlebase-plans/expenses-plan.md) §5–8.

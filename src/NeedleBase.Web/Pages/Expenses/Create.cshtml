@@ -1,0 +1,119 @@
+@page
+@model NeedleBase.Web.Pages.Expenses.CreateModel
+@using NeedleBase.Application.Expenses
+@using NeedleBase.Domain.Common
+@using NeedleBase.Domain.Enums
+@using NeedleBase.Web.Services
+@{
+    ViewData["Title"] = "Record expense";
+}
+<a class="nb-back" href="@Model.BackUrl"><span aria-hidden="true">←</span> @(Model.FromOrder ? "Back to order" : "Back to expenses")</a>
+<h1 class="nb-page-title">Record expense</h1>
+<p class="nb-meta">Money the shop paid out. It counts toward this month's profit in Reports.</p>
+<partial name="_PageState" model="Model" />
+
+@if (Model.NeedsUpgrade)
+{
+    <section class="nb-card" aria-labelledby="upgrade-heading">
+        <h2 id="upgrade-heading" class="nb-section-title">@ExpenseWeb.UpgradeTitle</h2>
+        <p>@ExpenseRules.NotAllowedMessage @ExpenseWeb.UpgradeBody</p>
+        @if (User.IsOwner())
+        {
+            <a class="btn nb-btn-primary" asp-page="/Settings/License">See your plan</a>
+        }
+        else
+        {
+            <p class="nb-meta mb-0">Ask the shop owner about moving to Workshop or Production.</p>
+        }
+    </section>
+}
+else if (Model.BlockedMessage is { } blocked)
+{
+    <div class="alert alert-warning" role="status">@blocked <a href="/Expenses">See your expenses</a></div>
+}
+
+@if (Model.ShowForm)
+{
+    @if (!Model.HasOrder && !Model.FromOrder)
+    {
+        <form method="get" class="nb-filters" role="search" aria-label="Find an order to link">
+            <div>
+                <label class="form-label" for="q">Find an order to link (optional)</label>
+                <input class="form-control" id="q" name="q" value="@Model.OrderSearch" maxlength="100" placeholder="Order number, customer name or phone" />
+            </div>
+            <div class="nb-filters__actions"><button class="btn nb-btn-outline" type="submit">Search orders</button></div>
+        </form>
+    }
+
+    <form method="post" novalidate class="nb-card">
+        <input type="hidden" asp-for="ClientId" />
+        <input type="hidden" asp-for="FromOrder" />
+        @if (!string.IsNullOrWhiteSpace(Model.FormError))
+        {
+            <div class="alert alert-danger" role="alert" id="form-error" tabindex="-1">@Model.FormError</div>
+        }
+
+        <div class="mb-3">
+            <label class="form-label" for="Amount">Amount (GH₵)</label>
+            <input class="form-control @(Model.AmountError is null ? "" : "is-invalid")" id="Amount" name="Amount" inputmode="decimal" maxlength="20" value="@Model.Amount" placeholder="e.g. 120.00" required aria-describedby="@(Model.AmountError is null ? null : "amount-error")" />
+            @if (Model.AmountError is { } amountError) { <div class="invalid-feedback" id="amount-error">@amountError</div> }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="Category">What was it for?</label>
+            <select class="form-select @(Model.CategoryError is null ? "" : "is-invalid")" id="Category" name="Category" required aria-describedby="@(Model.CategoryError is null ? null : "category-error")">
+                <option value="">Choose a category</option>
+                @foreach (var c in ExpenseCategory.All)
+                {
+                    <option value="@c" selected="@(Model.Category == c)">@ExpenseCategory.DisplayName(c)</option>
+                }
+            </select>
+            @if (Model.CategoryError is { } categoryError) { <div class="invalid-feedback" id="category-error">@categoryError</div> }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="SpentOn">Date paid</label>
+            <input class="form-control @(Model.DateError is null ? "" : "is-invalid")" type="date" id="SpentOn" name="SpentOn" value="@Model.SpentOn" min="@Model.EarliestKey" max="@Model.TodayKey" required aria-describedby="spent-help@(Model.DateError is null ? "" : " date-error")" />
+            <div class="form-text" id="spent-help">From 01 Jan 2020 up to today (Accra time).</div>
+            @if (Model.DateError is { } dateError) { <div class="invalid-feedback" id="date-error">@dateError</div> }
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label" for="Note">Note (optional)</label>
+            <textarea class="form-control @(Model.NoteError is null ? "" : "is-invalid")" id="Note" name="Note" rows="3" maxlength="@FieldLimits.Notes" placeholder="e.g. Makola lining and zips" aria-describedby="note-help@(Model.NoteError is null ? "" : " note-error")">@Model.Note</textarea>
+            <div class="form-text" id="note-help">Up to @FieldLimits.Notes.ToString("N0") characters.</div>
+            @if (Model.NoteError is { } noteError) { <div class="invalid-feedback" id="note-error">@noteError</div> }
+        </div>
+
+        <div class="mb-3">
+            @if (Model.HasOrder)
+            {
+                <span class="form-label d-block">Order</span>
+                <input type="hidden" asp-for="OrderId" />
+                <p class="mb-1"><strong>@Model.OrderLabel</strong></p>
+                <a class="btn btn-sm nb-btn-outline" href="/Expenses/Create">Remove link</a>
+            }
+            else
+            {
+                <label class="form-label" for="OrderId">Order (optional)</label>
+                <select class="form-select @(Model.OrderError is null ? "" : "is-invalid")" id="OrderId" name="OrderId" aria-describedby="@(Model.OrderError is null ? null : "order-error")">
+                    <option value="">Not for one order</option>
+                    @foreach (var o in Model.Orders)
+                    {
+                        <option value="@o.Id">#@o.DisplayRef · @o.CustomerName · @OrderStatus.DisplayName(o.Status)</option>
+                    }
+                </select>
+                @if (Model.Orders.Count == 0)
+                {
+                    <div class="form-text">@(string.IsNullOrWhiteSpace(Model.OrderSearch) ? "No orders to link yet." : "No orders match that search.")</div>
+                }
+            }
+            @if (Model.OrderError is { } orderError) { <div class="invalid-feedback d-block" id="order-error">@orderError</div> }
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn nb-btn-primary" type="submit" data-nb-once-submit>Save expense</button>
+            <a class="btn nb-btn-outline" href="@Model.BackUrl">Cancel</a>
+        </div>
+    </form>
+}

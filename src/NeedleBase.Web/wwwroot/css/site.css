@@ -591,6 +591,12 @@ a.nb-list__row:hover { color: var(--nb-brand-primary-dark); }
 .nb-chip--collected { background: #E3E8E5; color: #3F4A51; }
 .nb-chip--cancelled, .nb-chip--overdue, .nb-chip--auth { background: #FBE1E1; color: #991B1B; }
 .nb-chip--overdue::before { display: none; }
+.nb-chip--expense { background: #FBEBD5; color: #8A3B07; text-decoration: none; }
+.nb-chip--voided { background: #E3E8E5; color: #3F4A51; }
+.nb-segmented--wrap { flex-wrap: wrap; }
+.nb-stat__value--small { font-size: 1rem; line-height: 1.5rem; }
+.nb-prewrap { white-space: pre-wrap; }
+.nb-loss { color: #991B1B; }
 
 /* ---- Buttons & forms (Material state layers on soft surfaces) ---- */
 .btn { position: relative; border-radius: 12px; font-weight: 500; min-height: 40px; padding: 0.5rem 1.25rem; letter-spacing: 0.01em; transition: box-shadow .15s, background-color .15s; }
@@ -843,3 +849,4 @@ a.nb-list__row:hover { color: var(--nb-brand-primary-dark); }
 .nb-report-list .nb-dot { margin-right: 0.5rem; }
 .nb-report-bar { display: block; width: 100%; height: 6px; margin-top: 4px; }
 .nb-report-bar rect { fill: var(--nb-brand-primary); }
+.nb-report-bar--spent rect { fill: var(--nb-warning); }

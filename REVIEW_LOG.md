@@ -2785,3 +2785,47 @@ Removed `.cursor/ralph/`.
 
 ### Status
 **COMPLETE** — clean re-verify; gates PASS; no product/skill changes beyond this log.
+
+## Ralph Balanced — expenses web UI chunk 8 (27 Nov 2026)
+
+### Discovery
+- Branch: `PlanNameCatalogue` (ahead of origin)
+- Slice: dirty WT — web Expenses pages, API client, Reports/Orders/nav/activity, CostsNote removal, tests, skills
+- Commit auth: yes (this prompt)
+- Runtime: Postgres :5435; JAVA_HOME=/opt/android-studio/jbr
+
+### Snapshot
+```
+cmd: git status --porcelain
+out: M expenses-plan + MonthlyReports + ReportsPage + Orders/Reports/nav/activity/API/css/tests; ?? Pages/Expenses/ ExpenseWeb.cs ExpensesPageTests.cs
+(+ skill status updates this iteration)
+```
+
+### Pass ledger
+| pass | state | tools | findings | dismissals |
+|------|-------|-------|----------|------------|
+| 1 Bugs | PASS | Index/Create/Details models; ExpenseWeb; order empty `Count`+`TotalCount`; ExpensesPageTests 18 | none | Create ClientId regen on conflict; Details STALE/PRG |
+| 2 Edge | PASS | month clamp redirect; order removed; voided-only card; IncludeVoided default | none | — |
+| 3 Security | PASS | `CanSeeExpenses`→`ExpenseRules.CanManage`; Tailor no API (`Tailor_is_refused_without_calls`); antiforgery + `data-nb-once-submit`; Razor encodes NoteLine | none | AuthorizeFolder("/") |
+| 4 Senior | PASS | class C (page-sized list + status cache); CostsNote removed (`rg` absent src/tests); skills → chunks 1–8 | Fixed P2: skill status still said web remain | UI/UX docs = chunk 9 OOS |
+| 5 UI/UX | PASS | nav under Reports; ProfitNote; SVG bars CSP-safe; upgrade/read-only/forbidden states; rendered tests | P3 record: Details "Spent on"=category vs Create "What was it for?" | intentional category wording |
+
+### Gate state table
+| gate | state | command | tail |
+|------|-------|---------|------|
+| Build | PASS | `dotnet build NeedleBase.sln -c Release --no-incremental -warnaserror` | `0 Warning(s) 0 Error(s)` BUILD_EXIT:0 |
+| Lint | PASS | same `-warnaserror` | `0 Warning(s)` |
+| Test | PASS | Domain/App/Web/Mobile/Api Release `--no-build` | 116 / 387 / 247 / 415 / 389; ExpensesPage+Reports filter 20; Failed 0 |
+| Perf | N/A | class C; no harness | — |
+
+### Findings
+**Fixed:** P2 skill drift — plans/phases/domain/api/web/mobile/mobile-sync (+ phases.md) now mark expenses chunks 1–8 built; UI/UX docs chunk 9 remain.
+**Dismissed:** Tailor/Starter/read-only gating covered by tests; CostsNote removal intentional with ProfitNote; order empty uses Count+TotalCount.
+**Open:** none (P0/P1).
+**Out-of-scope:** UI/UX docs chunk 9; P3 Details label "Spent on" vs Create "What was it for?".
+
+### Teardown
+Removed `.cursor/ralph/` if present; no loop sentinel files left.
+
+### Status
+**COMPLETE** — mandatory gates PASS; no open P0/P1; commit authorized.

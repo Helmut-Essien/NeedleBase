@@ -8,6 +8,10 @@
             <time datetime="@Model.OccurredAtUtc.ToString("o")">@Model.WhenDisplay</time>
             · @Model.ActorName@(string.IsNullOrEmpty(Model.ActorRole) ? "" : $" ({Model.ActorRole})")
             · @Model.SourceDisplay
+            @if (Model.EntityType == "expense" && !string.IsNullOrEmpty(Model.EntityId) && !Model.Action.EndsWith(".deleted"))
+            {
+                <text>· </text><a asp-page="/Expenses/Details" asp-route-id="@Model.EntityId">Open expense</a>
+            }
             @if (!string.IsNullOrEmpty(Model.OrderId) && Model.EntityType != "order")
             {
                 <text>· </text><a asp-page="/Orders/Details" asp-route-id="@Model.OrderId">Order</a>

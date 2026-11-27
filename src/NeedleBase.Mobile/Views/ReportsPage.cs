@@ -94,7 +94,7 @@ public sealed class ReportsPage : ContentPage
         stack.Add(Figure("Spent", r.SpentDisplay, "ReportsSpent",
             $"{ExpenseAccess.CountText(r.ExpenseCount)} · {ReportsViewModel.SpentChange(r)}"));
         stack.Add(Figure(r.ProfitLabel, r.ProfitDisplay, "ReportsProfit", r.ProfitChangeDisplay, r.IsLoss));
-        // ProfitNote replaces CostsNote on the phone (expenses plan 6.6); web keeps CostsNote until Chunk 8.
+        // Profit note (expenses plan 6.6): depends on whether the month has expenses.
         stack.Add(Ui.Body(r.ProfitNote));
 
         stack.Add(Ui.Heading("Spent by category", 2));

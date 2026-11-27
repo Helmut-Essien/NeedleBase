@@ -39,6 +39,14 @@ public class DetailsModel : AppPageModel
 
     public OrderDetailDto? Order { get; private set; }
     public OrderPaymentsDto? Payments { get; private set; }
+
+    /// <summary>Owner/Manager on a plan with expenses: this order's latest expenses + total (null hides the card).</summary>
+    public NeedleBase.Application.Contracts.Expenses.ExpenseListResponse? Expenses { get; private set; }
+
+    public const int ExpensePreviewCount = 5;
+
+    /// <summary>"Add expense" is hidden on a read-only shop (the Api refuses it anyway).</summary>
+    public bool CanAddExpense { get; private set; }
     public string? AssigneeName { get; private set; }
     public string? StatusMessage { get; private set; }
     public string? StatusError { get; private set; }
@@ -284,7 +292,13 @@ public class DetailsModel : AppPageModel
             ? _api.ListActivityAsync(new AuditQuery { OrderId = Id, PageSize = HistorySize }, cancellationToken)
             : null;
         var waLogTask = User.CanSeeActivity() ? _api.ListWhatsAppMessagesAsync(Id, 1, cancellationToken) : null;
-        await Task.WhenAll(new Task?[] { orderTask, staffTask, paymentsTask, historyTask, waLogTask }.OfType<Task>());
+        var expensesTask = User.CanSeeExpenses()
+            ? _api.GetExpensesAsync(new NeedleBase.Application.Contracts.Expenses.ExpenseListQuery
+            {
+                OrderId = Id, IncludeVoided = true, PageSize = ExpensePreviewCount
+            }, cancellationToken)
+            : null;
+        await Task.WhenAll(new Task?[] { orderTask, staffTask, paymentsTask, historyTask, waLogTask, expensesTask }.OfType<Task>());
 
         var order = await orderTask;
         if (!order.IsSuccess)
@@ -304,6 +318,12 @@ public class DetailsModel : AppPageModel
         if (paymentsTask is not null && (await paymentsTask) is { IsSuccess: true } payments)
         {
             Payments = payments.Value; // 403 (role changed) simply hides the section
+        }
+
+        if (expensesTask is not null && (await expensesTask) is { IsSuccess: true } expenses)
+        {
+            Expenses = expenses.Value; // Starter (EXPENSES_NOT_ALLOWED) or a role change simply hides the card
+            CanAddExpense = (await ExpenseWeb.StatusAsync(HttpContext, _api, cancellationToken))?.IsReadOnly != true;
         }
 
         if (historyTask is not null && (await historyTask) is { IsSuccess: true } history)

@@ -197,6 +197,40 @@
                 </section>
             }
 
+            @if (Model.Expenses is { } x)
+            {
+                <section class="nb-card" aria-labelledby="expenses-heading">
+                    <h2 id="expenses-heading" class="nb-section-title">Expenses for this order</h2>
+                    @if (x.Count == 0 && x.Items.TotalCount == 0)
+                    {
+                        <p class="nb-empty">No expenses for this order yet. Record fabric, linings or other costs for it to see what it really cost.</p>
+                    }
+                    else
+                    {
+                        <p class="mb-1">Spent on this order: <strong class="nb-money">@x.TotalDisplay</strong> · @NeedleBase.Web.Services.ExpenseWeb.CountText(x.Count)</p>
+                        <ul class="nb-list">
+                            @foreach (var e in x.Items.Data)
+                            {
+                                <li class="nb-list__row">
+                                    <span><a asp-page="/Expenses/Details" asp-route-id="@e.Id">@e.CategoryDisplay</a><br /><span class="nb-meta">@e.SpentOnDisplay@(NeedleBase.Web.Services.ExpenseWeb.NoteLine(e.Note, 50) is { } line ? " · " + line : "")@(e.IsVoided ? " · Voided" : "")</span></span>
+                                    <span class="nb-money @(e.IsVoided ? "nb-voided" : "")">@e.AmountDisplay</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        @if (x.Items.TotalCount > 0)
+                        {
+                            <a class="btn btn-sm nb-btn-outline" href="/Expenses?orderId=@Uri.EscapeDataString(o.Id)">See all</a>
+                        }
+                        @if (Model.CanAddExpense)
+                        {
+                            <a class="btn btn-sm nb-btn-primary" href="/Expenses/Create?orderId=@Uri.EscapeDataString(o.Id)">Add expense</a>
+                        }
+                    </div>
+                </section>
+            }
+
             @if (Model.History is { } h)
             {
                 <section class="nb-card" aria-labelledby="history-heading">

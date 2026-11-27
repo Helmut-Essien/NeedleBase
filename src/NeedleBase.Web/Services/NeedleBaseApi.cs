@@ -6,6 +6,7 @@ using NeedleBase.Application.Contracts.Customers;
 using NeedleBase.Application.Contracts.Dashboard;
 using NeedleBase.Application.Contracts.Reports;
 using NeedleBase.Application.Contracts.Errors;
+using NeedleBase.Application.Contracts.Expenses;
 using NeedleBase.Application.Contracts.Orders;
 using NeedleBase.Application.Contracts.Payments;
 using NeedleBase.Application.Contracts.Staff;
@@ -182,6 +183,26 @@ public sealed class NeedleBaseApi : INeedleBaseApi
 
         return SendAsync<MonthlyReportDto>(HttpMethod.Get, url.ToString(), null, cancellationToken);
     }
+
+    public Task<ApiResult<ExpenseListResponse>> GetExpensesAsync(ExpenseListQuery query, CancellationToken cancellationToken = default)
+    {
+        var url = new StringBuilder("api/expenses?page=").Append(Math.Max(1, query.Page))
+            .Append("&pageSize=").Append(Math.Clamp(query.PageSize, 1, PaginationDefaults.MaxPageSize))
+            .Append("&includeVoided=").Append(query.IncludeVoided ? "true" : "false");
+        Append(url, "month", query.Month);
+        Append(url, "category", query.Category);
+        Append(url, "orderId", query.OrderId);
+        return SendAsync<ExpenseListResponse>(HttpMethod.Get, url.ToString(), null, cancellationToken);
+    }
+
+    public Task<ApiResult<ExpenseDto>> GetExpenseAsync(string id, CancellationToken cancellationToken = default) =>
+        SendAsync<ExpenseDto>(HttpMethod.Get, $"api/expenses/{Uri.EscapeDataString(id)}", null, cancellationToken);
+
+    public Task<ApiResult<ExpenseDto>> RecordExpenseAsync(RecordExpenseRequest request, CancellationToken cancellationToken = default) =>
+        SendAsync<ExpenseDto>(HttpMethod.Post, "api/expenses", request, cancellationToken);
+
+    public Task<ApiResult<ExpenseDto>> VoidExpenseAsync(string id, VoidExpenseRequest request, CancellationToken cancellationToken = default) =>
+        SendAsync<ExpenseDto>(HttpMethod.Post, $"api/expenses/{Uri.EscapeDataString(id)}/void", request, cancellationToken);
 
     internal static bool IsUnreachable(ApiProblem problem) =>
         problem.Status is 502 or 503 or 504 && problem.Code is null && problem.Detail is null;

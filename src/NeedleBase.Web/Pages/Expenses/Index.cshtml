@@ -1,0 +1,156 @@
+@page
+@model NeedleBase.Web.Pages.Expenses.IndexModel
+@using NeedleBase.Application.Expenses
+@using NeedleBase.Domain.Enums
+@using NeedleBase.Web.Services
+@{
+    ViewData["Title"] = "Expenses";
+}
+<h1 class="nb-page-title">Expenses</h1>
+<p class="nb-meta">Money the shop paid out: fabric, staff pay, rent and other costs (Accra time). Voided expenses stay listed but don't count.</p>
+@if (Model.FlashMessage is { } flash)
+{
+    <div class="alert alert-success" role="status">@flash</div>
+}
+<partial name="_PageState" model="Model" />
+
+@if (Model.NeedsUpgrade)
+{
+    <section class="nb-card" aria-labelledby="upgrade-heading">
+        <h2 id="upgrade-heading" class="nb-section-title">@ExpenseWeb.UpgradeTitle</h2>
+        <p>@ExpenseRules.NotAllowedMessage @ExpenseWeb.UpgradeBody</p>
+        @if (User.IsOwner())
+        {
+            <a class="btn nb-btn-primary" asp-page="/Settings/License">See your plan</a>
+        }
+        else
+        {
+            <p class="nb-meta mb-0">Ask the shop owner about moving to Workshop or Production.</p>
+        }
+    </section>
+}
+
+@if (Model.Result is { } r)
+{
+    @if (Model.IsReadOnly)
+    {
+        <div class="alert alert-warning" role="status">@NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage You can still look at your expenses.</div>
+    }
+
+    @if (Model.IsOrderView)
+    {
+        <div class="d-flex flex-wrap align-items-center gap-2 nb-section">
+            <h2 class="nb-section-title mb-0">@Model.OrderTitle</h2>
+            <a class="nb-chip nb-chip--expense" href="/Expenses" aria-label="Stop filtering by this order">All expenses <span aria-hidden="true">×</span></a>
+            <a class="btn btn-sm nb-btn-outline ms-md-auto" asp-page="/Orders/Details" asp-route-id="@Model.OrderId">Open order</a>
+        </div>
+    }
+    else
+    {
+        <nav class="d-flex flex-wrap align-items-center gap-2 nb-section" aria-label="Choose a month">
+            @if (Model.PreviousMonthKey is { } prev)
+            {
+                <a class="btn btn-sm nb-btn-outline" href="@Model.MonthUrl(prev)" aria-label="Earlier month"><span aria-hidden="true">‹</span> Earlier</a>
+            }
+            <h2 class="nb-section-title mb-0 mx-2">@Model.MonthLabel</h2>
+            @if (Model.NextMonthKey is { } next)
+            {
+                <a class="btn btn-sm nb-btn-outline" href="@Model.MonthUrl(next)" aria-label="Later month">Later <span aria-hidden="true">›</span></a>
+            }
+            <form method="get" class="d-flex flex-wrap align-items-center gap-2 ms-md-auto">
+                <label class="visually-hidden" for="month">Month</label>
+                <input class="form-control form-control-sm" type="month" id="month" name="month" value="@Model.MonthKey" min="@Model.EarliestMonthKey" max="@Model.LatestMonthKey" />
+                @if (Model.Category is not null)
+                {
+                    <input type="hidden" name="category" value="@Model.Category" />
+                }
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="voided" name="voided" value="true" @(Model.IncludeVoided ? "checked" : "") />
+                    <input type="hidden" name="voided" value="false" />
+                    <label class="form-check-label" for="voided">Include voided</label>
+                </div>
+                <button class="btn btn-sm nb-btn-outline" type="submit">Show</button>
+            </form>
+        </nav>
+    }
+
+    <nav class="nb-segmented nb-segmented--wrap nb-section" aria-label="Filter by category">
+        <a class="btn btn-sm" href="@Model.FilterUrl(null)" aria-current="@(Model.Category is null ? "page" : null)">All</a>
+        @foreach (var c in ExpenseCategory.All)
+        {
+            <a class="btn btn-sm" href="@Model.FilterUrl(c)" aria-current="@(Model.Category == c ? "page" : null)">@ExpenseCategory.DisplayName(c)</a>
+        }
+    </nav>
+
+    <section class="nb-money-grid nb-section" aria-label="Summary">
+        <div class="nb-stat nb-money-card"><span class="nb-stat__label">@(Model.CategoryLabel is null ? "Spent" : Model.CategoryLabel)@(Model.IsOrderView ? " on this order" : " in " + Model.MonthLabel)</span><span class="nb-stat__value nb-money">@r.TotalDisplay</span></div>
+        <div class="nb-stat nb-money-card"><span class="nb-stat__label">Recorded</span><span class="nb-stat__value">@ExpenseWeb.CountText(r.Count)</span></div>
+        @if (Model.CategoryLabel is null && Model.TopCategory is { } top)
+        {
+            <div class="nb-stat nb-money-card"><span class="nb-stat__label">Biggest cost</span><span class="nb-stat__value nb-stat__value--small">@top</span></div>
+        }
+    </section>
+
+    @if (Model.CanRecord)
+    {
+        <p><a class="btn nb-btn-primary" href="/Expenses/Create@(Model.IsOrderView ? "?orderId=" + Uri.EscapeDataString(Model.OrderId!) : "")">Record expense</a></p>
+    }
+
+    @if (r.Items.Data.Count == 0 && r.Items.TotalCount > 0)
+    {
+        <p class="nb-empty">This page is past the end of the list. <a href="@Model.FilterUrl(Model.Category)">Go to the first page</a>.</p>
+    }
+    else if (r.Items.Data.Count == 0)
+    {
+        <p class="nb-empty">@Model.EmptyText</p>
+    }
+    else
+    {
+        <table class="table nb-table nb-table--cards" role="table">
+            <caption class="visually-hidden">Expenses, newest first</caption>
+            <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Date</th><th role="columnheader" scope="col">Category</th><th role="columnheader" scope="col" class="text-end">Amount</th><th role="columnheader" scope="col">Note</th><th role="columnheader" scope="col">Order</th><th role="columnheader" scope="col" class="d-none d-lg-table-cell">Recorded by</th><th role="columnheader" scope="col">Status</th></tr></thead>
+            <tbody role="rowgroup">
+                @foreach (var e in r.Items.Data)
+                {
+                    var order = ExpenseWeb.OrderLine(e);
+                    <tr role="row">
+                        <td role="cell" data-label="Date"><a asp-page="/Expenses/Details" asp-route-id="@e.Id">@e.SpentOnDisplay</a></td>
+                        <td role="cell" data-label="Category">@e.CategoryDisplay</td>
+                        <td role="cell" data-label="Amount" class="text-end nb-money @(e.IsVoided ? "nb-voided" : "")">@e.AmountDisplay</td>
+                        <td role="cell" data-label="Note">@(ExpenseWeb.NoteLine(e.Note) ?? "—")</td>
+                        <td role="cell" data-label="Order">
+                            @if (order is null)
+                            {
+                                <span class="nb-meta">—</span>
+                            }
+                            else if (e.OrderDisplayRef is null)
+                            {
+                                <span class="nb-meta">@order</span>
+                            }
+                            else
+                            {
+                                <a asp-page="/Orders/Details" asp-route-id="@e.OrderId">@order</a>
+                            }
+                        </td>
+                        <td role="cell" data-label="Recorded by" class="d-none d-lg-table-cell">@Model.Who(e.RecordedByUserId)</td>
+                        <td role="cell" data-label="Status">
+                            @if (e.IsVoided)
+                            {
+                                <span class="nb-chip nb-chip--voided">Voided</span>
+                            }
+                            else if (Model.CanRecord)
+                            {
+                                <a class="btn btn-sm nb-btn-outline" asp-page="/Expenses/Details" asp-route-id="@e.Id" aria-label="Void the @e.AmountDisplay @e.CategoryDisplay expense">Void</a>
+                            }
+                            else
+                            {
+                                <span class="nb-meta">Counted</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <partial name="_Pager" model="Model.Pager" />
+    }
+}

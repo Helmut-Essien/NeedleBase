@@ -1,0 +1,89 @@
+@page "{id}"
+@model NeedleBase.Web.Pages.Expenses.DetailsModel
+@using NeedleBase.Application.Expenses
+@using NeedleBase.Domain.Common
+@using NeedleBase.Web.Services
+@{
+    ViewData["Title"] = Model.Expense is null ? "Expense" : $"Expense {Model.Expense.AmountDisplay}";
+}
+<a class="nb-back" href="/Expenses@(Model.Expense is null ? "" : "?month=" + Model.Expense.SpentOn.ToString("yyyy-MM", System.Globalization.CultureInfo.InvariantCulture))"><span aria-hidden="true">←</span> Back to expenses</a>
+@if (Model.FlashMessage is { } flash)
+{
+    <div class="alert alert-success" role="status">@flash</div>
+}
+<partial name="_PageState" model="Model" />
+
+@if (Model.NeedsUpgrade)
+{
+    <section class="nb-card" aria-labelledby="upgrade-heading">
+        <h2 id="upgrade-heading" class="nb-section-title">@ExpenseWeb.UpgradeTitle</h2>
+        <p>@ExpenseRules.NotAllowedMessage</p>
+        @if (User.IsOwner()) { <a class="btn nb-btn-primary" asp-page="/Settings/License">See your plan</a> }
+    </section>
+}
+
+@if (Model.Expense is { } e)
+{
+    <h1 class="nb-page-title"><span class="@(e.IsVoided ? "nb-voided" : "")">@e.AmountDisplay</span> · @e.CategoryDisplay</h1>
+    <section class="nb-card" aria-labelledby="detail-heading">
+        <h2 id="detail-heading" class="visually-hidden">Details</h2>
+        <dl class="nb-dl">
+            <dt>Amount</dt><dd class="nb-money">@e.AmountDisplay</dd>
+            <dt>Spent on</dt><dd>@e.CategoryDisplay</dd>
+            <dt>Date paid</dt><dd>@e.SpentOnDisplay</dd>
+            <dt>Note</dt><dd class="text-break nb-prewrap">@(string.IsNullOrWhiteSpace(e.Note) ? "—" : e.Note)</dd>
+            <dt>Order</dt>
+            <dd>
+                @if (Model.OrderLine is null)
+                {
+                    <text>Not for one order</text>
+                }
+                else if (e.OrderDisplayRef is null)
+                {
+                    <span class="nb-meta">@Model.OrderLine</span>
+                }
+                else
+                {
+                    <a asp-page="/Orders/Details" asp-route-id="@e.OrderId">@Model.OrderLine</a>
+                }
+            </dd>
+            <dt>Recorded by</dt><dd>@Model.RecordedText</dd>
+            <dt>Status</dt><dd>@(e.IsVoided ? "Voided" : "Counts toward profit")</dd>
+        </dl>
+    </section>
+
+    @if (e.IsVoided)
+    {
+        <section class="nb-card" aria-labelledby="voided-heading">
+            <h2 id="voided-heading" class="nb-section-title">Voided</h2>
+            <p class="mb-1">@Model.VoidedText</p>
+            <p class="mb-1">Reason: @(string.IsNullOrWhiteSpace(e.VoidReason) ? "No reason given" : e.VoidReason)</p>
+            <p class="nb-meta mb-0">It stays in your records and doesn't count toward profit.</p>
+        </section>
+    }
+    else if (Model.IsReadOnly)
+    {
+        <div class="alert alert-warning" role="status">@NeedleBase.Application.Licensing.LicenseErrors.ReadOnlyMessage</div>
+    }
+    else if (Model.CanVoid)
+    {
+        <section class="nb-card" aria-labelledby="void-heading">
+            <h2 id="void-heading" class="nb-section-title">Void expense</h2>
+            <p class="nb-meta">Voiding keeps it in your records but stops it counting toward profit. If the details were wrong, void it and record it again.</p>
+            <form method="post" asp-page-handler="Void" asp-route-id="@e.Id" novalidate>
+                <input type="hidden" asp-for="BaseModified" />
+                <div class="mb-3">
+                    <label class="form-label" for="VoidReason">Why are you voiding it?</label>
+                    <textarea class="form-control @(Model.VoidError is null ? "" : "is-invalid")" id="VoidReason" name="VoidReason" rows="2" maxlength="@FieldLimits.Notes" required aria-describedby="@(Model.VoidError is null ? null : "void-error")">@Model.VoidReason</textarea>
+                    @if (Model.VoidError is { } voidError) { <div class="invalid-feedback" id="void-error" role="alert">@voidError</div> }
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input @(Model.ConfirmError is null ? "" : "is-invalid")" type="checkbox" id="ConfirmVoid" name="ConfirmVoid" value="true" aria-describedby="@(Model.ConfirmError is null ? null : "confirm-error")" />
+                    <label class="form-check-label" for="ConfirmVoid">I understand this stays in the records</label>
+                    @if (Model.ConfirmError is { } confirmError) { <div class="invalid-feedback" id="confirm-error">@confirmError</div> }
+                </div>
+                <button class="btn nb-btn-danger" type="submit" data-nb-once-submit>Void @e.AmountDisplay</button>
+            </form>
+        </section>
+    }
+}

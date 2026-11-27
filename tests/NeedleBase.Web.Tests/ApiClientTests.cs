@@ -63,6 +63,46 @@ public class ApiClientTests
     }
 
     [Fact]
+    public async Task Expenses_list_sends_filters_and_reads_totals()
+    {
+        const string body = """
+            {"items":{"data":[{"id":"e1","amount":120.50,"category":"Materials","spentOn":"2026-11-20","note":"Lining","orderId":null,
+            "orderDisplayRef":null,"customerName":null,"recordedByUserId":"u1","isVoided":false,"voidedAtUtc":null,"voidedByUserId":null,
+            "voidReason":null,"createdAtUtc":"2026-11-20T09:00:00+00:00","dateModifiedUtc":"2026-11-20T09:00:00+00:00"}],
+            "totalCount":1,"page":1,"pageSize":20,"totalPages":1},
+            "total":120.50,"count":1,"byCategory":[{"category":"Materials","total":120.50,"count":1}],"month":"2026-11"}
+            """;
+        var (api, handler, _) = Make(_ => Json(HttpStatusCode.OK, body));
+        var result = await api.GetExpensesAsync(new NeedleBase.Application.Contracts.Expenses.ExpenseListQuery
+        {
+            Month = "2026-11", Category = "StaffPay", IncludeVoided = false, Page = 0, PageSize = 500
+        });
+
+        var uri = handler.Requests.Single().RequestUri!.AbsoluteUri;
+        Assert.EndsWith("api/expenses?page=1&pageSize=100&includeVoided=false&month=2026-11&category=StaffPay", uri);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("GH₵ 120.50", result.Value!.TotalDisplay);
+        Assert.Equal(new DateOnly(2026, 11, 20), result.Value.Items.Data.Single().SpentOn);
+    }
+
+    [Fact]
+    public async Task Record_and_void_expense_post_to_their_routes()
+    {
+        var (api, handler, _) = Make(_ => Json(HttpStatusCode.OK, "null"));
+        await api.RecordExpenseAsync(new NeedleBase.Application.Contracts.Expenses.RecordExpenseRequest
+        {
+            Id = "01JABCDEFGHJKMNPQRSTVWXYZ0", Amount = 60m, Category = "Transport", SpentOn = new DateOnly(2026, 11, 27)
+        });
+        await api.VoidExpenseAsync("e/1", new NeedleBase.Application.Contracts.Expenses.VoidExpenseRequest { Reason = "Wrong amount" });
+
+        Assert.EndsWith("api/expenses", handler.Requests[0].RequestUri!.AbsoluteUri);
+        Assert.Contains("\"id\":\"01JABCDEFGHJKMNPQRSTVWXYZ0\"", handler.Bodies[0]);
+        Assert.Contains("\"spentOn\":\"2026-11-27\"", handler.Bodies[0]);
+        Assert.DoesNotContain("lenient", handler.Bodies[0], StringComparison.OrdinalIgnoreCase);
+        Assert.EndsWith("api/expenses/e%2F1/void", handler.Requests[1].RequestUri!.AbsoluteUri);
+    }
+
+    [Fact]
     public async Task Order_id_is_path_escaped()
     {
         var (api, handler, _) = Make(_ => Json(HttpStatusCode.NotFound, ""));

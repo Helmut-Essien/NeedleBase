@@ -89,6 +89,23 @@ public sealed class FakeApi : INeedleBaseApi
     }
     public Func<string?, ApiResult<NeedleBase.Application.Contracts.Reports.MonthlyReportDto>> MonthlyReport { get; set; } =
         _ => ApiResult<NeedleBase.Application.Contracts.Reports.MonthlyReportDto>.Ok(Data.Report());
+    public ConcurrentQueue<NeedleBase.Application.Contracts.Expenses.ExpenseListQuery> ExpenseQueries { get; } = new();
+    public ConcurrentQueue<NeedleBase.Application.Contracts.Expenses.RecordExpenseRequest> RecordedExpenses { get; } = new();
+    public Func<NeedleBase.Application.Contracts.Expenses.ExpenseListQuery, ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseListResponse>> Expenses { get; set; } =
+        q => ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseListResponse>.Ok(Data.ExpenseList([]));
+    public Func<string, ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>> Expense { get; set; } =
+        id => ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>.Ok(Data.Expense(id));
+    public Func<NeedleBase.Application.Contracts.Expenses.RecordExpenseRequest, ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>> RecordExpense { get; set; } =
+        r => ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>.Ok(Data.Expense(r.Id ?? "e-new", r.Amount, r.Category));
+    public Func<string, NeedleBase.Application.Contracts.Expenses.VoidExpenseRequest, ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>> VoidExpense { get; set; } =
+        (id, r) => ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>.Ok(Data.Expense(id) with { IsVoided = true, VoidReason = r.Reason });
+    public Task<ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseListResponse>> GetExpensesAsync(NeedleBase.Application.Contracts.Expenses.ExpenseListQuery q, CancellationToken c = default)
+    { Calls.Enqueue("expenses:" + (q.OrderId ?? q.Month)); ExpenseQueries.Enqueue(q); return Task.FromResult(Expenses(q)); }
+    public Task<ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>> GetExpenseAsync(string id, CancellationToken c = default) { Calls.Enqueue("expense:" + id); return Task.FromResult(Expense(id)); }
+    public Task<ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>> RecordExpenseAsync(NeedleBase.Application.Contracts.Expenses.RecordExpenseRequest r, CancellationToken c = default)
+    { Calls.Enqueue("record-expense"); RecordedExpenses.Enqueue(r); return Task.FromResult(RecordExpense(r)); }
+    public Task<ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>> VoidExpenseAsync(string id, NeedleBase.Application.Contracts.Expenses.VoidExpenseRequest r, CancellationToken c = default)
+    { Calls.Enqueue("void-expense:" + id); return Task.FromResult(VoidExpense(id, r)); }
     public Task<ApiResult<NeedleBase.Application.Contracts.Reports.MonthlyReportDto>> GetMonthlyReportAsync(string? month, CancellationToken c = default) { Calls.Enqueue("report:" + month); return Task.FromResult(MonthlyReport(month)); }
     public AuditQuery? LastActivityQuery { get; private set; }
     public Task<ApiResult<PaginatedResponse<AuditEventDto>>> ListActivityAsync(AuditQuery q, CancellationToken c = default) { Calls.Enqueue("activity"); LastActivityQuery = q; return Task.FromResult(Activity(q)); }
@@ -126,6 +143,19 @@ public static class Data
                 new(200m, "Cash", new DateTimeOffset(2026, 11, 12, 10, 0, 0, TimeSpan.Zero)),
                 new(150m, "Cash", new DateTimeOffset(2026, 10, 5, 10, 0, 0, TimeSpan.Zero))
             ]);
+
+    public static NeedleBase.Application.Contracts.Expenses.ExpenseDto Expense(string id, decimal amount = 120m, string category = "Materials",
+        string? orderId = null, string? orderRef = null) =>
+        new(id, amount, category, new DateOnly(2026, 11, 20), "Lining and zips\nfrom Makola", orderId, orderRef, orderRef is null ? null : "Ama Mensah",
+            "u1", false, null, null, null, Modified, Modified);
+
+    public static NeedleBase.Application.Contracts.Expenses.ExpenseListResponse ExpenseList(
+        IReadOnlyList<NeedleBase.Application.Contracts.Expenses.ExpenseDto> items, string? month = "2026-11") =>
+        new(Page(items), items.Where(e => !e.IsVoided).Sum(e => e.Amount), items.Count(e => !e.IsVoided),
+            items.Where(e => !e.IsVoided).GroupBy(e => e.Category)
+                .Select(g => new NeedleBase.Application.Contracts.Expenses.CategoryTotalDto(g.Key, g.Sum(e => e.Amount), g.Count()))
+                .OrderByDescending(c => c.Total).ToList(),
+            month);
 
     public static ApiResult<T> Problem<T>(HttpStatusCode status, string? code = null, string? detail = null) =>
         ApiResult<T>.Fail(new ApiProblem((int)status, code, null, detail, new Dictionary<string, string[]>()));

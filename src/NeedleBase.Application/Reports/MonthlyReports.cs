@@ -22,13 +22,6 @@ public static class ReportRules
     public const string ForbiddenMessage = "Only the owner or a manager can see monthly reports.";
     public const string MonthInvalidMessage = "Pick a month from January 2020 up to this month.";
 
-    /// <summary>
-    /// Old note from before expenses (step 7b). Still shown by the phone and web report screens until they show
-    /// Spent and Profit (expenses plan chunks 7 and 8), then removed.
-    /// </summary>
-    public const string CostsNote =
-        "NeedleBase doesn't record your costs (fabric, wages, rent) yet, so this shows money in, not profit after costs.";
-
     /// <summary>Shown with the profit figure when the month has expenses.</summary>
     public const string ProfitNote =
         "Profit is money in minus the expenses you recorded for the month. Money still owed and costs you haven't recorded aren't counted.";

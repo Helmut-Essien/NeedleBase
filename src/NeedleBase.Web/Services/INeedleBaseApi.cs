@@ -78,6 +78,19 @@ public interface INeedleBaseApi
 
     /// <summary>Owner/Manager on Workshop+: one month's money and orders (<c>yyyy-MM</c>, blank = this month).</summary>
     Task<ApiResult<MonthlyReportDto>> GetMonthlyReportAsync(string? month, CancellationToken cancellationToken = default);
+
+    /// <summary>Expenses (Owner/Manager on a plan with reports): a page plus totals over the whole filter.</summary>
+    Task<ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseListResponse>> GetExpensesAsync(
+        NeedleBase.Application.Contracts.Expenses.ExpenseListQuery query, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>> GetExpenseAsync(string id, CancellationToken cancellationToken = default);
+
+    /// <summary>Records an expense; the same client id twice returns the saved one (double submit is safe).</summary>
+    Task<ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>> RecordExpenseAsync(
+        NeedleBase.Application.Contracts.Expenses.RecordExpenseRequest request, CancellationToken cancellationToken = default);
+
+    Task<ApiResult<NeedleBase.Application.Contracts.Expenses.ExpenseDto>> VoidExpenseAsync(
+        string id, NeedleBase.Application.Contracts.Expenses.VoidExpenseRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Order list filters (server-side paging/filtering).</summary>

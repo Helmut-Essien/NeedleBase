@@ -7,14 +7,14 @@
     ViewData["Title"] = "Reports";
 }
 <h1 class="nb-page-title">Reports</h1>
-<p class="nb-meta">Money in and orders taken, month by month (Accra time).</p>
+<p class="nb-meta">Money in, money spent and profit, month by month (Accra time).</p>
 <partial name="_PageState" model="Model" />
 
 @if (Model.NeedsUpgrade)
 {
     <section class="nb-card" aria-labelledby="upgrade-heading">
         <h2 id="upgrade-heading" class="nb-section-title">Monthly reports aren't on your plan</h2>
-        <p>@ReportRules.NotAllowedMessage See how much money came in each month, what you took in orders, and what customers still owe.</p>
+        <p>@ReportRules.NotAllowedMessage See how much money came in each month, what the shop spent, your profit, and what customers still owe.</p>
         @if (User.IsOwner())
         {
             <a class="btn nb-btn-primary" asp-page="/Settings/License">See your plan</a>
@@ -28,7 +28,9 @@
 
 @if (Model.Report is { } r)
 {
-    var maxMoney = Math.Max(1m, r.Trend.Max(t => t.MoneyReceived));
+    var maxMoney = Math.Max(1m, r.Trend.Max(t => Math.Max(t.MoneyReceived, t.Spent)));
+    var spentByCategory = r.SpentByCategory.Where(c => c.Total > 0).ToList();
+    var maxCategory = Math.Max(1m, spentByCategory.Count == 0 ? 1m : spentByCategory.Max(c => c.Total));
     <nav class="d-flex flex-wrap align-items-center gap-2 nb-section" aria-label="Choose a month">
         @if (r.PreviousMonth is not null)
         {
@@ -54,23 +56,56 @@
                 <span class="nb-hero__value nb-money">@r.MoneyReceivedDisplay</span>
                 <span class="nb-hero__foot"><span>@r.PaymentCount @(r.PaymentCount == 1 ? "payment" : "payments") recorded</span><span>@r.ChangeDisplay</span></span>
             </div>
+            <div class="nb-hero">
+                <span class="nb-hero__label">Spent</span>
+                <span class="nb-hero__value nb-money">@r.SpentDisplay</span>
+                <span class="nb-hero__foot"><span>@(r.ExpenseCount == 1 ? "1 expense" : $"{r.ExpenseCount} expenses") recorded</span><span>@NeedleBase.Web.Pages.Reports.IndexModel.SpentChange(r)</span></span>
+            </div>
+            <div class="nb-hero">
+                <span class="nb-hero__label">@r.ProfitLabel</span>
+                <span class="nb-hero__value nb-money @(r.IsLoss ? "nb-loss" : "")">@r.ProfitDisplay</span>
+                <span class="nb-hero__foot"><span>Money in minus spent</span><span>@r.ProfitChangeDisplay</span></span>
+            </div>
+        </div>
+        <p class="nb-meta mt-2">@r.ProfitNote</p>
+        <div class="nb-money-grid mt-2">
             <div class="nb-stat nb-money-card"><span class="nb-stat__label">Orders taken (@r.OrdersTaken)</span><span class="nb-stat__value nb-money">@r.OrdersTakenValueDisplay</span></div>
             <div class="nb-stat nb-money-card"><span class="nb-stat__label">Still owed on those orders (@r.OrdersStillOwing)</span><span class="nb-stat__value nb-money">@r.StillOwedDisplay</span></div>
         </div>
-        <p class="nb-meta mt-2">@ReportRules.CostsNote</p>
+    </section>
+
+    <section class="nb-card nb-section" aria-labelledby="spent-heading">
+        <h2 id="spent-heading" class="nb-section-title">Spent by category</h2>
+        @if (spentByCategory.Count == 0)
+        {
+            <p class="nb-empty">No expenses recorded this month.</p>
+        }
+        else
+        {
+            <ul class="nb-status-list nb-report-list">
+                @foreach (var c in spentByCategory)
+                {
+                    <li class="is-nonzero d-block">
+                        <span class="d-flex justify-content-between"><span>@c.Label (@c.Count)</span><span class="nb-num nb-money">@c.TotalDisplay</span></span>
+                        <svg class="nb-report-bar nb-report-bar--spent" viewBox="0 0 @maxCategory.ToString(CultureInfo.InvariantCulture) 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect x="0" y="0" width="@c.Total.ToString(CultureInfo.InvariantCulture)" height="1" /></svg>
+                    </li>
+                }
+            </ul>
+        }
+        <a class="btn btn-sm nb-btn-outline mt-2" href="/Expenses?month=@r.Month">See expenses for @r.MonthLabel</a>
     </section>
 
     @if (r.IsEmpty)
     {
-        <div class="nb-empty"><strong>Nothing recorded in @r.MonthLabel</strong>Payments and new orders from the app show here.</div>
+        <div class="nb-empty"><strong>Nothing recorded in @r.MonthLabel</strong>Payments, new orders and expenses show here.</div>
     }
 
     <div class="nb-dash-cols">
         <section class="nb-card" aria-labelledby="trend-heading">
             <h2 id="trend-heading" class="nb-section-title">Last @r.Trend.Count months</h2>
             <table class="table nb-table nb-table--cards" role="table">
-                <caption class="visually-hidden">Money in and orders taken per month, oldest first</caption>
-                <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Month</th><th role="columnheader" scope="col" class="text-end">Money in</th><th role="columnheader" scope="col" class="text-end">Orders taken</th></tr></thead>
+                <caption class="visually-hidden">Money in, spent, profit and orders taken per month, oldest first</caption>
+                <thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">Month</th><th role="columnheader" scope="col" class="text-end">Money in</th><th role="columnheader" scope="col" class="text-end">Spent</th><th role="columnheader" scope="col" class="text-end">Profit</th><th role="columnheader" scope="col" class="text-end">Orders taken</th></tr></thead>
                 <tbody role="rowgroup">
                     @foreach (var t in r.Trend)
                     {
@@ -81,6 +116,11 @@
                                 @* Bar width as SVG geometry (attributes, not inline styles) so the strict CSP holds. *@
                                 <svg class="nb-report-bar" viewBox="0 0 @maxMoney.ToString(CultureInfo.InvariantCulture) 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect x="0" y="0" width="@t.MoneyReceived.ToString(CultureInfo.InvariantCulture)" height="1" /></svg>
                             </td>
+                            <td role="cell" data-label="Spent" class="text-end">
+                                <span class="nb-money">@t.SpentDisplay</span>
+                                <svg class="nb-report-bar nb-report-bar--spent" viewBox="0 0 @maxMoney.ToString(CultureInfo.InvariantCulture) 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect x="0" y="0" width="@t.Spent.ToString(CultureInfo.InvariantCulture)" height="1" /></svg>
+                            </td>
+                            <td role="cell" data-label="Profit" class="text-end nb-money @(t.IsLoss ? "nb-loss" : "")">@(t.IsLoss ? "Loss " : "")@t.ProfitDisplay</td>
                             <td role="cell" data-label="Orders taken" class="text-end">@t.OrdersTaken · <span class="nb-money">@t.OrdersTakenValueDisplay</span></td>
                         </tr>
                     }

@@ -73,6 +73,20 @@ public class ReportsPageModelTests
     }
 }
 
+public class ReportsProfitTests
+{
+    [Fact]
+    public void Spent_change_and_loss_come_from_the_report()
+    {
+        var r = Data.Report() with { Spent = 450m, PreviousSpent = 100m, ExpenseCount = 2 };
+        Assert.Equal("GH₵ 350.00 more than October 2026", ReportsIndex.SpentChange(r));
+        Assert.True(r.IsLoss); // 300 in − 450 spent
+        Assert.Equal("Loss", r.ProfitLabel);
+        Assert.Equal(ReportRules.ProfitNote, r.ProfitNote);
+        Assert.Equal("Same as October 2026", ReportsIndex.SpentChange(Data.Report()));
+    }
+}
+
 public class ReportsRenderTests : IClassFixture<RenderTests.WebFactory>
 {
     private readonly RenderTests.WebFactory _factory;
@@ -92,7 +106,7 @@ public class ReportsRenderTests : IClassFixture<RenderTests.WebFactory>
     }
 
     [Fact]
-    public async Task Owner_sees_numbers_nav_link_and_costs_note_without_inline_styles()
+    public async Task Owner_sees_numbers_nav_link_and_profit_note_without_inline_styles()
     {
         var (status, html) = await GetAsync("/Reports", BusinessRole.Owner);
         Assert.Equal(HttpStatusCode.OK, status);
@@ -103,7 +117,11 @@ public class ReportsRenderTests : IClassFixture<RenderTests.WebFactory>
         Assert.Contains("GH₵ 200.00", html); // still owed
         Assert.Contains("GH₵ 150.00 more than October 2026", html);
         Assert.Contains("Mobile Money (1)", html);
-        Assert.Contains("not profit after costs", html);
+        Assert.Contains(ReportRules.NoExpensesNote, html); // the fixture month has no expenses
+        Assert.Contains("Spent by category", html);
+        Assert.Contains("No expenses recorded this month.", html);
+        Assert.Contains("href=\"/Expenses?month=2026-11\"", html);
+        Assert.Contains(">Profit<", html);
         Assert.Contains("nb-report-bar", html);
         Assert.DoesNotContain("style=\"", html);
         Assert.DoesNotContain("Later", html); // current month: nothing after it

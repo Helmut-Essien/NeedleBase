@@ -30,6 +30,19 @@ public class IndexModel : AppPageModel
     public string LatestMonthKey { get; } =
         ReportRules.Key(ReportRules.FirstOfMonth(BusinessTime.Today(DateTimeOffset.UtcNow)));
 
+    /// <summary>"GH₵ 40.00 more than October 2026", "… less than …", or "Same as …" (money spent vs the month before).</summary>
+    public static string SpentChange(MonthlyReportDto r)
+    {
+        var previous = r.Trend.Count >= 2 ? r.Trend[^2].Label : "last month";
+        var diff = r.Spent - r.PreviousSpent;
+        return diff switch
+        {
+            > 0 => $"{NeedleBase.Application.Contracts.Payments.Money.Format(diff)} more than {previous}",
+            < 0 => $"{NeedleBase.Application.Contracts.Payments.Money.Format(-diff)} less than {previous}",
+            _ => $"Same as {previous}"
+        };
+    }
+
     public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
     {
         if (!User.CanSeePayments())
